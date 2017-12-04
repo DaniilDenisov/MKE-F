@@ -49,6 +49,26 @@ classdef StructFEProblem < handle
                     obj.M = GlobM;
                     % Вектор правой части (сил). Преаллокация без ГУ.
                     obj.F = zeros(obj.mesh.numberOfNodes*dofPerNode,1);
+                % Элемент Тип 113.
+                case 113
+                    % Степеней свободы в узле.
+                    dofPerNode = 3;
+                    % Определение общего числа степеней свободы в системе
+                    % и иниц. глобальной матрицы жесткости.
+                    systemDOF = obj.mesh.numberOfNodes*dofPerNode;
+                    GlobK = zeros(systemDOF,systemDOF);
+                    GlobM = zeros(systemDOF,systemDOF);
+                    % Обход всех элементов в сетке.
+                    for i=1:obj.mesh.numberOfElems
+                        % Ансамблирование в глобальные матрицы.
+                        [GlobK,GlobM] = ...
+                            obj.mesh.allMeshElems(i).Assembler(GlobK,...
+                            GlobM, obj.mesh.iM, i);
+                    end
+                    obj.K = GlobK;
+                    obj.M = GlobM;
+                    % Вектор правой части (сил). Преаллокация без ГУ.
+                    obj.F = zeros(obj.mesh.numberOfNodes*dofPerNode,1);
                 otherwise
                     disp('SructFEProblem(filename): bad element type!');
             end
@@ -65,32 +85,29 @@ classdef StructFEProblem < handle
                 typeBC = currBC(1);
                 % Взять номер узла.
                 nnumBC = currBC(2);
-                % Вычислить номер степени свободы в глоб. МЖ, MM, ВПЧ.
+                % Вычислить номера степеней свободы в глоб. МЖ, MM, ВПЧ.
                 GLDOFs = this.mesh.iMnod(nnumBC,:);
-                glDOF1=GLDOFs(1);
-                glDOF2=GLDOFs(2);
                 % Применить ГУ к МЖ.
-                % Заделка обоих СС. Обнулить строки, столбцы и записать 1 на диагональ.
-                % Т.к. в узле две СС, то обнуляется 2 строки и 2 столбца.
+                % Заделка всех СС. Обнулить строки, столбцы и записать 1 на
+                % диагональ.
                 if (typeBC==1)
-                    this.K(glDOF1,:) = 0;
-                    this.K(:,glDOF1) = 0;
-                    this.K(glDOF2,:) = 0;
-                    this.K(:,glDOF2) = 0;
-                    this.K(glDOF1,glDOF1) = 1;
-                    this.K(glDOF2,glDOF2) = 1;
+                    for n=1:size(GLDOFs,1)
+                        this.K(GLDOFs(n),:) = 0;
+                        this.K(:,GLDOFs(n)) = 0;
+                        this.K(GLDOFs(n),GLDOFs(n)) = 1;
+                    end
                 end
                 % Заделка вертик. СС, обнулить один (по второй СС) столбец.
                 if (typeBC==2)
-                    this.K(glDOF2,:) = 0;
-                    this.K(:,glDOF2) = 0;
-                    this.K(glDOF2,glDOF2) = 1;
+                    this.K(GLDOFs(2),:) = 0;
+                    this.K(:,GLDOFs(2)) = 0;
+                    this.K(GLDOFs(2),GLDOFs(2)) = 1;
                 end
                 % Заделка гор. СС, обнулить один (по первой СС) столбец.
                 if (typeBC==3)
-                    this.K(glDOF1,:) = 0;
-                    this.K(:,glDOF1) = 0;
-                    this.K(glDOF1,glDOF1) = 1;
+                    this.K(GLDOFs(1),:) = 0;
+                    this.K(:,GLDOFs(1)) = 0;
+                    this.K(GLDOFs(1),GLDOFs(1)) = 1;
                 end
                 % Если сила, то установить значение в вектор правой части.
                 if (typeBC==10)
@@ -100,8 +117,10 @@ classdef StructFEProblem < handle
                     forceValue(2) = currBC(1,4);
                     forceValue(3) = currBC(1,5);
                     % Установить в вектор пр. части.
-                    this.F(glDOF1) = this.F(glDOF1)+forceValue(1);
-                    this.F(glDOF2) = this.F(glDOF2)+forceValue(2);
+                    for n=1:size(GLDOFs,1)
+                        this.F(GLDOFs(1)) = this.F(GLDOFs(1))+forceValue(1);
+                        this.F(GLDOFs(2)) = this.F(GLDOFs(2))+forceValue(2);
+                    end
                 end
             end
         end
