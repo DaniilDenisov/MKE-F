@@ -40,6 +40,8 @@ classdef FEMesh < handle
                         obj.readElems112(fid);
                     case 'bcforce_stat'
                         obj.readBcForcesStat(fid);
+                    case 'bcforce_harm'
+                        obj.readBcForcesHarm(fid);
                     case 'bcfix'
                         obj.readBcFix(fid);
                     case -1
@@ -170,7 +172,7 @@ classdef FEMesh < handle
                     '%f,%f,%f,%f,%f,%f');
             end
         end
-        % Чтение блока данных о граничных условиях приложенных сил.
+        % Чтение блока данных о ГУ прилож. сил (стат./удар).
         function readBcForcesStat(this, fid)
             % В начале блока должен быть размер.
             line = fgetl(fid);
@@ -180,6 +182,18 @@ classdef FEMesh < handle
             for i=1:bcForceNum
                 this.allForceBCs(i,:) = sscanf(fgetl(fid),...
                     '%f,%f,%f,%f,%f');
+            end
+        end
+        % Чтение блока данных о ГУ приложенных сил (гармоническая).
+        function readBcForcesHarm(this, fid)
+            % В начале блока должен быть размер.
+            line = fgetl(fid);
+            bcForceNum = sscanf(line,'%d');
+            this.numberOfForceBCs = this.numberOfForceBCs + bcForceNum;
+            % Чтение строк и сохранение поле узлов.
+            for i=1:bcForceNum
+                this.allForceBCs(i,:) = sscanf(fgetl(fid),...
+                    '%f,%f,%f,%f,%f,%f');
             end
         end
     end
