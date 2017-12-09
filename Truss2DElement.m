@@ -8,7 +8,6 @@ classdef Truss2DElement < FiniteElementStructural
             K = StiffnessElementMatrix(this);
             M = MassElementMatrix(this);
             % Опред. глоб. индексов для элементных степеней свободы.
-            % glDOF1 = IM(elNum,1);
             glDOF1 = IM(this.elNodesNums(1),1);
             glDOF2 = IM(this.elNodesNums(1),2);
             glDOF3 = IM(this.elNodesNums(2),1);
@@ -30,7 +29,7 @@ classdef Truss2DElement < FiniteElementStructural
             GK(glDOF4,glDOF2) = GK(glDOF4,glDOF2) + K(4,2);
             GK(glDOF4,glDOF3) = GK(glDOF4,glDOF3) + K(4,3);
             GK(glDOF4,glDOF4) = GK(glDOF4,glDOF4) + K(4,4);
-            % Ансамблирование матрицы жесткости в глобальную GM.
+            % Ансамблирование матрицы масс в глобальную GM.
             GM(glDOF1,glDOF1) = GM(glDOF1,glDOF1) + M(1,1);
             GM(glDOF1,glDOF2) = GM(glDOF1,glDOF2) + M(1,2);
             GM(glDOF1,glDOF3) = GM(glDOF1,glDOF3) + M(1,3);

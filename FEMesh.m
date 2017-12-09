@@ -38,6 +38,8 @@ classdef FEMesh < handle
                         obj.readNodes(fid);
                     case 'elems_112'
                         obj.readElems112(fid);
+                    case 'elems_113'
+                        obj.readElems113(fid);
                     case 'bcforce_stat'
                         obj.readBcForcesStat(fid);
                     case 'bcforce_harm'
@@ -116,6 +118,7 @@ classdef FEMesh < handle
                this.allMeshElems(i).Disp();
             end
         end
+        
         % -------------------- Блоки данных (чтение) --------------------
         % Чтение блока данных об узлах.
         function readNodes(this,fid)
@@ -128,6 +131,7 @@ classdef FEMesh < handle
                 this.allNodes(i,:) = sscanf(fgetl(fid),'%f,%f,%f');
             end
         end
+        
         % Чтение блока данных об элементах 112.
         % Внимание! Массив узлов должен быть заполнен.
         function readElems112(this, fid)
@@ -160,6 +164,44 @@ classdef FEMesh < handle
                 this.iMnod(i,:) = [(i*this.dofPerNode)-1 i*this.dofPerNode];
             end
         end
+        
+        % Чтение блока данных об элементах 113 (балка 2 узла по 3 СС).
+        % Внимание! Массив узлов должен быть заполнен.
+        function readElems113(this, fid)
+            % В начале блока должен быть размер.
+            line = fgetl(fid);
+            elNum = sscanf(line,'%d');
+            this.numberOfElems = elNum;
+            % Преаллокация набора пустых КЭ типа 112 (Truss2DElement).
+            elemArrTmp(elNum,1) = Beam2DElement();
+            this.allMeshElems = elemArrTmp;
+            % Для элемента 113 должно быть 3 СС в узле.
+            this.dofPerNode = 3;
+            % Далее - данные. В соответствии с размером.
+            for i=1:elNum
+                line = fgetl(fid);
+                splitElemLine = strsplit(line,',');
+                % Чтение типа элемента пропущено, т.к. реализованы маркеры.
+                % Чтение со второй позиции. Номера узлов.
+                elNodes = str2double(splitElemLine(2:3));
+                % Данные элемента балки (площадь, мод. Юнга, плотность,
+                % момент инерции)
+                elData = str2double(splitElemLine(4:7));
+                elNode1Coords = this.allNodes(elNodes(1),:);
+                elNode2Coords = this.allNodes(elNodes(2),:);
+                this.allMeshElems(i).SetupElement(...
+                            [elNode1Coords; elNode2Coords],...
+                            elNodes, ...
+                            elData);
+            end
+            % Можем создать матрицу соответствия, т.к. есть dofPerNode.
+            for i=1:this.numberOfNodes
+                this.iMnod(i,:) = [(i*this.dofPerNode)-2 ...
+                                   (i*this.dofPerNode)-1 ...
+                                   (i*this.dofPerNode)];
+            end
+        end
+        
         % Чтение блока данных о граничных условиях заделки.
         function readBcFix(this, fid)
             % В начале блока должен быть размер.
