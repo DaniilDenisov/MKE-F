@@ -245,6 +245,7 @@ classdef StructFEProblem < handle
             % tDur  - время моделирования общее,
             % node  - узел в котором строится график по времени.
             % doftoplot - номер СС в узле для вывода.
+            
             % Сохранить в поля объекта задачи: Целое число временных
             % шагов, длительность задачи и шаг.
             this.tsNum = fix(tDur/tStep);
@@ -272,8 +273,6 @@ classdef StructFEProblem < handle
             a5 = (tStep/2)*((delta/alfa)-2);
             a6 = tStep*(1-delta);
             a7 = delta*tStep;
-            % Наложение ГУ на МЖ и ММ.
-            this.ApplyFixBC();
             % Формирование эффективной матрицы жесткости.
             Khat = this.K+a0*this.M;
             % Для каждого шага по времени считаем перемещения.
@@ -290,25 +289,29 @@ classdef StructFEProblem < handle
                 speNodal(:,i+1) = speNodal(:,i)+a6*acsNodal(:,i)+...
                     a7*acsNodal(:,i+1);
             end
-            % Переменная времени.
-            timeSpan = 0:tStep:this.tsNum*tStep;
+            % Длина сигнала.
+            L = this.tsNum;
+            % Вектор времени.
+            f = 0:tStep:this.tsNum*tStep;
             % Печать перемещений.
             subplot(2,1,1);
-            plot(timeSpan,dspNodal(node*dpn-dpn+dofToPlot,:));
+            plot(f,dspNodal(node*dpn-dpn+dofToPlot,:));
             title('Displacement (Selected DOF)');
-            % Печать спектра.
-            RealFFT = fft(dspNodal(node*dpn-dpn+dofToPlot,:));
-            % Число семплов.
-            nsmp = length(RealFFT);
+            % Спектр смещения. Узел, нужная степень свободы, на все шаги.
+            RealFFT = fft(dspNodal(this.mesh.iMnod(node,dofToPlot),:));
             % Частота семплирования.
-            smplFreq = 1/tStep;
+            Fs = 1/tStep;
             % Область графика.
-            domainFFT = (0:nsmp-1)*smplFreq/nsmp;
-            % Модуль.
-            absFFT = abs(RealFFT);
+            f = Fs*(0:(L/2))/L;
+            %domainFFT = (0:nsmp-1)*Fs/nsmp;
+            % Модуль. Выбор половины частотной оси абсцисс.
+            P2 = abs(RealFFT/L);
+            P1 = P2(1:L/2+1);
+            P1(2:end-1) = 2*P1(2:end-1);
+            % График (subplot внизу).
             subplot(2,1,2);
-            plot(domainFFT,absFFT);
-            title('Spectrum');
+            plot(f,P1);
+            title('Single Sided Amplitude Spectrum');
             hold off;
         end
     end
