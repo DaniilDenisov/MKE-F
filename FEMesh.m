@@ -211,7 +211,7 @@ classdef FEMesh < handle
             % Чтение строк и сохранение поле узлов.
             for i=1:bcFixNum
                 this.allFixBCs(i,:) = sscanf(fgetl(fid),...
-                    '%f,%f,%f,%f,%f,%f');
+                    '%f,%f,%f,%f,%f');
             end
         end
         % Чтение блока данных о ГУ прилож. сил (стат./удар).
