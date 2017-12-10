@@ -150,17 +150,17 @@ classdef Beam2DElement < FiniteElementStructural
             % Получение из "поля данных" характеристик элемента.
             A = this.elData(1); % Площадь.
             E = this.elData(2); % Модуль Юнга.
-            I = this.elData(3); % Момент инерции.
+            I = this.elData(4); % Момент инерции.
             % Вызов функции определения матрицы косинусов и длины.
             [T, L] = TransformMatrix(this);
             % Матрица жесткости элемента без преобразования координат.
             KInit = zeros(6,6);
-            KInit(1,:) = [A*L*L 0 0 -A*L*L 0 0];
-            KInit(2,:) = [0 12*I 6*I*L 0 -12*I 6*I*L];
-            KInit(3,:) = [0 6*I*L 4*I*L*L 0 -6*I*L 2*I*L*L];
-            KInit(4,:) = [-A*L*L 0 0 A*L*L 0 0];
-            KInit(5,:) = [0 -12*I -6*I*L 0 12*I -6*I*L];
-            KInit(6,:) = [0 6*I*L 2*I*L*L 0 -6*I*L 4*I*L*L];
+            KInit(1,:) = (E*I/(L*L*L))*[A*L*L/I 0 0 -A*L*L/I 0 0];
+            KInit(2,:) = (E*I/(L*L*L))*[0 12 6*L 0 -12 6*L];
+            KInit(3,:) = (E*I/(L*L*L))*[0 6*L 4*L*L 0 -6*L 2*L*L];
+            KInit(4,:) = (E*I/(L*L*L))*[-A*L*L/I 0 0 A*L*L/I 0 0];
+            KInit(5,:) = (E*I/(L*L*L))*[0 -12 -6*L 0 12 -6*L];
+            KInit(6,:) = (E*I/(L*L*L))*[0 6*L 2*L*L 0 -6*L 4*L*L];
             % Преобразование элементной матрицы жесткости.
             K = T'*KInit*T;
         end

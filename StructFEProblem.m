@@ -207,6 +207,8 @@ classdef StructFEProblem < handle
             % Сохранение МЖ и ММ без ГУ. Например, для вычисления реакций.
             KnoBC = this.K;
             MnoBC = this.M;
+            % Очистка поля ts на случай, если ранее запускалась динамика.
+            this.ts = 0;
             % Наложение ГУ.
             this.ApplyFixBC();
             this.ApplyForceBC();
@@ -228,6 +230,9 @@ classdef StructFEProblem < handle
             % Сохранение МЖ и ММ без ГУ.
             KnoBC = this.K;
             MnoBC = this.M;
+            % Задать какой-то ts. Логика ApplyFixBC уйдет от статического
+            % типа наложения ГУ (оставит K сингулярной).
+            this.ts = 100;
             % Наложение ГУ.
             this.ApplyFixBC();
             % Решение модальной задачи.
