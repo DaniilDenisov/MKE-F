@@ -3,15 +3,15 @@
 classdef Truss2DElement < FiniteElementStructural
     methods (Access = public)
         % Реализация абстрактного метода ансамблирования.
-        function [GK, GM] = Assembler(this, GK, GM, IM, elNum)
+        function [GK, GM] = Assembler(this, GK, GM, IM)
             % Вычисление элементных МЖ и ММ.
             K = StiffnessElementMatrix(this);
             M = MassElementMatrix(this);
             % Опред. глоб. индексов для элементных степеней свободы.
-            glDOF1 = IM(elNum,1);
-            glDOF2 = IM(elNum,2);
-            glDOF3 = IM(elNum,3);
-            glDOF4 = IM(elNum,4);
+            glDOF1 = IM(this.elNodesNums(1),1);
+            glDOF2 = IM(this.elNodesNums(1),2);
+            glDOF3 = IM(this.elNodesNums(2),1);
+            glDOF4 = IM(this.elNodesNums(2),2);
             % Ансамблирование элементов ke в глоб. матрицу GK.
             GK(glDOF1,glDOF1) = GK(glDOF1,glDOF1) + K(1,1);
             GK(glDOF1,glDOF2) = GK(glDOF1,glDOF2) + K(1,2);
@@ -29,7 +29,7 @@ classdef Truss2DElement < FiniteElementStructural
             GK(glDOF4,glDOF2) = GK(glDOF4,glDOF2) + K(4,2);
             GK(glDOF4,glDOF3) = GK(glDOF4,glDOF3) + K(4,3);
             GK(glDOF4,glDOF4) = GK(glDOF4,glDOF4) + K(4,4);
-            % Ансамблирование матрицы жесткости в глобальную GM.
+            % Ансамблирование матрицы масс в глобальную GM.
             GM(glDOF1,glDOF1) = GM(glDOF1,glDOF1) + M(1,1);
             GM(glDOF1,glDOF2) = GM(glDOF1,glDOF2) + M(1,2);
             GM(glDOF1,glDOF3) = GM(glDOF1,glDOF3) + M(1,3);

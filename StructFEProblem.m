@@ -12,6 +12,12 @@ classdef StructFEProblem < handle
         F
         % Сетка с ГУ.
         mesh
+        % Шаг по времени (def=0).
+        ts=0
+        % Число шагов по времени (def=0).
+        tsNum=0
+        % Время задачи (def=0).
+        tDur=0
     end
     methods
         % Конструктор с аргументом.
@@ -26,72 +32,137 @@ classdef StructFEProblem < handle
             % Печать матрицы соответствия.
             obj.mesh.DispIM();
             % Создание глобальной матрицы жесткости, вектора F и матрицы
-            % масс в зависимости от типа элемента.
-            elType = obj.mesh.allMeshElems(1).elType;
-            switch elType
-                % Элемент Тип 112:
-                case 112
-                    % Степеней свободы в узле.
-                    dofPerNode = 2;
-                    % Определение общего числа степеней свободы в системе
-                    % и иниц. глобальной матрицы жесткости.
-                    systemDOF = obj.mesh.numberOfNodes*dofPerNode;
-                    GlobK = zeros(systemDOF,systemDOF);
-                    GlobM = zeros(systemDOF,systemDOF);
-                    % Обход всех элементов в сетке.
-                    for i=1:obj.mesh.numberOfElems
-                        % Ансамблирование в глобальные матрицы.
-                        [GlobK,GlobM] = ...
-                            obj.mesh.allMeshElems(i).Assembler(GlobK,...
-                            GlobM, obj.mesh.iM, i);
-                    end
-                    obj.K = GlobK;
-                    obj.M = GlobM;
-                    % Вектор правой части (сил). Преаллокация без ГУ.
-                    obj.F = zeros(obj.mesh.numberOfNodes*dofPerNode,1);
-                otherwise
-                    disp('SructFEProblem(filename): bad element type!');
+            % масс в зависимости от кол-ва СС на узел.
+            dofPerNode = obj.mesh.dofPerNode;
+            % Определение общего числа степеней свободы в системе
+            % и иниц. глобальной матрицы жесткости.
+            systemDOF = obj.mesh.numberOfNodes*dofPerNode;
+            GlobK = zeros(systemDOF,systemDOF);
+            GlobM = zeros(systemDOF,systemDOF);
+            % Обход всех элементов в сетке.
+            for i=1:obj.mesh.numberOfElems
+                % Ансамблирование в глобальные матрицы.
+                [GlobK,GlobM] = ...
+                    obj.mesh.allMeshElems(i).Assembler(GlobK,...
+                    GlobM, obj.mesh.iMnod);
             end
+            obj.K = GlobK;
+            obj.M = GlobM;
+            % Вектор правой части (сил). Преаллокация без ГУ.
+            obj.F = zeros(obj.mesh.numberOfNodes*dofPerNode,1);
             
         end
-        % Метод наложения ГУ. Для статики без матрицы масс.
-        function ApplyBC(this)
-            BC = this.mesh.allBCs;
-            BCtotal = this.mesh.numberOfBCs;
+        % Метод наложения ГУ заделки. Действует на ММ и МЖ.
+        % Годен для статики, динамики и собств. колебаний.
+        function ApplyFixBC(this)
+            BCs = this.mesh.allFixBCs;
+            BCtotal = this.mesh.numberOfFixBCs;
             for i=1:BCtotal
                 % Взять ГУ
-                currBC = BC(i,:);
+                currBC = BCs(i,:);
                 % Взять тип ГУ.
                 typeBC = currBC(1);
                 % Взять номер узла.
                 nnumBC = currBC(2);
                 % Вычислить номер степени свободы в глоб. МЖ, MM, ВПЧ.
                 GLDOFs = this.mesh.iMnod(nnumBC,:);
-                glDOF1=GLDOFs(1);
-                glDOF2=GLDOFs(2);
-                % Применить ГУ к МЖ.
-                % Заделка обоих СС. Обнулить строки, столбцы и записать 1 на диагональ.
-                % Т.к. в узле две СС, то обнуляется 2 строки и 2 столбца.
+                % Применить ГУ к МЖ и ММ.
+                % Заделка всех СС. Обнулить строки, столбцы и записать 1 на диагональ.
                 if (typeBC==1)
-                    this.K(glDOF1,:) = 0;
-                    this.K(:,glDOF1) = 0;
-                    this.K(glDOF2,:) = 0;
-                    this.K(:,glDOF2) = 0;
-                    this.K(glDOF1,glDOF1) = 1;
-                    this.K(glDOF2,glDOF2) = 1;
+                    for dofNum=1:this.mesh.dofPerNode
+                        % Матрица масс.
+                        this.M(GLDOFs(dofNum),:)=0; % Обнулить строки.
+                        this.M(:,GLDOFs(dofNum))=0; % Обнулить столбцы.
+                        this.M(GLDOFs(dofNum),GLDOFs(dofNum))=1; % Единица.
+                        % Матрица жесткости.
+                        this.K(GLDOFs(dofNum),:)=0;
+                        this.K(:,GLDOFs(dofNum))=0;
+                        % Если расчет статический, то МЖ нельзя оставлять
+                        % сингулярной (с нулями без единичек на диагонали)
+                        if this.ts==0
+                            this.K(GLDOFs(dofNum),GLDOFs(dofNum))=1;
+                        end
+                    end
                 end
-                % Заделка вертик. СС, обнулить один (по второй СС) столбец.
+                % Заделка кроме гор. СС, обнулить все, кроме первой СС.
                 if (typeBC==2)
-                    this.K(glDOF2,:) = 0;
-                    this.K(:,glDOF2) = 0;
-                    this.K(glDOF2,glDOF2) = 1;
+                    for dofNum=1:this.mesh.dofPerNode
+                        % Пропускать первую СС.
+                        if dofNum==1
+                            continue
+                        end
+                        % Матрица масс.
+                        this.M(GLDOFs(dofNum),:)=0;
+                        this.M(:,GLDOFs(dofNum))=0;
+                        this.M(GLDOFs(dofNum),GLDOFs(dofNum))=1;
+                        % Матрица жесткости.
+                        this.K(GLDOFs(dofNum),:)=0;
+                        this.K(:,GLDOFs(dofNum))=0;
+                        % Если расчет статический, то МЖ нельзя оставлять
+                        % сингулярной (с нулями без единичек на диагонали)
+                        if this.ts==0
+                            this.K(GLDOFs(dofNum),GLDOFs(dofNum))=1;
+                        end
+                    end
                 end
-                % Заделка гор. СС, обнулить один (по первой СС) столбец.
+                % Заделка кроме верт. СС, обнулить все, кроме второй СС.
                 if (typeBC==3)
-                    this.K(glDOF1,:) = 0;
-                    this.K(:,glDOF1) = 0;
-                    this.K(glDOF1,glDOF1) = 1;
+                    for dofNum=1:this.mesh.dofPerNode
+                        % Пропускать вторую СС.
+                        if dofNum==2
+                            continue
+                        end
+                        % Матрица масс.
+                        this.M(GLDOFs(dofNum),:)=0;
+                        this.M(:,GLDOFs(dofNum))=0;
+                        this.M(GLDOFs(dofNum),GLDOFs(dofNum))=1;
+                        % Матрица жесткости.
+                        this.K(GLDOFs(dofNum),:)=0;
+                        this.K(:,GLDOFs(dofNum))=0;
+                        % Если расчет статический, то МЖ нельзя оставлять
+                        % сингулярной (с нулями без единичек на диагонали)
+                        if this.ts==0
+                            this.K(GLDOFs(dofNum),GLDOFs(dofNum))=1;
+                        end
+                    end
                 end
+                % Заделка всех кроме угла поворота.
+                if (typeBC==4)
+                    for dofNum=1:this.mesh.dofPerNode
+                        % Пропускать третью СС.
+                        if dofNum==3
+                            continue
+                        end
+                        % Матрица масс.
+                        this.M(GLDOFs(dofNum),:)=0;
+                        this.M(:,GLDOFs(dofNum))=0;
+                        this.M(GLDOFs(dofNum),GLDOFs(dofNum))=1;
+                        % Матрица жесткости.
+                        this.K(GLDOFs(dofNum),:)=0;
+                        this.K(:,GLDOFs(dofNum))=0;
+                        % Если расчет статический, то МЖ нельзя оставлять
+                        % сингулярной (с нулями без единичек на диагонали)
+                        if this.ts==0
+                            this.K(GLDOFs(dofNum),GLDOFs(dofNum))=1;
+                        end
+                    end
+                end
+            end
+        end
+        % Метод наложения ГУ усилий.
+        function ApplyForceBC(this)
+            BCs = this.mesh.allForceBCs;
+            BCtotal = this.mesh.numberOfForceBCs;
+            for i=1:BCtotal
+                % Взять ГУ
+                currBC = BCs(i,:);
+                % Взять тип ГУ.
+                typeBC = currBC(1);
+                % Взять номер узла.
+                nnumBC = currBC(2);
+                % Вычислить номер степеней свободы в глоб. ВПЧ.
+                GLDOFs = this.mesh.iMnod(nnumBC,:);
+                % Применить ГУ к ВПЧ.
                 % Если сила, то установить значение в вектор правой части.
                 if (typeBC==10)
                     % Взять величину силы по компонентам из BC.
@@ -100,122 +171,18 @@ classdef StructFEProblem < handle
                     forceValue(2) = currBC(1,4);
                     forceValue(3) = currBC(1,5);
                     % Установить в вектор пр. части.
-                    this.F(glDOF1) = this.F(glDOF1)+forceValue(1);
-                    this.F(glDOF2) = this.F(glDOF2)+forceValue(2);
-                end
-            end
-        end
-        % Метод наложения ГУ для расчетов собственных колебаний. Без ВПЧ.
-        function ApplyBCEig(this)
-            BC = this.mesh.allBCs;
-            BCtotal = this.mesh.numberOfBCs;
-            for i=1:BCtotal
-                % Взять ГУ
-                currBC = BC(i,:);
-                % Взять тип ГУ.
-                typeBC = currBC(1);
-                % Взять номер узла.
-                nnumBC = currBC(2);
-                % Вычислить номер степени свободы в глоб. МЖ, MM, ВПЧ.
-                GLDOFs = this.mesh.iMnod(nnumBC,:);
-                glDOF1=GLDOFs(1);
-                glDOF2=GLDOFs(2);
-                % Применить ГУ к МЖ.
-                % Заделка обоих СС. Обнулить строки, столбцы и записать 1 на диагональ.
-                % Т.к. в узле две СС, то обнуляется 2 строки и 2 столбца.
-                if (typeBC==1)
-                    this.M(glDOF1,:) = 0;
-                    this.M(:,glDOF1) = 0;
-                    this.M(glDOF2,:) = 0;
-                    this.M(:,glDOF2) = 0;
-                    this.M(glDOF1,glDOF1) = 1;
-                    this.M(glDOF2,glDOF2) = 1;
-                    this.K(glDOF1,:) = 0;
-                    this.K(:,glDOF1) = 0;
-                    this.K(glDOF2,:) = 0;
-                    this.K(:,glDOF2) = 0;
-                end
-                % Заделка вертик. СС, обнулить один (по второй СС) столбец.
-                if (typeBC==2)
-                    this.M(glDOF2,:) = 0;
-                    this.M(:,glDOF2) = 0;
-                    this.M(glDOF2,glDOF2) = 1;
-                    this.K(glDOF2,:) = 0;
-                    this.K(:,glDOF2) = 0;
-                end
-                % Заделка гор. СС, обнулить один (по первой СС) столбец.
-                if (typeBC==3)
-                    this.M(glDOF1,:) = 0;
-                    this.M(:,glDOF1) = 0;
-                    this.M(glDOF1,glDOF1) = 1;
-                    this.K(glDOF1,:) = 0;
-                    this.K(:,glDOF1) = 0;
-                end
-            end
-        end
-        % Метод наложения ГУ для динамического расчета (Transient).
-        function ApplyBCTrt(this,tStep,tsNum)
-            % this  - объект для работы с полями (неявный аргумент),
-            % tStep - шаг по времени,
-            % tsNum - количество временных шагов.
-            % Копирование в локальные переменные числа узлов и СС на узел.
-            nn = this.mesh.numberOfNodes;
-            dpn = this.mesh.dofPerNode;
-            % Инициализация вектора правой части для динамического расчета.
-            % Столбец - шаг по времени.
-            this.F = zeros(nn*dpn,tsNum);
-            % Наложение ограничений.
-            allBCs = this.mesh.allBCs;
-            for bc=1:this.mesh.numberOfBCs
-                % Взять ГУ
-                currBC = allBCs(bc,:);
-                % Взять тип ГУ.
-                typeBC = currBC(1);
-                % Взять номер узла.
-                nnumBC = currBC(2);
-                % Вычислить номер степени свободы в глоб. МЖ, MM, ВПЧ.
-                GLDOFs = this.mesh.iMnod(nnumBC,:);
-                glDOF1=GLDOFs(1);
-                glDOF2=GLDOFs(2);
-                % Наложение ГУ различных типов.
-                % ГУ перемещения на узел.
-                % Заделка обоих СС. Обнулить строки, столбцы и записать 1 на диагональ.
-                % Т.к. в узле две СС, то обнуляется 2 строки и 2 столбца.
-                if (typeBC==1)
-                    this.K(glDOF1,:) = 0;
-                    this.K(:,glDOF1) = 0;
-                    this.K(glDOF2,:) = 0;
-                    this.K(:,glDOF2) = 0;
-                    this.K(glDOF1,glDOF1) = 1;
-                    this.K(glDOF2,glDOF2) = 1;
-                end
-                % Заделка вертик. СС, обнулить один (по второй СС) столбец.
-                if (typeBC==2)
-                    this.K(glDOF2,:) = 0;
-                    this.K(:,glDOF2) = 0;
-                    this.K(glDOF2,glDOF2) = 1;
-                end
-                % Заделка гор. СС, обнулить один (по первой СС) столбец.
-                if (typeBC==3)
-                    this.K(glDOF1,:) = 0;
-                    this.K(:,glDOF1) = 0;
-                    this.K(glDOF1,glDOF1) = 1;
-                end
-                % Если сила, то установить значение в вектор правой части
-                % на каждом шаге по времени (каждом столбце).
-                if (typeBC==10)
-                    % Взять величину силы по компонентам из BC.
-                    forceValue = zeros(3,1);
-                    forceValue(1) = currBC(1,3);
-                    forceValue(2) = currBC(1,4);
-                    forceValue(3) = currBC(1,5);
-                    % Установить в вектор пр. части.
-                    this.F(glDOF1,:) = this.F(glDOF1,:)+forceValue(1);
-                    this.F(glDOF2,:) = this.F(glDOF2,:)+forceValue(2);
+                    for n=1:size(GLDOFs,1)
+                        this.F(GLDOFs(1)) = this.F(GLDOFs(1))+forceValue(1);
+                        this.F(GLDOFs(2)) = this.F(GLDOFs(2))+forceValue(2);
+                    end
                 end
                 % Если прикладывается сила гармоническая, создать tsNum
                 % столбцов с сохранением неизменных сил.
                 if typeBC==11
+                    % Проверка не вызвана ли ApplyForceBC без tStep.
+                    if this.ts==0
+                        error('No timestep during harm. BC application!');
+                    end
                     forceValue = zeros(3,1);
                     % Считать Fx,Fy,Fz в forceValue.
                     forceValue(1) = currBC(1,3);
@@ -225,11 +192,11 @@ classdef StructFEProblem < handle
                     freq = currBC(1,6);
                     % Формирование вектора правой части для каждого шага
                     % по времени.
-                    for i=1:tsNum
-                        this.F(glDOF1,i) = this.F(glDOF1,i)+...
-                            forceValue(1)*sin((2*pi*freq)*(i*tStep));
-                        this.F(glDOF2,i) = this.F(glDOF2,i)+...
-                            forceValue(2)*sin((2*pi*freq)*(i*tStep));
+                    for s=1:this.tsNum
+                        this.F(GLDOFs(1),s) = this.F(GLDOFs(1),s)+...
+                            forceValue(1)*sin((2*pi*freq)*(s*this.ts));
+                        this.F(GLDOFs(2),s) = this.F(GLDOFs(2),s)+...
+                            forceValue(2)*sin((2*pi*freq)*(s*this.ts));
                     end
                 end
             end
@@ -240,8 +207,11 @@ classdef StructFEProblem < handle
             % Сохранение МЖ и ММ без ГУ. Например, для вычисления реакций.
             KnoBC = this.K;
             MnoBC = this.M;
+            % Очистка поля ts на случай, если ранее запускалась динамика.
+            this.ts = 0;
             % Наложение ГУ.
-            this.ApplyBC();
+            this.ApplyFixBC();
+            this.ApplyForceBC();
             % Решение системы, определение перемещений. Вывод.
             dspl = this.K\this.F;
             disp('DOFs (displ. components):')
@@ -260,8 +230,11 @@ classdef StructFEProblem < handle
             % Сохранение МЖ и ММ без ГУ.
             KnoBC = this.K;
             MnoBC = this.M;
+            % Задать какой-то ts. Логика ApplyFixBC уйдет от статического
+            % типа наложения ГУ (оставит K сингулярной).
+            this.ts = 100;
             % Наложение ГУ.
-            this.ApplyBCEig();
+            this.ApplyFixBC();
             % Решение модальной задачи.
             freqSol = (1/(2*pi))*sqrt(eig(this.K, this.M));
             disp('Natural frequencies (Hz):')
@@ -277,8 +250,12 @@ classdef StructFEProblem < handle
             % tDur  - время моделирования общее,
             % node  - узел в котором строится график по времени.
             % doftoplot - номер СС в узле для вывода.
-            % Целое число временных шагов.
-            tsNum = fix(tDur/tStep);
+            
+            % Сохранить в поля объекта задачи: Целое число временных
+            % шагов, длительность задачи и шаг.
+            this.tsNum = fix(tDur/tStep);
+            this.tDur = tDur;
+            this.ts = tStep;
             % Массивы для узловых скоростей, ускорений и перемещений.
             nn = this.mesh.numberOfNodes;
             dpn = this.mesh.dofPerNode;
@@ -286,9 +263,10 @@ classdef StructFEProblem < handle
             speNodal = zeros(nn*dpn,1);
             dspNodal = zeros(nn*dpn,1);
             % Установка вектора правой части в ноль для всех шагов.
-            this.F = zeros(nn*dpn,tsNum);
+            this.F = zeros(nn*dpn,this.tsNum);
             % ГУ.
-            this.ApplyBCTrt(tStep,tsNum);
+            this.ApplyFixBC();
+            this.ApplyForceBC();
             % Постоянные для прямого интегрирования Ньюмарка.
             delta = 0.5;
             alfa = 0.25;
@@ -300,12 +278,10 @@ classdef StructFEProblem < handle
             a5 = (tStep/2)*((delta/alfa)-2);
             a6 = tStep*(1-delta);
             a7 = delta*tStep;
-            % Наложение ГУ на МЖ и ММ.
-            this.ApplyBC();
             % Формирование эффективной матрицы жесткости.
             Khat = this.K+a0*this.M;
             % Для каждого шага по времени считаем перемещения.
-            for i=1:tsNum
+            for i=1:this.tsNum
                 % Эффективная нагрузка.
                 Rhat = this.F(:,i)+this.M*(a0*dspNodal(:,i)+a2*speNodal(:,i)+...
                     a3*acsNodal(:,i));
@@ -318,25 +294,29 @@ classdef StructFEProblem < handle
                 speNodal(:,i+1) = speNodal(:,i)+a6*acsNodal(:,i)+...
                     a7*acsNodal(:,i+1);
             end
-            % Переменная времени.
-            timeSpan = 0:tStep:tsNum*tStep;
+            % Длина сигнала.
+            L = this.tsNum;
+            % Вектор времени.
+            f = 0:tStep:this.tsNum*tStep;
             % Печать перемещений.
             subplot(2,1,1);
-            plot(timeSpan,dspNodal(node*dpn-dpn+dofToPlot,:));
+            plot(f,dspNodal(node*dpn-dpn+dofToPlot,:));
             title('Displacement (Selected DOF)');
-            % Печать спектра.
-            RealFFT = fft(dspNodal(node*dpn-dpn+dofToPlot,:));
-            % Число семплов.
-            nsmp = length(RealFFT);
+            % Спектр смещения. Узел, нужная степень свободы, на все шаги.
+            RealFFT = fft(dspNodal(this.mesh.iMnod(node,dofToPlot),:));
             % Частота семплирования.
-            smplFreq = 1/tStep;
+            Fs = 1/tStep;
             % Область графика.
-            domainFFT = (0:nsmp-1)*smplFreq/nsmp;
-            % Модуль.
-            absFFT = abs(RealFFT);
+            f = Fs*(0:(L/2))/L;
+            %domainFFT = (0:nsmp-1)*Fs/nsmp;
+            % Модуль. Выбор половины частотной оси абсцисс.
+            P2 = abs(RealFFT/L);
+            P1 = P2(1:L/2+1);
+            P1(2:end-1) = 2*P1(2:end-1);
+            % График (subplot внизу).
             subplot(2,1,2);
-            plot(domainFFT,absFFT);
-            title('Spectrum');
+            plot(f,P1);
+            title('Single Sided Amplitude Spectrum');
             hold off;
         end
     end
