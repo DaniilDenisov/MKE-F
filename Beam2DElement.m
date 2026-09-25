@@ -108,6 +108,26 @@ classdef Beam2DElement < FiniteElementStructural
         % Функция установки полей.
         function SetupElement(this,nodCoordsIn,...
                 nodesNumsIn ,dataIn)
+            if ~isnumeric(nodCoordsIn) || ~isreal(nodCoordsIn) || ...
+                    size(nodCoordsIn,1) ~= 2 || size(nodCoordsIn,2) < 2
+                error('MKEF:InvalidElementGeometry', ...
+                    'Beam element requires two finite XY node coordinates.');
+            end
+            xyCoords = nodCoordsIn(:,1:2);
+            if any(~isfinite(xyCoords(:)))
+                error('MKEF:InvalidElementGeometry', ...
+                    'Beam element requires two finite XY node coordinates.');
+            end
+            delta = xyCoords(2,:) - xyCoords(1,:);
+            if norm(delta) == 0
+                error('MKEF:InvalidElementGeometry', ...
+                    'Beam element length must be greater than zero.');
+            end
+            if ~isnumeric(dataIn) || ~isreal(dataIn) || numel(dataIn) < 4 || ...
+                    any(~isfinite(dataIn(1:4))) || any(dataIn(1:4) <= 0)
+                error('MKEF:InvalidElementProperties', ...
+                    'Beam properties A, E, rho, and I must be positive finite values.');
+            end
             % Установка типа элемента для конструктора.
             this.elType = 113;
             this.elNodesCoords = nodCoordsIn;
@@ -140,7 +160,7 @@ classdef Beam2DElement < FiniteElementStructural
             meInit(2,:) = (Mul*L/420)*[0 156 22*L 0 54 -13*L];
             meInit(3,:) = (Mul*L/420)*[0 22*L 4*L*L 0 13*L -3*L*L];
             meInit(4,:) = (Mul*L/420)*[70 0 0 140 0 0];
-            meInit(5,:) = (Mul*L/420)*[0 54 13*L 0 156 0];
+            meInit(5,:) = (Mul*L/420)*[0 54 13*L 0 156 -22*L];
             meInit(6,:) = (Mul*L/420)*[0 -13*L -3*L*L 0 -22*L 4*L*L];
             % Преобразование матрицы масс.
             M = T'*meInit*T;
@@ -154,13 +174,18 @@ classdef Beam2DElement < FiniteElementStructural
             % Вызов функции определения матрицы косинусов и длины.
             [T, L] = TransformMatrix(this);
             % Матрица жесткости элемента без преобразования координат.
-            KInit = zeros(6,6);
-            KInit(1,:) = (E*I/(L*L*L))*[A*L*L/I 0 0 -A*L*L/I 0 0];
-            KInit(2,:) = (E*I/(L*L*L))*[0 12 6*L 0 -12 6*L];
-            KInit(3,:) = (E*I/(L*L*L))*[0 6*L 4*L*L 0 -6*L 2*L*L];
-            KInit(4,:) = (E*I/(L*L*L))*[-A*L*L/I 0 0 A*L*L/I 0 0];
-            KInit(5,:) = (E*I/(L*L*L))*[0 -12 -6*L 0 12 -6*L];
-            KInit(6,:) = (E*I/(L*L*L))*[0 6*L 2*L*L 0 -6*L 4*L*L];
+            axial = E*A/L;
+            bending = E*I;
+            bending12 = 12*bending/L^3;
+            bending6 = 6*bending/L^2;
+            bending4 = 4*bending/L;
+            bending2 = 2*bending/L;
+            KInit = [ axial       0          0 -axial        0          0;...
+                           0 bending12   bending6      0 -bending12   bending6;...
+                           0  bending6   bending4      0  -bending6   bending2;...
+                      -axial       0          0  axial        0          0;...
+                           0 -bending12 -bending6      0  bending12  -bending6;...
+                           0  bending6   bending2      0  -bending6   bending4];
             % Преобразование элементной матрицы жесткости.
             K = T'*KInit*T;
         end

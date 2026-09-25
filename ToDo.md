@@ -150,14 +150,14 @@ The implementation is distributed across Commits 4, 8, 9, and 10 below.
 
 ### Commit 3 -- Correct and test element matrices
 
-- [ ] Fix the missing symmetric `-22*L` entry in the beam consistent-mass matrix.
-- [ ] Express the beam stiffness coefficients directly as `EA/L`, `12EI/L^3`,
+- [x] Fix the missing symmetric `-22*L` entry in the beam consistent-mass matrix.
+- [x] Express the beam stiffness coefficients directly as `EA/L`, `12EI/L^3`,
       `6EI/L^2`, and so on, avoiding unnecessary multiplication and division by
       `I`.
-- [ ] Reject zero-length elements and non-positive `A`, `E`, `rho`, or beam `I`.
-- [ ] Test truss and beam matrices in horizontal, vertical, and inclined
+- [x] Reject zero-length elements and non-positive `A`, `E`, `rho`, or beam `I`.
+- [x] Test truss and beam matrices in horizontal, vertical, and inclined
       orientations.
-- [ ] Test symmetry, rigid-body modes, coordinate-rotation invariance, and total
+- [x] Test symmetry, rigid-body modes, coordinate-rotation invariance, and total
       translational mass.
 
 Acceptance: element-level tests pass and the assembled beam mass matrix is

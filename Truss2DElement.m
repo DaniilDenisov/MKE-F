@@ -53,6 +53,26 @@ classdef Truss2DElement < FiniteElementStructural
         % Функция установки полей.
         function SetupElement(this,nodCoordsIn,...
                 nodesNumsIn ,dataIn)
+            if ~isnumeric(nodCoordsIn) || ~isreal(nodCoordsIn) || ...
+                    size(nodCoordsIn,1) ~= 2 || size(nodCoordsIn,2) < 2
+                error('MKEF:InvalidElementGeometry', ...
+                    'Truss element requires two finite XY node coordinates.');
+            end
+            xyCoords = nodCoordsIn(:,1:2);
+            if any(~isfinite(xyCoords(:)))
+                error('MKEF:InvalidElementGeometry', ...
+                    'Truss element requires two finite XY node coordinates.');
+            end
+            delta = xyCoords(2,:) - xyCoords(1,:);
+            if norm(delta) == 0
+                error('MKEF:InvalidElementGeometry', ...
+                    'Truss element length must be greater than zero.');
+            end
+            if ~isnumeric(dataIn) || ~isreal(dataIn) || numel(dataIn) < 3 || ...
+                    any(~isfinite(dataIn(1:3))) || any(dataIn(1:3) <= 0)
+                error('MKEF:InvalidElementProperties', ...
+                    'Truss properties A, E, and rho must be positive finite values.');
+            end
             % Установка типа элемента для конструктора.
             this.elType = 112;
             this.elNodesCoords = nodCoordsIn;

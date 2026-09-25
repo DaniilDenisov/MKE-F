@@ -13,6 +13,7 @@ requireOctave();
 fprintf('Running self-contained verification tests...\n');
 
 runNamedTest('assembled matrix invariants', @testMatrixInvariants);
+runNamedTest('element matrices', @test_element_matrices);
 runNamedTest('single axial truss', @testSingleAxialTruss);
 runNamedTest('cantilever beam stiffness', @testCantileverBeam);
 runNamedTest('transient load histories', @testTransientLoadHistories);
@@ -44,10 +45,11 @@ for i = 1:numel(caseFiles)
         ['Stiffness matrix is not symmetric: ' caseFiles{i}]);
 end
 
-% Beam mass symmetry is a known defect scheduled for Commit 3.
-trussProblem = StructFEProblem('CaseATransSite.txt', options);
-assertRelativeSmall(trussProblem.M - trussProblem.M.', trussProblem.M, ...
-    1e-12, 'Truss mass matrix is not symmetric.');
+for i = 1:numel(caseFiles)
+    problem = StructFEProblem(caseFiles{i}, options);
+    assertRelativeSmall(problem.M - problem.M.', problem.M, 1e-12, ...
+        ['Mass matrix is not symmetric: ' caseFiles{i}]);
+end
 end
 
 function testSingleAxialTruss()
