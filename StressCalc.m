@@ -1,26 +1,26 @@
 %Copyright 2017 Daniil S. Denisov
 function [ sigma ] = StressCalc( nElems,allElems,allNodes,...
     displ, dofPerNode)
-%UNTITLED Функция вычисляет напряжения в стержнях фермы.
+%UNTITLED Р¤СѓРЅРєС†РёСЏ РІС‹С‡РёСЃР»СЏРµС‚ РЅР°РїСЂСЏР¶РµРЅРёСЏ РІ СЃС‚РµСЂР¶РЅСЏС… С„РµСЂРјС‹.
 % Copyright 2017 Daniil S. Denisov
 
 sigma = zeros(nElems,1);
 for i=1:nElems
-    % Выбор текущего элемента, его узлов и модуля Юнга из allElems.
+    % Р’С‹Р±РѕСЂ С‚РµРєСѓС‰РµРіРѕ СЌР»РµРјРµРЅС‚Р°, РµРіРѕ СѓР·Р»РѕРІ Рё РјРѕРґСѓР»СЏ Р®РЅРіР° РёР· allElems.
     currElem = allElems(i,:);
     currNode1 = allNodes(currElem(1),:);
     currNode2 = allNodes(currElem(2),:);
     currEmod = currElem(4);
-    % Глобальные индексы для элементных степеней свободы.
+    % Р“Р»РѕР±Р°Р»СЊРЅС‹Рµ РёРЅРґРµРєСЃС‹ РґР»СЏ СЌР»РµРјРµРЅС‚РЅС‹С… СЃС‚РµРїРµРЅРµР№ СЃРІРѕР±РѕРґС‹.
     glDOF1 = (currElem(1)-1)*dofPerNode+1;
     glDOF2 = glDOF1+1;
     glDOF3 = (currElem(2)-1)*dofPerNode+1;
     glDOF4 = glDOF3+1;
-    % Выбор СС из решения для вычисления деформации эл-та i.
+    % Р’С‹Р±РѕСЂ РЎРЎ РёР· СЂРµС€РµРЅРёСЏ РґР»СЏ РІС‹С‡РёСЃР»РµРЅРёСЏ РґРµС„РѕСЂРјР°С†РёРё СЌР»-С‚Р° i.
     currDispl = [displ(glDOF1),displ(glDOF2),displ(glDOF3),...
         displ(glDOF4)];
-    % Определение направляющих косинусов (c, s).
+    % РћРїСЂРµРґРµР»РµРЅРёРµ РЅР°РїСЂР°РІР»СЏСЋС‰РёС… РєРѕСЃРёРЅСѓСЃРѕРІ (c, s).
     [~,length,c,s] = ElemTransformCalc(currNode1, currNode2);
-    % Закон Гука (вычисление напряжений в i-м стержне):
+    % Р—Р°РєРѕРЅ Р“СѓРєР° (РІС‹С‡РёСЃР»РµРЅРёРµ РЅР°РїСЂСЏР¶РµРЅРёР№ РІ i-Рј СЃС‚РµСЂР¶РЅРµ):
     sigma(i) = (currEmod/length)*[-c -s c s]*currDispl';
 end

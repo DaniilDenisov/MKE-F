@@ -1,100 +1,100 @@
-% Класс балочного элемента плоской рамы (тип 113).
+% РљР»Р°СЃСЃ Р±Р°Р»РѕС‡РЅРѕРіРѕ СЌР»РµРјРµРЅС‚Р° РїР»РѕСЃРєРѕР№ СЂР°РјС‹ (С‚РёРї 113).
 % Copyright 2017 Daniil S. Denisov
 classdef Beam2DElement < FiniteElementStructural
     methods (Access = public)
-        % Реализация абстрактного метода ансамблирования.
+        % Р РµР°Р»РёР·Р°С†РёСЏ Р°Р±СЃС‚СЂР°РєС‚РЅРѕРіРѕ РјРµС‚РѕРґР° Р°РЅСЃР°РјР±Р»РёСЂРѕРІР°РЅРёСЏ.
         function [GK, GM] = Assembler(this, GK, GM, IM)
-            % Вычисление элементных МЖ и ММ.
+            % Р’С‹С‡РёСЃР»РµРЅРёРµ СЌР»РµРјРµРЅС‚РЅС‹С… РњР– Рё РњРњ.
             K = StiffnessElementMatrix(this);
             M = MassElementMatrix(this);
-            
-            % Опред. глоб. индексов для элементных степеней свободы.
+
+            % РћРїСЂРµРґ. РіР»РѕР±. РёРЅРґРµРєСЃРѕРІ РґР»СЏ СЌР»РµРјРµРЅС‚РЅС‹С… СЃС‚РµРїРµРЅРµР№ СЃРІРѕР±РѕРґС‹.
             glDOF1 = IM(this.elNodesNums(1),1);
             glDOF2 = IM(this.elNodesNums(1),2);
             glDOF3 = IM(this.elNodesNums(1),3);
             glDOF4 = IM(this.elNodesNums(2),1);
             glDOF5 = IM(this.elNodesNums(2),2);
             glDOF6 = IM(this.elNodesNums(2),3);
-            
-            % Ансамблирование элементов ke в глоб. матрицу GK.
+
+            % РђРЅСЃР°РјР±Р»РёСЂРѕРІР°РЅРёРµ СЌР»РµРјРµРЅС‚РѕРІ ke РІ РіР»РѕР±. РјР°С‚СЂРёС†Сѓ GK.
             GK(glDOF1,glDOF1) = GK(glDOF1,glDOF1) + K(1,1);
             GK(glDOF1,glDOF2) = GK(glDOF1,glDOF2) + K(1,2);
             GK(glDOF1,glDOF3) = GK(glDOF1,glDOF3) + K(1,3);
             GK(glDOF1,glDOF4) = GK(glDOF1,glDOF4) + K(1,4);
             GK(glDOF1,glDOF5) = GK(glDOF1,glDOF5) + K(1,5);
             GK(glDOF1,glDOF6) = GK(glDOF1,glDOF6) + K(1,6);
-            
+
             GK(glDOF2,glDOF1) = GK(glDOF2,glDOF1) + K(2,1);
             GK(glDOF2,glDOF2) = GK(glDOF2,glDOF2) + K(2,2);
             GK(glDOF2,glDOF3) = GK(glDOF2,glDOF3) + K(2,3);
             GK(glDOF2,glDOF4) = GK(glDOF2,glDOF4) + K(2,4);
             GK(glDOF2,glDOF5) = GK(glDOF2,glDOF5) + K(2,5);
             GK(glDOF2,glDOF6) = GK(glDOF2,glDOF6) + K(2,6);
-            
+
             GK(glDOF3,glDOF1) = GK(glDOF3,glDOF1) + K(3,1);
             GK(glDOF3,glDOF2) = GK(glDOF3,glDOF2) + K(3,2);
             GK(glDOF3,glDOF3) = GK(glDOF3,glDOF3) + K(3,3);
             GK(glDOF3,glDOF4) = GK(glDOF3,glDOF4) + K(3,4);
             GK(glDOF3,glDOF5) = GK(glDOF3,glDOF5) + K(3,5);
             GK(glDOF3,glDOF6) = GK(glDOF3,glDOF6) + K(3,6);
-            
+
             GK(glDOF4,glDOF1) = GK(glDOF4,glDOF1) + K(4,1);
             GK(glDOF4,glDOF2) = GK(glDOF4,glDOF2) + K(4,2);
             GK(glDOF4,glDOF3) = GK(glDOF4,glDOF3) + K(4,3);
             GK(glDOF4,glDOF4) = GK(glDOF4,glDOF4) + K(4,4);
             GK(glDOF4,glDOF5) = GK(glDOF4,glDOF5) + K(4,5);
             GK(glDOF4,glDOF6) = GK(glDOF4,glDOF6) + K(4,6);
-            
+
             GK(glDOF5,glDOF1) = GK(glDOF5,glDOF1) + K(5,1);
             GK(glDOF5,glDOF2) = GK(glDOF5,glDOF2) + K(5,2);
             GK(glDOF5,glDOF3) = GK(glDOF5,glDOF3) + K(5,3);
             GK(glDOF5,glDOF4) = GK(glDOF5,glDOF4) + K(5,4);
             GK(glDOF5,glDOF5) = GK(glDOF5,glDOF5) + K(5,5);
             GK(glDOF5,glDOF6) = GK(glDOF5,glDOF6) + K(5,6);
-            
+
             GK(glDOF6,glDOF1) = GK(glDOF6,glDOF1) + K(6,1);
             GK(glDOF6,glDOF2) = GK(glDOF6,glDOF2) + K(6,2);
             GK(glDOF6,glDOF3) = GK(glDOF6,glDOF3) + K(6,3);
             GK(glDOF6,glDOF4) = GK(glDOF6,glDOF4) + K(6,4);
             GK(glDOF6,glDOF5) = GK(glDOF6,glDOF5) + K(6,5);
             GK(glDOF6,glDOF6) = GK(glDOF6,glDOF6) + K(6,6);
-            
-            % Ансамблирование матрицы масс в глобальную GM.
+
+            % РђРЅСЃР°РјР±Р»РёСЂРѕРІР°РЅРёРµ РјР°С‚СЂРёС†С‹ РјР°СЃСЃ РІ РіР»РѕР±Р°Р»СЊРЅСѓСЋ GM.
             GM(glDOF1,glDOF1) = GM(glDOF1,glDOF1) + M(1,1);
             GM(glDOF1,glDOF2) = GM(glDOF1,glDOF2) + M(1,2);
             GM(glDOF1,glDOF3) = GM(glDOF1,glDOF3) + M(1,3);
             GM(glDOF1,glDOF4) = GM(glDOF1,glDOF4) + M(1,4);
             GM(glDOF1,glDOF5) = GM(glDOF1,glDOF5) + M(1,5);
             GM(glDOF1,glDOF6) = GM(glDOF1,glDOF6) + M(1,6);
-            
+
             GM(glDOF2,glDOF1) = GM(glDOF2,glDOF1) + M(2,1);
             GM(glDOF2,glDOF2) = GM(glDOF2,glDOF2) + M(2,2);
             GM(glDOF2,glDOF3) = GM(glDOF2,glDOF3) + M(2,3);
             GM(glDOF2,glDOF4) = GM(glDOF2,glDOF4) + M(2,4);
             GM(glDOF2,glDOF5) = GM(glDOF2,glDOF5) + M(2,5);
             GM(glDOF2,glDOF6) = GM(glDOF2,glDOF6) + M(2,6);
-            
+
             GM(glDOF3,glDOF1) = GM(glDOF3,glDOF1) + M(3,1);
             GM(glDOF3,glDOF2) = GM(glDOF3,glDOF2) + M(3,2);
             GM(glDOF3,glDOF3) = GM(glDOF3,glDOF3) + M(3,3);
             GM(glDOF3,glDOF4) = GM(glDOF3,glDOF4) + M(3,4);
             GM(glDOF3,glDOF5) = GM(glDOF3,glDOF5) + M(3,5);
             GM(glDOF3,glDOF6) = GM(glDOF3,glDOF6) + M(3,6);
-            
+
             GM(glDOF4,glDOF1) = GM(glDOF4,glDOF1) + M(4,1);
             GM(glDOF4,glDOF2) = GM(glDOF4,glDOF2) + M(4,2);
             GM(glDOF4,glDOF3) = GM(glDOF4,glDOF3) + M(4,3);
             GM(glDOF4,glDOF4) = GM(glDOF4,glDOF4) + M(4,4);
             GM(glDOF4,glDOF5) = GM(glDOF4,glDOF5) + M(4,5);
             GM(glDOF4,glDOF6) = GM(glDOF4,glDOF6) + M(4,6);
-            
+
             GM(glDOF5,glDOF1) = GM(glDOF5,glDOF1) + M(5,1);
             GM(glDOF5,glDOF2) = GM(glDOF5,glDOF2) + M(5,2);
             GM(glDOF5,glDOF3) = GM(glDOF5,glDOF3) + M(5,3);
             GM(glDOF5,glDOF4) = GM(glDOF5,glDOF4) + M(5,4);
             GM(glDOF5,glDOF5) = GM(glDOF5,glDOF5) + M(5,5);
             GM(glDOF5,glDOF6) = GM(glDOF5,glDOF6) + M(5,6);
-            
+
             GM(glDOF6,glDOF1) = GM(glDOF6,glDOF1) + M(6,1);
             GM(glDOF6,glDOF2) = GM(glDOF6,glDOF2) + M(6,2);
             GM(glDOF6,glDOF3) = GM(glDOF6,glDOF3) + M(6,3);
@@ -102,19 +102,19 @@ classdef Beam2DElement < FiniteElementStructural
             GM(glDOF6,glDOF5) = GM(glDOF6,glDOF5) + M(6,5);
             GM(glDOF6,glDOF6) = GM(glDOF6,glDOF6) + M(6,6);
         end
-        % Конструктор класса без аргументов.
+        % РљРѕРЅСЃС‚СЂСѓРєС‚РѕСЂ РєР»Р°СЃСЃР° Р±РµР· Р°СЂРіСѓРјРµРЅС‚РѕРІ.
         function obj = Beam2DElement()
         end
-        % Функция установки полей.
+        % Р¤СѓРЅРєС†РёСЏ СѓСЃС‚Р°РЅРѕРІРєРё РїРѕР»РµР№.
         function SetupElement(this,nodCoordsIn,...
                 nodesNumsIn ,dataIn)
-            % Установка типа элемента для конструктора.
+            % РЈСЃС‚Р°РЅРѕРІРєР° С‚РёРїР° СЌР»РµРјРµРЅС‚Р° РґР»СЏ РєРѕРЅСЃС‚СЂСѓРєС‚РѕСЂР°.
             this.elType = 113;
             this.elNodesCoords = nodCoordsIn;
             this.elData = dataIn;
             this.elNodesNums = nodesNumsIn;
         end
-        % Функция печати.
+        % Р¤СѓРЅРєС†РёСЏ РїРµС‡Р°С‚Рё.
         function Disp(this)
             format shortG;
             fprintf('type:%d\n',this.elType);
@@ -125,16 +125,16 @@ classdef Beam2DElement < FiniteElementStructural
         end
     end
     methods (Access = protected)
-        % Функция определения матрицы масс элемента.
+        % Р¤СѓРЅРєС†РёСЏ РѕРїСЂРµРґРµР»РµРЅРёСЏ РјР°С‚СЂРёС†С‹ РјР°СЃСЃ СЌР»РµРјРµРЅС‚Р°.
         function M = MassElementMatrix(this)
-            % Получение из "поля данных" характеристик элемента.
-            A = this.elData(1);   % Площадь.
-            Rho = this.elData(3); % Плотность.
-            % Погонная масса (единицы длины / unit length).
+            % РџРѕР»СѓС‡РµРЅРёРµ РёР· "РїРѕР»СЏ РґР°РЅРЅС‹С…" С…Р°СЂР°РєС‚РµСЂРёСЃС‚РёРє СЌР»РµРјРµРЅС‚Р°.
+            A = this.elData(1);   % РџР»РѕС‰Р°РґСЊ.
+            Rho = this.elData(3); % РџР»РѕС‚РЅРѕСЃС‚СЊ.
+            % РџРѕРіРѕРЅРЅР°СЏ РјР°СЃСЃР° (РµРґРёРЅРёС†С‹ РґР»РёРЅС‹ / unit length).
             Mul = Rho*A;
-            % Вызов функции определения матрицы косинусов и длины.
+            % Р’С‹Р·РѕРІ С„СѓРЅРєС†РёРё РѕРїСЂРµРґРµР»РµРЅРёСЏ РјР°С‚СЂРёС†С‹ РєРѕСЃРёРЅСѓСЃРѕРІ Рё РґР»РёРЅС‹.
             [T, L] = TransformMatrix(this);
-            % Матрица масс элемента без преобразования координат.
+            % РњР°С‚СЂРёС†Р° РјР°СЃСЃ СЌР»РµРјРµРЅС‚Р° Р±РµР· РїСЂРµРѕР±СЂР°Р·РѕРІР°РЅРёСЏ РєРѕРѕСЂРґРёРЅР°С‚.
             meInit = zeros(6,6);
             meInit(1,:) = (Mul*L/420)*[140 0 0 70 0 0];
             meInit(2,:) = (Mul*L/420)*[0 156 22*L 0 54 -13*L];
@@ -142,18 +142,18 @@ classdef Beam2DElement < FiniteElementStructural
             meInit(4,:) = (Mul*L/420)*[70 0 0 140 0 0];
             meInit(5,:) = (Mul*L/420)*[0 54 13*L 0 156 0];
             meInit(6,:) = (Mul*L/420)*[0 -13*L -3*L*L 0 -22*L 4*L*L];
-            % Преобразование матрицы масс.
+            % РџСЂРµРѕР±СЂР°Р·РѕРІР°РЅРёРµ РјР°С‚СЂРёС†С‹ РјР°СЃСЃ.
             M = T'*meInit*T;
         end
-        % Функция определения матрицы жесткости элемента.
+        % Р¤СѓРЅРєС†РёСЏ РѕРїСЂРµРґРµР»РµРЅРёСЏ РјР°С‚СЂРёС†С‹ Р¶РµСЃС‚РєРѕСЃС‚Рё СЌР»РµРјРµРЅС‚Р°.
         function K = StiffnessElementMatrix(this)
-            % Получение из "поля данных" характеристик элемента.
-            A = this.elData(1); % Площадь.
-            E = this.elData(2); % Модуль Юнга.
-            I = this.elData(4); % Момент инерции.
-            % Вызов функции определения матрицы косинусов и длины.
+            % РџРѕР»СѓС‡РµРЅРёРµ РёР· "РїРѕР»СЏ РґР°РЅРЅС‹С…" С…Р°СЂР°РєС‚РµСЂРёСЃС‚РёРє СЌР»РµРјРµРЅС‚Р°.
+            A = this.elData(1); % РџР»РѕС‰Р°РґСЊ.
+            E = this.elData(2); % РњРѕРґСѓР»СЊ Р®РЅРіР°.
+            I = this.elData(4); % РњРѕРјРµРЅС‚ РёРЅРµСЂС†РёРё.
+            % Р’С‹Р·РѕРІ С„СѓРЅРєС†РёРё РѕРїСЂРµРґРµР»РµРЅРёСЏ РјР°С‚СЂРёС†С‹ РєРѕСЃРёРЅСѓСЃРѕРІ Рё РґР»РёРЅС‹.
             [T, L] = TransformMatrix(this);
-            % Матрица жесткости элемента без преобразования координат.
+            % РњР°С‚СЂРёС†Р° Р¶РµСЃС‚РєРѕСЃС‚Рё СЌР»РµРјРµРЅС‚Р° Р±РµР· РїСЂРµРѕР±СЂР°Р·РѕРІР°РЅРёСЏ РєРѕРѕСЂРґРёРЅР°С‚.
             KInit = zeros(6,6);
             KInit(1,:) = (E*I/(L*L*L))*[A*L*L/I 0 0 -A*L*L/I 0 0];
             KInit(2,:) = (E*I/(L*L*L))*[0 12 6*L 0 -12 6*L];
@@ -161,10 +161,10 @@ classdef Beam2DElement < FiniteElementStructural
             KInit(4,:) = (E*I/(L*L*L))*[-A*L*L/I 0 0 A*L*L/I 0 0];
             KInit(5,:) = (E*I/(L*L*L))*[0 -12 -6*L 0 12 -6*L];
             KInit(6,:) = (E*I/(L*L*L))*[0 6*L 2*L*L 0 -6*L 4*L*L];
-            % Преобразование элементной матрицы жесткости.
+            % РџСЂРµРѕР±СЂР°Р·РѕРІР°РЅРёРµ СЌР»РµРјРµРЅС‚РЅРѕР№ РјР°С‚СЂРёС†С‹ Р¶РµСЃС‚РєРѕСЃС‚Рё.
             K = T'*KInit*T;
         end
-        % Функция определения матрицы косинусов и длины элемента.
+        % Р¤СѓРЅРєС†РёСЏ РѕРїСЂРµРґРµР»РµРЅРёСЏ РјР°С‚СЂРёС†С‹ РєРѕСЃРёРЅСѓСЃРѕРІ Рё РґР»РёРЅС‹ СЌР»РµРјРµРЅС‚Р°.
         function [T, length] = TransformMatrix(this)
             node1 = this.elNodesCoords(1,:);
             node2 = this.elNodesCoords(2,:);

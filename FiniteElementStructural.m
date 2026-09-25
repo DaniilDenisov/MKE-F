@@ -1,38 +1,53 @@
-% Абстрактный класс структурного КЭ.
-classdef (Abstract) FiniteElementStructural < handle
+% Р‘Р°Р·РѕРІС‹Р№ РєР»Р°СЃСЃ СЃС‚СЂСѓРєС‚СѓСЂРЅРѕРіРѕ РљР­.
+%
+% Octave РЅРµ РїРѕРґРґРµСЂР¶РёРІР°РµС‚ РёСЃРїРѕР»СЊР·СѓРµРјС‹Р№ MATLAB-СЃРёРЅС‚Р°РєСЃРёСЃ РїСЂРѕС‚РѕС‚РёРїРѕРІ
+% Р°Р±СЃС‚СЂР°РєС‚РЅС‹С… РјРµС‚РѕРґРѕРІ РІРЅРµ @-РєР°С‚Р°Р»РѕРіРѕРІ. РџРѕСЌС‚РѕРјСѓ Р±Р°Р·РѕРІС‹Рµ СЂРµР°Р»РёР·Р°С†РёРё СЏРІРЅРѕ
+% СЃРѕРѕР±С‰Р°СЋС‚ РѕР± РѕС€РёР±РєРµ, Р° РєР»Р°СЃСЃС‹ СЌР»РµРјРµРЅС‚РѕРІ РїРµСЂРµРѕРїСЂРµРґРµР»СЏСЋС‚ СЌС‚Рё РјРµС‚РѕРґС‹.
+classdef FiniteElementStructural < handle
     properties (Access = public)
-        % Тип элемента.
+        % РўРёРї СЌР»РµРјРµРЅС‚Р°.
         elType;
     end
     properties (Access = protected)
-        % Координаты узлов.
+        % РљРѕРѕСЂРґРёРЅР°С‚С‹ СѓР·Р»РѕРІ.
         elNodesCoords;
-        % Номера узлов.
+        % РќРѕРјРµСЂР° СѓР·Р»РѕРІ.
         elNodesNums;
-        % Данные элемента (плотность, площадь).
+        % Р”Р°РЅРЅС‹Рµ СЌР»РµРјРµРЅС‚Р° (РїР»РѕС‚РЅРѕСЃС‚СЊ, РїР»РѕС‰Р°РґСЊ).
         elData;
     end
     methods (Access = public)
-        % Конструктор без аргументов.
+        % РљРѕРЅСЃС‚СЂСѓРєС‚РѕСЂ Р±РµР· Р°СЂРіСѓРјРµРЅС‚РѕРІ.
         function obj = FiniteElementStructural()
         end
-        % Функция получения всех узловых координат (для печати сетки).
+        % Р¤СѓРЅРєС†РёСЏ РїРѕР»СѓС‡РµРЅРёСЏ РІСЃРµС… СѓР·Р»РѕРІС‹С… РєРѕРѕСЂРґРёРЅР°С‚ (РґР»СЏ РїРµС‡Р°С‚Рё СЃРµС‚РєРё).
         function nCoords = GetNodalCoords(this)
             nCoords = this.elNodesCoords;
         end
-        % Функция получения номеров узлов элемента (для построения матрицы
-        % соответствия).
+        % Р¤СѓРЅРєС†РёСЏ РїРѕР»СѓС‡РµРЅРёСЏ РЅРѕРјРµСЂРѕРІ СѓР·Р»РѕРІ СЌР»РµРјРµРЅС‚Р° (РґР»СЏ РїРѕСЃС‚СЂРѕРµРЅРёСЏ РјР°С‚СЂРёС†С‹
+        % СЃРѕРѕС‚РІРµС‚СЃС‚РІРёСЏ).
         function nNums = GetNodesNums(this)
             nNums = this.elNodesNums;
         end
     end
-    methods (Access = public, Abstract = true)
-        % Ассемблер эл-та в глоб. матрицы M и K по матрице соответствия IM.
-        [GM, GK] = Assembler(GM, GK, IM, elNum)
+    methods (Access = public)
+        % РђСЃСЃРµРјР±Р»РµСЂ СЌР»-С‚Р° РІ РіР»РѕР±. РјР°С‚СЂРёС†С‹ M Рё K РїРѕ РјР°С‚СЂРёС†Рµ СЃРѕРѕС‚РІРµС‚СЃС‚РІРёСЏ IM.
+        function [GK, GM] = Assembler(~, GK, GM, ~)
+            error('FiniteElementStructural:NotImplemented', ...
+                'Assembler must be implemented by an element subclass.');
+        end
     end
-    methods (Access = protected, Abstract = true)
-        % Вычисление матриц массы и жесткости.
-        M = MassElementMatrix(this)
-        K = StiffnessElementMatrix(this)
+    methods (Access = protected)
+        % Р’С‹С‡РёСЃР»РµРЅРёРµ РјР°С‚СЂРёС† РјР°СЃСЃС‹ Рё Р¶РµСЃС‚РєРѕСЃС‚Рё.
+        function M = MassElementMatrix(~)
+            M = [];
+            error('FiniteElementStructural:NotImplemented', ...
+                'MassElementMatrix must be implemented by an element subclass.');
+        end
+        function K = StiffnessElementMatrix(~)
+            K = [];
+            error('FiniteElementStructural:NotImplemented', ...
+                'StiffnessElementMatrix must be implemented by an element subclass.');
+        end
     end
 end
