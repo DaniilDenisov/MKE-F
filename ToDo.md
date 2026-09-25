@@ -4,8 +4,9 @@ This plan intentionally splits the work into small, reviewable commits. The imme
 goal is to make the existing program run reliably in headless GNU Octave. Numerical
 correctness fixes follow once a portable smoke-test loop is available.
 
-MATLAB and GNU Octave are both target runtimes. New code and tests should remain
-portable between them unless a documented compatibility wrapper is provided.
+GNU Octave 8.4 or newer is the only supported runtime. MATLAB compatibility is not
+tested or guaranteed. Avoid gratuitous incompatibility, but do not complicate the
+design or tests to preserve MATLAB support.
 
 ## Clarified behaviour
 
@@ -78,38 +79,38 @@ later if the original materials become readily available.
       Octave 11.3.0. They work without a cell-array workaround.
 - [x] Make plotting and diagnostic printing optional so construction and all tests
       work without a graphics display.
-- [x] Convert MATLAB source, Markdown, and Russian documentation files to UTF-8
+- [x] Convert source, Markdown, and Russian documentation files to UTF-8
       without changing program behaviour.
-- [x] Avoid unguarded MATLAB-only APIs. For repeated linear solves, use a portable
-      `chol`/`lu` implementation or a small runtime-specific compatibility helper.
-- [x] Add a small portable smoke-test runner and CI jobs that execute it in Octave.
-      Add MATLAB CI later only if licensing and repository hosting make it practical.
+- [x] Avoid APIs unavailable in supported Octave versions. For repeated linear
+      solves, use Octave-supported `chol`/`lu` operations or a small helper.
+- [x] Add a small smoke-test runner and CI job that executes it in Octave.
 - [x] Preserve the original one-argument constructor and default interactive
-      behaviour. MATLAB comparison is deferred because MATLAB is not available in
-      the current environment; Commit 2 will use explicit numerical tolerances.
+      behaviour while making headless execution available.
 
 Acceptance: all current example cases at least parse and start in headless Octave,
 the portable test command passes, and Octave-specific workarounds are isolated and
 documented.
 
-### Commit 2 -- Add a self-contained portable verification baseline
+### Commit 2 -- Add a self-contained Octave verification baseline
 
-- [ ] Expand the smoke tests into a suite that runs in both MATLAB and GNU Octave.
-      Prefer portable assertions and small test functions; do not depend exclusively
-      on `matlab.unittest`.
-- [ ] Add invariant tests for `K == K.'`, `M == M.'`, valid dimensions, and finite
-      matrix entries.
-- [ ] Add elementary closed-form checks that do not need external books or ANSYS:
+- [x] Expand the smoke tests into an Octave-only verification suite under `tests/`.
+- [x] Add invariant tests for matrix dimensions, finite entries, global stiffness
+      symmetry, and truss mass symmetry. Add beam mass symmetry with its known
+      correction in Commit 3 so the main branch remains green.
+- [x] Add elementary closed-form checks that do not need external books or ANSYS:
       an axial bar (`u=FL/EA`) and a cantilever beam (`v=PL^3/3EI`).
-- [ ] Run every supplied input case as a no-crash regression test. Existing program
+- [x] Check support reactions, axial translational mass, the intentional one-step
+      pulse, and harmonic load samples.
+- [x] Run every supplied input case as a no-crash regression test. Existing program
       output may be saved as a diagnostic snapshot, but not declared correct merely
       because the current code produced it.
-- [ ] Use explicit absolute and relative tolerances for numerical comparisons.
-- [ ] Keep Mario Paz and ANSYS result recovery deferred; do not block subsequent
+- [x] Use explicit absolute and relative tolerances for numerical comparisons.
+- [x] Run the complete verification suite in Octave CI.
+- [x] Keep Mario Paz and ANSYS result recovery deferred; do not block subsequent
       commits on unavailable external material.
 
-Acceptance: the portable suite catches structural failures and verifies basic closed-
-form behaviour without requiring proprietary software or hard-to-find references.
+Acceptance: the Octave suite catches structural failures and verifies basic closed-
+form behaviour without proprietary software or hard-to-find references.
 
 ## Post-Octave architecture direction
 

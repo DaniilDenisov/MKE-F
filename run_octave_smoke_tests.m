@@ -1,5 +1,5 @@
 function run_octave_smoke_tests()
-%RUN_OCTAVE_SMOKE_TESTS Portable headless smoke tests for MATLAB and Octave.
+%RUN_OCTAVE_SMOKE_TESTS Headless smoke tests for GNU Octave.
 
 rootDir = fileparts(mfilename('fullpath'));
 previousDir = pwd;
@@ -54,9 +54,9 @@ clear cleanup;
 end
 
 function name = runtimeName()
-if exist('OCTAVE_VERSION', 'builtin')
-    name = ['GNU Octave ' OCTAVE_VERSION];
-else
-    name = ['MATLAB ' version];
+if ~exist('OCTAVE_VERSION', 'builtin')
+    error('MKEF:OctaveRequired', ...
+        'GNU Octave is the only supported runtime for this project.');
 end
+name = ['GNU Octave ' OCTAVE_VERSION];
 end

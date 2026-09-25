@@ -17,5 +17,5 @@ jobs:
           sudo apt-get install --yes octave
           octave --version
 
-      - name: Run headless smoke tests
-        run: octave --no-gui --quiet --eval "addpath(pwd); run_octave_smoke_tests;"
+      - name: Run headless verification suite
+        run: octave --no-gui --quiet --eval "addpath(pwd); run_octave_tests;"
