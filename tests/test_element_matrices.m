@@ -1,5 +1,7 @@
 function test_element_matrices()
-%TEST_ELEMENT_MATRICES Verify 2D truss and frame element kernels.
+%TEST_ELEMENT_MATRICES Проверка матриц плоских стержневых и рамных элементов.
+% Эталонные матрицы независимо вычисляются ниже и сравниваются с матрицами,
+% полученными через открытый интерфейс сборки каждого элемента.
 
 testTrussOrientations();
 testBeamOrientations();
@@ -11,6 +13,9 @@ area = 0.02;
 youngsModulus = 210e9;
 density = 7850;
 properties = [area youngsModulus density];
+
+% Все три элемента имеют длину 5. Одинаковые длина и свойства позволяют напрямую
+% сравнивать спектры матриц после поворота элемента.
 coordinates = {
     [0 0; 5 0]
     [0 0; 0 5]
@@ -30,9 +35,14 @@ for i = 1:numel(coordinates)
         'Truss mass matrix has incorrect coefficients.');
     assertSymmetric(K, 'Truss stiffness matrix is not symmetric.');
     assertSymmetric(M, 'Truss mass matrix is not symmetric.');
+
+    % У плоского двухузлового стержня одна деформационная форма. Остальные три
+    % формы — движения с нулевой энергией, поэтому ранг матрицы жёсткости равен 1.
     assertNumericalRank(K, 1, ...
         'A free truss element must have three zero-energy modes.');
 
+    % При единичном переносе квадратичная форма должна давать физическую массу
+    % элемента rho*A*L для каждого глобального направления.
     rigidX = [1; 0; 1; 0];
     rigidY = [0; 1; 0; 1];
     expectedMass = density * area * length;
@@ -41,6 +51,8 @@ for i = 1:numel(coordinates)
     assertClose(rigidY.' * M * rigidY, expectedMass, 1e-12, 1e-12, ...
         'Truss total mass in global Y is incorrect.');
 
+    % Ортогональный поворот координат сохраняет собственные значения матрицы.
+    % Предварительная симметризация исключает влияние ошибок округления.
     stiffnessSpectrum = sort(eig((K + K.') / 2));
     massSpectrum = sort(eig((M + M.') / 2));
     if isempty(referenceStiffnessSpectrum)
@@ -61,6 +73,9 @@ youngsModulus = 210e9;
 density = 7850;
 momentOfInertia = 8e-6;
 properties = [area youngsModulus density momentOfInertia];
+
+% Горизонтальный, вертикальный и наклонный элемент 3-4-5 проверяют все члены
+% преобразования при одинаковой длине и одинаковых физических свойствах.
 coordinates = {
     [0 0; 5 0]
     [0 0; 0 5]
@@ -80,9 +95,14 @@ for i = 1:numel(coordinates)
         'Beam mass matrix has incorrect coefficients.');
     assertSymmetric(K, 'Beam stiffness matrix is not symmetric.');
     assertSymmetric(M, 'Beam mass matrix is not symmetric.');
+
+    % Свободный плоский рамный элемент имеет три деформационные формы и три формы
+    % движения как твёрдого тела, поэтому ранг матрицы жёсткости 6x6 равен 3.
     assertNumericalRank(K, 3, ...
         'A free beam element must have three rigid-body modes.');
 
+    % При поступательном движении вращательные степени свободы равны нулю.
+    % Поэтому квадратичная форма масс должна давать rho*A*L по обеим глобальным осям.
     rigidX = [1; 0; 0; 1; 0; 0];
     rigidY = [0; 1; 0; 0; 1; 0];
     expectedMass = density * area * length;
@@ -91,6 +111,8 @@ for i = 1:numel(coordinates)
     assertClose(rigidY.' * M * rigidY, expectedMass, 1e-12, 1e-12, ...
         'Beam total mass in global Y is incorrect.');
 
+    % Одинаковые спектры подтверждают, что изменение только ориентации элемента
+    % не изменяет его физическую жёсткость и инерцию.
     stiffnessSpectrum = sort(eig((K + K.') / 2));
     massSpectrum = sort(eig((M + M.') / 2));
     if isempty(referenceStiffnessSpectrum)
@@ -108,6 +130,8 @@ end
 function testInvalidElementData()
 validCoords = [0 0; 1 0];
 
+% Вырожденные и неконечные координаты должны быть отклонены до того, как
+% преобразование выполнит деление на длину элемента.
 assertThrows('MKEF:InvalidElementGeometry', ...
     @() setupTruss([0 0; 0 0], [1 2e11 7850]));
 assertThrows('MKEF:InvalidElementGeometry', ...
@@ -117,6 +141,8 @@ assertThrows('MKEF:InvalidElementGeometry', ...
 assertThrows('MKEF:InvalidElementGeometry', ...
     @() setupBeam([0 0; NaN 1], [1 2e11 7850 1]));
 
+% Неположительные или неконечные физические свойства лишают модель смысла
+% и могут скрыть дальнейшие вырождения, поэтому отклоняем их при настройке.
 assertThrows('MKEF:InvalidElementProperties', ...
     @() setupTruss(validCoords, [0 2e11 7850]));
 assertThrows('MKEF:InvalidElementProperties', ...
@@ -130,6 +156,8 @@ assertThrows('MKEF:InvalidElementProperties', ...
 end
 
 function [K, M] = assembleTruss(coords, properties)
+% Нулевая глобальная матрица и простая карта степеней свободы позволяют получить
+% матрицы одного элемента, не открывая защищённые методы реализации.
 element = Truss2DElement();
 element.SetupElement(coords, [1 2], properties);
 [K, M] = element.Assembler(zeros(4), zeros(4), [1 2; 3 4]);
@@ -152,6 +180,7 @@ element.SetupElement(coords, [1 2], properties);
 end
 
 function [K, M, length] = expectedTrussMatrices(coords, properties)
+% Стандартные глобальные матрицы жёсткости и согласованных масс плоского стержня.
 delta = coords(2,:) - coords(1,:);
 length = norm(delta);
 c = delta(1) / length;
@@ -170,6 +199,8 @@ M = density * area * length / 6 * ...
 end
 
 function [K, M, length] = expectedBeamMatrices(coords, properties)
+% Стандартные локальные матрицы рамного элемента Эйлера-Бернулли независимо
+% преобразуются в глобальные координаты для выявления ошибок знаков и коэффициентов.
 delta = coords(2,:) - coords(1,:);
 length = norm(delta);
 c = delta(1) / length;
@@ -204,6 +235,7 @@ M = transform.' * localM * transform;
 end
 
 function assertSymmetric(matrix, message)
+% Сравниваем нарушение симметрии с масштабом матрицы, а не только с абсолютным допуском.
 errorNorm = norm(matrix - matrix.', inf);
 scale = max(norm(matrix, inf), 1);
 if errorNorm > 1e-12 * scale
@@ -213,6 +245,7 @@ end
 end
 
 function assertNumericalRank(matrix, expectedRank, message)
+% Сингулярные числа отделяют физические формы от численных нулевых форм.
 singularValues = svd(matrix);
 tolerance = max(singularValues) * 1e-10;
 actualRank = sum(singularValues > tolerance);
@@ -223,6 +256,7 @@ end
 end
 
 function assertThrows(expectedIdentifier, operation)
+% Требуем ожидаемую ошибку проверки данных, а не произвольный сбой.
 try
     operation();
 catch exception
@@ -237,6 +271,7 @@ error('MKEF:VerificationFailed', 'Expected error %s.', expectedIdentifier);
 end
 
 function assertClose(actual, expected, relativeTolerance, absoluteTolerance, message)
+% Сочетание допусков подходит и для нулевых элементов, и для больших жёсткостей.
 difference = max(abs(actual(:) - expected(:)));
 scale = max(abs(expected(:)));
 limit = absoluteTolerance + relativeTolerance * scale;

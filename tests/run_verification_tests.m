@@ -1,5 +1,7 @@
 function run_verification_tests()
-%RUN_VERIFICATION_TESTS Self-contained numerical checks for GNU Octave.
+%RUN_VERIFICATION_TESTS Самодостаточные численные проверки для GNU Octave.
+% Используемые формулы и инварианты не требуют MATLAB, ANSYS или доступа
+% к учебникам, упомянутым в примерах.
 
 testsDir = fileparts(mfilename('fullpath'));
 rootDir = fileparts(testsDir);
@@ -24,6 +26,9 @@ end
 
 function testMatrixInvariants()
 options = quietOptions();
+
+% Загружаем все старые примеры, чтобы проверить чтение входных данных и глобальную
+% сборку матриц рамных и ферменных моделей. Эти тесты не воспроизводят результаты примеров.
 caseFiles = {
     'ANSYSBeamStatic01.txt'
     'Case1ElementBeam.txt'
@@ -45,6 +50,8 @@ for i = 1:numel(caseFiles)
         ['Stiffness matrix is not symmetric: ' caseFiles{i}]);
 end
 
+% Ошибка согласованной матрицы масс балки, исправленная в коммите 496569, проявлялась
+% на глобальном уровне как нарушение симметрии. Поэтому явно проверяем каждую M.
 for i = 1:numel(caseFiles)
     problem = StructFEProblem(caseFiles{i}, options);
     assertRelativeSmall(problem.M - problem.M.', problem.M, 1e-12, ...
@@ -57,6 +64,8 @@ options = quietOptions();
 caseFile = fullfile('tests', 'fixtures', 'CaseSingleTruss.txt');
 problem = StructFEProblem(caseFile, options);
 
+% Для горизонтального стержня из одного элемента известно точное перемещение
+% u = FL/(EA). Также проверяем равновесие реакций и собранную матрицу масс.
 elementLength = 2.0;
 area = 0.01;
 youngsModulus = 2e11;
@@ -89,6 +98,8 @@ function testCantileverBeam()
 options = quietOptions();
 problem = StructFEProblem('Case1ElementBeam.txt', options);
 
+% Теория Эйлера-Бернулли даёт точные прогиб и угол поворота конца этой консоли
+% из одного элемента под действием поперечной узловой силы.
 elementLength = 0.5;
 youngsModulus = 2e11;
 momentOfInertia = 0.33e-8;
@@ -122,6 +133,8 @@ options = quietOptions();
 timeStep = 1e-4;
 stepCount = 4;
 
+% Нагрузка типа 10 в динамическом расчёте намеренно действует как прямоугольный
+% импульс длительностью в один шаг, а не как постоянная ступенчатая нагрузка.
 pulseProblem = StructFEProblem('CaseBeamDyn.txt', options);
 pulseProblem.ts = timeStep;
 pulseProblem.tsNum = stepCount;
@@ -133,6 +146,7 @@ pulseExpected(pulseDOF, 1) = -1000;
 assertClose(pulseProblem.F, pulseExpected, 0, 1e-12, ...
     'Type 10 transient load is not a one-step rectangular pulse.');
 
+% Для типа 11 в столбцах времени должны вычисляться значения F0*sin(2*pi*f*t).
 harmonicProblem = StructFEProblem('CaseBeamFreq.txt', options);
 harmonicProblem.ts = timeStep;
 harmonicProblem.tsNum = stepCount;
@@ -164,6 +178,7 @@ fprintf(' PASS\n');
 end
 
 function assertRelativeSmall(value, reference, relativeTolerance, message)
+% Масштабируем ошибку инварианта по величине проверяемой матрицы.
 valueNorm = norm(value(:), inf);
 referenceNorm = max(norm(reference(:), inf), 1);
 if valueNorm > relativeTolerance * referenceNorm
@@ -173,6 +188,7 @@ end
 end
 
 function assertClose(actual, expected, relativeTolerance, absoluteTolerance, message)
+% Около нуля используем абсолютный допуск, для больших значений — относительный.
 difference = max(abs(actual(:) - expected(:)));
 scale = max(abs(expected(:)));
 if isempty(difference)

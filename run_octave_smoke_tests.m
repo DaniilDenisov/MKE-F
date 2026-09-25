@@ -1,5 +1,5 @@
 function run_octave_smoke_tests()
-%RUN_OCTAVE_SMOKE_TESTS Headless smoke tests for GNU Octave.
+%RUN_OCTAVE_SMOKE_TESTS Дымовые тесты GNU Octave без графического интерфейса.
 
 rootDir = fileparts(mfilename('fullpath'));
 previousDir = pwd;
@@ -8,6 +8,11 @@ cd(rootDir);
 addpath(rootDir);
 
 options = struct('verbose', false, 'plotting', false);
+
+% Примеры из репозитория - интеграционные тесты, а не решения. Охватывают прямые и наклонные балки,
+% непрямолинейную раму, ферму, статические, импульсные и гармонические нагрузки.
+% Примеры ANSYS и Mario Paz пока проверяют только успешное чтение и сборку;
+% сравнения с опубликованными результатами не выполняются.
 caseFiles = {
     'ANSYSBeamStatic01.txt'
     'Case1ElementBeam.txt'
@@ -22,6 +27,8 @@ fprintf('Runtime: %s\n', runtimeName());
 fprintf('Loading %d input cases...\n', numel(caseFiles));
 
 for i = 1:numel(caseFiles)
+    % Конструктор полностью читает входной файл, создаёт сетку и объекты
+    % элементов, нумерует степени свободы и собирает глобальные матрицы K и M.
     problem = StructFEProblem(caseFiles{i}, options);
     expectedDOFs = problem.mesh.numberOfNodes * problem.mesh.dofPerNode;
     assert(isequal(size(problem.K), [expectedDOFs expectedDOFs]));
@@ -31,7 +38,9 @@ for i = 1:numel(caseFiles)
     fprintf('  OK: %s\n', caseFiles{i});
 end
 
-% Exercise every analysis path with deliberately short transient histories.
+% Проверка всех видов анализа с умышленно короткими временными историями.
+% Это интеграционные проверки отсутствия сбоев; аналитические значения
+% проверяются отдельно в наборе проверочных тестов.
 problem = StructFEProblem('Case1ElementBeam.txt', options);
 problem.RunStatic();
 
@@ -49,7 +58,7 @@ problem.RunTransient(1e-4, 3e-4, 5, 2);
 
 fprintf('All smoke tests passed.\n');
 
-% Keep the cleanup object alive until the function exits.
+% Объект очистки должен существовать до выхода из функции.
 clear cleanup;
 end
 
