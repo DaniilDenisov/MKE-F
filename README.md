@@ -66,3 +66,34 @@ dynamicResult = solveTransient(model, ...
 
 Несколько строк нагрузки в одном блоке суммируются, в том числе если они
 относятся к одному узлу или одной степени свободы.
+
+## Переходный расчёт
+
+Все возвращаемые истории используют одну временную сетку: столбец 1
+соответствует `t=0`, столбец 2 — `t=dt`, последний столбец — фактической
+длительности расчёта. Это относится к `time`, `loadHistory`, `displacements`,
+`velocities` и `accelerations`.
+
+Начальные перемещения и скорости можно передать численному ядру:
+
+```octave
+transientOptions = struct(...
+    'timeStep', 1e-4, ...
+    'duration', 1e-2, ...
+    'initialDisplacement', u0, ...
+    'initialVelocity', v0);
+result = solveTransient(model, transientOptions);
+```
+
+Или через совместимый фасад:
+
+```octave
+initial = struct('initialDisplacement', u0, 'initialVelocity', v0);
+result = problem.RunTransient(1e-4, 1e-2, 2, 1, initial);
+```
+
+Начальное ускорение вычисляется из равновесия. Результат также содержит
+`reactions`, `equilibriumResidual`, `spectrumFrequencyHz` и
+`displacementAmplitudeSpectrum`. Используется метод Ньюмарка со средней
+акселерацией (`beta=1/4`, `gamma=1/2`) по формулам (22)-(23) из конспекта
+[H. P. Gavin, Numerical Integration in Structural Dynamics](https://people.duke.edu/~hpgavin/StructuralDynamics/NumericalIntegration.pdf).

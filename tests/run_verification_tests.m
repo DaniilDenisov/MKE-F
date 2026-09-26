@@ -22,6 +22,7 @@ runNamedTest('nodal load semantics', @testNodalLoadSemantics);
 runNamedTest('functional analysis core', @testFunctionalAnalysisCore);
 runNamedTest('free-DOF reduction', @testFreeDOFReduction);
 runNamedTest('constraint validation', @testConstraintValidation);
+runNamedTest('Newmark transient analysis', @test_newmark_transient);
 
 fprintf('All verification tests passed.\n');
 clear cleanup;
@@ -160,7 +161,7 @@ pulseLoads = buildTransientLoad(pulseProblem.GetAnalysisModel(), ...
     timeStep, stepCount);
 pulseExpected = zeros(size(pulseLoads));
 pulseDOF = pulseProblem.mesh.iMnod(3, 2);
-pulseExpected(pulseDOF, 1) = -1000;
+pulseExpected(pulseDOF, 2) = -1000;
 assertClose(pulseLoads, pulseExpected, 0, 1e-12, ...
     'Legacy type 10 transient load is not a one-step rectangular pulse.');
 
@@ -171,7 +172,7 @@ explicitPulseLoads = buildTransientLoad(...
     explicitPulseProblem.GetAnalysisModel(), timeStep, stepCount);
 explicitPulseExpected = zeros(size(explicitPulseLoads));
 explicitPulseDOFs = explicitPulseProblem.mesh.iMnod(2, :);
-explicitPulseExpected(explicitPulseDOFs, 1) = [0; -1000; 25];
+explicitPulseExpected(explicitPulseDOFs, 2) = [0; -1000; 25];
 assertClose(explicitPulseLoads, explicitPulseExpected, 0, 1e-12, ...
     'Explicit type 12 pulse history is incorrect.');
 explicitPulseProblem.ts = timeStep;
@@ -187,7 +188,8 @@ stepModel = stepProblem.GetAnalysisModel();
 stepLoads = buildTransientLoad(stepModel, timeStep, stepCount);
 stepExpected = zeros(size(stepLoads));
 stepDOFs = stepProblem.mesh.iMnod(2, :);
-stepExpected(stepDOFs, :) = repmat([0; -1000; 25], 1, stepCount);
+stepExpected(stepDOFs, :) = ...
+    repmat([0; -1000; 25], 1, stepCount + 1);
 assertClose(stepLoads, stepExpected, 0, 1e-12, ...
     'Type 13 persistent step history is incorrect.');
 stepResult = stepProblem.RunTransient(timeStep, ...
@@ -205,7 +207,7 @@ harmonicLoads = buildTransientLoad(harmonicModel, ...
     timeStep, stepCount);
 harmonicExpected = zeros(size(harmonicLoads));
 harmonicDOFs = harmonicProblem.mesh.iMnod(3, :);
-time = (1:stepCount) * timeStep;
+time = (0:stepCount) * timeStep;
 harmonicExpected(harmonicDOFs, :) = ...
     [0; -1000; 25] * sin(2*pi*135*time);
 assertClose(harmonicLoads, harmonicExpected, 1e-12, 1e-12, ...

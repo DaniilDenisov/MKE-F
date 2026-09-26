@@ -215,19 +215,19 @@ unambiguous and each has a load-history test.
 
 ### Commit 7 -- Verify and improve Newmark transient analysis
 
-- [ ] Verify the average-acceleration Newmark equations (`beta=1/4`, `gamma=1/2`)
-      against the chosen textbook reference.
-- [ ] Define the time convention precisely: column 1 is `t=0`, and load and state
+- [x] Verify the average-acceleration Newmark equations (`beta=1/4`, `gamma=1/2`)
+      against the chosen published reference.
+- [x] Define the time convention precisely: column 1 is `t=0`, and load and state
       vectors are evaluated at consistent times.
-- [ ] Support explicit initial displacement and velocity, and calculate the initial
+- [x] Support explicit initial displacement and velocity, and calculate the initial
       acceleration from equilibrium.
-- [ ] Preallocate displacement, velocity, and acceleration histories with
+- [x] Preallocate displacement, velocity, and acceleration histories with
       `tsNum+1` columns.
-- [ ] Factor the constant effective stiffness matrix once per run.
-- [ ] Correct the FFT length, frequency bins, and amplitude normalization using the
+- [x] Factor the constant effective stiffness matrix once per run.
+- [x] Correct the FFT length, frequency bins, and amplitude normalization using the
       actual number of response samples.
-- [ ] Return time histories and spectrum data independently of plotting.
-- [ ] Compare a simple SDOF pulse response with an analytical solution and check
+- [x] Return time histories and spectrum data independently of plotting.
+- [x] Compare a simple SDOF pulse response with an analytical solution and check
       free-vibration energy conservation for the undamped case.
 
 Acceptance: the time integrator passes analytical SDOF tests and the beam impulse

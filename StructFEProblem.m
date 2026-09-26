@@ -118,8 +118,16 @@ classdef StructFEProblem < handle
             end
         end
         % Метод запуска анализа динамики со внешними силами.
-        function result = RunTransient(this,tStep,tDur,node,dofToPlot)
-            options = struct('timeStep', tStep, 'duration', tDur);
+        function result = RunTransient(this,tStep,tDur,node,dofToPlot,options)
+            if nargin < 6
+                options = struct();
+            end
+            if ~isstruct(options)
+                error('StructFEProblem:InvalidOptions', ...
+                    'Transient options must be provided as a struct.');
+            end
+            options.timeStep = tStep;
+            options.duration = tDur;
             model = this.GetAnalysisModel();
             result = solveTransient(model, options);
             if this.plotting
