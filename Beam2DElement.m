@@ -143,6 +143,18 @@ classdef Beam2DElement < FiniteElementStructural
             disp(this.elData);
             format compact;
         end
+        function data = GetRecoveryData(this, IM)
+            [T, length] = TransformMatrix(this);
+            data = struct();
+            data.type = this.elType;
+            data.nodeNumbers = this.elNodesNums(:).';
+            data.globalDOFs = reshape(IM(this.elNodesNums, :).', [], 1);
+            data.length = length;
+            data.transformation = T;
+            data.localStiffness = LocalStiffnessMatrix(this, length);
+            data.area = this.elData(1);
+            data.youngsModulus = this.elData(2);
+        end
     end
     methods (Access = protected)
         % Функция определения матрицы масс элемента.
@@ -167,27 +179,29 @@ classdef Beam2DElement < FiniteElementStructural
         end
         % Функция определения матрицы жесткости элемента.
         function K = StiffnessElementMatrix(this)
-            % Получение из "поля данных" характеристик элемента.
-            A = this.elData(1); % Площадь.
-            E = this.elData(2); % Модуль Юнга.
-            I = this.elData(4); % Момент инерции.
             % Вызов функции определения матрицы косинусов и длины.
             [T, L] = TransformMatrix(this);
             % Матрица жесткости элемента без преобразования координат.
+            KInit = LocalStiffnessMatrix(this, L);
+            % Преобразование элементной матрицы жесткости.
+            K = T'*KInit*T;
+        end
+        function K = LocalStiffnessMatrix(this, L)
+            A = this.elData(1);
+            E = this.elData(2);
+            I = this.elData(4);
             axial = E*A/L;
             bending = E*I;
             bending12 = 12*bending/L^3;
             bending6 = 6*bending/L^2;
             bending4 = 4*bending/L;
             bending2 = 2*bending/L;
-            KInit = [ axial       0          0 -axial        0          0;...
-                           0 bending12   bending6      0 -bending12   bending6;...
-                           0  bending6   bending4      0  -bending6   bending2;...
-                      -axial       0          0  axial        0          0;...
-                           0 -bending12 -bending6      0  bending12  -bending6;...
-                           0  bending6   bending2      0  -bending6   bending4];
-            % Преобразование элементной матрицы жесткости.
-            K = T'*KInit*T;
+            K = [ axial       0          0 -axial        0          0;...
+                       0 bending12   bending6      0 -bending12   bending6;...
+                       0  bending6   bending4      0  -bending6   bending2;...
+                  -axial       0          0  axial        0          0;...
+                       0 -bending12 -bending6      0  bending12  -bending6;...
+                       0  bending6   bending2      0  -bending6   bending4];
         end
         % Функция определения матрицы косинусов и длины элемента.
         function [T, length] = TransformMatrix(this)

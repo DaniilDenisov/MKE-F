@@ -88,6 +88,18 @@ classdef Truss2DElement < FiniteElementStructural
             disp(this.elData);
             format compact;
         end
+        function data = GetRecoveryData(this, IM)
+            [T, length] = TransformMatrix(this);
+            data = struct();
+            data.type = this.elType;
+            data.nodeNumbers = this.elNodesNums(:).';
+            data.globalDOFs = reshape(IM(this.elNodesNums, :).', [], 1);
+            data.length = length;
+            data.transformation = T;
+            data.localStiffness = LocalStiffnessMatrix(this, length);
+            data.area = this.elData(1);
+            data.youngsModulus = this.elData(2);
+        end
     end
     methods (Access = protected)
         % Функция определения матрицы масс элемента.
@@ -106,19 +118,20 @@ classdef Truss2DElement < FiniteElementStructural
         % Функция определения матрицы жесткости элемента.
         function K = StiffnessElementMatrix(this)
             % Получение из "поля данных" характеристик элемента.
-            currArea = this.elData(1);
-            currEmod = this.elData(2);
             % Вызов функции определения матрицы косинусов и длины.
             [T, length] = TransformMatrix(this);
             % Матрица жесткости элемента без преобразования координат.
-            KInit = zeros(4,4);
-            kCoeff = currArea*currEmod/length;
-            KInit(1,1) = kCoeff;
-            KInit(1,3) = -kCoeff;
-            KInit(3,1) = -kCoeff;
-            KInit(3,3) = kCoeff;
+            KInit = LocalStiffnessMatrix(this, length);
             % Преобразование элементной матрицы жесткости.
             K = T'*KInit*T;
+        end
+        function K = LocalStiffnessMatrix(this, length)
+            kCoeff = this.elData(1)*this.elData(2)/length;
+            K = zeros(4,4);
+            K(1,1) = kCoeff;
+            K(1,3) = -kCoeff;
+            K(3,1) = -kCoeff;
+            K(3,3) = kCoeff;
         end
         % Функция определения матрицы косинусов и длины элемента.
         function [T, length] = TransformMatrix(this)

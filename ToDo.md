@@ -235,12 +235,14 @@ response is reproducible under time-step refinement.
 
 ### Commit 8 -- Repair result recovery
 
-- [ ] Replace or rewrite the obsolete `StressCalc` function; it currently calls the
+- [x] Replace or rewrite the obsolete `StressCalc` function; it currently calls the
       missing `ElemTransformCalc` and expects an old numeric element format.
-- [ ] Recover truss axial strain, stress, and axial force from each element's local
+- [x] Recover truss axial strain, stress, and axial force from each element's local
       displacement vector.
-- [ ] Recover frame local end forces and, if useful, axial/shear/moment diagrams.
-- [ ] Add a one-bar stress test and cantilever end-force/reaction tests.
+- [x] Recover frame local end forces and, if useful, axial/shear/moment diagrams.
+      Local end forces are returned; diagrams are deferred until member loads are
+      supported because nodal loads alone need no additional diagram sampling.
+- [x] Add a one-bar stress test and cantilever end-force/reaction tests.
 
 Acceptance: recovery uses the same DOF mapping and transformation conventions as
 assembly and matches elementary closed-form solutions.

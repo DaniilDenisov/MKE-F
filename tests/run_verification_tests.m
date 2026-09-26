@@ -23,6 +23,7 @@ runNamedTest('functional analysis core', @testFunctionalAnalysisCore);
 runNamedTest('free-DOF reduction', @testFreeDOFReduction);
 runNamedTest('constraint validation', @testConstraintValidation);
 runNamedTest('Newmark transient analysis', @test_newmark_transient);
+runNamedTest('element result recovery', @test_result_recovery);
 
 fprintf('All verification tests passed.\n');
 clear cleanup;

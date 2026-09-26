@@ -97,3 +97,33 @@ result = problem.RunTransient(1e-4, 1e-2, 2, 1, initial);
 `displacementAmplitudeSpectrum`. Используется метод Ньюмарка со средней
 акселерацией (`beta=1/4`, `gamma=1/2`) по формулам (22)-(23) из конспекта
 [H. P. Gavin, Numerical Integration in Structural Dynamics](https://people.duke.edu/~hpgavin/StructuralDynamics/NumericalIntegration.pdf).
+
+## Результаты в элементах
+
+Статический расчёт возвращает массив `elementResults` с результатами для каждого
+элемента. Все величины вычисляются в локальной системе координат элемента с той же
+матрицей преобразования и локальной матрицей жёсткости, которые используются при
+сборке:
+
+```octave
+result = problem.RunStatic();
+element = result.elementResults(1);
+
+element.localDisplacements
+element.localEndForces
+element.axialStrain
+element.axialStress
+element.axialForce
+```
+
+Для стержней типа `112` положительные `axialStrain`, `axialStress` и `axialForce`
+означают растяжение, отрицательные — сжатие. Для рамных элементов типа `113`
+`localEndForces` имеет порядок `[N1; V1; M1; N2; V2; M2]`, соответствующий
+локальным степеням свободы `[u1; v1; theta1; u2; v2; theta2]`. Это узловые силы,
+действующие на элемент; при отсутствии распределённых нагрузок они согласуются с
+реакциями и приложенными узловыми нагрузками.
+
+Функция с прежним именем `StressCalc` переписана для нового интерфейса
+`StressCalc(model, displacements)` и возвращает вектор осевых напряжений
+ферменных элементов. Полный набор
+результатов следует брать из `result.elementResults`.
