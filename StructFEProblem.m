@@ -224,132 +224,39 @@ classdef StructFEProblem < handle
                 end
             end
         end
+        % Возвращает копию данных модели для чистого численного ядра.
+        function model = GetAnalysisModel(this)
+            model = createAnalysisModel(this.K, this.M, this.mesh);
+        end
         % Метод запуска расчета статического нагружения.
-        function RunStatic(this)
-            % --> Расчет статики.
-            % Сохранение МЖ и ММ без ГУ. Например, для вычисления реакций.
-            KnoBC = this.K;
-            MnoBC = this.M;
-            % Очистка поля ts на случай, если ранее запускалась динамика.
-            this.ts = 0;
-            % Наложение ГУ.
-            this.ApplyFixBC();
-            this.ApplyForceBC();
-            % Решение системы, определение перемещений. Вывод.
-            dspl = this.K\this.F;
+        function result = RunStatic(this)
+            model = this.GetAnalysisModel();
+            result = solveStatic(model);
             if this.verbose
                 disp('DOFs (displ. components):')
-                disp(dspl);
-            end
-            % Определение реакций. Вывод.
-            reacts = KnoBC*dspl-this.F;
-            if this.verbose
+                disp(result.displacements);
                 disp('Reactions (components):')
-                disp(reacts);
+                disp(result.reactions);
             end
-            % Восстановление МЖ и ММ для следующих расчетов.
-            this.K = KnoBC;
-            this.M = MnoBC;
         end
         % Метод запуска расчета собственных колебаний.
-        function RunModal(this)
-            % --> Расчет собственных колебаний.
-            % Сохранение МЖ и ММ без ГУ.
-            KnoBC = this.K;
-            MnoBC = this.M;
-            % Задать какой-то ts. Логика ApplyFixBC уйдет от статического
-            % типа наложения ГУ (оставит K сингулярной).
-            this.ts = 100;
-            % Наложение ГУ.
-            this.ApplyFixBC();
-            % Решение модальной задачи.
-            freqSol = (1/(2*pi))*sqrt(eig(this.K, this.M));
+        function result = RunModal(this)
+            model = this.GetAnalysisModel();
+            result = solveModal(model);
             if this.verbose
                 disp('Natural frequencies (Hz):')
-                disp(freqSol);
+                disp(result.frequenciesHz);
             end
-            % Восстановление МЖ и ММ для следующих расчетов.
-            this.K = KnoBC;
-            this.M = MnoBC;
         end
         % Метод запуска анализа динамики со внешними силами.
-        function RunTransient(this,tStep,tDur,node,dofToPlot)
-            % this  - объект для работы с полями (неявный аргумент),
-            % tStep - шаг по времени,
-            % tDur  - время моделирования общее,
-            % node  - узел в котором строится график по времени.
-            % doftoplot - номер СС в узле для вывода.
-
-            % Сохранить в поля объекта задачи: Целое число временных
-            % шагов, длительность задачи и шаг.
-            this.tsNum = fix(tDur/tStep);
-            this.tDur = tDur;
-            this.ts = tStep;
-            % Массивы для узловых скоростей, ускорений и перемещений.
-            nn = this.mesh.numberOfNodes;
-            dpn = this.mesh.dofPerNode;
-            acsNodal = zeros(nn*dpn,1);
-            speNodal = zeros(nn*dpn,1);
-            dspNodal = zeros(nn*dpn,1);
-            % Установка вектора правой части в ноль для всех шагов.
-            this.F = zeros(nn*dpn,this.tsNum);
-            % ГУ.
-            this.ApplyFixBC();
-            this.ApplyForceBC();
-            % Постоянные для прямого интегрирования Ньюмарка.
-            delta = 0.5;
-            alfa = 0.25;
-            a0 = 1/(alfa*(tStep^2));
-            a1 = delta/(alfa*(tStep));
-            a2 = 1/(alfa*(tStep));
-            a3 = (1/(2*alfa))-1;
-            a4 = (delta/alfa)-1;
-            a5 = (tStep/2)*((delta/alfa)-2);
-            a6 = tStep*(1-delta);
-            a7 = delta*tStep;
-            % Формирование эффективной матрицы жесткости.
-            Khat = this.K+a0*this.M;
-            % Для каждого шага по времени считаем перемещения.
-            for i=1:this.tsNum
-                % Эффективная нагрузка.
-                Rhat = this.F(:,i)+this.M*(a0*dspNodal(:,i)+a2*speNodal(:,i)+...
-                    a3*acsNodal(:,i));
-                % Определяем перемещения для следующего шага по времени.
-                dspNodal(:,i+1) = Khat\Rhat;
-                % Определить ускорения.
-                acsNodal(:,i+1) = a0*(dspNodal(:,i+1)-dspNodal(:,i))-...
-                    a2*speNodal(:,i)-a3*acsNodal(:,i);
-                % Определить скорости.
-                speNodal(:,i+1) = speNodal(:,i)+a6*acsNodal(:,i)+...
-                    a7*acsNodal(:,i+1);
-            end
+        function result = RunTransient(this,tStep,tDur,node,dofToPlot)
+            options = struct('timeStep', tStep, 'duration', tDur);
+            model = this.GetAnalysisModel();
+            result = solveTransient(model, options);
             if this.plotting
-                % Длина сигнала.
-                L = this.tsNum;
-                % Вектор времени.
-                f = 0:tStep:this.tsNum*tStep;
-                % Печать перемещений.
-                subplot(2,1,1);
-                plot(f,dspNodal(node*dpn-dpn+dofToPlot,:));
-                title('Displacement (Selected DOF)');
-                % Спектр смещения. Узел, нужная степень свободы, на все шаги.
-                RealFFT = fft(dspNodal(this.mesh.iMnod(node,dofToPlot),:));
-                % Частота семплирования.
-                Fs = 1/tStep;
-                % Область графика.
-                f = Fs*(0:(L/2))/L;
-                %domainFFT = (0:nsmp-1)*Fs/nsmp;
-                % Модуль. Выбор половины частотной оси абсцисс.
-                P2 = abs(RealFFT/L);
-                P1 = P2(1:L/2+1);
-                P1(2:end-1) = 2*P1(2:end-1);
-                % График (subplot внизу).
-                subplot(2,1,2);
-                plot(f,P1);
-                title('Single Sided Amplitude Spectrum');
-                hold off;
+                globalDOF = this.mesh.iMnod(node, dofToPlot);
+                plotTransientResult(result, globalDOF);
             end
         end
     end
 end
-

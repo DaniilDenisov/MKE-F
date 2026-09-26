@@ -30,5 +30,17 @@ octave --no-gui --quiet --eval "addpath(pwd); run_octave_smoke_tests;"
 ```octave
 options = struct('verbose', false, 'plotting', false);
 problem = StructFEProblem('Case1ElementBeam.txt', options);
-problem.RunStatic();
+staticResult = problem.RunStatic();
+```
+
+Методы `RunStatic`, `RunModal` и `RunTransient` возвращают структуры с явно
+названными результатами и не изменяют собранные матрицы `K` и `M` или старое
+совместимое поле `F`. Численное ядро можно вызывать без печати и графиков:
+
+```octave
+model = problem.GetAnalysisModel();
+staticResult = solveStatic(model);
+modalResult = solveModal(model);
+dynamicResult = solveTransient(model, ...
+    struct('timeStep', 1e-4, 'duration', 1e-2));
 ```

@@ -165,16 +165,16 @@ symmetric to numerical precision.
 
 ### Commit 4 -- Introduce the functional analysis core
 
-- [ ] Separate immutable model data from per-run analysis data and returned results.
-- [ ] Add pure or side-effect-free solver functions for static, modal, and transient
+- [x] Separate immutable model data from per-run analysis data and returned results.
+- [x] Add pure or side-effect-free solver functions for static, modal, and transient
       analysis; let `StructFEProblem` delegate to them as a compatibility facade.
-- [ ] Stop modifying the stored unconstrained `K` and `M` during an analysis.
-- [ ] Build loads from a fresh zero vector/time-history for every run.
-- [ ] Ensure two identical consecutive calls give identical results.
-- [ ] Ensure static, modal, and transient analyses give the same result regardless
+- [x] Stop modifying the stored unconstrained `K` and `M` during an analysis.
+- [x] Build loads from a fresh zero vector/time-history for every run.
+- [x] Ensure two identical consecutive calls give identical results.
+- [x] Ensure static, modal, and transient analyses give the same result regardless
       of call order.
-- [ ] Return result structures with clearly named fields.
-- [ ] Move plotting and console formatting outside the numerical solver functions,
+- [x] Return result structures with clearly named fields.
+- [x] Move plotting and console formatting outside the numerical solver functions,
       while retaining them as optional convenience behaviour in the facade.
 
 Acceptance: no analysis method leaves `K`, `M`, or a stale `F` in a state that

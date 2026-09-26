@@ -19,6 +19,7 @@ runNamedTest('element matrices', @test_element_matrices);
 runNamedTest('single axial truss', @testSingleAxialTruss);
 runNamedTest('cantilever beam stiffness', @testCantileverBeam);
 runNamedTest('transient load histories', @testTransientLoadHistories);
+runNamedTest('functional analysis core', @testFunctionalAnalysisCore);
 
 fprintf('All verification tests passed.\n');
 clear cleanup;
@@ -136,28 +137,85 @@ stepCount = 4;
 % Нагрузка типа 10 в динамическом расчёте намеренно действует как прямоугольный
 % импульс длительностью в один шаг, а не как постоянная ступенчатая нагрузка.
 pulseProblem = StructFEProblem('CaseBeamDyn.txt', options);
-pulseProblem.ts = timeStep;
-pulseProblem.tsNum = stepCount;
-pulseProblem.F = zeros(size(pulseProblem.K, 1), stepCount);
-pulseProblem.ApplyForceBC();
-pulseExpected = zeros(size(pulseProblem.F));
+pulseLoads = buildTransientLoad(pulseProblem.GetAnalysisModel(), ...
+    timeStep, stepCount);
+pulseExpected = zeros(size(pulseLoads));
 pulseDOF = pulseProblem.mesh.iMnod(3, 2);
 pulseExpected(pulseDOF, 1) = -1000;
-assertClose(pulseProblem.F, pulseExpected, 0, 1e-12, ...
+assertClose(pulseLoads, pulseExpected, 0, 1e-12, ...
     'Type 10 transient load is not a one-step rectangular pulse.');
 
 % Для типа 11 в столбцах времени должны вычисляться значения F0*sin(2*pi*f*t).
 harmonicProblem = StructFEProblem('CaseBeamFreq.txt', options);
-harmonicProblem.ts = timeStep;
-harmonicProblem.tsNum = stepCount;
-harmonicProblem.F = zeros(size(harmonicProblem.K, 1), stepCount);
-harmonicProblem.ApplyForceBC();
-harmonicExpected = zeros(size(harmonicProblem.F));
+harmonicLoads = buildTransientLoad(harmonicProblem.GetAnalysisModel(), ...
+    timeStep, stepCount);
+harmonicExpected = zeros(size(harmonicLoads));
 harmonicDOF = harmonicProblem.mesh.iMnod(3, 2);
 time = (1:stepCount) * timeStep;
 harmonicExpected(harmonicDOF, :) = -1000 * sin(2*pi*135*time);
-assertClose(harmonicProblem.F, harmonicExpected, 1e-12, 1e-12, ...
+assertClose(harmonicLoads, harmonicExpected, 1e-12, 1e-12, ...
     'Type 11 harmonic load history is incorrect.');
+end
+
+function testFunctionalAnalysisCore()
+options = quietOptions();
+problem = StructFEProblem('CaseBeamDyn.txt', options);
+originalK = problem.K;
+originalM = problem.M;
+sentinelF = (1:size(problem.K, 1)).';
+problem.F = sentinelF;
+
+% Численное ядро принимает только структуру данных модели и возвращает
+% именованные результаты, не изменяя фасад или переданную структуру.
+model = problem.GetAnalysisModel();
+modelBefore = model;
+directStatic = solveStatic(model);
+directModal = solveModal(model);
+directTransient = solveTransient(model, ...
+    struct('timeStep', 1e-4, 'duration', 4e-4));
+assert(isequal(model, modelBefore));
+assert(isfield(directStatic, 'displacements'));
+assert(isfield(directStatic, 'reactions'));
+assert(isfield(directStatic, 'loadVector'));
+assert(isfield(directModal, 'frequenciesHz'));
+assert(isfield(directModal, 'modeShapes'));
+assert(isfield(directTransient, 'time'));
+assert(isfield(directTransient, 'displacements'));
+assert(isfield(directTransient, 'velocities'));
+assert(isfield(directTransient, 'accelerations'));
+assert(isfield(directTransient, 'loadHistory'));
+
+% Повторные вызовы и другой порядок видов анализа должны давать те же
+% результаты. Поля K, M и старое совместимое поле F остаются нетронутыми.
+staticFirst = problem.RunStatic();
+modalFirst = problem.RunModal();
+transientFirst = problem.RunTransient(1e-4, 4e-4, 3, 2);
+
+transientSecond = problem.RunTransient(1e-4, 4e-4, 3, 2);
+staticSecond = problem.RunStatic();
+modalSecond = problem.RunModal();
+
+assertClose(staticSecond.displacements, staticFirst.displacements, ...
+    1e-12, 1e-14, 'Static result depends on call order.');
+assertClose(staticSecond.reactions, staticFirst.reactions, ...
+    1e-12, 1e-10, 'Static reactions depend on call order.');
+assertClose(modalSecond.frequenciesHz, modalFirst.frequenciesHz, ...
+    1e-12, 1e-12, 'Modal result depends on call order.');
+assertClose(transientSecond.displacements, transientFirst.displacements, ...
+    1e-12, 1e-14, 'Transient result depends on call order.');
+assertClose(transientSecond.loadHistory, transientFirst.loadHistory, ...
+    0, 1e-12, 'Transient loads depend on call order.');
+
+assertClose(staticFirst.displacements, directStatic.displacements, ...
+    1e-12, 1e-14, 'Static facade and core results differ.');
+assertClose(modalFirst.frequenciesHz, directModal.frequenciesHz, ...
+    1e-12, 1e-12, 'Modal facade and core results differ.');
+assertClose(transientFirst.displacements, directTransient.displacements, ...
+    1e-12, 1e-14, 'Transient facade and core results differ.');
+
+assert(isequal(problem.K, originalK));
+assert(isequal(problem.M, originalM));
+assert(isequal(problem.F, sentinelF));
 end
 
 function options = quietOptions()
