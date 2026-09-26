@@ -78,6 +78,65 @@ The chapters will be:
 
 Equations will use ordinary HTML, Unicode, `<sub>`, `<sup>`, tables, and `<pre>` blocks. No CDN, MathJax, web font, build generator, or internet connection will be required.
 
+## Sources, Bibliography, and Project History
+
+Each technical chapter will end with two clearly separated groups:
+
+- **Implementation links** to the current repository source and executable labs.
+- **Theory and historical sources** with authors, full title, edition/year where
+  known, and the relevant chapter or page numbers.
+
+External sources are supplementary: the tutorial must remain understandable and
+executable offline. Before publication, verify bibliographic details, page numbers,
+and the current official URL for every online source. If an old link is no longer
+available, keep the bibliographic reference but do not publish a broken link.
+
+The element-matrix chapter will cite:
+
+- O. C. Zienkiewicz, R. L. Taylor, and J. Z. Zhu, *The Finite Element
+  Method: Its Basis and Fundamentals*, 6th ed. (2005), p. 566, for the
+  consistent-mass discussion.
+- R. D. Cook, D. S. Malkus, and M. E. Plesha, *Concepts and Applications
+  of Finite Element Analysis*, 3rd ed., p. 113, for element stiffness
+  matrices.
+- Young W. Kwon and Hyochoong Bang, *The Finite Element Method Using
+  MATLAB*, p. 201 for the truss element and p. 261 for the beam element.
+- A. B. Kaplun, E. M. Morozov, and M. A. Olferyeva, *ANSYS в руках
+  инженера*, as a Russian-language source for truss and beam matrices.
+- Carlos A. Felippa's University of Colorado materials, *Matrix Finite
+  Element Methods in Dynamics*, including the formerly linked Chapter 16.
+  Locate a current official URL before adding an external link to the site.
+
+The Newmark chapter will cite K.-J. Bathe and E. L. Wilson, *Численные
+методы анализа и метод конечных элементов* (Russian edition, 1982), Chapter
+8 and p. 271 for the Newmark algorithm. Exact edition-dependent pagination
+must be stated.
+
+It will also cite Henri P. Gavin, [*Numerical Integration in Structural
+Dynamics*](https://people.duke.edu/~hpgavin/StructuralDynamics/NumericalIntegration.pdf),
+CEE 541, Duke University, especially the section “The Newmark-β method —
+incremental formulation” and equations (22)--(30). Record the document's
+revision date because these course notes are updated in place. Use this source
+to cross-check the meanings of `beta` and `gamma`, the average-acceleration
+choice `beta=1/4`, `gamma=1/2`, the stability statement, and the displacement,
+velocity, and acceleration update equations. Explain explicitly that MKE-F is
+the undamped linear special case (`C=0`, no nonlinear restoring term), and map
+the notation in the notes to the variables returned by `solveTransient`.
+
+The following author articles are primary historical sources for MKE-F and
+will be linked from the relevant chapters and the architecture/history chapter:
+
+- [Матрица масс и матрица жесткости](https://xn--h1acbaaqgcqcheicn.xn--p1ai/2017/12/20/%D0%BC%D0%B0%D1%82%D1%80%D0%B8%D1%86%D0%B0-%D0%BC%D0%B0%D1%81%D1%81-%D0%B8-%D0%BC%D0%B0%D1%82%D1%80%D0%B8%D1%86%D0%B0-%D0%B6%D0%B5%D1%81%D1%82%D0%BA%D0%BE%D1%81%D1%82%D0%B8/)
+  for the original element/mass-matrix discussion and its bibliography.
+- [Расчёт рамы в МКЭ-Ф](https://xn--h1acbaaqgcqcheicn.xn--p1ai/2017/12/19/%D1%80%D0%B0%D1%81%D1%87%D0%B5%D1%82-%D1%80%D0%B0%D0%BC%D1%8B-%D0%B2-%D0%BC%D0%BA%D1%8D-%D1%84/)
+  for the origin of the frame/ANSYS comparison case.
+- [МКЭ-Ф — метод Ньюмарка](https://xn--h1acbaaqgcqcheicn.xn--p1ai/2017/11/25/%D0%BC%D0%BA%D1%8D-%D1%84-%D0%BC%D0%B5%D1%82%D0%BE%D0%B4-%D0%BD%D1%8C%D1%8E%D0%BC%D0%B0%D1%80%D0%BA%D0%B0/)
+  for the historical v0.4 transient-analysis implementation.
+
+Every historical article must be labelled with the version it describes. Old
+MATLAB class names, algorithms, and numerical discrepancies are provenance, not
+documentation of the current Octave implementation and not regression oracles.
+
 ## Executable Octave Labs
 
 Add assertion-backed functions under `reference/examples/`:
@@ -134,6 +193,8 @@ Suggested message: `Add offline FEM reference foundation`
   and assertions.
 - Link every discussed production function to its repository source using local
   relative links.
+- Add the verified element-matrix bibliography and clearly label the original
+  MKE-F matrix article as historical material for version 0.6.0.
 - Verify both examples directly in quiet and verbose modes, open all four HTML
   pages offline, and run the existing `run_octave_tests` suite.
 
@@ -157,6 +218,10 @@ Suggested message: `Add modal and Newmark tutorials and labs`
 - Cover the reduced generalized eigenproblem, mode expansion/scaling, residuals,
   initial acceleration, effective stiffness, time-grid convention, pulse
   discretization, convergence, energy interpretation, and spectrum output.
+- Add the Bathe--Wilson citation with its edition-specific chapter/page, the
+  current official Duke/Gavin notes with section and equation numbers, and a
+  historical link to the MKE-F v0.4 Newmark article. Add the Felippa material
+  only after locating a working official URL.
 - Assert modal residuals and restrained DOFs, and compare the SDOF history with an
   analytical solution using explicit tolerances.
 - Run the six accumulated examples and the existing test suite.
@@ -180,6 +245,9 @@ Suggested message: `Migrate architecture and input documentation`
 
 - Add chapter 9: architecture, verification, solver purity, sparse assembly,
   parser validation, headless operation, and troubleshooting.
+- Explain the relationship between the 2017 MATLAB versions described in the
+  author articles and the current Octave architecture; do not carry obsolete
+  class/API descriptions into the current usage instructions.
 - Map every completed `ToDo.md` item to the implementing source file and relevant
   regression test. Only then remove `ToDo.md` in this commit.
 - Add chapter 10 by migrating and revising every section of

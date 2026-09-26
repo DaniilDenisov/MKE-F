@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Статический расчёт в МКЭ-Ф: редуцированная система, полный вектор перемещений, реакции и проверка равновесия.">
+  <title>5. Статический расчёт — МКЭ-Ф</title>
+  <link rel="stylesheet" href="assets/reference.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">К содержанию</a>
+  <header class="site-header">
+    <div class="site-header__inner">
+      <p class="eyebrow">Student FEM Reference · Глава 5</p>
+      <p class="site-title">Статический расчёт</p>
+      <p class="site-subtitle">От уравнения равновесия на свободных СС до полного вектора перемещений и опорных реакций.</p>
+    </div>
+  </header>
+
+  <div class="layout">
+    <nav class="contents" aria-label="Оглавление справочника">
+      <h2>Оглавление</h2>
+      <ol>
+        <li><a href="01-model-dofs.html">Модель, узлы, элементы и СС</a></li>
+        <li><a href="02-element-matrices.html">Матрицы элементов</a></li>
+        <li><a href="03-transformation-assembly.html">Преобразование и сборка</a></li>
+        <li><a href="04-boundary-loads.html">Граничные условия и нагрузки</a></li>
+        <li><a aria-current="page" href="05-static-analysis.html">Статический расчёт</a></li>
+      </ol>
+    </nav>
+
+    <main class="chapter" id="main">
+      <span class="chapter-number">Глава 5</span>
+      <h1>Решение, реакции и равновесие</h1>
+      <p class="lead">В линейной статике требуется найти такие узловые перемещения, при которых внутренние упругие силы уравновешивают внешнюю нагрузку. Нулевые заданные перемещения позволяют решить только свободную часть системы, не изменяя полную матрицу жёсткости.</p>
+
+      <section aria-labelledby="equation-title">
+        <h2 id="equation-title">Полная и редуцированная системы</h2>
+        <p>Исходное уравнение:</p>
+        <p class="equation">K u = F + R</p>
+        <p>Здесь <strong>R</strong> — реакции связей. Разделим строки и столбцы на свободные <em>f</em> и закреплённые <em>c</em>:</p>
+        <pre><code>[ Kff  Kfc ] [ uf ] = [ Ff ] + [  0 ]
+[ Kcf  Kcc ] [ uc ]   [ Fc ]   [ Rc ]</code></pre>
+        <p>Для реализованных однородных опор <strong>u<sub>c</sub> = 0</strong>. Первая строка превращается в систему для неизвестных свободных перемещений:</p>
+        <p class="equation">K<sub>ff</sub> u<sub>f</sub> = F<sub>f</sub></p>
+        <p>Нагрузки, приложенные к закреплённым СС, не входят в правую часть редуцированной системы, но сохраняются в полном <strong>F</strong> и учитываются при вычислении реакций.</p>
+      </section>
+
+      <section aria-labelledby="validation-title">
+        <h2 id="validation-title">Проверка перед решением</h2>
+        <p><a href="../validateReducedSystem.m"><code>validateReducedSystem</code></a> проверяет конечность коэффициентов и положительную определённость симметризованной <strong>K<sub>ff</sub></strong> разложением Холецкого. Неуспех обычно означает одно из двух:</p>
+        <ul>
+          <li>модель может перемещаться как твёрдое тело из-за недостаточных опор;</li>
+          <li>внутри конструкции остался механизм, например узел соединён только поперечными направлениями ферменных стержней.</li>
+        </ul>
+        <p>Полностью закреплённая модель допустима в статике: свободных СС нет, все перемещения нулевые, а приложенные нагрузки полностью воспринимаются реакциями.</p>
+      </section>
+
+      <section aria-labelledby="expand-title">
+        <h2 id="expand-title">Расширение до полного вектора</h2>
+        <p>После решения редуцированной системы создаётся нулевой вектор длиной <em>n</em>, и найденные компоненты записываются по адресам <code>freeDOFs</code>:</p>
+        <pre><code>u = zeros(numberOfDOFs, 1);
+u(freeDOFs) = K(freeDOFs, freeDOFs) \ F(freeDOFs);</code></pre>
+        <p>Полный вектор необходим для восстановления деформаций элементов, реакций и результатов в любом узле. Закреплённые компоненты остаются равными точно нулю.</p>
+      </section>
+
+      <section aria-labelledby="reactions-title">
+        <h2 id="reactions-title">Реакции и глобальное равновесие</h2>
+        <p>Реакции вычисляются после расширения решения из полного уравнения:</p>
+        <p class="equation">R = K u − F</p>
+        <p>В идеальном решении компоненты <strong>R</strong> на свободных СС равны нулю. На закреплённых СС они показывают силы и моменты, которыми опоры действуют на модель.</p>
+        <p>Одного малого невязочного вектора <strong>Ku − F − R</strong> недостаточно: он проверяет алгебру, но не знаки и расположение внешних сил. Поэтому <a href="../calculateStaticEquilibrium.m"><code>calculateStaticEquilibrium</code></a> независимо суммирует:</p>
+        <p class="equation">ΣF<sub>x</sub> = 0, &nbsp; ΣF<sub>y</sub> = 0, &nbsp; ΣM<sub>z</sub> = 0</p>
+        <p>Моменты включают плечи узловых сил <em>xF<sub>y</sub> − yF<sub>x</sub></em> и собственные узловые моменты <em>M<sub>z</sub></em> рам.</p>
+      </section>
+
+      <section aria-labelledby="checks-title">
+        <h2 id="checks-title">Две аналитические проверки</h2>
+        <h3>Растянутый стержень</h3>
+        <p>Для стержня длиной <em>L</em>, площади <em>A</em> и модуля Юнга <em>E</em> под осевой силой <em>F</em>:</p>
+        <p class="equation">u = FL/(EA), &nbsp; R<sub>x</sub> = −F</p>
+        <p>Эта задача проверяет осевую жёсткость, карту СС, редукцию, знак реакции и глобальный баланс.</p>
+
+        <h3>Консоль Эйлера–Бернулли</h3>
+        <p>Для консоли длиной <em>L</em> под поперечной силой <em>P</em> на свободном конце:</p>
+        <p class="equation">v = PL<sup>3</sup>/(3EI), &nbsp; θ = PL<sup>2</sup>/(2EI)</p>
+        <p class="equation">R<sub>y</sub> = −P, &nbsp; M<sub>z</sub> = −PL</p>
+        <p>Один рамный элемент воспроизводит это решение точно для узловой концевой силы. Проверка находится в <a href="../tests/run_verification_tests.m"><code>tests/run_verification_tests.m</code></a>.</p>
+      </section>
+
+      <section aria-labelledby="practice-title">
+        <h2 id="practice-title">Лабораторная 03</h2>
+        <div class="callout">
+          <span class="callout__title">Как запустить</span>
+          <p><code>addpath(fullfile(pwd,"reference","examples")); r = example_03_static_bar();</code></p>
+        </div>
+        <div class="callout callout--inspect">
+          <span class="callout__title">Что исследовать</span>
+          <p>Сравните <code>r.reducedStiffness</code>, <code>r.reducedLoad</code> и полный <code>r.displacements</code>. Единственная свободная СС имеет глобальный номер 3.</p>
+        </div>
+        <div class="callout">
+          <span class="callout__title">Ожидаемый аналитический результат</span>
+          <p>При <em>F = 1000 Н</em>, <em>L = 2 м</em>, <em>A = 0,01 м²</em> и <em>E = 200 ГПа</em> перемещение равно 10<sup>−6</sup> м, а горизонтальная реакция — −1000 Н.</p>
+        </div>
+        <div class="callout callout--warning">
+          <span class="callout__title">Частые ошибки</span>
+          <p>Не удаляйте строки полной матрицы навсегда и не принимайте <strong>Ku</strong> за реакцию: из внутренних узловых сил нужно вычесть полный вектор внешней нагрузки.</p>
+        </div>
+        <div class="callout callout--inspect">
+          <span class="callout__title">Предлагаемый эксперимент</span>
+          <p>Удвойте <em>L</em>, затем отдельно <em>A</em> и <em>E</em>. До запуска предскажите изменение перемещения; реакция при заданной силе должна остаться прежней.</p>
+        </div>
+      </section>
+
+      <section class="source-list" aria-labelledby="sources-title">
+        <h2 id="sources-title">Исходный код главы</h2>
+        <ul>
+          <li><a href="../solveStatic.m"><code>solveStatic.m</code></a> — полный порядок статического решения;</li>
+          <li><a href="../partitionDOFs.m"><code>partitionDOFs.m</code></a> — свободные и закреплённые индексы;</li>
+          <li><a href="../validateReducedSystem.m"><code>validateReducedSystem.m</code></a> — обнаружение механизмов;</li>
+          <li><a href="../calculateStaticEquilibrium.m"><code>calculateStaticEquilibrium.m</code></a> — баланс сил и момента;</li>
+          <li><a href="examples/example_03_static_bar.m"><code>example_03_static_bar.m</code></a> — исполняемая лабораторная.</li>
+        </ul>
+      </section>
+    </main>
+  </div>
+
+  <nav class="page-nav" aria-label="Навигация между главами">
+    <a href="04-boundary-loads.html"><span class="page-nav__label">Назад</span>← 4. Граничные условия и нагрузки</a>
+    <a href="index.html"><span class="page-nav__label">К началу</span>Оглавление справочника →</a>
+  </nav>
+
+  <footer class="site-footer">
+    <div class="site-footer__inner"><p>МКЭ-Ф · автономный учебный справочник · глава 5 из 5 в текущем разделе</p></div>
+  </footer>
+</body>
+</html>

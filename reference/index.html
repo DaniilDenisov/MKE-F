@@ -24,6 +24,8 @@
         <li><a href="01-model-dofs.html">Модель, узлы, элементы и СС</a></li>
         <li><a href="02-element-matrices.html">Матрицы элементов</a></li>
         <li><a href="03-transformation-assembly.html">Преобразование и сборка</a></li>
+        <li><a href="04-boundary-loads.html">Граничные условия и нагрузки</a></li>
+        <li><a href="05-static-analysis.html">Статический расчёт</a></li>
       </ol>
     </nav>
 
@@ -33,7 +35,7 @@
       <p class="lead">Этот справочник связывает основные идеи метода конечных элементов с функциями проекта МКЭ-Ф. Он работает без интернета, внешних шрифтов, MathJax и генератора сайта.</p>
 
       <section aria-labelledby="route-title">
-        <h2 id="route-title">Маршрут первых трёх глав</h2>
+        <h2 id="route-title">Маршрут первых пяти глав</h2>
         <div class="chapter-grid">
           <article class="card">
             <h3><a href="01-model-dofs.html">1. Модель и степени свободы</a></h3>
@@ -48,6 +50,14 @@
             <p>Повернём матрицы в глобальные оси и соберём их в разреженные матрицы системы по карте степеней свободы.</p>
           </article>
           <article class="card">
+            <h3><a href="04-boundary-loads.html">4. Граничные условия и нагрузки</a></h3>
+            <p>Разделим свободные и закреплённые СС, сопоставим силы с перемещениями и построим четыре вида истории нагрузки.</p>
+          </article>
+          <article class="card">
+            <h3><a href="05-static-analysis.html">5. Статический расчёт</a></h3>
+            <p>Решим редуцированную систему, восстановим полный вектор, реакции и проверим глобальное равновесие.</p>
+          </article>
+          <article class="card">
             <h3>Принцип лабораторных</h3>
             <p>Каждый пример вызывает функции проекта, возвращает структуру для экспериментов и останавливается, если нарушен физический или численный инвариант.</p>
           </article>
@@ -59,7 +69,9 @@
         <p>Откройте терминал в корне репозитория и добавьте каталог примеров в путь Octave:</p>
         <pre><code>addpath(fullfile(pwd, "reference", "examples"));
 r1 = example_01_element_matrices();
-r2 = example_02_sparse_assembly();</code></pre>
+r2 = example_02_sparse_assembly();
+r3 = example_03_static_bar();
+r4 = example_04_load_histories();</code></pre>
 
         <div class="callout">
           <span class="callout__title">Как запустить</span>
@@ -109,6 +121,8 @@ r2 = example_02_sparse_assembly();</code></pre>
           <li><a href="../assembleGlobalMatrices.m"><code>assembleGlobalMatrices.m</code></a> — разреженная сборка;</li>
           <li><a href="examples/example_01_element_matrices.m"><code>example_01_element_matrices.m</code></a> — лабораторная по матрицам;</li>
           <li><a href="examples/example_02_sparse_assembly.m"><code>example_02_sparse_assembly.m</code></a> — лабораторная по сборке.</li>
+          <li><a href="examples/example_03_static_bar.m"><code>example_03_static_bar.m</code></a> — лабораторная по статике;</li>
+          <li><a href="examples/example_04_load_histories.m"><code>example_04_load_histories.m</code></a> — лабораторная по нагрузкам.</li>
         </ul>
       </section>
     </main>

@@ -24,6 +24,8 @@
         <li><a href="01-model-dofs.html">Модель, узлы, элементы и СС</a></li>
         <li><a href="02-element-matrices.html">Матрицы элементов</a></li>
         <li><a aria-current="page" href="03-transformation-assembly.html">Преобразование и сборка</a></li>
+        <li><a href="04-boundary-loads.html">Граничные условия и нагрузки</a></li>
+        <li><a href="05-static-analysis.html">Статический расчёт</a></li>
       </ol>
     </nav>
 
@@ -33,7 +35,7 @@
       <p class="lead">Формулы элемента проще записать вдоль его собственной оси. Но узлы разных элементов должны иметь один общий базис. Матрица преобразования и карта СС решают эти две разные задачи.</p>
 
       <div class="callout callout--inspect">
-        <span class="callout__title">Что такое карта СС</span>
+        <span class="callout__title">Что такое карта степеней свободы</span>
         <p><strong>Карта степеней свободы</strong> — это упорядоченный список глобальных номеров СС элемента. В программе он хранится в <code>element.dofs</code> и показывает, в какие строки и столбцы глобальных матриц нужно добавить каждый коэффициент элементной матрицы. Матрица преобразования меняет базис компонент, а карта СС определяет их адреса в общей системе.</p>
       </div>
 
@@ -133,11 +135,11 @@ globalK = sparse(rows, columns, stiffnessValues, nDOF, nDOF);</code></pre>
 
   <nav class="page-nav" aria-label="Навигация между главами">
     <a href="02-element-matrices.html"><span class="page-nav__label">Назад</span>← 2. Матрицы элементов</a>
-    <a href="index.html"><span class="page-nav__label">К началу</span>Оглавление справочника →</a>
+    <a href="04-boundary-loads.html"><span class="page-nav__label">Далее</span>4. Граничные условия и нагрузки →</a>
   </nav>
 
   <footer class="site-footer">
-    <div class="site-footer__inner"><p>МКЭ-Ф · автономный учебный справочник · глава 3 из 3 в текущем разделе</p></div>
+    <div class="site-footer__inner"><p>МКЭ-Ф · автономный учебный справочник · глава 3 из 5 в текущем разделе</p></div>
   </footer>
 </body>
 </html>
