@@ -1,12 +1,17 @@
 function result = solveModal(model)
 %SOLVEMODAL Solve the undamped generalized eigenproblem without side effects.
 
-[constrainedK, constrainedM, fixedDOFs] = ...
-    applyFixedBoundaryConditions(model, 'modal');
-[modeShapes, eigenvalueMatrix] = eig(constrainedK, constrainedM);
+[fixedDOFs, freeDOFs] = partitionDOFs(model);
+reducedK = model.stiffness(freeDOFs, freeDOFs);
+reducedM = model.mass(freeDOFs, freeDOFs);
+validateReducedSystem(reducedK, reducedM, 'modal');
+
+[reducedModeShapes, eigenvalueMatrix] = eig(reducedK, reducedM);
 eigenvalues = diag(eigenvalueMatrix);
 [eigenvalues, order] = sort(eigenvalues);
-modeShapes = modeShapes(:, order);
+reducedModeShapes = reducedModeShapes(:, order);
+modeShapes = zeros(model.numberOfDOFs, numel(freeDOFs));
+modeShapes(freeDOFs, :) = reducedModeShapes;
 angularFrequencies = sqrt(eigenvalues);
 
 result = struct();
@@ -16,4 +21,5 @@ result.angularFrequenciesRadPerSec = angularFrequencies;
 result.eigenvalues = eigenvalues;
 result.modeShapes = modeShapes;
 result.fixedDOFs = fixedDOFs;
+result.freeDOFs = freeDOFs;
 end

@@ -19,12 +19,14 @@ end
 
 stepCount = fix(duration / timeStep);
 loads = buildTransientLoad(model, timeStep, stepCount);
-[constrainedK, constrainedM, fixedDOFs] = ...
-    applyFixedBoundaryConditions(model, 'transient');
+[fixedDOFs, freeDOFs] = partitionDOFs(model);
+reducedK = model.stiffness(freeDOFs, freeDOFs);
+reducedM = model.mass(freeDOFs, freeDOFs);
+validateReducedSystem(reducedK, reducedM, 'transient');
 
-accelerations = zeros(model.numberOfDOFs, stepCount + 1);
-velocities = zeros(model.numberOfDOFs, stepCount + 1);
-displacements = zeros(model.numberOfDOFs, stepCount + 1);
+reducedAccelerations = zeros(numel(freeDOFs), stepCount + 1);
+reducedVelocities = zeros(numel(freeDOFs), stepCount + 1);
+reducedDisplacements = zeros(numel(freeDOFs), stepCount + 1);
 
 gamma = 0.5;
 beta = 0.25;
@@ -33,19 +35,30 @@ a2 = 1 / (beta * timeStep);
 a3 = 1 / (2 * beta) - 1;
 a6 = timeStep * (1 - gamma);
 a7 = gamma * timeStep;
-effectiveK = constrainedK + a0 * constrainedM;
+effectiveK = reducedK + a0 * reducedM;
 
 for step = 1:stepCount
-    effectiveLoad = loads(:, step) + constrainedM * ...
-        (a0 * displacements(:, step) + ...
-         a2 * velocities(:, step) + a3 * accelerations(:, step));
-    displacements(:, step + 1) = effectiveK \ effectiveLoad;
-    accelerations(:, step + 1) = ...
-        a0 * (displacements(:, step + 1) - displacements(:, step)) - ...
-        a2 * velocities(:, step) - a3 * accelerations(:, step);
-    velocities(:, step + 1) = velocities(:, step) + ...
-        a6 * accelerations(:, step) + a7 * accelerations(:, step + 1);
+    effectiveLoad = loads(freeDOFs, step) + reducedM * ...
+        (a0 * reducedDisplacements(:, step) + ...
+         a2 * reducedVelocities(:, step) + ...
+         a3 * reducedAccelerations(:, step));
+    reducedDisplacements(:, step + 1) = effectiveK \ effectiveLoad;
+    reducedAccelerations(:, step + 1) = ...
+        a0 * (reducedDisplacements(:, step + 1) - ...
+        reducedDisplacements(:, step)) - ...
+        a2 * reducedVelocities(:, step) - ...
+        a3 * reducedAccelerations(:, step);
+    reducedVelocities(:, step + 1) = reducedVelocities(:, step) + ...
+        a6 * reducedAccelerations(:, step) + ...
+        a7 * reducedAccelerations(:, step + 1);
 end
+
+accelerations = zeros(model.numberOfDOFs, stepCount + 1);
+velocities = zeros(model.numberOfDOFs, stepCount + 1);
+displacements = zeros(model.numberOfDOFs, stepCount + 1);
+accelerations(freeDOFs, :) = reducedAccelerations;
+velocities(freeDOFs, :) = reducedVelocities;
+displacements(freeDOFs, :) = reducedDisplacements;
 
 result = struct();
 result.analysisType = 'transient';
@@ -59,4 +72,5 @@ result.stepCount = stepCount;
 result.duration = stepCount * timeStep;
 result.requestedDuration = duration;
 result.fixedDOFs = fixedDOFs;
+result.freeDOFs = freeDOFs;
 end

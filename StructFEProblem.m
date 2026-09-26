@@ -75,102 +75,10 @@ classdef StructFEProblem < handle
             obj.F = zeros(obj.mesh.numberOfNodes*dofPerNode,1);
 
         end
-        % Метод наложения ГУ заделки. Действует на ММ и МЖ.
-        % Годен для статики, динамики и собств. колебаний.
-        function ApplyFixBC(this)
-            BCs = this.mesh.allFixBCs;
-            BCtotal = this.mesh.numberOfFixBCs;
-            for i=1:BCtotal
-                % Взять ГУ
-                currBC = BCs(i,:);
-                % Взять тип ГУ.
-                typeBC = currBC(1);
-                % Взять номер узла.
-                nnumBC = currBC(2);
-                % Вычислить номер степени свободы в глоб. МЖ, MM, ВПЧ.
-                GLDOFs = this.mesh.iMnod(nnumBC,:);
-                % Применить ГУ к МЖ и ММ.
-                % Заделка всех СС. Обнулить строки, столбцы и записать 1 на диагональ.
-                if (typeBC==1)
-                    for dofNum=1:this.mesh.dofPerNode
-                        % Матрица масс.
-                        this.M(GLDOFs(dofNum),:)=0; % Обнулить строки.
-                        this.M(:,GLDOFs(dofNum))=0; % Обнулить столбцы.
-                        this.M(GLDOFs(dofNum),GLDOFs(dofNum))=1; % Единица.
-                        % Матрица жесткости.
-                        this.K(GLDOFs(dofNum),:)=0;
-                        this.K(:,GLDOFs(dofNum))=0;
-                        % Если расчет статический, то МЖ нельзя оставлять
-                        % сингулярной (с нулями без единичек на диагонали)
-                        if this.ts==0
-                            this.K(GLDOFs(dofNum),GLDOFs(dofNum))=1;
-                        end
-                    end
-                end
-                % Заделка кроме гор. СС, обнулить все, кроме первой СС.
-                if (typeBC==2)
-                    for dofNum=1:this.mesh.dofPerNode
-                        % Пропускать первую СС.
-                        if dofNum==1
-                            continue
-                        end
-                        % Матрица масс.
-                        this.M(GLDOFs(dofNum),:)=0;
-                        this.M(:,GLDOFs(dofNum))=0;
-                        this.M(GLDOFs(dofNum),GLDOFs(dofNum))=1;
-                        % Матрица жесткости.
-                        this.K(GLDOFs(dofNum),:)=0;
-                        this.K(:,GLDOFs(dofNum))=0;
-                        % Если расчет статический, то МЖ нельзя оставлять
-                        % сингулярной (с нулями без единичек на диагонали)
-                        if this.ts==0
-                            this.K(GLDOFs(dofNum),GLDOFs(dofNum))=1;
-                        end
-                    end
-                end
-                % Заделка кроме верт. СС, обнулить все, кроме второй СС.
-                if (typeBC==3)
-                    for dofNum=1:this.mesh.dofPerNode
-                        % Пропускать вторую СС.
-                        if dofNum==2
-                            continue
-                        end
-                        % Матрица масс.
-                        this.M(GLDOFs(dofNum),:)=0;
-                        this.M(:,GLDOFs(dofNum))=0;
-                        this.M(GLDOFs(dofNum),GLDOFs(dofNum))=1;
-                        % Матрица жесткости.
-                        this.K(GLDOFs(dofNum),:)=0;
-                        this.K(:,GLDOFs(dofNum))=0;
-                        % Если расчет статический, то МЖ нельзя оставлять
-                        % сингулярной (с нулями без единичек на диагонали)
-                        if this.ts==0
-                            this.K(GLDOFs(dofNum),GLDOFs(dofNum))=1;
-                        end
-                    end
-                end
-                % Заделка всех кроме угла поворота.
-                if (typeBC==4)
-                    for dofNum=1:this.mesh.dofPerNode
-                        % Пропускать третью СС.
-                        if dofNum==3
-                            continue
-                        end
-                        % Матрица масс.
-                        this.M(GLDOFs(dofNum),:)=0;
-                        this.M(:,GLDOFs(dofNum))=0;
-                        this.M(GLDOFs(dofNum),GLDOFs(dofNum))=1;
-                        % Матрица жесткости.
-                        this.K(GLDOFs(dofNum),:)=0;
-                        this.K(:,GLDOFs(dofNum))=0;
-                        % Если расчет статический, то МЖ нельзя оставлять
-                        % сингулярной (с нулями без единичек на диагонали)
-                        if this.ts==0
-                            this.K(GLDOFs(dofNum),GLDOFs(dofNum))=1;
-                        end
-                    end
-                end
-            end
+        % Совместимый метод возвращает разбиение СС, не изменяя МЖ и ММ.
+        function [fixedDOFs, freeDOFs] = ApplyFixBC(this)
+            model = this.GetAnalysisModel();
+            [fixedDOFs, freeDOFs] = partitionDOFs(model);
         end
         % Метод наложения ГУ усилий.
         function ApplyForceBC(this)

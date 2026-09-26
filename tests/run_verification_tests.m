@@ -20,6 +20,8 @@ runNamedTest('single axial truss', @testSingleAxialTruss);
 runNamedTest('cantilever beam stiffness', @testCantileverBeam);
 runNamedTest('transient load histories', @testTransientLoadHistories);
 runNamedTest('functional analysis core', @testFunctionalAnalysisCore);
+runNamedTest('free-DOF reduction', @testFreeDOFReduction);
+runNamedTest('constraint validation', @testConstraintValidation);
 
 fprintf('All verification tests passed.\n');
 clear cleanup;
@@ -73,20 +75,21 @@ youngsModulus = 2e11;
 density = 7850;
 force = 1000;
 
-loadVector = zeros(4, 1);
-loadVector(3) = force;
-displacement = zeros(4, 1);
-displacement(3) = problem.K(3, 3) \ loadVector(3);
+result = problem.RunStatic();
+loadVector = result.loadVector;
+displacement = result.displacements;
 
 expectedDisplacement = force * elementLength / (area * youngsModulus);
 assertClose(displacement(3), expectedDisplacement, 1e-12, 1e-15, ...
     'Axial displacement does not match FL/(EA).');
 
-reaction = problem.K * displacement - loadVector;
+reaction = result.reactions;
 assertClose(reaction(1), -force, 1e-12, 1e-9, ...
     'Axial support reaction is incorrect.');
 assertClose(reaction(1) + force, 0, 0, 1e-9, ...
     'Axial forces are not in equilibrium.');
+assertClose(result.equilibriumResidual, zeros(3, 1), 0, 1e-9, ...
+    'The axial bar is not in global equilibrium.');
 
 xDOFs = [1 3];
 assembledMassX = sum(sum(problem.M(xDOFs, xDOFs)));
@@ -106,12 +109,9 @@ youngsModulus = 2e11;
 momentOfInertia = 0.33e-8;
 force = 100;
 
-loadVector = zeros(6, 1);
-loadVector(5) = force;
-freeDOFs = 4:6;
-displacement = zeros(6, 1);
-displacement(freeDOFs) = ...
-    problem.K(freeDOFs, freeDOFs) \ loadVector(freeDOFs);
+result = problem.RunStatic();
+loadVector = result.loadVector;
+displacement = result.displacements;
 
 expectedDeflection = force * elementLength^3 / ...
     (3 * youngsModulus * momentOfInertia);
@@ -122,11 +122,13 @@ assertClose(displacement(5), expectedDeflection, 1e-11, 1e-14, ...
 assertClose(displacement(6), expectedRotation, 1e-11, 1e-14, ...
     'Cantilever tip rotation does not match PL^2/(2EI).');
 
-reaction = problem.K * displacement - loadVector;
+reaction = result.reactions;
 assertClose(reaction(2), -force, 1e-11, 1e-9, ...
     'Cantilever shear reaction is incorrect.');
 assertClose(reaction(3), -force * elementLength, 1e-11, 1e-9, ...
     'Cantilever moment reaction is incorrect.');
+assertClose(result.equilibriumResidual, zeros(3, 1), 0, 1e-9, ...
+    'The cantilever is not in global equilibrium.');
 end
 
 function testTransientLoadHistories()
@@ -218,6 +220,83 @@ assert(isequal(problem.M, originalM));
 assert(isequal(problem.F, sentinelF));
 end
 
+function testFreeDOFReduction()
+options = quietOptions();
+problem = StructFEProblem('CaseBeam.txt', options);
+originalK = problem.K;
+originalM = problem.M;
+model = problem.GetAnalysisModel();
+
+[fixedDOFs, freeDOFs] = partitionDOFs(model);
+assert(isequal(fixedDOFs, 1:5));
+assert(isequal(freeDOFs, 6:9));
+
+% Совместимый метод теперь только возвращает разбиение и не редактирует матрицы.
+[facadeFixedDOFs, facadeFreeDOFs] = problem.ApplyFixBC();
+assert(isequal(facadeFixedDOFs, fixedDOFs));
+assert(isequal(facadeFreeDOFs, freeDOFs));
+assert(isequal(problem.K, originalK));
+assert(isequal(problem.M, originalM));
+
+modalResult = problem.RunModal();
+assert(numel(modalResult.frequenciesHz) == numel(freeDOFs));
+assert(all(modalResult.frequenciesHz > 0));
+assert(all(all(modalResult.modeShapes(fixedDOFs, :) == 0)));
+
+transientResult = problem.RunTransient(1e-4, 4e-4, 3, 2);
+assert(all(all(transientResult.displacements(fixedDOFs, :) == 0)));
+assert(all(all(transientResult.velocities(fixedDOFs, :) == 0)));
+assert(all(all(transientResult.accelerations(fixedDOFs, :) == 0)));
+
+% Нагрузка на заделанную СС не входит в редуцированную систему, но должна
+% сохраниться в полном векторе нагрузки и учитываться в реакции.
+cantilever = StructFEProblem('Case1ElementBeam.txt', options);
+loadedSupportModel = cantilever.GetAnalysisModel();
+loadedSupportModel.forceBoundaryConditions(end + 1, :) = ...
+    [10, 1, 25, -30, 0];
+staticResult = solveStatic(loadedSupportModel);
+assertClose(staticResult.loadVector(1:2), [25; -30], 0, 1e-12, ...
+    'Loads on restrained DOFs were not preserved.');
+assert(all(staticResult.displacements(staticResult.fixedDOFs) == 0));
+assertClose(staticResult.reactions(staticResult.freeDOFs), ...
+    zeros(numel(staticResult.freeDOFs), 1), 0, 1e-9, ...
+    'Free DOFs contain non-zero reactions.');
+assertClose(staticResult.equilibriumResidual, zeros(3, 1), ...
+    0, 1e-9, 'Static loads and reactions are not in equilibrium.');
+end
+
+function testConstraintValidation()
+options = quietOptions();
+problem = StructFEProblem(fullfile('tests', 'fixtures', ...
+    'CaseSingleTruss.txt'), options);
+model = problem.GetAnalysisModel();
+
+duplicateModel = model;
+duplicateModel.fixedBoundaryConditions(end + 1, :) = [2, 1, 0, 0, 0];
+assertThrows('MKEF:DuplicateConstraint', ...
+    @() partitionDOFs(duplicateModel));
+
+invalidTypeModel = model;
+invalidTypeModel.fixedBoundaryConditions(1, 1) = 99;
+assertThrows('MKEF:InvalidConstraint', ...
+    @() partitionDOFs(invalidTypeModel));
+
+invalidNodeModel = model;
+invalidNodeModel.fixedBoundaryConditions(1, 2) = 3;
+assertThrows('MKEF:InvalidConstraint', ...
+    @() partitionDOFs(invalidNodeModel));
+
+mechanismModel = model;
+mechanismModel.fixedBoundaryConditions = [1, 1, 0, 0, 0];
+assertThrows('MKEF:SingularStiffness', ...
+    @() solveStatic(mechanismModel));
+
+fullyFixedModel = model;
+fullyFixedModel.fixedBoundaryConditions = ...
+    [1, 1, 0, 0, 0; 1, 2, 0, 0, 0];
+assertThrows('MKEF:NoFreeDOFs', @() solveModal(fullyFixedModel));
+end
+
 function options = quietOptions()
 options = struct('verbose', false, 'plotting', false);
 end
@@ -260,4 +339,18 @@ if difference > limit
     error('MKEF:VerificationFailed', '%s Error=%g, tolerance=%g.', ...
         message, difference, limit);
 end
+end
+
+function assertThrows(expectedIdentifier, operation)
+try
+    operation();
+catch exception
+    if strcmp(exception.identifier, expectedIdentifier)
+        return;
+    end
+    error('MKEF:VerificationFailed', ...
+        'Expected error %s, received %s.', ...
+        expectedIdentifier, exception.identifier);
+end
+error('MKEF:VerificationFailed', 'Expected error %s.', expectedIdentifier);
 end

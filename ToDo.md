@@ -183,14 +183,14 @@ printing.
 
 ### Commit 5 -- Replace matrix editing with free-DOF reduction
 
-- [ ] Convert support definitions into explicit `fixedDOFs` and `freeDOFs`.
-- [ ] Solve static and modal problems on `K(freeDOFs,freeDOFs)` and
+- [x] Convert support definitions into explicit `fixedDOFs` and `freeDOFs`.
+- [x] Solve static and modal problems on `K(freeDOFs,freeDOFs)` and
       `M(freeDOFs,freeDOFs)`.
-- [ ] Remove artificial zero-frequency modes caused by unit masses on restrained
+- [x] Remove artificial zero-frequency modes caused by unit masses on restrained
       DOFs.
-- [ ] Preserve loads on restrained DOFs when calculating reactions.
-- [ ] Check static equilibrium: applied loads plus reactions sum to zero.
-- [ ] Validate duplicate, invalid, or insufficient constraints and report useful
+- [x] Preserve loads on restrained DOFs when calculating reactions.
+- [x] Check static equilibrium: applied loads plus reactions sum to zero.
+- [x] Validate duplicate, invalid, or insufficient constraints and report useful
       errors for mechanisms/singular systems.
 
 Acceptance: constrained displacements are exactly zero, modal results contain only
