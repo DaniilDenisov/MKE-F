@@ -44,6 +44,10 @@ classdef FEMesh < handle
                         obj.readBcForcesStat(fid);
                     case 'bcforce_harm'
                         obj.readBcForcesHarm(fid);
+                    case 'bcforce_pulse'
+                        obj.readBcForcesPulse(fid);
+                    case 'bcforce_step'
+                        obj.readBcForcesStep(fid);
                     case 'bcfix'
                         obj.readBcFix(fid);
                     case -1
@@ -238,6 +242,25 @@ classdef FEMesh < handle
                     '%f,%f,%f,%f,%f,%f');
             end
         end
+        % Чтение блока явной прямоугольной импульсной нагрузки (тип 12).
+        function readBcForcesPulse(this, fid)
+            line = fgetl(fid);
+            bcForceNum = sscanf(line,'%d');
+            this.numberOfForceBCs = this.numberOfForceBCs + bcForceNum;
+            for i=1:bcForceNum
+                this.allForceBCs(i,:) = sscanf(fgetl(fid),...
+                    '%f,%f,%f,%f,%f');
+            end
+        end
+        % Чтение блока постоянной ступенчатой нагрузки (тип 13).
+        function readBcForcesStep(this, fid)
+            line = fgetl(fid);
+            bcForceNum = sscanf(line,'%d');
+            this.numberOfForceBCs = this.numberOfForceBCs + bcForceNum;
+            for i=1:bcForceNum
+                this.allForceBCs(i,:) = sscanf(fgetl(fid),...
+                    '%f,%f,%f,%f,%f');
+            end
+        end
     end
 end
-

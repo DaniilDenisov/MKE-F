@@ -198,17 +198,17 @@ physical free-DOF modes, and reactions balance the applied load.
 
 ### Commit 6 -- Make nodal-load semantics explicit
 
-- [ ] Replace hard-coded writes to only DOFs 1 and 2 with indexed assembly over the
+- [x] Replace hard-coded writes to only DOFs 1 and 2 with indexed assembly over the
       element/model DOFs.
-- [ ] Treat the third frame-node component as a nodal moment `Mz`, not a `Fz`
+- [x] Treat the third frame-node component as a nodal moment `Mz`, not a `Fz`
       translation; update the input guide accordingly.
-- [ ] Document and test the intentional one-step rectangular pulse used by
+- [x] Document and test the intentional one-step rectangular pulse used by
       `RunTransient` for load type `10`.
-- [ ] Decide whether to add a distinct `bcforce_pulse` marker. If added, retain
+- [x] Decide whether to add a distinct `bcforce_pulse` marker. If added, retain
       backward compatibility for existing case files.
-- [ ] Add a separate, explicit persistent step-load type rather than changing type
+- [x] Add a separate, explicit persistent step-load type rather than changing type
       `10` implicitly.
-- [ ] Test multiple loads at one node and loads at multiple nodes.
+- [x] Test multiple loads at one node and loads at multiple nodes.
 
 Acceptance: static, pulse, step, harmonic, and nodal-moment meanings are
 unambiguous and each has a load-history test.

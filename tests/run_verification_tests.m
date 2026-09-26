@@ -18,7 +18,7 @@ runNamedTest('assembled matrix invariants', @testMatrixInvariants);
 runNamedTest('element matrices', @test_element_matrices);
 runNamedTest('single axial truss', @testSingleAxialTruss);
 runNamedTest('cantilever beam stiffness', @testCantileverBeam);
-runNamedTest('transient load histories', @testTransientLoadHistories);
+runNamedTest('nodal load semantics', @testNodalLoadSemantics);
 runNamedTest('functional analysis core', @testFunctionalAnalysisCore);
 runNamedTest('free-DOF reduction', @testFreeDOFReduction);
 runNamedTest('constraint validation', @testConstraintValidation);
@@ -131,13 +131,30 @@ assertClose(result.equilibriumResidual, zeros(3, 1), 0, 1e-9, ...
     'The cantilever is not in global equilibrium.');
 end
 
-function testTransientLoadHistories()
+function testNodalLoadSemantics()
 options = quietOptions();
 timeStep = 1e-4;
 stepCount = 4;
 
+% Рамный узел принимает [Fx, Fy, Mz]. Нагрузки в одном узле и в разных
+% узлах должны суммироваться через общую карту степеней свободы.
+staticProblem = StructFEProblem('Case1ElementBeam.txt', options);
+staticModel = staticProblem.GetAnalysisModel();
+staticModel.forceBoundaryConditions = ...
+    [10, 1, -4,  6,  8; ...
+     10, 2, 10, 20, 30; ...
+     10, 2,  5, -2,  7];
+staticLoads = buildStaticLoad(staticModel);
+assertClose(staticLoads, [-4; 6; 8; 15; 18; 37], 0, 1e-12, ...
+    'Static Fx, Fy, and Mz loads were not assembled by nodal DOF.');
+staticResult = solveStatic(staticModel);
+assertClose(staticResult.loadVector, staticLoads, 0, 1e-12, ...
+    'Static analysis did not preserve the assembled nodal loads.');
+assertClose(staticResult.equilibriumResidual, zeros(3, 1), 0, 1e-8, ...
+    'Static nodal loads and reactions are not in equilibrium.');
+
 % Нагрузка типа 10 в динамическом расчёте намеренно действует как прямоугольный
-% импульс длительностью в один шаг, а не как постоянная ступенчатая нагрузка.
+% импульс длительностью в один шаг для обратной совместимости.
 pulseProblem = StructFEProblem('CaseBeamDyn.txt', options);
 pulseLoads = buildTransientLoad(pulseProblem.GetAnalysisModel(), ...
     timeStep, stepCount);
@@ -145,18 +162,63 @@ pulseExpected = zeros(size(pulseLoads));
 pulseDOF = pulseProblem.mesh.iMnod(3, 2);
 pulseExpected(pulseDOF, 1) = -1000;
 assertClose(pulseLoads, pulseExpected, 0, 1e-12, ...
-    'Type 10 transient load is not a one-step rectangular pulse.');
+    'Legacy type 10 transient load is not a one-step rectangular pulse.');
 
-% Для типа 11 в столбцах времени должны вычисляться значения F0*sin(2*pi*f*t).
+% Тип 12 и маркер bcforce_pulse задают тот же импульс явно, включая Mz.
+explicitPulseProblem = StructFEProblem(fullfile('tests', 'fixtures', ...
+    'CaseExplicitPulseBeam.txt'), options);
+explicitPulseLoads = buildTransientLoad(...
+    explicitPulseProblem.GetAnalysisModel(), timeStep, stepCount);
+explicitPulseExpected = zeros(size(explicitPulseLoads));
+explicitPulseDOFs = explicitPulseProblem.mesh.iMnod(2, :);
+explicitPulseExpected(explicitPulseDOFs, 1) = [0; -1000; 25];
+assertClose(explicitPulseLoads, explicitPulseExpected, 0, 1e-12, ...
+    'Explicit type 12 pulse history is incorrect.');
+explicitPulseProblem.ts = timeStep;
+explicitPulseProblem.tsNum = stepCount;
+explicitPulseProblem.ApplyForceBC();
+assertClose(explicitPulseProblem.F, explicitPulseExpected, 0, 1e-12, ...
+    'ApplyForceBC does not delegate to the complete nodal load builder.');
+
+% Тип 13 и маркер bcforce_step сохраняют нагрузку на всех шагах.
+stepProblem = StructFEProblem(fullfile('tests', 'fixtures', ...
+    'CaseStepBeam.txt'), options);
+stepModel = stepProblem.GetAnalysisModel();
+stepLoads = buildTransientLoad(stepModel, timeStep, stepCount);
+stepExpected = zeros(size(stepLoads));
+stepDOFs = stepProblem.mesh.iMnod(2, :);
+stepExpected(stepDOFs, :) = repmat([0; -1000; 25], 1, stepCount);
+assertClose(stepLoads, stepExpected, 0, 1e-12, ...
+    'Type 13 persistent step history is incorrect.');
+stepResult = stepProblem.RunTransient(timeStep, ...
+    stepCount * timeStep, 2, 2);
+assertClose(stepResult.loadHistory, stepExpected, 0, 1e-12, ...
+    'RunTransient did not use the persistent step history.');
+assertThrows('MKEF:TimeDependentLoadInStaticAnalysis', ...
+    @() buildStaticLoad(stepModel));
+
+% Для типа 11 все компоненты, включая Mz, равны F0*sin(2*pi*f*t).
 harmonicProblem = StructFEProblem('CaseBeamFreq.txt', options);
-harmonicLoads = buildTransientLoad(harmonicProblem.GetAnalysisModel(), ...
+harmonicModel = harmonicProblem.GetAnalysisModel();
+harmonicModel.forceBoundaryConditions(1, 5) = 25;
+harmonicLoads = buildTransientLoad(harmonicModel, ...
     timeStep, stepCount);
 harmonicExpected = zeros(size(harmonicLoads));
-harmonicDOF = harmonicProblem.mesh.iMnod(3, 2);
+harmonicDOFs = harmonicProblem.mesh.iMnod(3, :);
 time = (1:stepCount) * timeStep;
-harmonicExpected(harmonicDOF, :) = -1000 * sin(2*pi*135*time);
+harmonicExpected(harmonicDOFs, :) = ...
+    [0; -1000; 25] * sin(2*pi*135*time);
 assertClose(harmonicLoads, harmonicExpected, 1e-12, 1e-12, ...
     'Type 11 harmonic load history is incorrect.');
+
+% У ферменного узла нет вращательной СС, поэтому ненулевой Mz отклоняется,
+% а не игнорируется как несуществующая сила Fz.
+trussProblem = StructFEProblem(fullfile('tests', 'fixtures', ...
+    'CaseSingleTruss.txt'), options);
+trussModel = trussProblem.GetAnalysisModel();
+trussModel.forceBoundaryConditions(1, 5) = 1;
+assertThrows('MKEF:UnsupportedLoadComponent', ...
+    @() buildStaticLoad(trussModel));
 end
 
 function testFunctionalAnalysisCore()

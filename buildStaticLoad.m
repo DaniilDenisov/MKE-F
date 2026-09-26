@@ -5,20 +5,19 @@ loadVector = zeros(model.numberOfDOFs, 1);
 for i = 1:size(model.forceBoundaryConditions, 1)
     boundaryCondition = model.forceBoundaryConditions(i, :);
     boundaryType = boundaryCondition(1);
-    if boundaryType == 11
-        error('MKEF:HarmonicLoadRequiresTimeStep', ...
-            'A harmonic load cannot be used in a static analysis.');
-    end
     if boundaryType ~= 10
-        continue;
+        if ismember(boundaryType, [11, 12, 13])
+            error('MKEF:TimeDependentLoadInStaticAnalysis', ...
+                'Load type %d is time-dependent and cannot be used in a static analysis.', ...
+                boundaryType);
+        end
+        error('MKEF:UnsupportedLoadType', ...
+            'Unsupported nodal load type %g.', boundaryType);
     end
 
     nodeNumber = boundaryCondition(2);
     nodeDOFs = model.dofMap(nodeNumber, :);
-    componentCount = min(2, model.dofPerNode);
-    for component = 1:componentCount
-        loadVector(nodeDOFs(component)) = ...
-            loadVector(nodeDOFs(component)) + boundaryCondition(component + 2);
-    end
+    components = getNodalLoadComponents(model, boundaryCondition);
+    loadVector(nodeDOFs) = loadVector(nodeDOFs) + components;
 end
 end

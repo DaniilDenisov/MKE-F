@@ -80,56 +80,17 @@ classdef StructFEProblem < handle
             model = this.GetAnalysisModel();
             [fixedDOFs, freeDOFs] = partitionDOFs(model);
         end
-        % Метод наложения ГУ усилий.
+        % Совместимый метод собирает свежий вектор или историю нагрузок.
         function ApplyForceBC(this)
-            BCs = this.mesh.allForceBCs;
-            BCtotal = this.mesh.numberOfForceBCs;
-            for i=1:BCtotal
-                % Взять ГУ
-                currBC = BCs(i,:);
-                % Взять тип ГУ.
-                typeBC = currBC(1);
-                % Взять номер узла.
-                nnumBC = currBC(2);
-                % Вычислить номер степеней свободы в глоб. ВПЧ.
-                GLDOFs = this.mesh.iMnod(nnumBC,:);
-                % Применить ГУ к ВПЧ.
-                % Если сила, то установить значение в вектор правой части.
-                if (typeBC==10)
-                    % Взять величину силы по компонентам из BC.
-                    forceValue = zeros(3,1);
-                    forceValue(1) = currBC(1,3);
-                    forceValue(2) = currBC(1,4);
-                    forceValue(3) = currBC(1,5);
-                    % Установить в вектор пр. части.
-                    for n=1:size(GLDOFs,1)
-                        this.F(GLDOFs(1)) = this.F(GLDOFs(1))+forceValue(1);
-                        this.F(GLDOFs(2)) = this.F(GLDOFs(2))+forceValue(2);
-                    end
+            model = this.GetAnalysisModel();
+            if this.ts == 0
+                this.F = buildStaticLoad(model);
+            else
+                if this.tsNum < 1
+                    error('MKEF:InvalidTransientOptions', ...
+                        'A positive tsNum is required to build a load history.');
                 end
-                % Если прикладывается сила гармоническая, создать tsNum
-                % столбцов с сохранением неизменных сил.
-                if typeBC==11
-                    % Проверка не вызвана ли ApplyForceBC без tStep.
-                    if this.ts==0
-                        error('No timestep during harm. BC application!');
-                    end
-                    forceValue = zeros(3,1);
-                    % Считать Fx,Fy,Fz в forceValue.
-                    forceValue(1) = currBC(1,3);
-                    forceValue(2) = currBC(1,4);
-                    forceValue(3) = currBC(1,5);
-                    % Считать частоту в forceValue.
-                    freq = currBC(1,6);
-                    % Формирование вектора правой части для каждого шага
-                    % по времени.
-                    for s=1:this.tsNum
-                        this.F(GLDOFs(1),s) = this.F(GLDOFs(1),s)+...
-                            forceValue(1)*sin((2*pi*freq)*(s*this.ts));
-                        this.F(GLDOFs(2),s) = this.F(GLDOFs(2),s)+...
-                            forceValue(2)*sin((2*pi*freq)*(s*this.ts));
-                    end
-                end
+                this.F = buildTransientLoad(model, this.ts, this.tsNum);
             end
         end
         % Возвращает копию данных модели для чистого численного ядра.
