@@ -269,16 +269,16 @@ longer allocate dense `N x N` matrices.
 
 ### Commit 10 -- Harden input, documentation, and presentation
 
-- [ ] Replace the fixed ten-marker parser loop with an EOF-driven parser.
-- [ ] Check `fopen`, close files reliably on errors, and report line numbers for
+- [x] Replace the fixed ten-marker parser loop with an EOF-driven parser.
+- [x] Check `fopen`, close files reliably on errors, and report line numbers for
       malformed input.
-- [ ] Correctly append repeated boundary-condition/load sections.
-- [ ] Validate node IDs, element connectivity, property counts, and requested plot
+- [x] Correctly append repeated boundary-condition/load sections.
+- [x] Validate node IDs, element connectivity, property counts, and requested plot
       DOFs.
-- [ ] Decide explicitly whether mixed truss/frame meshes are supported; reject them
+- [x] Decide explicitly whether mixed truss/frame meshes are supported; reject them
       clearly until heterogeneous assembly is implemented.
-- [ ] Make mesh plotting and console printing optional and use equal plot axes.
-- [ ] Update the README and Russian input guide with units, DOF meanings, load
+- [x] Make mesh plotting and console printing optional and use equal plot axes.
+- [x] Update the README and Russian input guide with units, DOF meanings, load
       histories, solver assumptions, references, and reproducible examples.
 
 Acceptance: malformed files fail with actionable messages, normal construction can

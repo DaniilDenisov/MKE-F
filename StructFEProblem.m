@@ -19,9 +19,9 @@ classdef StructFEProblem < handle
         % Время задачи (def=0).
         tDur=0
         % Вывод диагностической информации в командное окно.
-        verbose=true
+        verbose=false
         % Построение сетки и графиков результатов.
-        plotting=true
+        plotting=false
     end
     methods
         % Конструктор с аргументом.
@@ -34,9 +34,23 @@ classdef StructFEProblem < handle
                     'Options must be provided as a struct.');
             end
             if isfield(options, 'verbose')
+                if ~isscalar(options.verbose) || ...
+                        ~(islogical(options.verbose) || isnumeric(options.verbose)) || ...
+                        ~isfinite(options.verbose) || ...
+                        ~ismember(double(options.verbose), [0 1])
+                    error('StructFEProblem:InvalidOptions', ...
+                        'verbose must be a scalar logical value.');
+                end
                 obj.verbose = logical(options.verbose);
             end
             if isfield(options, 'plotting')
+                if ~isscalar(options.plotting) || ...
+                        ~(islogical(options.plotting) || isnumeric(options.plotting)) || ...
+                        ~isfinite(options.plotting) || ...
+                        ~ismember(double(options.plotting), [0 1])
+                    error('StructFEProblem:InvalidOptions', ...
+                        'plotting must be a scalar logical value.');
+                end
                 obj.plotting = logical(options.plotting);
             end
             obj.filename = filename;
@@ -112,6 +126,16 @@ classdef StructFEProblem < handle
         end
         % Метод запуска анализа динамики со внешними силами.
         function result = RunTransient(this,tStep,tDur,node,dofToPlot,options)
+            if nargin < 5 || ~isnumeric(node) || ~isscalar(node) || ...
+                    ~isfinite(node) || node ~= fix(node) || node < 1 || ...
+                    node > this.mesh.numberOfNodes || ...
+                    ~isnumeric(dofToPlot) || ~isscalar(dofToPlot) || ...
+                    ~isfinite(dofToPlot) || dofToPlot ~= fix(dofToPlot) || ...
+                    dofToPlot < 1 || dofToPlot > this.mesh.dofPerNode
+                error('MKEF:InvalidPlotSelection', ...
+                    ['Transient node and DOF must be integer indices within ' ...
+                     'the model, even when plotting is disabled.']);
+            end
             if nargin < 6
                 options = struct();
             end

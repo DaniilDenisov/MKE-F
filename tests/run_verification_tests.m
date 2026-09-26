@@ -17,6 +17,7 @@ fprintf('Running self-contained verification tests...\n');
 runNamedTest('assembled matrix invariants', @testMatrixInvariants);
 runNamedTest('element matrices', @test_element_matrices);
 runNamedTest('sparse triplet assembly', @test_sparse_assembly);
+runNamedTest('input validation', @test_input_validation);
 runNamedTest('single axial truss', @testSingleAxialTruss);
 runNamedTest('cantilever beam stiffness', @testCantileverBeam);
 runNamedTest('nodal load semantics', @testNodalLoadSemantics);
@@ -319,7 +320,7 @@ assert(all(all(transientResult.accelerations(fixedDOFs, :) == 0)));
 cantilever = StructFEProblem('Case1ElementBeam.txt', options);
 loadedSupportModel = cantilever.GetAnalysisModel();
 loadedSupportModel.forceBoundaryConditions(end + 1, :) = ...
-    [10, 1, 25, -30, 0];
+    [10, 1, 25, -30, 0, 0];
 staticResult = solveStatic(loadedSupportModel);
 assertClose(staticResult.loadVector(1:2), [25; -30], 0, 1e-12, ...
     'Loads on restrained DOFs were not preserved.');
