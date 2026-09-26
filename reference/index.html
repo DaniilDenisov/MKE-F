@@ -28,6 +28,7 @@
         <li><a href="05-static-analysis.html">Статический расчёт</a></li>
         <li><a href="06-modal-analysis.html">Модальный анализ</a></li>
         <li><a href="07-newmark-transient.html">Переходный анализ Ньюмарка</a></li>
+        <li><a href="08-result-recovery.html">Результаты в элементах</a></li>
       </ol>
     </nav>
 
@@ -37,7 +38,7 @@
       <p class="lead">Этот справочник связывает основные идеи метода конечных элементов с функциями проекта МКЭ-Ф. Он работает без интернета, внешних шрифтов, MathJax и генератора сайта.</p>
 
       <section aria-labelledby="route-title">
-        <h2 id="route-title">Маршрут первых семи глав</h2>
+        <h2 id="route-title">Маршрут первых восьми глав</h2>
         <div class="chapter-grid">
           <article class="card">
             <h3><a href="01-model-dofs.html">1. Модель и степени свободы</a></h3>
@@ -68,6 +69,10 @@
             <p>Построим временную сетку, вычислим начальное ускорение и проследим точность, энергию и спектр отклика.</p>
           </article>
           <article class="card">
+            <h3><a href="08-result-recovery.html">8. Результаты в элементах</a></h3>
+            <p>Восстановим локальные перемещения, напряжения и усилия, разберём их знаки и отличие от опорных реакций.</p>
+          </article>
+          <article class="card">
             <h3>Принцип лабораторных</h3>
             <p>Каждый пример вызывает функции проекта, возвращает структуру для экспериментов и останавливается, если нарушен физический или численный инвариант.</p>
           </article>
@@ -76,22 +81,17 @@
 
       <section aria-labelledby="start-title">
         <h2 id="start-title">Быстрый старт</h2>
-        <p>Откройте терминал в корне репозитория и добавьте каталог примеров в путь Octave:</p>
+        <p>Откройте терминал в корне репозитория, добавьте каталог примеров в путь Octave и запустите все лабораторные:</p>
         <pre><code>addpath(fullfile(pwd, "reference", "examples"));
-r1 = example_01_element_matrices();
-r2 = example_02_sparse_assembly();
-r3 = example_03_static_bar();
-r4 = example_04_load_histories();
-r5 = example_05_modal_frame();
-r6 = example_06_newmark_sdof();</code></pre>
+results = run_reference_examples();</code></pre>
 
         <div class="callout">
           <span class="callout__title">Как запустить</span>
-          <p>Команды рассчитаны на GNU Octave. Для запуска без печати матриц передайте <code>false</code>, например <code>example_01_element_matrices(false)</code>.</p>
+          <p>Команды рассчитаны на GNU Octave. Для общей проверки без печати матриц используйте <code>run_reference_examples(false)</code>. Отдельную лабораторную можно вызвать по имени, например <code>example_07_result_recovery()</code>.</p>
         </div>
         <div class="callout callout--inspect">
           <span class="callout__title">Что исследовать</span>
-          <p>Сохраните возвращаемые структуры <code>r1</code>–<code>r6</code>. В них находятся матрицы, карты СС, нагрузки, формы колебаний и полные истории движения.</p>
+          <p>Структура <code>results</code> содержит поля <code>example_01_element_matrices</code>–<code>example_07_result_recovery</code>. В них находятся матрицы, карты СС, нагрузки, формы колебаний, истории движения и усилия элементов.</p>
         </div>
         <div class="callout">
           <span class="callout__title">Ожидаемый инвариант</span>
@@ -132,11 +132,13 @@ r6 = example_06_newmark_sdof();</code></pre>
           <li><a href="../createStructuralElement.m"><code>createStructuralElement.m</code></a> — геометрия, матрицы и преобразование элемента;</li>
           <li><a href="../assembleGlobalMatrices.m"><code>assembleGlobalMatrices.m</code></a> — разреженная сборка;</li>
           <li><a href="examples/example_01_element_matrices.m"><code>example_01_element_matrices.m</code></a> — лабораторная по матрицам;</li>
-          <li><a href="examples/example_02_sparse_assembly.m"><code>example_02_sparse_assembly.m</code></a> — лабораторная по сборке.</li>
+          <li><a href="examples/example_02_sparse_assembly.m"><code>example_02_sparse_assembly.m</code></a> — лабораторная по сборке;</li>
           <li><a href="examples/example_03_static_bar.m"><code>example_03_static_bar.m</code></a> — лабораторная по статике;</li>
           <li><a href="examples/example_04_load_histories.m"><code>example_04_load_histories.m</code></a> — лабораторная по нагрузкам;</li>
           <li><a href="examples/example_05_modal_frame.m"><code>example_05_modal_frame.m</code></a> — лабораторная по модам;</li>
-          <li><a href="examples/example_06_newmark_sdof.m"><code>example_06_newmark_sdof.m</code></a> — лабораторная по Ньюмарку.</li>
+          <li><a href="examples/example_06_newmark_sdof.m"><code>example_06_newmark_sdof.m</code></a> — лабораторная по Ньюмарку;</li>
+          <li><a href="examples/example_07_result_recovery.m"><code>example_07_result_recovery.m</code></a> — лабораторная по результатам элементов;</li>
+          <li><a href="examples/run_reference_examples.m"><code>run_reference_examples.m</code></a> — запуск всех лабораторных одной командой.</li>
         </ul>
       </section>
     </main>
