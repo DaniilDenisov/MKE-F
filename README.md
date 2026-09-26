@@ -159,8 +159,8 @@ result = problem.RunTransient(1e-4, 1e-2, 2, 1, initial);
 
 Начальное ускорение вычисляется из равновесия. Результат также содержит
 `reactions`, `equilibriumResidual`, `spectrumFrequencyHz` и
-`displacementAmplitudeSpectrum`. Используется метод Ньюмарка со средней
-акселерацией (`beta=1/4`, `gamma=1/2`) по формулам (22)-(23) из конспекта
+`displacementAmplitudeSpectrum`. Используется метод средних ускорений Ньюмарка
+(`beta=1/4`, `gamma=1/2`) по формулам (22)-(23) из конспекта
 [H. P. Gavin, Numerical Integration in Structural Dynamics](https://people.duke.edu/~hpgavin/StructuralDynamics/NumericalIntegration.pdf).
 
 ## Воспроизводимые примеры
@@ -239,7 +239,7 @@ element.axialForce
 ## Источники
 
 - H. P. Gavin, *Numerical Integration in Structural Dynamics* — формулы метода
-  Ньюмарка со средней акселерацией.
+  средних ускорений Ньюмарка.
 - Mario Paz, William Leigh, *Structural Dynamics: Theory and Computation*, 5-е
   издание, DOI `10.1007/978-1-4615-0481-8` — вероятный источник геометрии примера
   `CaseFig11.7p363 MarioPaz.txt`; опубликованные численные результаты в репозитории

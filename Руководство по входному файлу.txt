@@ -197,7 +197,7 @@ initial = struct('initialDisplacement', u0, 'initialVelocity', v0);
 dynamicResult = problem.RunTransient(1e-4, 1e-2, 3, 2, initial);
 
 Начальное ускорение вычисляется из равновесия. Метод Ньюмарка использует
-beta=1/4 и gamma=1/2 (средняя акселерация).
+beta=1/4 и gamma=1/2 (метод средних ускорений).
 
 10. Результаты и проверки
 
