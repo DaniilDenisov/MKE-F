@@ -26,6 +26,8 @@
         <li><a href="03-transformation-assembly.html">Преобразование и сборка</a></li>
         <li><a href="04-boundary-loads.html">Граничные условия и нагрузки</a></li>
         <li><a href="05-static-analysis.html">Статический расчёт</a></li>
+        <li><a href="06-modal-analysis.html">Модальный анализ</a></li>
+        <li><a href="07-newmark-transient.html">Переходный анализ Ньюмарка</a></li>
       </ol>
     </nav>
 
@@ -35,7 +37,7 @@
       <p class="lead">Этот справочник связывает основные идеи метода конечных элементов с функциями проекта МКЭ-Ф. Он работает без интернета, внешних шрифтов, MathJax и генератора сайта.</p>
 
       <section aria-labelledby="route-title">
-        <h2 id="route-title">Маршрут первых пяти глав</h2>
+        <h2 id="route-title">Маршрут первых семи глав</h2>
         <div class="chapter-grid">
           <article class="card">
             <h3><a href="01-model-dofs.html">1. Модель и степени свободы</a></h3>
@@ -58,6 +60,14 @@
             <p>Решим редуцированную систему, восстановим полный вектор, реакции и проверим глобальное равновесие.</p>
           </article>
           <article class="card">
+            <h3><a href="06-modal-analysis.html">6. Модальный анализ</a></h3>
+            <p>Решим обобщённую собственную задачу, расширим формы и проверим их невязки, масштаб и ортогональность.</p>
+          </article>
+          <article class="card">
+            <h3><a href="07-newmark-transient.html">7. Переходный анализ Ньюмарка</a></h3>
+            <p>Построим временную сетку, вычислим начальное ускорение и проследим точность, энергию и спектр отклика.</p>
+          </article>
+          <article class="card">
             <h3>Принцип лабораторных</h3>
             <p>Каждый пример вызывает функции проекта, возвращает структуру для экспериментов и останавливается, если нарушен физический или численный инвариант.</p>
           </article>
@@ -71,7 +81,9 @@
 r1 = example_01_element_matrices();
 r2 = example_02_sparse_assembly();
 r3 = example_03_static_bar();
-r4 = example_04_load_histories();</code></pre>
+r4 = example_04_load_histories();
+r5 = example_05_modal_frame();
+r6 = example_06_newmark_sdof();</code></pre>
 
         <div class="callout">
           <span class="callout__title">Как запустить</span>
@@ -79,7 +91,7 @@ r4 = example_04_load_histories();</code></pre>
         </div>
         <div class="callout callout--inspect">
           <span class="callout__title">Что исследовать</span>
-          <p>Сохраните возвращаемые структуры <code>r1</code> и <code>r2</code>. В них находятся координаты, данные элементов, карты СС и собранные матрицы.</p>
+          <p>Сохраните возвращаемые структуры <code>r1</code>–<code>r6</code>. В них находятся матрицы, карты СС, нагрузки, формы колебаний и полные истории движения.</p>
         </div>
         <div class="callout">
           <span class="callout__title">Ожидаемый инвариант</span>
@@ -122,7 +134,9 @@ r4 = example_04_load_histories();</code></pre>
           <li><a href="examples/example_01_element_matrices.m"><code>example_01_element_matrices.m</code></a> — лабораторная по матрицам;</li>
           <li><a href="examples/example_02_sparse_assembly.m"><code>example_02_sparse_assembly.m</code></a> — лабораторная по сборке.</li>
           <li><a href="examples/example_03_static_bar.m"><code>example_03_static_bar.m</code></a> — лабораторная по статике;</li>
-          <li><a href="examples/example_04_load_histories.m"><code>example_04_load_histories.m</code></a> — лабораторная по нагрузкам.</li>
+          <li><a href="examples/example_04_load_histories.m"><code>example_04_load_histories.m</code></a> — лабораторная по нагрузкам;</li>
+          <li><a href="examples/example_05_modal_frame.m"><code>example_05_modal_frame.m</code></a> — лабораторная по модам;</li>
+          <li><a href="examples/example_06_newmark_sdof.m"><code>example_06_newmark_sdof.m</code></a> — лабораторная по Ньюмарку.</li>
         </ul>
       </section>
     </main>

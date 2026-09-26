@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Переходный анализ в МКЭ-Ф: метод Ньюмарка со средней акселерацией, временная сетка, импульс, энергия и спектр.">
+  <title>7. Переходный анализ Ньюмарка — МКЭ-Ф</title>
+  <link rel="stylesheet" href="assets/reference.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">К содержанию</a>
+  <header class="site-header">
+    <div class="site-header__inner">
+      <p class="eyebrow">Student FEM Reference · Глава 7</p>
+      <p class="site-title">Переходный анализ Ньюмарка</p>
+      <p class="site-subtitle">Как начальное состояние и нагрузка по времени превращаются в согласованные истории перемещений, скоростей и ускорений.</p>
+    </div>
+  </header>
+
+  <div class="layout">
+    <nav class="contents" aria-label="Оглавление справочника">
+      <h2>Оглавление</h2>
+      <ol>
+        <li><a href="01-model-dofs.html">Модель, узлы, элементы и СС</a></li>
+        <li><a href="02-element-matrices.html">Матрицы элементов</a></li>
+        <li><a href="03-transformation-assembly.html">Преобразование и сборка</a></li>
+        <li><a href="04-boundary-loads.html">Граничные условия и нагрузки</a></li>
+        <li><a href="05-static-analysis.html">Статический расчёт</a></li>
+        <li><a href="06-modal-analysis.html">Модальный анализ</a></li>
+        <li><a aria-current="page" href="07-newmark-transient.html">Переходный анализ Ньюмарка</a></li>
+      </ol>
+    </nav>
+
+    <main class="chapter" id="main">
+      <span class="chapter-number">Глава 7</span>
+      <h1>Метод средней акселерации</h1>
+      <p class="lead">Переходный расчёт находит состояние системы на последовательных моментах времени. Текущая реализация МКЭ‑Ф рассматривает линейную упругую систему без демпфирования и применяет неявный метод Ньюмарка с β = 1/4 и γ = 1/2.</p>
+
+      <section aria-labelledby="motion-title">
+        <h2 id="motion-title">Уравнение движения и редукция</h2>
+        <p>На свободных СС решается система:</p>
+        <p class="equation">M<sub>ff</sub> a(t) + K<sub>ff</sub> u(t) = F<sub>f</sub>(t)</p>
+        <p>Это линейный недемпфированный частный случай более общего уравнения с матрицей демпфирования <strong>C</strong> и нелинейной восстанавливающей силой. В МКЭ‑Ф <strong>C = 0</strong>, нелинейного слагаемого нет, а закреплённые компоненты полных историй остаются точно нулевыми.</p>
+      </section>
+
+      <section aria-labelledby="grid-title">
+        <h2 id="grid-title">Единая временная сетка</h2>
+        <p>При шаге Δt и запрошенной длительности <em>T</em> число шагов равно <code>fix(T/dt)</code>. Все возвращаемые истории имеют <em>N + 1</em> столбец:</p>
+        <p class="equation">t<sub>0</sub> = 0, &nbsp; t<sub>1</sub> = Δt, &nbsp; …, &nbsp; t<sub>N</sub> = NΔt</p>
+        <p>Если <em>T/Δt</em> нецелое, фактическая длительность <code>result.duration</code> меньше запрошенной <code>result.requestedDuration</code>. Номер столбца в Octave на единицу больше номера шага: столбец 1 соответствует <em>t = 0</em>.</p>
+      </section>
+
+      <section aria-labelledby="initial-title">
+        <h2 id="initial-title">Начальное состояние</h2>
+        <p>Пользователь может задать полные векторы <strong>u</strong><sub>0</sub> и <strong>v</strong><sub>0</sub>. Их закреплённые компоненты обязаны быть нулевыми. Начальное ускорение не задаётся независимо, а вычисляется из равновесия:</p>
+        <p class="equation">a<sub>0</sub> = M<sub>ff</sub><sup>−1</sup>[F<sub>f</sub>(0) − K<sub>ff</sub>u<sub>0</sub>]</p>
+        <p>Так три начальные истории начинают расчёт из одного физически согласованного состояния.</p>
+      </section>
+
+      <section aria-labelledby="newmark-title">
+        <h2 id="newmark-title">Аппроксимации Ньюмарка</h2>
+        <p>Перемещение и скорость на следующем шаге связываются с ускорениями:</p>
+        <p class="equation">u<sub>n+1</sub> = u<sub>n</sub> + Δt v<sub>n</sub> + Δt<sup>2</sup>[(1/2 − β)a<sub>n</sub> + βa<sub>n+1</sub>]</p>
+        <p class="equation">v<sub>n+1</sub> = v<sub>n</sub> + Δt[(1 − γ)a<sub>n</sub> + γa<sub>n+1</sub>]</p>
+        <p>Выбор <strong>β = 1/4</strong>, <strong>γ = 1/2</strong> соответствует постоянному среднему ускорению на шаге. Для линейной системы метод имеет второй порядок точности и безусловно устойчив, но устойчивость не означает достаточную точность при слишком крупном Δt.</p>
+      </section>
+
+      <section aria-labelledby="effective-title">
+        <h2 id="effective-title">Эффективная жёсткость</h2>
+        <p>В коде используются коэффициенты:</p>
+        <pre><code>a0 = 1/(beta*dt^2);
+a2 = 1/(beta*dt);
+a3 = 1/(2*beta) - 1;</code></pre>
+        <p>На каждом шаге решается одна система:</p>
+        <p class="equation">K<sub>eff</sub> u<sub>n+1</sub> = F<sub>n+1</sub> + M(a<sub>0</sub>u<sub>n</sub> + a<sub>2</sub>v<sub>n</sub> + a<sub>3</sub>a<sub>n</sub>)</p>
+        <p class="equation">K<sub>eff</sub> = K<sub>ff</sub> + a<sub>0</sub>M<sub>ff</sub></p>
+        <p>Матрица <strong>K<sub>eff</sub></strong> постоянна, поэтому <a href="../solveTransient.m"><code>solveTransient</code></a> один раз выполняет разложение Холецкого и повторно использует его на всех шагах. После решения обновляются ускорение и скорость.</p>
+      </section>
+
+      <section aria-labelledby="pulse-title">
+        <h2 id="pulse-title">Импульс на дискретной сетке</h2>
+        <p>Нагрузка типа 12 ненулевая только в столбце <em>t = Δt</em>. Для прямоугольного одношагового импульса:</p>
+        <p class="equation">I<sub>discrete</sub> = F<sub>0</sub>Δt</p>
+        <p>Поэтому при сравнении сеток с разным Δt следует сохранять не амплитуду, а импульс: <em>F<sub>0</sub> = I/Δt</em>. Иначе уточнение шага одновременно меняет физическое возбуждение и численную погрешность.</p>
+      </section>
+
+      <section aria-labelledby="accuracy-title">
+        <h2 id="accuracy-title">Сходимость и энергия</h2>
+        <p>Для свободного недемпфированного осциллятора с <em>ω = √(k/m)</em>:</p>
+        <p class="equation">u(t) = u<sub>0</sub>cos(ωt) + [v<sub>0</sub>/ω]sin(ωt)</p>
+        <p>Уменьшение Δt вдвое должно примерно в четыре раза уменьшать ошибку метода второго порядка. Это надёжнее одной проверки при одном шаге.</p>
+        <p>Полная механическая энергия свободной системы:</p>
+        <p class="equation">E(t) = 1/2 v<sup>T</sup>Mv + 1/2 u<sup>T</sup>Ku</p>
+        <p>Для линейной недемпфированной задачи метод средней акселерации не вносит алгоритмического затухания, и энергия сохраняется с точностью округления. При внешней нагрузке энергия меняется за счёт её работы, поэтому постоянство уже не является ожидаемым инвариантом.</p>
+      </section>
+
+      <section aria-labelledby="spectrum-title">
+        <h2 id="spectrum-title">Односторонний спектр</h2>
+        <p><a href="../computeSingleSidedSpectrum.m"><code>computeSingleSidedSpectrum</code></a> применяет БПФ к каждой строке перемещений и возвращает неотрицательную половину частот. При <em>N<sub>s</sub></em> отсчётах:</p>
+        <p class="equation">Δf = 1/(N<sub>s</sub>Δt)</p>
+        <p>Спектральный пик свободного осциллятора должен находиться около его собственной частоты, но конечная длительность и несовпадение частоты с центром дискретного бина создают утечку. Поэтому разумная проверка учитывает разрешение Δf, а не требует побитового совпадения частот.</p>
+      </section>
+
+      <section aria-labelledby="practice-title">
+        <h2 id="practice-title">Лабораторная 06</h2>
+        <div class="callout">
+          <span class="callout__title">Как запустить</span>
+          <p><code>addpath(fullfile(pwd,"reference","examples")); r = example_06_newmark_sdof();</code></p>
+        </div>
+        <div class="callout callout--inspect">
+          <span class="callout__title">Что исследовать</span>
+          <p>Сравните <code>r.displacements(1,:)</code> с <code>r.exactDisplacement</code>, три значения <code>r.maximumDisplacementErrors</code>, историю <code>r.energy</code> и частоту <code>r.spectrumPeakHz</code>.</p>
+        </div>
+        <div class="callout">
+          <span class="callout__title">Ожидаемый аналитический результат</span>
+          <p>При <em>m = 2</em> и <em>k = 18</em> круговая частота равна 3 рад/с, а частота — примерно 0,477465 Гц. При удвоении числа шагов на период ошибка уменьшается примерно в четыре раза.</p>
+        </div>
+        <div class="callout callout--warning">
+          <span class="callout__title">Частые ошибки</span>
+          <p>Безусловная устойчивость не разрешает произвольно крупный шаг. Не задавайте ненулевые начальные значения закреплённым СС и не сравнивайте импульсные решения разных сеток при одинаковом F<sub>0</sub> вместо одинакового F<sub>0</sub>Δt.</p>
+        </div>
+        <div class="callout callout--inspect">
+          <span class="callout__title">Предлагаемый эксперимент</span>
+          <p>Измените <em>k</em> в четыре раза и заранее предскажите новую частоту. Затем сократите расчёт до половины периода и посмотрите, как ухудшится частотное разрешение спектра.</p>
+        </div>
+      </section>
+
+      <section class="source-list" aria-labelledby="sources-title">
+        <h2 id="sources-title">Исходный код главы</h2>
+        <ul>
+          <li><a href="../solveTransient.m"><code>solveTransient.m</code></a> — метод средней акселерации и полные истории;</li>
+          <li><a href="../buildTransientLoad.m"><code>buildTransientLoad.m</code></a> — нагрузка на общей временной сетке;</li>
+          <li><a href="../computeSingleSidedSpectrum.m"><code>computeSingleSidedSpectrum.m</code></a> — односторонний амплитудный спектр;</li>
+          <li><a href="examples/example_06_newmark_sdof.m"><code>example_06_newmark_sdof.m</code></a> — аналитическое сравнение и сходимость.</li>
+        </ul>
+        <h3>Теория и история проекта</h3>
+        <ul>
+          <li>Henri P. Gavin, <a href="https://people.duke.edu/~hpgavin/StructuralDynamics/NumericalIntegration.pdf"><cite>Numerical Integration in Structural Dynamics</cite></a>, Duke University, редакция 21 июля 2025 года: раздел «The Newmark-β method — incremental formulation». Общие аппроксимации Ньюмарка приведены в формулах (22)–(23), а формулы (24)–(30) показывают инкрементальный вывод; в (27)–(30) конспект специализируется на β = 1/6. МКЭ‑Ф использует β = 1/4, линейный недемпфированный случай и полную запись перемещений.</li>
+          <li>К.-Ю. Бате, Е. Л. Вилсон, <cite>Численные методы анализа и метод конечных элементов</cite>, перевод с английского издания 1976 года, Москва: Стройиздат, 1982, глава 8, с. 271.</li>
+          <li><a href="https://xn--h1acbaaqgcqcheicn.xn--p1ai/2017/11/25/%D0%BC%D0%BA%D1%8D-%D1%84-%D0%BC%D0%B5%D1%82%D0%BE%D0%B4-%D0%BD%D1%8C%D1%8E%D0%BC%D0%B0%D1%80%D0%BA%D0%B0/">«МКЭ‑Ф — метод Ньюмарка»</a> — историческое описание версии 0.4 от 2017 года; старые команды и численные результаты не являются документацией текущей реализации.</li>
+        </ul>
+      </section>
+    </main>
+  </div>
+
+  <nav class="page-nav" aria-label="Навигация между главами">
+    <a href="06-modal-analysis.html"><span class="page-nav__label">Назад</span>← 6. Модальный анализ</a>
+    <a href="index.html"><span class="page-nav__label">К началу</span>Оглавление справочника →</a>
+  </nav>
+
+  <footer class="site-footer">
+    <div class="site-footer__inner"><p>МКЭ-Ф · автономный учебный справочник · глава 7 из 7 в текущем разделе</p></div>
+  </footer>
+</body>
+</html>
