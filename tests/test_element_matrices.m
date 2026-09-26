@@ -156,27 +156,27 @@ assertThrows('MKEF:InvalidElementProperties', ...
 end
 
 function [K, M] = assembleTruss(coords, properties)
-% Нулевая глобальная матрица и простая карта степеней свободы позволяют получить
-% матрицы одного элемента, не открывая защищённые методы реализации.
-element = Truss2DElement();
-element.SetupElement(coords, [1 2], properties);
-[K, M] = element.Assembler(zeros(4), zeros(4), [1 2; 3 4]);
+% Единый структурный интерфейс предоставляет матрицы элемента напрямую.
+element = createStructuralElement(112, coords, [1 2], properties, ...
+    [1 2; 3 4]);
+K = element.stiffness;
+M = element.mass;
 end
 
 function [K, M] = assembleBeam(coords, properties)
-element = Beam2DElement();
-element.SetupElement(coords, [1 2], properties);
-[K, M] = element.Assembler(zeros(6), zeros(6), [1 2 3; 4 5 6]);
+element = createStructuralElement(113, coords, [1 2], properties, ...
+    [1 2 3; 4 5 6]);
+K = element.stiffness;
+M = element.mass;
 end
 
 function setupTruss(coords, properties)
-element = Truss2DElement();
-element.SetupElement(coords, [1 2], properties);
+createStructuralElement(112, coords, [1 2], properties, [1 2; 3 4]);
 end
 
 function setupBeam(coords, properties)
-element = Beam2DElement();
-element.SetupElement(coords, [1 2], properties);
+createStructuralElement(113, coords, [1 2], properties, ...
+    [1 2 3; 4 5 6]);
 end
 
 function [K, M, length] = expectedTrussMatrices(coords, properties)

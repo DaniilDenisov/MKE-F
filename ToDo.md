@@ -249,17 +249,19 @@ assembly and matches elementary closed-form solutions.
 
 ### Commit 9 -- Simplify and accelerate assembly
 
-- [ ] Based on the Octave compatibility results, decide whether elements remain
+- [x] Based on the Octave compatibility results, decide whether elements remain
       lightweight value classes or become structs dispatched to pure element-kernel
-      functions. Document the decision briefly.
-- [ ] If classes remain, avoid mutable handle state where value semantics suffice.
-- [ ] If structs/functions are selected, keep a single documented element interface
+      functions. Document the decision briefly. Plain structs and pure functions
+      are used; the mutable handle element hierarchy has been removed.
+- [x] If classes remain, avoid mutable handle state where value semantics suffice.
+      Not applicable after selecting structs; no mutable element handles remain.
+- [x] If structs/functions are selected, keep a single documented element interface
       for matrices, DOF mapping, and result recovery.
-- [ ] Give every element a single element-DOF vector and assemble with indexed
+- [x] Give every element a single element-DOF vector and assemble with indexed
       matrix addition instead of individual scalar assignments.
-- [ ] Assemble sparse global matrices, preferably from triplet arrays.
-- [ ] Cache element length/transformation data where appropriate.
-- [ ] Keep this commit behaviour-preserving and compare all baseline results before
+- [x] Assemble sparse global matrices, preferably from triplet arrays.
+- [x] Cache element length/transformation data where appropriate.
+- [x] Keep this commit behaviour-preserving and compare all baseline results before
       and after the refactor.
 
 Acceptance: reference results are unchanged within tolerance and larger meshes no

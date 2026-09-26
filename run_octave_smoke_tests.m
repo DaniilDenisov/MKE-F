@@ -27,12 +27,14 @@ fprintf('Runtime: %s\n', runtimeName());
 fprintf('Loading %d input cases...\n', numel(caseFiles));
 
 for i = 1:numel(caseFiles)
-    % Конструктор полностью читает входной файл, создаёт сетку и объекты
-    % элементов, нумерует степени свободы и собирает глобальные матрицы K и M.
+    % Конструктор полностью читает входной файл, создаёт сетку и структуры
+    % элементов, нумерует степени свободы и собирает разреженные матрицы K и M.
     problem = StructFEProblem(caseFiles{i}, options);
     expectedDOFs = problem.mesh.numberOfNodes * problem.mesh.dofPerNode;
     assert(isequal(size(problem.K), [expectedDOFs expectedDOFs]));
     assert(isequal(size(problem.M), [expectedDOFs expectedDOFs]));
+    assert(issparse(problem.K));
+    assert(issparse(problem.M));
     assert(all(isfinite(problem.K(:))));
     assert(all(isfinite(problem.M(:))));
     fprintf('  OK: %s\n', caseFiles{i});

@@ -24,11 +24,7 @@ model.dofMap = mesh.iMnod;
 model.fixedBoundaryConditions = mesh.allFixBCs;
 model.forceBoundaryConditions = mesh.allForceBCs;
 model.nodeCoordinates = mesh.allNodes(:, 1:2);
-model.elementData = cell(mesh.numberOfElems, 1);
-for elementNumber = 1:mesh.numberOfElems
-    model.elementData{elementNumber} = ...
-        mesh.allMeshElems(elementNumber).GetRecoveryData(mesh.iMnod);
-end
+model.elementData = mesh.allMeshElems;
 model.numberOfNodes = mesh.numberOfNodes;
 model.dofPerNode = mesh.dofPerNode;
 model.numberOfDOFs = numberOfDOFs;

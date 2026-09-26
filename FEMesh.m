@@ -14,7 +14,7 @@ classdef FEMesh < handle
         dofPerNode;
         % Поузловая матрица соответствия.
         iMnod;
-        % Массив элементов (пользовательский класс).
+        % Массив структур с данными элементов.
         allMeshElems;
         % Массив узлов.
         allNodes;
@@ -85,7 +85,7 @@ classdef FEMesh < handle
             for el = 1:this.numberOfElems
                 % Определение координат узлов текущего элемента.
                 currElem = this.allMeshElems(el);
-                currNodalCoords = currElem.GetNodalCoords();
+                currNodalCoords = currElem.nodeCoordinates;
                 % Печать линии.
                 plot([currNodalCoords(1,1) currNodalCoords(2,1)],...
                     [currNodalCoords(1,2) currNodalCoords(2,2)]);
@@ -111,7 +111,7 @@ classdef FEMesh < handle
             format shortG;
             disp('Nodes:');
             for i=1:this.numberOfElems
-                nn = this.allMeshElems(i).GetNodesNums();
+                nn = this.allMeshElems(i).nodeNumbers;
                 disp(nn);
             end
             format compact;
@@ -119,7 +119,11 @@ classdef FEMesh < handle
         % Печать элементов.
         function DispElems(this)
             for i=1:this.numberOfElems
-               this.allMeshElems(i).Disp();
+                element = this.allMeshElems(i);
+                fprintf('type:%d\n', element.type);
+                disp(element.nodeCoordinates);
+                disp(element.nodeNumbers);
+                disp(element.properties);
             end
         end
 
@@ -143,11 +147,11 @@ classdef FEMesh < handle
             line = fgetl(fid);
             elNum = sscanf(line,'%d');
             this.numberOfElems = elNum;
-            % Преаллокация набора пустых КЭ типа 112 (Truss2DElement).
-            elemArrTmp(elNum,1) = Truss2DElement();
-            this.allMeshElems = elemArrTmp;
             % Для элемента 112 должно быть 2 СС в узле.
             this.dofPerNode = 2;
+            this.iMnod = reshape(1:(this.numberOfNodes*this.dofPerNode), ...
+                this.dofPerNode, this.numberOfNodes).';
+            elements = cell(elNum, 1);
             % Далее - данные. В соответствии с размером.
             for i=1:elNum
                 line = fgetl(fid);
@@ -158,15 +162,11 @@ classdef FEMesh < handle
                 elData = str2double(splitElemLine(4:6));
                 elNode1Coords = this.allNodes(elNodes(1),:);
                 elNode2Coords = this.allNodes(elNodes(2),:);
-                this.allMeshElems(i).SetupElement(...
-                            [elNode1Coords; elNode2Coords],...
-                            elNodes, ...
-                            elData);
+                elements{i} = createStructuralElement(112, ...
+                    [elNode1Coords; elNode2Coords], elNodes, elData, ...
+                    this.iMnod);
             end
-            % Можем создать матрицу соответствия, т.к. есть dofPerNode.
-            for i=1:this.numberOfNodes
-                this.iMnod(i,:) = [(i*this.dofPerNode)-1 i*this.dofPerNode];
-            end
+            this.allMeshElems = vertcat(elements{:});
         end
 
         % Чтение блока данных об элементах 113 (балка 2 узла по 3 СС).
@@ -176,11 +176,11 @@ classdef FEMesh < handle
             line = fgetl(fid);
             elNum = sscanf(line,'%d');
             this.numberOfElems = elNum;
-            % Преаллокация набора пустых КЭ типа 112 (Truss2DElement).
-            elemArrTmp(elNum,1) = Beam2DElement();
-            this.allMeshElems = elemArrTmp;
             % Для элемента 113 должно быть 3 СС в узле.
             this.dofPerNode = 3;
+            this.iMnod = reshape(1:(this.numberOfNodes*this.dofPerNode), ...
+                this.dofPerNode, this.numberOfNodes).';
+            elements = cell(elNum, 1);
             % Далее - данные. В соответствии с размером.
             for i=1:elNum
                 line = fgetl(fid);
@@ -193,17 +193,11 @@ classdef FEMesh < handle
                 elData = str2double(splitElemLine(4:7));
                 elNode1Coords = this.allNodes(elNodes(1),:);
                 elNode2Coords = this.allNodes(elNodes(2),:);
-                this.allMeshElems(i).SetupElement(...
-                            [elNode1Coords; elNode2Coords],...
-                            elNodes, ...
-                            elData);
+                elements{i} = createStructuralElement(113, ...
+                    [elNode1Coords; elNode2Coords], elNodes, elData, ...
+                    this.iMnod);
             end
-            % Можем создать матрицу соответствия, т.к. есть dofPerNode.
-            for i=1:this.numberOfNodes
-                this.iMnod(i,:) = [(i*this.dofPerNode)-2 ...
-                                   (i*this.dofPerNode)-1 ...
-                                   (i*this.dofPerNode)];
-            end
+            this.allMeshElems = vertcat(elements{:});
         end
 
         % Чтение блока данных о граничных условиях заделки.

@@ -58,17 +58,10 @@ classdef StructFEProblem < handle
             % масс в зависимости от кол-ва СС на узел.
             dofPerNode = obj.mesh.dofPerNode;
             % Определение общего числа степеней свободы в системе
-            % и иниц. глобальной матрицы жесткости.
+            % и сборка разреженных глобальных матриц из элементных триплетов.
             systemDOF = obj.mesh.numberOfNodes*dofPerNode;
-            GlobK = zeros(systemDOF,systemDOF);
-            GlobM = zeros(systemDOF,systemDOF);
-            % Обход всех элементов в сетке.
-            for i=1:obj.mesh.numberOfElems
-                % Ансамблирование в глобальные матрицы.
-                [GlobK,GlobM] = ...
-                    obj.mesh.allMeshElems(i).Assembler(GlobK,...
-                    GlobM, obj.mesh.iMnod);
-            end
+            [GlobK, GlobM] = assembleGlobalMatrices( ...
+                obj.mesh.allMeshElems, systemDOF);
             obj.K = GlobK;
             obj.M = GlobM;
             % Вектор правой части (сил). Преаллокация без ГУ.

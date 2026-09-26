@@ -3,7 +3,7 @@ function elementResults = recoverElementResults(model, displacements)
 % Positive axial strain, stress, and force denote tension. localEndForces
 % use the local element DOF order and are forces exerted on the element.
 
-if ~isfield(model, 'elementData') || ~iscell(model.elementData)
+if ~isfield(model, 'elementData') || ~isstruct(model.elementData)
     error('MKEF:InvalidRecoveryModel', ...
         'The analysis model does not contain element recovery data.');
 end
@@ -29,9 +29,9 @@ emptyResult = struct( ...
 elementResults = repmat(emptyResult, numel(model.elementData), 1);
 
 for elementNumber = 1:numel(model.elementData)
-    data = model.elementData{elementNumber};
+    data = model.elementData(elementNumber);
     validateElementData(data, model.numberOfDOFs, elementNumber);
-    globalDisplacements = displacements(data.globalDOFs);
+    globalDisplacements = displacements(data.dofs);
     localDisplacements = data.transformation * globalDisplacements;
     localEndForces = data.localStiffness * localDisplacements;
 
@@ -47,24 +47,24 @@ for elementNumber = 1:numel(model.elementData)
 
     axialStrain = ...
         (localDisplacements(endAxialDOF) - localDisplacements(1)) / data.length;
-    axialStress = data.youngsModulus * axialStrain;
+    axialStress = data.properties(2) * axialStrain;
 
     elementResults(elementNumber).elementNumber = elementNumber;
     elementResults(elementNumber).type = data.type;
     elementResults(elementNumber).nodeNumbers = data.nodeNumbers;
-    elementResults(elementNumber).globalDOFs = data.globalDOFs;
+    elementResults(elementNumber).globalDOFs = data.dofs;
     elementResults(elementNumber).length = data.length;
     elementResults(elementNumber).localDisplacements = localDisplacements;
     elementResults(elementNumber).localEndForces = localEndForces;
     elementResults(elementNumber).axialStrain = axialStrain;
     elementResults(elementNumber).axialStress = axialStress;
-    elementResults(elementNumber).axialForce = data.area * axialStress;
+    elementResults(elementNumber).axialForce = data.properties(1) * axialStress;
 end
 end
 
 function validateElementData(data, numberOfDOFs, elementNumber)
-requiredFields = {'type', 'nodeNumbers', 'globalDOFs', 'length', ...
-    'transformation', 'localStiffness', 'area', 'youngsModulus'};
+requiredFields = {'type', 'nodeNumbers', 'dofs', 'length', ...
+    'transformation', 'localStiffness', 'properties'};
 for i = 1:numel(requiredFields)
     if ~isfield(data, requiredFields{i})
         error('MKEF:InvalidRecoveryModel', ...
@@ -73,9 +73,9 @@ for i = 1:numel(requiredFields)
     end
 end
 if data.length <= 0 || ~isfinite(data.length) || ...
-        any(data.globalDOFs < 1) || any(data.globalDOFs > numberOfDOFs) || ...
-        any(data.globalDOFs ~= fix(data.globalDOFs)) || ...
-        size(data.transformation, 2) ~= numel(data.globalDOFs) || ...
+        any(data.dofs < 1) || any(data.dofs > numberOfDOFs) || ...
+        any(data.dofs ~= fix(data.dofs)) || ...
+        size(data.transformation, 2) ~= numel(data.dofs) || ...
         size(data.localStiffness, 1) ~= size(data.transformation, 1) || ...
         size(data.localStiffness, 2) ~= size(data.transformation, 1)
     error('MKEF:InvalidRecoveryModel', ...

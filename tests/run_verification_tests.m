@@ -16,6 +16,7 @@ fprintf('Running self-contained verification tests...\n');
 
 runNamedTest('assembled matrix invariants', @testMatrixInvariants);
 runNamedTest('element matrices', @test_element_matrices);
+runNamedTest('sparse triplet assembly', @test_sparse_assembly);
 runNamedTest('single axial truss', @testSingleAxialTruss);
 runNamedTest('cantilever beam stiffness', @testCantileverBeam);
 runNamedTest('nodal load semantics', @testNodalLoadSemantics);

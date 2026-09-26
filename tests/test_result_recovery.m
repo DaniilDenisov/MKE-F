@@ -44,8 +44,8 @@ function testRotatedTrussRecovery()
 coordinates = [1 2; 4 6];
 area = 0.02;
 youngsModulus = 210e9;
-element = Truss2DElement();
-element.SetupElement(coordinates, [1 2], [area youngsModulus 7850]);
+element = createStructuralElement(112, coordinates, [1 2], ...
+    [area youngsModulus 7850], [1 2; 3 4]);
 
 length = 5;
 extension = 1e-3;
@@ -53,7 +53,7 @@ direction = (coordinates(2,:) - coordinates(1,:)) / length;
 globalDisplacements = [0; 0; direction(1)*extension; direction(2)*extension];
 model = struct();
 model.numberOfDOFs = 4;
-model.elementData = {element.GetRecoveryData([1 2; 3 4])};
+model.elementData = element;
 
 result = recoverElementResults(model, globalDisplacements);
 expectedStrain = extension / length;
