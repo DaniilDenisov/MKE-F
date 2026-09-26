@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Преобразование элементных матриц и разреженная сборка глобальной системы в МКЭ-Ф.">
+  <title>3. Преобразование и сборка — МКЭ-Ф</title>
+  <link rel="stylesheet" href="assets/reference.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">К содержанию</a>
+  <header class="site-header">
+    <div class="site-header__inner">
+      <p class="eyebrow">Student FEM Reference · Глава 3</p>
+      <p class="site-title">Преобразование и сборка</p>
+      <p class="site-subtitle">Как локальная физика каждого элемента попадает в общие глобальные строки и столбцы.</p>
+    </div>
+  </header>
+
+  <div class="layout">
+    <nav class="contents" aria-label="Оглавление справочника">
+      <h2>Оглавление</h2>
+      <ol>
+        <li><a href="01-model-dofs.html">Модель, узлы, элементы и СС</a></li>
+        <li><a href="02-element-matrices.html">Матрицы элементов</a></li>
+        <li><a aria-current="page" href="03-transformation-assembly.html">Преобразование и сборка</a></li>
+      </ol>
+    </nav>
+
+    <main class="chapter" id="main">
+      <span class="chapter-number">Глава 3</span>
+      <h1>Из локальных осей в глобальную систему</h1>
+      <p class="lead">Формулы элемента проще записать вдоль его собственной оси. Но узлы разных элементов должны иметь один общий базис. Матрица преобразования и карта СС решают эти две разные задачи.</p>
+
+      <section aria-labelledby="basis-title">
+        <h2 id="basis-title">Направляющие косинусы</h2>
+        <p>Для узлов <em>(x<sub>1</sub>, y<sub>1</sub>)</em> и <em>(x<sub>2</sub>, y<sub>2</sub>)</em>:</p>
+        <p class="equation">L = √(Δx² + Δy²), &nbsp; c = Δx/L, &nbsp; s = Δy/L</p>
+        <p>Блок поворота одной поступательной пары:</p>
+        <pre><code>R = [ c  s
+     -s  c ]</code></pre>
+        <p>Он переводит глобальные компоненты в локальные: первая строка проецирует перемещение на ось элемента, вторая — на поперечную ось. Для стержня блок повторяется для двух узлов:</p>
+        <pre><code>T_truss = [ R  0
+            0  R ]</code></pre>
+        <p>У рамного элемента поворот <em>θ<sub>z</sub></em> одинаково измеряется в обеих плоских системах, поэтому между поступательными блоками стоят единицы для вращательных СС.</p>
+      </section>
+
+      <section aria-labelledby="transform-title">
+        <h2 id="transform-title">Преобразование перемещений и матриц</h2>
+        <p>Проект использует соглашение:</p>
+        <p class="equation">u<sub>local</sub> = T u<sub>global</sub></p>
+        <p>Из равенства потенциальной энергии следует:</p>
+        <p class="equation">K<sub>global</sub> = T<sup>T</sup> K<sub>local</sub> T</p>
+        <p>Так же преобразуется согласованная масса:</p>
+        <p class="equation">M<sub>global</sub> = T<sup>T</sup> M<sub>local</sub> T</p>
+        <p>Матрица <strong>T</strong> ортогональна: <strong>TT<sup>T</sup> = I</strong>. Поэтому чистый поворот не меняет собственные значения, симметрию и ранг матрицы — меняется лишь представление в координатах.</p>
+      </section>
+
+      <section aria-labelledby="map-title">
+        <h2 id="map-title">Карта СС и наложение вкладов</h2>
+        <p>Рассмотрим цепочку из двух ферменных стержней и трёх узлов. Глобальная карта:</p>
+        <pre><code>dofMap = [1 2;    % узел 1: ux, uy
+          3 4;    % узел 2: ux, uy
+          5 6];   % узел 3: ux, uy
+
+element(1).dofs = [1; 2; 3; 4];
+element(2).dofs = [3; 4; 5; 6];</code></pre>
+        <p>Строки 3 и 4 принадлежат общему узлу. Поэтому диагональный блок глобальной матрицы в этом узле равен сумме вкладов обоих элементов. В математической записи для каждого элемента <em>e</em>:</p>
+        <p class="equation">K(d<sub>e</sub>, d<sub>e</sub>) ← K(d<sub>e</sub>, d<sub>e</sub>) + K<sub>e</sub></p>
+        <p>Здесь <em>d<sub>e</sub></em> — вектор <code>element.dofs</code>. Тот же закон применяется к массе.</p>
+      </section>
+
+      <section aria-labelledby="sparse-title">
+        <h2 id="sparse-title">Почему сборка разреженная</h2>
+        <p>Один элемент соединяет только свои узлы, поэтому влияет на небольшое число пар СС. В большой модели подавляющее большинство глобальных коэффициентов нулевые. Хранить полную квадратную матрицу означает расходовать память на нули.</p>
+        <p><a href="../assembleGlobalMatrices.m"><code>assembleGlobalMatrices</code></a> сначала создаёт четыре линейных массива:</p>
+        <ul>
+          <li><code>rows</code> — глобальные номера строк;</li>
+          <li><code>columns</code> — глобальные номера столбцов;</li>
+          <li><code>stiffnessValues</code> — коэффициенты жёсткости;</li>
+          <li><code>massValues</code> — коэффициенты массы.</li>
+        </ul>
+        <p>Для каждой пары локальных индексов записывается триплет «строка, столбец, значение». Затем вызов <code>sparse</code> создаёт глобальную матрицу и автоматически суммирует повторяющиеся пары индексов.</p>
+        <pre><code>[elementRows, elementColumns] = ndgrid(dofs, dofs);
+rows(indices) = elementRows(:);
+columns(indices) = elementColumns(:);
+stiffnessValues(indices) = element.stiffness(:);
+
+globalK = sparse(rows, columns, stiffnessValues, nDOF, nDOF);</code></pre>
+        <p>Число подготовленных записей растёт как сумма квадратов числа СС элементов, то есть линейно по числу однотипных элементов, а не как квадрат общего числа СС.</p>
+      </section>
+
+      <section aria-labelledby="practice-title">
+        <h2 id="practice-title">Лабораторная 02</h2>
+        <div class="callout">
+          <span class="callout__title">Как запустить</span>
+          <p><code>addpath(fullfile(pwd,"reference","examples")); r = example_02_sparse_assembly();</code></p>
+        </div>
+        <div class="callout callout--inspect">
+          <span class="callout__title">Что исследовать</span>
+          <p>Сравните <code>r.elements(1).dofs</code>, <code>r.elements(2).dofs</code> и диагональ <code>full(r.stiffness)</code>. Найдите сумму двух вкладов в общей СС 3.</p>
+        </div>
+        <div class="callout">
+          <span class="callout__title">Ожидаемый инвариант</span>
+          <p>Глобальные <strong>K</strong> и <strong>M</strong> разреженные и симметричные. Плотная контрольная сборка совпадает с результатом триплетов, а суммарная переносная масса равна массе двух стержней.</p>
+        </div>
+        <div class="callout callout--warning">
+          <span class="callout__title">Частые ошибки</span>
+          <p>Не присваивайте блок через <code>K(d,d) = Ke</code>: это стирает вклад ранее собранного элемента. Нельзя также переставлять <code>dofs</code> без такой же перестановки строк и столбцов матрицы.</p>
+        </div>
+        <div class="callout callout--inspect">
+          <span class="callout__title">Предлагаемый эксперимент</span>
+          <p>Добавьте четвёртый узел и третий элемент. Предскажите размер глобальной матрицы, её ранг и общую массу до запуска изменённой копии примера.</p>
+        </div>
+      </section>
+
+      <section class="source-list" aria-labelledby="sources-title">
+        <h2 id="sources-title">Исходный код главы</h2>
+        <ul>
+          <li><a href="../createStructuralElement.m"><code>createStructuralElement.m</code></a> — направляющие косинусы, <strong>T</strong> и поворот матриц;</li>
+          <li><a href="../assembleGlobalMatrices.m"><code>assembleGlobalMatrices.m</code></a> — индексированная триплетная сборка;</li>
+          <li><a href="../tests/test_sparse_assembly.m"><code>tests/test_sparse_assembly.m</code></a> — проверки разреженности и большой цепочки;</li>
+          <li><a href="examples/example_02_sparse_assembly.m"><code>example_02_sparse_assembly.m</code></a> — учебная сборка двух элементов.</li>
+        </ul>
+      </section>
+    </main>
+  </div>
+
+  <nav class="page-nav" aria-label="Навигация между главами">
+    <a href="02-element-matrices.html"><span class="page-nav__label">Назад</span>← 2. Матрицы элементов</a>
+    <a href="index.html"><span class="page-nav__label">К началу</span>Оглавление справочника →</a>
+  </nav>
+
+  <footer class="site-footer">
+    <div class="site-footer__inner"><p>МКЭ-Ф · автономный учебный справочник · глава 3 из 3 в текущем разделе</p></div>
+  </footer>
+</body>
+</html>

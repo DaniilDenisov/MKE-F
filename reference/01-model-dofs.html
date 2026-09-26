@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Модель, узлы, элементы и глобальная нумерация степеней свободы в МКЭ-Ф.">
+  <title>1. Модель, узлы, элементы и СС — МКЭ-Ф</title>
+  <link rel="stylesheet" href="assets/reference.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">К содержанию</a>
+  <header class="site-header">
+    <div class="site-header__inner">
+      <p class="eyebrow">Student FEM Reference · Глава 1</p>
+      <p class="site-title">Модель и степени свободы</p>
+      <p class="site-subtitle">Как геометрия и физические компоненты превращаются в индексируемый вектор неизвестных.</p>
+    </div>
+  </header>
+
+  <div class="layout">
+    <nav class="contents" aria-label="Оглавление справочника">
+      <h2>Оглавление</h2>
+      <ol>
+        <li><a aria-current="page" href="01-model-dofs.html">Модель, узлы, элементы и СС</a></li>
+        <li><a href="02-element-matrices.html">Матрицы элементов</a></li>
+        <li><a href="03-transformation-assembly.html">Преобразование и сборка</a></li>
+      </ol>
+    </nav>
+
+    <main class="chapter" id="main">
+      <span class="chapter-number">Глава 1</span>
+      <h1>Модель, узлы, элементы и степени свободы</h1>
+      <p class="lead">Конечно-элементная модель — это не рисунок конструкции, а согласованный набор координат, связей, физических свойств и глобальных индексов. Ошибка в этой связи переносится во все последующие матрицы.</p>
+
+      <section aria-labelledby="levels-title">
+        <h2 id="levels-title">Три уровня описания</h2>
+        <div class="card-grid">
+          <article class="card">
+            <h3>Узел</h3>
+            <p>Хранит положение <em>(X, Y)</em>. Набор допустимых перемещений определяется типом всех элементов модели, а не самим узлом.</p>
+          </article>
+          <article class="card">
+            <h3>Элемент</h3>
+            <p>Соединяет два узла, содержит свойства материала и сечения, локальные матрицы, преобразование и вектор глобальных СС.</p>
+          </article>
+          <article class="card">
+            <h3>Система</h3>
+            <p>Объединяет элементы в глобальные <strong>K</strong> и <strong>M</strong>, а также хранит опоры и нагрузки для конкретного анализа.</p>
+          </article>
+          <article class="card">
+            <h3>Результат</h3>
+            <p>Возвращается отдельно от модели: перемещения, реакции, частоты или истории во времени не перезаписывают исходные матрицы.</p>
+          </article>
+        </div>
+      </section>
+
+      <section aria-labelledby="types-title">
+        <h2 id="types-title">Два реализованных типа элемента</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Тип</th><th>Компоненты узла</th><th>Вектор элемента</th><th>Что деформируется</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>112, плоский стержень фермы</td>
+                <td><em>u<sub>x</sub>, u<sub>y</sub></em></td>
+                <td>[u<sub>1x</sub>, u<sub>1y</sub>, u<sub>2x</sub>, u<sub>2y</sub>]<sup>T</sup></td>
+                <td>только осевое растяжение/сжатие</td>
+              </tr>
+              <tr>
+                <td>113, плоская рама Эйлера–Бернулли</td>
+                <td><em>u<sub>x</sub>, u<sub>y</sub>, θ<sub>z</sub></em></td>
+                <td>[u<sub>1x</sub>, u<sub>1y</sub>, θ<sub>1</sub>, u<sub>2x</sub>, u<sub>2y</sub>, θ<sub>2</sub>]<sup>T</sup></td>
+                <td>осевое и изгибное деформирование</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Смешанная сетка 112/113 не поддерживается: у её узлов неодинаковое число СС. Парсер отклоняет такую модель явно, а не пытается угадать недостающие компоненты.</p>
+      </section>
+
+      <section aria-labelledby="numbering-title">
+        <h2 id="numbering-title">Глобальная нумерация</h2>
+        <p>В проекте СС нумеруются по узлам. Для <em>n</em>-го узла и <em>d</em> компонентов на узел глобальный номер компоненты <em>j</em> равен:</p>
+        <p class="equation">globalDOF(n, j) = (n − 1) · d + j</p>
+        <p>Для трёх рамных узлов матрица соответствия <code>iMnod</code> имеет вид:</p>
+        <pre><code>% столбцы: ux  uy  thetaZ
+iMnod = [ 1   2    3;
+          4   5    6;
+          7   8    9 ];</code></pre>
+        <p>Если элемент соединяет узлы 1 и 3, функция строит его карту выражением, эквивалентным:</p>
+        <pre><code>elementDOFs = reshape(iMnod([1 3], :).', [], 1)
+% результат: [1; 2; 3; 7; 8; 9]</code></pre>
+        <p>Порядок важен: сначала идут все компоненты первого узла, затем второго. В таком же порядке записаны строки и столбцы элементных матриц.</p>
+      </section>
+
+      <section aria-labelledby="structures-title">
+        <h2 id="structures-title">Данные модели и данные результата</h2>
+        <p><a href="../createStructuralElement.m"><code>createStructuralElement</code></a> возвращает неизменяемую по смыслу структуру элемента. Ключевые поля:</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Поле</th><th>Назначение</th></tr></thead>
+            <tbody>
+              <tr><td><code>type</code>, <code>nodeNumbers</code></td><td>тип и топология элемента</td></tr>
+              <tr><td><code>nodeCoordinates</code>, <code>length</code></td><td>геометрия в глобальных осях</td></tr>
+              <tr><td><code>properties</code></td><td><em>[A, E, ρ]</em> или <em>[A, E, ρ, I]</em></td></tr>
+              <tr><td><code>dofs</code></td><td>карта строк и столбцов в глобальных матрицах</td></tr>
+              <tr><td><code>transformation</code></td><td>матрица перехода из глобальных компонент в локальные</td></tr>
+              <tr><td><code>localStiffness</code></td><td>жёсткость в локальной системе элемента</td></tr>
+              <tr><td><code>stiffness</code>, <code>mass</code></td><td>матрицы элемента в глобальных осях</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p><a href="../createAnalysisModel.m"><code>createAnalysisModel</code></a> копирует собранные матрицы и описание сетки в обычную структуру для чистых решателей. Решатели возвращают новые структуры результатов. Благодаря этому повторный расчёт не зависит от порядка предыдущих запусков.</p>
+      </section>
+
+      <section aria-labelledby="practice-title">
+        <h2 id="practice-title">Мини-практика</h2>
+        <div class="callout">
+          <span class="callout__title">Как запустить</span>
+          <p>Из корня репозитория: <code>addpath(fullfile(pwd,"reference","examples")); r = example_01_element_matrices();</code></p>
+        </div>
+        <div class="callout callout--inspect">
+          <span class="callout__title">Что исследовать</span>
+          <p>Сравните <code>r.truss.dofs</code> и <code>r.frame.dofs</code>. Затем сопоставьте их с порядком строк напечатанных матриц.</p>
+        </div>
+        <div class="callout">
+          <span class="callout__title">Ожидаемый инвариант</span>
+          <p>Два узла дают 4 СС для ферменного элемента и 6 СС для рамного; число строк каждой матрицы совпадает с длиной <code>element.dofs</code>.</p>
+        </div>
+        <div class="callout callout--warning">
+          <span class="callout__title">Частые ошибки</span>
+          <p>Угол <em>θ<sub>z</sub></em> — вращение, а не перемещение <em>u<sub>z</sub></em>. Компонента нагрузки на эту СС является моментом <em>M<sub>z</sub></em>.</p>
+        </div>
+        <div class="callout callout--inspect">
+          <span class="callout__title">Предлагаемый эксперимент</span>
+          <p>На бумаге составьте <code>iMnod</code> для четырёх рамных узлов и карту элемента между узлами 2 и 4; проверьте результат выражением <code>reshape</code> в Octave.</p>
+        </div>
+      </section>
+
+      <section class="source-list" aria-labelledby="sources-title">
+        <h2 id="sources-title">Исходный код главы</h2>
+        <ul>
+          <li><a href="../FEMesh.m"><code>FEMesh.m</code></a> — чтение узлов, выбор числа СС и построение <code>iMnod</code>;</li>
+          <li><a href="../createStructuralElement.m"><code>createStructuralElement.m</code></a> — единый интерфейс данных элемента;</li>
+          <li><a href="../createAnalysisModel.m"><code>createAnalysisModel.m</code></a> — структура модели для решателей;</li>
+          <li><a href="examples/example_01_element_matrices.m"><code>example_01_element_matrices.m</code></a> — исполняемая лабораторная.</li>
+        </ul>
+      </section>
+    </main>
+  </div>
+
+  <nav class="page-nav" aria-label="Навигация между главами">
+    <a href="index.html"><span class="page-nav__label">Назад</span>← Начало</a>
+    <a href="02-element-matrices.html"><span class="page-nav__label">Далее</span>2. Матрицы элементов →</a>
+  </nav>
+
+  <footer class="site-footer">
+    <div class="site-footer__inner"><p>МКЭ-Ф · автономный учебный справочник · глава 1 из 3 в текущем разделе</p></div>
+  </footer>
+</body>
+</html>

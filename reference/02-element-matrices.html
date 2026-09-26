@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Матрицы жёсткости и масс стержня фермы и рамного элемента в МКЭ-Ф.">
+  <title>2. Матрицы элементов — МКЭ-Ф</title>
+  <link rel="stylesheet" href="assets/reference.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">К содержанию</a>
+  <header class="site-header">
+    <div class="site-header__inner">
+      <p class="eyebrow">Student FEM Reference · Глава 2</p>
+      <p class="site-title">Матрицы элементов</p>
+      <p class="site-subtitle">Жёсткость, согласованная масса и инварианты, которые выявляют ошибки раньше решателя.</p>
+    </div>
+  </header>
+
+  <div class="layout">
+    <nav class="contents" aria-label="Оглавление справочника">
+      <h2>Оглавление</h2>
+      <ol>
+        <li><a href="01-model-dofs.html">Модель, узлы, элементы и СС</a></li>
+        <li><a aria-current="page" href="02-element-matrices.html">Матрицы элементов</a></li>
+        <li><a href="03-transformation-assembly.html">Преобразование и сборка</a></li>
+      </ol>
+    </nav>
+
+    <main class="chapter" id="main">
+      <span class="chapter-number">Глава 2</span>
+      <h1>Матрицы жёсткости и масс</h1>
+      <p class="lead">Матрица элемента связывает узловые движения с усилиями и инерцией. До сборки системы её можно проверить независимо: по размеру, симметрии, рангу, единицам и поведению при движении как твёрдого тела.</p>
+
+      <section aria-labelledby="truss-title">
+        <h2 id="truss-title">Плоский стержень фермы, тип 112</h2>
+        <p>В локальных осях <em>x′, y′</em> элемент сопротивляется только изменению расстояния между узлами. В реализации сохранены обе поступательные компоненты каждого узла, поэтому локальный вектор имеет четыре компоненты.</p>
+        <p class="equation">k = EA/L</p>
+        <pre><code>K_local = k · [ 1  0 -1  0
+                0  0  0  0
+               -1  0  1  0
+                0  0  0  0 ]</code></pre>
+        <p>Согласованная масса распределяет поступательную инерцию между обоими узлами:</p>
+        <pre><code>M_local = ρAL/6 · [ 2  0  1  0
+                    0  2  0  1
+                    1  0  2  0
+                    0  1  0  2 ]</code></pre>
+        <p>У свободного стержня ранг <strong>K</strong> равен 1: лишь одна линейная комбинация перемещений создаёт осевую деформацию. Два переноса и движение, не меняющее длину в линейной постановке, имеют нулевую энергию.</p>
+      </section>
+
+      <section aria-labelledby="frame-title">
+        <h2 id="frame-title">Плоская рама Эйлера–Бернулли, тип 113</h2>
+        <p>Рамный элемент объединяет осевую жёсткость и изгиб. Принято допущение Эйлера–Бернулли: поперечный сдвиг не деформирует сечение, поэтому поворот связан с производной прогиба.</p>
+        <p class="equation">a = EA/L, &nbsp; b = 12EI/L<sup>3</sup>, &nbsp; c = 6EI/L<sup>2</sup>, &nbsp; d = 4EI/L, &nbsp; e = 2EI/L</p>
+        <pre><code>K_local = [ a   0   0  -a   0   0
+            0   b   c   0  -b   c
+            0   c   d   0  -c   e
+           -a   0   0   a   0   0
+            0  -b  -c   0   b  -c
+            0   c   e   0  -c   d ]</code></pre>
+        <p>В <a href="../createStructuralElement.m"><code>createStructuralElement.m</code></a> используется стандартная согласованная матрица масс:</p>
+        <pre><code>M_local = ρAL/420 ·
+[ 140    0       0     70    0        0
+    0   156     22L     0   54      -13L
+    0   22L     4L²     0   13L     -3L²
+   70    0       0    140    0        0
+    0    54     13L     0  156      -22L
+    0  -13L    -3L²     0  -22L      4L² ]</code></pre>
+        <p>У свободного рамного элемента три движения как твёрдого тела: два переноса и один поворот. Поэтому ранг матрицы жёсткости 6×6 равен 3.</p>
+      </section>
+
+      <section aria-labelledby="units-title">
+        <h2 id="units-title">Единицы и смысл коэффициентов</h2>
+        <p>Матрицы с вращательными СС не имеют одной общей физической единицы для всех записей. Например, связь силы с перемещением имеет Н/м, а связь момента с углом — Н·м. Проверять нужно каждую пару «обобщённая сила — обобщённое перемещение».</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Коэффициент</th><th>Зависимость</th><th>Физический эффект</th></tr></thead>
+            <tbody>
+              <tr><td><em>EA/L</em></td><td>пропорционален площади и модулю; обратно пропорционален длине</td><td>осевое растяжение</td></tr>
+              <tr><td><em>12EI/L³</em></td><td>особенно быстро падает с длиной</td><td>поперечная сила от прогиба</td></tr>
+              <tr><td><em>6EI/L²</em></td><td>связывает прогиб и поворот</td><td>связь силы и момента</td></tr>
+              <tr><td><em>4EI/L, 2EI/L</em></td><td>вращательные диагональные и перекрёстные члены</td><td>изгибающие моменты</td></tr>
+              <tr><td><em>ρAL</em></td><td>масса элемента</td><td>инерция поступательного движения</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section aria-labelledby="checks-title">
+        <h2 id="checks-title">Пять проверок до сборки</h2>
+        <ol>
+          <li><strong>Размер:</strong> 4×4 для типа 112, 6×6 для типа 113.</li>
+          <li><strong>Конечность:</strong> ни один коэффициент не равен <code>NaN</code> или <code>Inf</code>.</li>
+          <li><strong>Симметрия:</strong> <strong>K = K<sup>T</sup></strong> и <strong>M = M<sup>T</sup></strong>.</li>
+          <li><strong>Ранг:</strong> 1 у свободного стержня, 3 у свободной рамы.</li>
+          <li><strong>Масса:</strong> при единичном переносе квадратичная форма <strong>r<sup>T</sup>Mr</strong> равна <em>ρAL</em>.</li>
+        </ol>
+        <p>Матрица жёсткости свободного элемента обязана быть вырожденной. Это не ошибка: элемент может двигаться без деформации. Сингулярность всей модели станет ошибкой только тогда, когда опоры не устранят механизмы.</p>
+      </section>
+
+      <section aria-labelledby="practice-title">
+        <h2 id="practice-title">Лабораторная 01</h2>
+        <div class="callout">
+          <span class="callout__title">Как запустить</span>
+          <p><code>addpath(fullfile(pwd,"reference","examples")); r = example_01_element_matrices();</code></p>
+        </div>
+        <div class="callout callout--inspect">
+          <span class="callout__title">Что исследовать</span>
+          <p>Сравните <code>r.truss.localStiffness</code> и <code>r.truss.stiffness</code>. Локальная матрица проста, а глобальная содержит связи X–Y из-за наклона 3–4–5.</p>
+        </div>
+        <div class="callout">
+          <span class="callout__title">Ожидаемый инвариант</span>
+          <p>Все матрицы симметричны, преобразования ортогональны, ранги равны 1 и 3, а переносная масса совпадает с <em>ρAL</em>.</p>
+        </div>
+        <div class="callout callout--warning">
+          <span class="callout__title">Частые ошибки</span>
+          <p>Нулевая строка поперечной жёсткости стержня не означает нулевую поперечную массу. Также нельзя применять формулы при <em>L = 0</em> или неположительных <em>A, E, ρ, I</em> — функция отклоняет такие данные.</p>
+        </div>
+        <div class="callout callout--inspect">
+          <span class="callout__title">Предлагаемый эксперимент</span>
+          <p>Удвойте <em>L</em>, затем отдельно <em>A</em> и <em>I</em>. Предскажите, какие коэффициенты изменятся в 2, 4 или 8 раз, и подтвердите это в возвращённой структуре.</p>
+        </div>
+      </section>
+
+      <section class="source-list" aria-labelledby="sources-title">
+        <h2 id="sources-title">Исходный код главы</h2>
+        <ul>
+          <li><a href="../createStructuralElement.m"><code>createStructuralElement.m</code></a> — формулы обеих матриц и проверки данных;</li>
+          <li><a href="../tests/test_element_matrices.m"><code>tests/test_element_matrices.m</code></a> — независимые эталонные формулы и проверки ориентаций;</li>
+          <li><a href="examples/example_01_element_matrices.m"><code>example_01_element_matrices.m</code></a> — учебный вывод реальных матриц.</li>
+        </ul>
+      </section>
+    </main>
+  </div>
+
+  <nav class="page-nav" aria-label="Навигация между главами">
+    <a href="01-model-dofs.html"><span class="page-nav__label">Назад</span>← 1. Модель и степени свободы</a>
+    <a href="03-transformation-assembly.html"><span class="page-nav__label">Далее</span>3. Преобразование и сборка →</a>
+  </nav>
+
+  <footer class="site-footer">
+    <div class="site-footer__inner"><p>МКЭ-Ф · автономный учебный справочник · глава 2 из 3 в текущем разделе</p></div>
+  </footer>
+</body>
+</html>

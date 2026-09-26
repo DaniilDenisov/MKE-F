@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Автономный учебник по реализации метода конечных элементов в МКЭ-Ф.">
+  <title>МКЭ-Ф — автономный учебник</title>
+  <link rel="stylesheet" href="assets/reference.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">К содержанию</a>
+  <header class="site-header">
+    <div class="site-header__inner">
+      <p class="eyebrow">Student FEM Reference · GNU Octave</p>
+      <p class="site-title">МКЭ-Ф: от элемента к системе</p>
+      <p class="site-subtitle">Автономный русскоязычный справочник по тому, как математическая модель превращается в матрицы и вычисления реальной программы.</p>
+    </div>
+  </header>
+
+  <div class="layout">
+    <nav class="contents" aria-label="Оглавление справочника">
+      <h2>Оглавление</h2>
+      <ol>
+        <li><a href="01-model-dofs.html">Модель, узлы, элементы и СС</a></li>
+        <li><a href="02-element-matrices.html">Матрицы элементов</a></li>
+        <li><a href="03-transformation-assembly.html">Преобразование и сборка</a></li>
+      </ol>
+    </nav>
+
+    <main class="chapter" id="main">
+      <span class="chapter-number">Точка входа</span>
+      <h1>Читайте формулу — запускайте код</h1>
+      <p class="lead">Этот справочник связывает основные идеи метода конечных элементов с функциями проекта МКЭ-Ф. Он работает без интернета, внешних шрифтов, MathJax и генератора сайта.</p>
+
+      <section aria-labelledby="route-title">
+        <h2 id="route-title">Маршрут первых трёх глав</h2>
+        <div class="chapter-grid">
+          <article class="card">
+            <h3><a href="01-model-dofs.html">1. Модель и степени свободы</a></h3>
+            <p>Разберём, что хранят узел и элемент, чем ферма отличается от рамы и как локальная компонента получает глобальный номер.</p>
+          </article>
+          <article class="card">
+            <h3><a href="02-element-matrices.html">2. Матрицы элементов</a></h3>
+            <p>Увидим локальные матрицы жёсткости и согласованных масс, проверим симметрию, ранг и движение как твёрдого тела.</p>
+          </article>
+          <article class="card">
+            <h3><a href="03-transformation-assembly.html">3. Преобразование и сборка</a></h3>
+            <p>Повернём матрицы в глобальные оси и соберём их в разреженные матрицы системы по карте степеней свободы.</p>
+          </article>
+          <article class="card">
+            <h3>Принцип лабораторных</h3>
+            <p>Каждый пример вызывает функции проекта, возвращает структуру для экспериментов и останавливается, если нарушен физический или численный инвариант.</p>
+          </article>
+        </div>
+      </section>
+
+      <section aria-labelledby="start-title">
+        <h2 id="start-title">Быстрый старт</h2>
+        <p>Откройте терминал в корне репозитория и добавьте каталог примеров в путь Octave:</p>
+        <pre><code>addpath(fullfile(pwd, "reference", "examples"));
+r1 = example_01_element_matrices();
+r2 = example_02_sparse_assembly();</code></pre>
+
+        <div class="callout">
+          <span class="callout__title">Как запустить</span>
+          <p>Команды рассчитаны на GNU Octave. Для запуска без печати матриц передайте <code>false</code>, например <code>example_01_element_matrices(false)</code>.</p>
+        </div>
+        <div class="callout callout--inspect">
+          <span class="callout__title">Что исследовать</span>
+          <p>Сохраните возвращаемые структуры <code>r1</code> и <code>r2</code>. В них находятся координаты, данные элементов, карты СС и собранные матрицы.</p>
+        </div>
+        <div class="callout">
+          <span class="callout__title">Ожидаемый инвариант</span>
+          <p>Матрицы <strong>K</strong> и <strong>M</strong> симметричны; поворот элемента не меняет его физические собственные значения; вклад в общей СС суммируется.</p>
+        </div>
+        <div class="callout callout--warning">
+          <span class="callout__title">Частая ошибка</span>
+          <p>Не путайте номер узла, локальный номер компоненты и глобальный номер СС. Матрица элемента индексируется его вектором <code>element.dofs</code>, а не номерами узлов.</p>
+        </div>
+        <div class="callout callout--inspect">
+          <span class="callout__title">Предлагаемый эксперимент</span>
+          <p>Измените координаты второго узла с <code>[3 4]</code> на <code>[5 0]</code> в копии примера 1 и сравните локальные и глобальные матрицы.</p>
+        </div>
+      </section>
+
+      <section aria-labelledby="notation-title">
+        <h2 id="notation-title">Обозначения</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Обозначение</th><th>Смысл</th><th>Типичные единицы СИ</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><strong>u</strong></td><td>вектор узловых перемещений и поворотов</td><td>м, рад</td></tr>
+              <tr><td><strong>K</strong></td><td>матрица жёсткости</td><td>зависят от пары СС</td></tr>
+              <tr><td><strong>M</strong></td><td>согласованная матрица масс</td><td>зависят от пары СС</td></tr>
+              <tr><td><em>A, E, ρ, I</em></td><td>площадь, модуль Юнга, плотность, момент инерции</td><td>м², Па, кг/м³, м⁴</td></tr>
+              <tr><td><em>c, s</em></td><td>направляющие косинусы элемента</td><td>безразмерные</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Решатель не преобразует единицы: пользователь обязан выбрать согласованную систему.</p>
+      </section>
+
+      <section class="source-list" aria-labelledby="sources-title">
+        <h2 id="sources-title">Код рядом с текстом</h2>
+        <ul>
+          <li><a href="../createStructuralElement.m"><code>createStructuralElement.m</code></a> — геометрия, матрицы и преобразование элемента;</li>
+          <li><a href="../assembleGlobalMatrices.m"><code>assembleGlobalMatrices.m</code></a> — разреженная сборка;</li>
+          <li><a href="examples/example_01_element_matrices.m"><code>example_01_element_matrices.m</code></a> — лабораторная по матрицам;</li>
+          <li><a href="examples/example_02_sparse_assembly.m"><code>example_02_sparse_assembly.m</code></a> — лабораторная по сборке.</li>
+        </ul>
+      </section>
+    </main>
+  </div>
+
+  <nav class="page-nav" aria-label="Навигация между главами">
+    <span><span class="page-nav__label">Назад</span>Начало справочника</span>
+    <a href="01-model-dofs.html"><span class="page-nav__label">Далее</span>1. Модель и степени свободы →</a>
+  </nav>
+
+  <footer class="site-footer">
+    <div class="site-footer__inner"><p>МКЭ-Ф · автономный учебный справочник · все вычисления выполняются локально</p></div>
+  </footer>
+</body>
+</html>
