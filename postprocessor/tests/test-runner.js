@@ -21,6 +21,16 @@
       }
     };
   }
+  function trussFixture() {
+    var data = fixture();
+    data.model.dofPerNode = 2; data.model.dofLabels = ['ux', 'uy'];
+    data.model.dofMap = [[1, 2], [3, 4]];
+    data.model.elements[0] = { id: 1, type: 112, nodeIds: [1, 2], properties: { area: 1, youngsModulus: 2, density: 3 } };
+    data.analysis.displacements = [0, 0, .01, 0]; data.analysis.loadVector = [0, 0, 10, 0];
+    data.analysis.reactions = [-10, 0, 0, 0];
+    data.analysis.elementResults[0] = { elementId: 1, type: 112, localEndForces: [-10, 0, 10, 0], axialStrain: .002, axialStress: 20, axialForce: 10 };
+    return data;
+  }
 
   test('schema accepts a valid frame', function () { assert(M.validateDataset(fixture()).raw.analysis.type === 'static'); });
   test('schema reports a JSON path', function () {
@@ -69,13 +79,67 @@
       assert(!/NaN|Infinity/.test(path.getAttribute('d')), 'Non-finite SVG path');
     });
   });
-
-  document.addEventListener('DOMContentLoaded', function () {
-    var lines = [], failed = 0;
-    tests.forEach(function (entry) {
-      try { entry.operation(); lines.push('PASS ' + entry.name); }
-      catch (error) { failed += 1; lines.push('FAIL ' + entry.name + ': ' + error.message); }
+  test('cantilever diagram convention is explicit', function () {
+    var q = [0, -100, -50, 0, 100, 0];
+    close(M.staticResults.frameDiagram(q, 'N', 0.4), 0);
+    close(M.staticResults.frameDiagram(q, 'V', 0.4), 100);
+    close(M.staticResults.frameDiagram(q, 'M', 0), 50);
+    close(M.staticResults.frameDiagram(q, 'M', 1), 0);
+  });
+  test('static renderer creates supports, loads, reactions, and diagrams', function () {
+    var dataset = M.validateDataset(fixture()), svg = document.getElementById('test-svg');
+    var renderer = new M.Renderer(svg, document.getElementById('test-selection'));
+    var geometryInfo = renderer.render(dataset, dataset.raw.analysis.displacements, {
+      showOriginal: true, showDeformed: true, showNodes: true,
+      showNodeLabels: false, showElementLabels: false,
+      scaleMode: 'auto', manualScale: 1, samples: 31
     });
+    M.staticResults.render(renderer, dataset, {
+      showSupports: true, showLoads: true, showReactions: true,
+      trussResult: 'none', diagram: 'M'
+    }, geometryInfo);
+    assert(svg.querySelectorAll('.support-symbol').length === 1, 'Support was not rendered');
+    assert(svg.querySelectorAll('[data-load-node-id]').length > 0, 'Load was not rendered');
+    assert(svg.querySelectorAll('[data-reaction-node-id]').length > 0, 'Reaction was not rendered');
+    assert(svg.querySelectorAll('[data-diagram-element-id]').length === 1, 'Diagram was not rendered');
+    assert(renderer.layers.labels.style.display !== 'none', 'Static legend is hidden');
+  });
+  test('standalone SVG export embeds styles and escapes metadata', function () {
+    var svg = document.getElementById('test-svg');
+    var text = M.exporting.serialize(svg, { title: '<unsafe & title>', analysisType: 'static' });
+    assert(text.indexOf('xmlns="http://www.w3.org/2000/svg"') >= 0, 'SVG namespace missing');
+    assert(text.indexOf('<style') >= 0, 'Embedded styles missing');
+    assert(text.indexOf('&lt;unsafe &amp; title&gt;') >= 0, 'Metadata was not safely escaped');
+    assert(text.indexOf('http://') === text.indexOf('http://www.w3.org/2000/svg'), 'Unexpected external URL');
+  });
+  test('truss axial result uses signed coloring and labels', function () {
+    var dataset = M.validateDataset(trussFixture()), svg = document.getElementById('test-svg');
+    var renderer = new M.Renderer(svg, document.getElementById('test-selection'));
+    var geometryInfo = renderer.render(dataset, dataset.raw.analysis.displacements, {
+      showOriginal: true, showDeformed: true, showNodes: true,
+      showNodeLabels: false, showElementLabels: false,
+      scaleMode: 'auto', manualScale: 1, samples: 31
+    });
+    M.staticResults.render(renderer, dataset, {
+      showSupports: true, showLoads: true, showReactions: true,
+      trussResult: 'axialForce', diagram: 'none'
+    }, geometryInfo);
+    assert(svg.querySelector('.deformed-element').style.stroke !== '', 'Tension color was not applied');
+    assert(Array.from(svg.querySelectorAll('.result-label')).some(function (label) { return label.textContent.indexOf('10') >= 0; }), 'Axial result label missing');
+  });
+  test('PNG rasterization produces a nonempty blob', function () {
+    return M.exporting.pngBlob(document.getElementById('test-svg'), { title: 'PNG test', analysisType: 'static' }, 1).then(function (blob) {
+      assert(blob.type === 'image/png' && blob.size > 0, 'PNG blob is empty');
+    });
+  });
+
+  document.addEventListener('DOMContentLoaded', async function () {
+    var lines = [], failed = 0;
+    for (var i = 0; i < tests.length; i += 1) {
+      var entry = tests[i];
+      try { await entry.operation(); lines.push('PASS ' + entry.name); }
+      catch (error) { failed += 1; lines.push('FAIL ' + entry.name + ': ' + error.message); }
+    }
     document.getElementById('test-output').textContent = lines.join('\n') + '\n\n' + (failed ? failed + ' failed' : tests.length + ' passed');
     document.body.setAttribute('data-test-status', failed ? 'failed' : 'passed');
   });

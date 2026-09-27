@@ -31,6 +31,9 @@
   Renderer.prototype.render = function (dataset, displacement, settings) {
     this.dataset = dataset; this.clear();
     var model = dataset.raw.model;
+    var bounds = M.geometry.modelBounds(model);
+    var drawingSize = Math.max(Math.hypot(bounds.maxX - bounds.minX, bounds.maxY - bounds.minY), 1e-9);
+    var labelOffset = drawingSize * .018;
     var scaleInfo = settings.scaleMode === 'auto' ? M.geometry.automaticScale(dataset, displacement, settings.samples) : { scale: settings.manualScale, zero: displacement.every(function (v) { return v === 0; }) };
     var scale = scaleInfo.scale;
     model.elements.forEach(function (element) {
@@ -46,18 +49,18 @@
       this.layers['deformed-geometry'].appendChild(deformed);
       if (settings.showElementLabels) {
         var middle = M.geometry.svgPoint(points[Math.floor(points.length / 2)]);
-        var label = M.svgElement('text', { class: 'label', x: middle.x, y: middle.y - 7, 'text-anchor': 'middle' });
+        var label = M.svgElement('text', { class: 'label', x: middle.x, y: middle.y - labelOffset, 'font-size': drawingSize * .026, 'text-anchor': 'middle' });
         label.textContent = 'E' + element.id; this.layers.labels.appendChild(label);
       }
     }, this);
     model.nodes.forEach(function (node) {
       var point = M.geometry.svgPoint(node);
-      var circle = M.svgElement('circle', { class: 'node', cx: point.x, cy: point.y, r: 3.5, 'data-node-id': node.id, tabindex: '0' });
+      var circle = M.svgElement('circle', { class: 'node', cx: point.x, cy: point.y, r: drawingSize * .008, 'data-node-id': node.id, tabindex: '0' });
       circle.appendChild(M.svgElement('title'));
       circle.firstChild.textContent = 'Node ' + node.id + ' · (' + node.x + ', ' + node.y + ')';
       this.layers.nodes.appendChild(circle);
       if (settings.showNodeLabels) {
-        var label = M.svgElement('text', { class: 'label', x: point.x + 7, y: point.y - 7 });
+        var label = M.svgElement('text', { class: 'label', x: point.x + labelOffset, y: point.y - labelOffset, 'font-size': drawingSize * .026 });
         label.textContent = 'N' + node.id; this.layers.labels.appendChild(label);
       }
     }, this);

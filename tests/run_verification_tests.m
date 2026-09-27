@@ -27,6 +27,7 @@ runNamedTest('constraint validation', @testConstraintValidation);
 runNamedTest('Newmark transient analysis', @test_newmark_transient);
 runNamedTest('element result recovery', @test_result_recovery);
 runNamedTest('postprocessor export', @test_postprocessor_export);
+runNamedTest('offline postprocessor site', @test_postprocessor_site);
 runNamedTest('reference examples', @test_reference_examples);
 runNamedTest('offline reference site', @test_reference_site);
 

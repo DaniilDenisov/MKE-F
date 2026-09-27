@@ -8,7 +8,7 @@ if nargin < 3
 end
 
 analysisType = validateAnalysisType(result);
-[settings, suppliedOptions] = validateOptions(options, analysisType);
+[settings, ~] = validateOptions(options, analysisType);
 modelInfo = validateModel(model);
 
 data = struct();
@@ -29,10 +29,6 @@ switch analysisType
             'Unsupported analysis type %s.', analysisType);
 end
 
-% Formatting affects only file output, but accepting it here keeps the two
-% public entry points on one validated options contract.
-if any(strcmp(suppliedOptions, 'prettyPrint')) %#ok<NASGU>
-end
 end
 
 function analysisType = validateAnalysisType(result)

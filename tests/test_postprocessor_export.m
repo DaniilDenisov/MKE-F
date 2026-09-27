@@ -27,6 +27,21 @@ assertClose(data.analysis.elementResults(1).localEndForces, ...
 assert(isequal(model, modelBefore));
 assert(isequal(staticResult, staticBefore));
 
+trussProblem = StructFEProblem(fullfile('tests', 'fixtures', ...
+    'CaseSingleTruss.txt'), options);
+trussData = createPostprocessorData(trussProblem.GetAnalysisModel(), ...
+    trussProblem.RunStatic());
+assert(trussData.model.elements(1).type == 112);
+assert(isfield(trussData.model.elements(1).properties, 'area'));
+assert(~isfield(trussData.model.elements(1).properties, 'momentOfInertia'));
+assertClose(trussData.analysis.elementResults(1).axialForce, 1000);
+
+frameProblem = StructFEProblem('ANSYSBeamStatic01.txt', options);
+frameData = createPostprocessorData(frameProblem.GetAnalysisModel(), ...
+    frameProblem.RunStatic());
+assert(numel(frameData.model.nodes) == frameProblem.mesh.numberOfNodes);
+assert(numel(frameData.model.elements) == frameProblem.mesh.numberOfElems);
+
 modalResult = problem.RunModal();
 modalData = createPostprocessorData(model, modalResult);
 assert(strcmp(modalData.analysis.type, 'modal'));

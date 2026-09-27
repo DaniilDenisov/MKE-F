@@ -3,6 +3,7 @@
   var elements = {};
   var dataset = null;
   var renderer = null;
+  var displayInfo = null;
 
   function byId(id) { return document.getElementById(id); }
   function settings() {
@@ -13,7 +14,10 @@
       showOriginal: elements.showOriginal.checked, showDeformed: elements.showDeformed.checked,
       showNodes: elements.showNodes.checked, showNodeLabels: elements.showNodeLabels.checked,
       showElementLabels: elements.showElementLabels.checked, scaleMode: elements.scaleMode.value,
-      manualScale: manual, samples: samples
+      manualScale: manual, samples: samples,
+      showSupports: elements.showSupports.checked, showLoads: elements.showLoads.checked,
+      showReactions: elements.showReactions.checked, trussResult: elements.trussResult.value,
+      diagram: elements.diagramResult.value
     };
   }
   function showError(error) {
@@ -32,7 +36,9 @@
       elements.notice.hidden = false;
     }
     try {
-      var info = renderer.render(dataset, displacement, settings());
+      var currentSettings = settings();
+      var info = renderer.render(dataset, displacement, currentSettings);
+      displayInfo = analysis.type === 'static' ? M.staticResults.render(renderer, dataset, currentSettings, info) : { deformationScale: info.scale, zeroDeformation: info.zero };
       elements.status.textContent = analysis.type + ' · deformation scale ' + formatScale(info.scale) + (info.zero ? ' · zero deformation' : '');
     } catch (error) { showError(error); }
   }
@@ -43,6 +49,9 @@
     elements.title.textContent = parsed.metadata.title || 'Untitled dataset';
     elements.dropZone.classList.add('has-data');
     elements.reset.disabled = false;
+    var staticAvailable = parsed.analysis.type === 'static';
+    elements.exportSvg.disabled = !staticAvailable; elements.exportPng.disabled = !staticAvailable;
+    elements.trussResult.disabled = !staticAvailable; elements.diagramResult.disabled = !staticAvailable;
     render();
   }
   function readFile(file) {
@@ -65,17 +74,29 @@
     elements.dropZone.addEventListener('click', function (event) { if (!dataset && event.target === this) elements.fileInput.click(); });
     elements.dropZone.addEventListener('keydown', function (event) { if (!dataset && (event.key === 'Enter' || event.key === ' ')) elements.fileInput.click(); });
     elements.reset.addEventListener('click', function () { renderer.fit(); });
+    elements.exportSvg.addEventListener('click', function () { if (dataset) M.exporting.downloadSvg(byId('viewport'), exportContext()); });
+    elements.exportPng.addEventListener('click', function () {
+      if (!dataset) return;
+      M.exporting.downloadPng(byId('viewport'), exportContext(), Number(elements.pngScale.value)).catch(showError);
+    });
     elements.scaleMode.addEventListener('change', function () { elements.manualScale.disabled = this.value !== 'manual'; render(); });
-    ['showOriginal', 'showDeformed', 'showNodes', 'showNodeLabels', 'showElementLabels', 'manualScale', 'sampleCount'].forEach(function (name) { elements[name].addEventListener('change', render); });
+    ['showOriginal', 'showDeformed', 'showNodes', 'showNodeLabels', 'showElementLabels', 'showSupports', 'showLoads', 'showReactions', 'trussResult', 'diagramResult', 'manualScale', 'sampleCount'].forEach(function (name) { elements[name].addEventListener('change', render); });
+  }
+  function exportContext() {
+    return { title: dataset.raw.metadata.title, analysisType: dataset.raw.analysis.type,
+      scales: displayInfo, diagram: elements.diagramResult.value,
+      trussResult: elements.trussResult.value, exportedUtc: new Date().toISOString() };
   }
   document.addEventListener('DOMContentLoaded', function () {
     elements = {
-      fileInput: byId('file-input'), reset: byId('reset-view'), title: byId('dataset-title'),
+      fileInput: byId('file-input'), reset: byId('reset-view'), exportSvg: byId('export-svg'), exportPng: byId('export-png'), title: byId('dataset-title'),
       dropZone: byId('drop-zone'), error: byId('error-panel'), notice: byId('notice-panel'),
       status: byId('analysis-status'), selection: byId('selection-status'),
       showOriginal: byId('show-original'), showDeformed: byId('show-deformed'), showNodes: byId('show-nodes'),
       showNodeLabels: byId('show-node-labels'), showElementLabels: byId('show-element-labels'),
-      scaleMode: byId('scale-mode'), manualScale: byId('manual-scale'), sampleCount: byId('sample-count')
+      showSupports: byId('show-supports'), showLoads: byId('show-loads'), showReactions: byId('show-reactions'),
+      trussResult: byId('truss-result'), diagramResult: byId('diagram-result'),
+      scaleMode: byId('scale-mode'), manualScale: byId('manual-scale'), sampleCount: byId('sample-count'), pngScale: byId('png-scale')
     };
     renderer = new M.Renderer(byId('viewport'), elements.selection);
     bind();

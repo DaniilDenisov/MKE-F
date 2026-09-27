@@ -39,6 +39,7 @@ input[type="number"], select { width: 100%; padding: .4rem .5rem; }
   padding: .7rem 1rem;
   background: #142432;
   color: #fff;
+  flex-wrap: wrap;
 }
 .brand { display: flex; align-items: center; gap: .75rem; }
 .brand-mark {
@@ -46,7 +47,7 @@ input[type="number"], select { width: 100%; padding: .4rem .5rem; }
   border-radius: .7rem; background: #26a0bd; font-weight: 800; font-size: 1.3rem;
 }
 .brand small { display: block; max-width: 50vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #bfccd6; }
-.toolbar-actions { display: flex; gap: .55rem; }
+.toolbar-actions { display: flex; flex-wrap: wrap; gap: .55rem; }
 
 .app-layout { min-height: calc(100vh - 4.2rem); display: grid; grid-template-columns: 16rem minmax(0, 1fr); }
 .settings { padding: 1rem; background: var(--panel); border-right: 1px solid var(--line); }
@@ -88,9 +89,19 @@ input[type="number"], select { width: 100%; padding: .4rem .5rem; }
 #viewport [data-node-id], #viewport [data-element-id] { cursor: pointer; }
 #viewport .selected { stroke: #ef7d18 !important; stroke-width: 4 !important; }
 #viewport .viewport-background { fill: #fff; }
+#viewport .support-symbol { fill: #fff; stroke: #354657; stroke-width: 1.8; vector-effect: non-scaling-stroke; }
+#viewport .support-ground { fill: none; stroke: #66788a; stroke-width: 1.2; vector-effect: non-scaling-stroke; }
+#viewport .load-symbol { fill: none; stroke: #b63a3f; stroke-width: 2; vector-effect: non-scaling-stroke; }
+#viewport .reaction-symbol { fill: none; stroke: #6d3ca5; stroke-width: 2; stroke-dasharray: 4 2; vector-effect: non-scaling-stroke; }
+#viewport .diagram-fill { fill: rgba(27, 127, 154, .14); stroke: none; }
+#viewport .diagram-line { fill: none; stroke: #176b87; stroke-width: 2; vector-effect: non-scaling-stroke; }
+#viewport .result-label { fill: #354657; font-size: 11px; paint-order: stroke; stroke: #fff; stroke-width: 3px; }
+#viewport .legend-background { fill: rgba(255, 255, 255, .92); stroke: #c8d1dc; stroke-width: 1; vector-effect: non-scaling-stroke; }
+#viewport .legend-text { fill: #263847; font-size: 11px; }
 
 @media (max-width: 760px) {
   .toolbar { align-items: flex-start; }
+  .toolbar-actions { justify-content: flex-end; }
   .brand small { max-width: 42vw; }
   .app-layout { display: block; }
   .settings { border-right: 0; border-bottom: 1px solid var(--line); display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
@@ -101,6 +112,7 @@ input[type="number"], select { width: 100%; padding: .4rem .5rem; }
 
 @media (max-width: 480px) {
   .toolbar { flex-direction: column; }
+  .toolbar-actions { width: 100%; justify-content: flex-start; }
   .brand small { max-width: 80vw; }
   .settings { grid-template-columns: 1fr; }
   .settings .help { grid-column: auto; }
