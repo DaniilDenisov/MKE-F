@@ -80,6 +80,45 @@ assert(strcmp(decoded.format, 'mkef-postprocessor'));
 assert(decoded.version == 1);
 assertClose(decoded.analysis.displacements, staticResult.displacements);
 assert(isequal(writtenData.analysis.displacements, data.analysis.displacements));
+jsonText = fileread(filename);
+assertJsonArray(jsonText, 'nodes');
+assertJsonArray(jsonText, 'elements');
+assertJsonArray(jsonText, 'nodeIds');
+assertJsonArray(jsonText, 'dofMap');
+assertJsonArray(jsonText, 'supports');
+assertJsonArray(jsonText, 'displacements');
+assertJsonArray(jsonText, 'elementResults');
+assertJsonArray(jsonText, 'localEndForces');
+
+frameFilename = fullfile(temporaryDirectory, 'static-frame.json');
+exportPostprocessorData(frameProblem.GetAnalysisModel(), ...
+    frameProblem.RunStatic(), frameFilename);
+frameJson = fileread(frameFilename);
+assertJsonArray(frameJson, 'supports');
+
+singleModeResult = modalResult;
+singleModeResult.frequenciesHz = modalResult.frequenciesHz(1);
+singleModeResult.angularFrequenciesRadPerSec = ...
+    modalResult.angularFrequenciesRadPerSec(1);
+singleModeResult.modeShapes = modalResult.modeShapes(:, 1);
+modalFilename = fullfile(temporaryDirectory, 'single-mode.json');
+exportPostprocessorData(model, singleModeResult, modalFilename);
+modalJson = fileread(modalFilename);
+assertJsonArray(modalJson, 'frequenciesHz');
+assertJsonArray(modalJson, 'angularFrequenciesRadPerSec');
+assertJsonMatrix(modalJson, 'modeShapes');
+
+singleDofOptions = transientOptions;
+singleDofOptions.selectedGlobalDOFs = 6;
+transientFilename = fullfile(temporaryDirectory, 'single-dof.json');
+exportPostprocessorData(model, transientResult, transientFilename, ...
+    singleDofOptions);
+transientJson = fileread(transientFilename);
+assertJsonArray(transientJson, 'time');
+assertJsonArray(transientJson, 'globalDOFIds');
+assertJsonMatrix(transientJson, 'displacements');
+assertJsonMatrix(transientJson, 'reactions');
+assertJsonMatrix(transientJson, 'displacementAmplitudeSpectrum');
 
 fid = fopen(filename, 'wb');
 fwrite(fid, uint8('preserve-me'), 'uint8');
@@ -122,4 +161,16 @@ catch exception
     return;
 end
 error('MKEF:VerificationFailed', 'Expected error %s.', identifier);
+end
+
+function assertJsonArray(json, fieldName)
+pattern = ['"' fieldName '"\s*:\s*\['];
+assert(~isempty(regexp(json, pattern, 'once')), ...
+    ['Expected JSON array for field ' fieldName '.']);
+end
+
+function assertJsonMatrix(json, fieldName)
+pattern = ['"' fieldName '"\s*:\s*\[\s*\['];
+assert(~isempty(regexp(json, pattern, 'once')), ...
+    ['Expected nested JSON arrays for field ' fieldName '.']);
 end

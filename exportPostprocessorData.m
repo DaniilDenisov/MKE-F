@@ -18,7 +18,13 @@ if isfield(options, 'prettyPrint')
     prettyPrint = logical(options.prettyPrint);
 end
 try
-    json = jsonencode(data, 'PrettyPrint', prettyPrint);
+    % A scalar numeric value and a one-element vector have the same shape in
+    % MATLAB/Octave, as do a scalar struct and a one-element struct array.
+    % jsonencode therefore emits JSON scalars/objects for schema fields that
+    % must remain arrays.  Convert only the JSON-facing copy to cells so the
+    % array and matrix dimensions are explicit even when a dimension is one.
+    jsonData = prepareJsonData(data);
+    json = jsonencode(jsonData, 'PrettyPrint', prettyPrint);
 catch exception
     error('MKEF:PostprocessorEncodingFailed', ...
         'Could not encode postprocessor JSON: %s', exception.message);
@@ -95,4 +101,78 @@ clear cleanup;
             delete(temporaryPath);
         end
     end
+end
+
+function output = prepareJsonData(data)
+output = data;
+
+output.model.nodes = recordArray(data.model.nodes);
+output.model.elements = recordArray(data.model.elements);
+for i = 1:numel(output.model.elements)
+    output.model.elements{i}.nodeIds = ...
+        numericArray(output.model.elements{i}.nodeIds);
+end
+output.model.dofMap = numericMatrix(data.model.dofMap);
+output.model.supports = recordArray(data.model.supports);
+
+switch data.analysis.type
+    case 'static'
+        vectorFields = {'displacements', 'loadVector', 'reactions', ...
+            'equilibriumResidual'};
+        for i = 1:numel(vectorFields)
+            name = vectorFields{i};
+            output.analysis.(name) = numericArray(data.analysis.(name));
+        end
+        output.analysis.elementResults = ...
+            recordArray(data.analysis.elementResults);
+        for i = 1:numel(output.analysis.elementResults)
+            output.analysis.elementResults{i}.localEndForces = numericArray( ...
+                output.analysis.elementResults{i}.localEndForces);
+        end
+
+    case 'modal'
+        output.analysis.frequenciesHz = ...
+            numericArray(data.analysis.frequenciesHz);
+        output.analysis.angularFrequenciesRadPerSec = ...
+            numericArray(data.analysis.angularFrequenciesRadPerSec);
+        output.analysis.modeShapes = numericMatrix(data.analysis.modeShapes);
+
+    case 'transient'
+        output.analysis.time = numericArray(data.analysis.time);
+        output.analysis.globalDOFIds = ...
+            numericArray(data.analysis.globalDOFIds);
+        historyFields = {'displacements', 'velocities', 'accelerations', ...
+            'loadHistory', 'reactions'};
+        for i = 1:numel(historyFields)
+            name = historyFields{i};
+            if isfield(data.analysis, name)
+                output.analysis.(name) = ...
+                    numericMatrix(data.analysis.(name));
+            end
+        end
+        if isfield(data.analysis, 'spectrumFrequencyHz')
+            output.analysis.spectrumFrequencyHz = ...
+                numericArray(data.analysis.spectrumFrequencyHz);
+            output.analysis.displacementAmplitudeSpectrum = numericMatrix( ...
+                data.analysis.displacementAmplitudeSpectrum);
+        end
+end
+end
+
+function output = recordArray(value)
+output = cell(1, numel(value));
+for i = 1:numel(value)
+    output{i} = value(i);
+end
+end
+
+function output = numericArray(value)
+output = num2cell(double(value(:).'));
+end
+
+function output = numericMatrix(value)
+output = cell(size(value, 1), 1);
+for row = 1:size(value, 1)
+    output{row} = numericArray(value(row, :));
+end
 end

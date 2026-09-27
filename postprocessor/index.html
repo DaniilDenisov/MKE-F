@@ -10,6 +10,9 @@
   <script defer src="js/geometry.js"></script>
   <script defer src="js/svg-renderer.js"></script>
   <script defer src="js/static-view.js"></script>
+  <script defer src="js/modal-view.js"></script>
+  <script defer src="js/transient-view.js"></script>
+  <script defer src="js/charts.js"></script>
   <script defer src="js/export.js"></script>
   <script defer src="js/app.js"></script>
 </head>
@@ -33,55 +36,63 @@
       <section>
         <h2>Layers</h2>
         <label><input id="show-original" type="checkbox" checked> Original geometry</label>
-        <label><input id="show-deformed" type="checkbox" checked> Deformed geometry</label>
+        <label><input id="show-deformed" type="checkbox" checked> Result geometry</label>
         <label><input id="show-nodes" type="checkbox" checked> Nodes</label>
-        <label><input id="show-node-labels" type="checkbox"> Node numbers</label>
-        <label><input id="show-element-labels" type="checkbox"> Element numbers</label>
+        <label><input id="show-node-labels" type="checkbox"> Node IDs</label>
+        <label><input id="show-element-labels" type="checkbox"> Element IDs</label>
         <label><input id="show-supports" type="checkbox" checked> Supports</label>
-        <label><input id="show-loads" type="checkbox" checked> Loads</label>
-        <label><input id="show-reactions" type="checkbox" checked> Reactions</label>
+        <label class="static-layer"><input id="show-loads" type="checkbox" checked> Loads</label>
+        <label class="static-layer"><input id="show-reactions" type="checkbox" checked> Reactions</label>
       </section>
-      <section>
-        <h2>Static results</h2>
-        <label for="truss-result">Truss coloring</label>
-        <select id="truss-result">
-          <option value="none">None</option>
-          <option value="axialForce">Axial force</option>
-          <option value="axialStress">Axial stress</option>
-        </select>
-        <label for="diagram-result">Frame diagram</label>
-        <select id="diagram-result">
-          <option value="none">None</option>
-          <option value="N">Axial force N</option>
-          <option value="V">Shear force V</option>
-          <option value="M">Bending moment M</option>
-        </select>
+      <section id="static-controls" hidden>
+        <h2>Static result</h2>
+        <label for="static-result">Overlay</label>
+        <select id="static-result"></select>
+      </section>
+      <section id="modal-controls" hidden>
+        <h2>Modal result</h2>
+        <label for="mode-number">Mode</label>
+        <select id="mode-number"></select>
+        <label for="modal-amplitude">Display multiplier</label>
+        <input id="modal-amplitude" type="number" min="0.01" step="0.25" value="1">
+        <p id="mode-frequency" class="control-note"></p>
+      </section>
+      <section id="transient-controls" hidden>
+        <h2>Transient result</h2>
+        <label for="time-index">Time step</label>
+        <input id="time-index" type="range" min="0" max="0" step="1" value="0">
+        <div class="transport" aria-label="Transient playback">
+          <button id="previous-frame" type="button" aria-label="Previous frame">−1</button>
+          <button id="play-pause" type="button">Play</button>
+          <button id="next-frame" type="button" aria-label="Next frame">+1</button>
+        </div>
+        <label for="playback-speed">Playback speed</label>
+        <select id="playback-speed"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option></select>
+        <p id="time-value" class="control-note"></p>
+      </section>
+      <section id="chart-controls" hidden>
+        <h2>History chart</h2>
+        <label for="history-node">Node</label>
+        <select id="history-node"></select>
+        <label for="history-dof">Degree of freedom</label>
+        <select id="history-dof"></select>
+        <label for="history-quantity">Quantity</label>
+        <select id="history-quantity"></select>
       </section>
       <section>
         <h2>Deformation</h2>
         <label for="scale-mode">Scale</label>
-        <select id="scale-mode">
-          <option value="auto">Automatic</option>
-          <option value="manual">Manual</option>
-        </select>
+        <select id="scale-mode"><option value="auto">Automatic</option><option value="manual">Manual</option></select>
         <label for="manual-scale">Manual factor</label>
         <input id="manual-scale" type="number" min="0.000001" step="any" value="1" disabled>
         <label for="sample-count">Frame samples</label>
         <input id="sample-count" type="number" min="5" max="201" step="1" value="31">
         <label for="png-scale">PNG resolution</label>
-        <select id="png-scale">
-          <option value="1">1×</option>
-          <option value="2" selected>2×</option>
-          <option value="4">4×</option>
-        </select>
+        <select id="png-scale"><option value="1">1×</option><option value="2" selected>2×</option><option value="4">4×</option></select>
       </section>
       <section class="help">
         <h2>Navigation</h2>
-        <p>Wheel to zoom, drag to pan, and select a node or element for details.</p>
-        <details>
-          <summary>Result sign convention</summary>
-          <p>For frame end forces q, N = -q1 is positive in tension, V = -q2, and M varies from -q3 to q6. Positive diagrams are drawn toward local +Y.</p>
-        </details>
+        <p>Wheel to zoom, drag to pan, and select a node or element for numerical details.</p>
         <a href="schema-v1.md">JSON format version 1</a>
       </section>
     </aside>
@@ -90,16 +101,16 @@
       <div id="error-panel" class="message error" role="alert" hidden></div>
       <div id="notice-panel" class="message notice" role="status" hidden></div>
       <div id="drop-zone" class="drop-zone" tabindex="0" role="button" aria-label="Open a postprocessor JSON file">
-        <div class="drop-copy">
-          <strong>Drop an MKE-F result file here</strong>
-          <span>or use Open JSON · maximum file size 100 MiB</span>
-        </div>
+        <div class="drop-copy"><strong>Drop an MKE-F result file here</strong><span>or use Open JSON · maximum file size 100 MiB</span></div>
         <svg id="viewport" aria-label="Structural result viewport" role="img"></svg>
       </div>
-      <div class="status-bar">
-        <span id="analysis-status">Waiting for a dataset</span>
-        <span id="selection-status">Nothing selected</span>
-      </div>
+      <div id="result-legend" class="result-legend" hidden></div>
+      <section id="chart-panel" class="chart-panel" hidden aria-label="Selected degree of freedom history">
+        <svg id="history-chart" role="img" aria-label="Selected degree of freedom history chart"></svg>
+        <p class="chart-help">Move over the chart to inspect original samples; click to keep a sample selected.</p>
+      </section>
+      <section class="details-panel" aria-live="polite"><h2>Selection</h2><pre id="selection-details">Nothing selected</pre></section>
+      <div class="status-bar"><span id="analysis-status">Waiting for a dataset</span></div>
     </section>
   </main>
 </body>

@@ -3,18 +3,26 @@
 <head>
   <meta charset="utf-8">
   <title>MKE-F postprocessor browser tests</title>
+  <link rel="stylesheet" href="../assets/postprocessor.css">
+  <style>#test-svg,#test-chart{position:absolute;left:-10000px;width:1px;height:1px;overflow:hidden}</style>
   <script defer src="../js/namespace.js"></script>
   <script defer src="../js/data-model.js"></script>
   <script defer src="../js/geometry.js"></script>
   <script defer src="../js/svg-renderer.js"></script>
   <script defer src="../js/static-view.js"></script>
+  <script defer src="../js/modal-view.js"></script>
+  <script defer src="../js/transient-view.js"></script>
+  <script defer src="../js/charts.js"></script>
   <script defer src="../js/export.js"></script>
   <script defer src="test-runner.js"></script>
 </head>
 <body data-test-status="running">
   <h1>Postprocessor browser tests</h1>
   <pre id="test-output">Running…</pre>
-  <svg id="test-svg" hidden></svg>
+  <h2>Visual smoke scene</h2>
+  <svg id="visual-smoke" style="display:block;width:100%;height:520px;border:1px solid #d9e0e9"></svg>
+  <svg id="test-svg"></svg>
+  <svg id="test-chart"></svg>
   <span id="test-selection" hidden></span>
 </body>
 </html>

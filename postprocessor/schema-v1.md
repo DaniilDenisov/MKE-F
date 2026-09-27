@@ -8,6 +8,10 @@ are one-based.
 `dofMap`, and `supports`. Element properties are named values. Solver matrices,
 element matrices, and transformations are never exported.
 
+Fields described as vectors, matrices, or collections are always JSON arrays,
+including when they contain exactly one item. Matrix fields are arrays of row
+arrays, including one-column and one-row matrices.
+
 `analysis.type` is `static`, `modal`, or `transient`:
 
 - Static data contains full one-dimensional displacement, load, and reaction

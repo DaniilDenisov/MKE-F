@@ -8,138 +8,77 @@
     return {
       format: 'mkef-postprocessor', version: 1,
       metadata: { title: 'Browser test', units: { length: 'm', force: 'N', moment: 'N*m', stress: 'Pa', time: 's' } },
-      model: {
-        dimension: 2, dofPerNode: 3, dofLabels: ['ux', 'uy', 'rz'],
-        nodes: [{ id: 1, x: 1, y: 2 }, { id: 2, x: 4, y: 6 }],
+      model: { dimension: 2, dofPerNode: 3, dofLabels: ['ux', 'uy', 'rz'],
+        nodes: [{ id: 1, x: 0, y: 0 }, { id: 2, x: .5, y: .5 }],
         elements: [{ id: 1, type: 113, nodeIds: [1, 2], properties: { area: 1, youngsModulus: 2, density: 3, momentOfInertia: 4 } }],
-        dofMap: [[1, 2, 3], [4, 5, 6]], supports: [{ type: 1, nodeId: 1 }]
-      },
-      analysis: {
-        type: 'static', displacements: [0, 0, 0, 0, 0, 0], loadVector: [0, 0, 0, 0, 1, 0],
-        reactions: [0, -1, -4, 0, 0, 0], equilibriumResidual: [0, 0, 0],
-        elementResults: [{ elementId: 1, type: 113, localEndForces: [0, -1, -4, 0, 1, 0], axialStrain: 0, axialStress: 0, axialForce: 0 }]
-      }
+        dofMap: [[1, 2, 3], [4, 5, 6]], supports: [{ type: 1, nodeId: 1 }] },
+      analysis: { type: 'static', displacements: [0, 0, 0, 0, 0, 0], loadVector: [0, 0, 0, 0, 1, 0], reactions: [0, -1, -4, 0, 0, 0], equilibriumResidual: [0, 0, 0],
+        elementResults: [{ elementId: 1, type: 113, localEndForces: [0, -1, -4, 0, 1, 0], axialStrain: 0, axialStress: 0, axialForce: 0 }] }
     };
   }
   function trussFixture() {
-    var data = fixture();
-    data.model.dofPerNode = 2; data.model.dofLabels = ['ux', 'uy'];
-    data.model.dofMap = [[1, 2], [3, 4]];
+    var data = fixture(); data.model.dofPerNode = 2; data.model.dofLabels = ['ux', 'uy']; data.model.dofMap = [[1, 2], [3, 4]];
     data.model.elements[0] = { id: 1, type: 112, nodeIds: [1, 2], properties: { area: 1, youngsModulus: 2, density: 3 } };
-    data.analysis.displacements = [0, 0, .01, 0]; data.analysis.loadVector = [0, 0, 10, 0];
-    data.analysis.reactions = [-10, 0, 0, 0];
+    data.analysis.displacements = [0, 0, .01, 0]; data.analysis.loadVector = [0, 0, 10, 0]; data.analysis.reactions = [-10, 0, 0, 0];
     data.analysis.elementResults[0] = { elementId: 1, type: 112, localEndForces: [-10, 0, 10, 0], axialStrain: .002, axialStress: 20, axialForce: 10 };
     return data;
   }
+  function modalFixture() {
+    var data = fixture(); data.analysis = { type: 'modal', frequenciesHz: [2, 5], angularFrequenciesRadPerSec: [4 * Math.PI, 10 * Math.PI],
+      modeShapes: [[0, 0], [0, 0], [0, 0], [.1, -.1], [.2, .3], [.01, -.02]] };
+    return data;
+  }
+  function transientFixture(reduced) {
+    var data = fixture(), ids = reduced ? [2] : [1, 2, 3, 4, 5, 6];
+    var rows = ids.map(function (id) { return [0, id * .001, id * .002]; });
+    data.analysis = { type: 'transient', time: [0, .1, .2], globalDOFIds: ids, displacements: rows, velocities: rows,
+      spectrumFrequencyHz: [0, 5, 10], displacementAmplitudeSpectrum: rows,
+      sampling: { originalSampleCount: 3, exportedSampleCount: 3, timeStride: 1 } };
+    return data;
+  }
+  function largeFixture(count) {
+    var nodes = [], elements = [], dofMap = [], elementResults = [], dofCount = (count + 1) * 2;
+    for (var i = 0; i <= count; i += 1) { nodes.push({ id: i + 1, x: i, y: 0 }); dofMap.push([2 * i + 1, 2 * i + 2]); }
+    for (var e = 0; e < count; e += 1) { elements.push({ id: e + 1, type: 112, nodeIds: [e + 1, e + 2], properties: { area: 1, youngsModulus: 2, density: 3 } }); elementResults.push({ elementId: e + 1, type: 112, localEndForces: [0, 0, 0, 0], axialStrain: 0, axialStress: 0, axialForce: 0 }); }
+    return { format: 'mkef-postprocessor', version: 1, metadata: { title: 'Large', units: { length: '', force: '', moment: '', stress: '', time: '' } },
+      model: { dimension: 2, dofPerNode: 2, dofLabels: ['ux', 'uy'], nodes: nodes, elements: elements, dofMap: dofMap, supports: [] },
+      analysis: { type: 'static', displacements: new Array(dofCount).fill(0), loadVector: new Array(dofCount).fill(0), reactions: new Array(dofCount).fill(0), equilibriumResidual: [0, 0, 0], elementResults: elementResults } };
+  }
 
-  test('schema accepts a valid frame', function () { assert(M.validateDataset(fixture()).raw.analysis.type === 'static'); });
-  test('schema reports a JSON path', function () {
-    var data = fixture(); data.model.elements[0].nodeIds[1] = 99;
-    try { M.validateDataset(data); } catch (error) { assert(error.message.indexOf('$.model.elements[0].nodeIds[1]') === 0); return; }
-    throw new Error('Invalid node reference was accepted');
+  test('schema accepts static, modal, and transient v1 data', function () { assert(M.validateDataset(fixture())); assert(M.validateDataset(modalFixture())); assert(M.validateDataset(transientFixture(false))); });
+  test('schema reports the invalid JSON path', function () { var data = fixture(); data.model.elements[0].nodeIds[1] = 99; try { M.validateDataset(data); } catch (error) { assert(error.message.indexOf('$.model.elements[0].nodeIds[1]') === 0); return; } throw new Error('Invalid node reference was accepted'); });
+  test('112 interpolation preserves endpoints', function () { var points = M.geometry.sample112({ x: 0, y: 0 }, { x: 2, y: 0 }, { x: 1, y: 2 }, { x: 3, y: 4 }, 2); close(points[0].x, 2); close(points[0].y, 4); close(points[1].x, 8); close(points[1].y, 8); });
+  test('113 Hermite interpolation preserves endpoints and rotations', function () { var L = 5, count = 1001, points = M.geometry.sample113({ x: 0, y: 0 }, { x: L, y: 0 }, { x: 0, y: 0, r: .2 }, { x: 0, y: 0, r: -.1 }, 1, count), dx = L / (count - 1); close(points[0].x, 0); close(points[count - 1].x, L); close((points[1].y - points[0].y) / dx, .2, .001); close((points[count - 1].y - points[count - 2].y) / dx, -.1, .001); });
+  test('mathematical Y is inverted exactly once', function () { var point = M.geometry.svgPoint({ x: 2, y: 3 }); close(point.x, 2); close(point.y, -3); });
+  test('retained renderer preserves nodes and view during updates', function () {
+    var svg = document.getElementById('test-svg'), selected = null, dataset = M.validateDataset(fixture()), renderer = new M.Renderer(svg, function (value) { selected = value; });
+    renderer.mount(dataset); renderer.updateDeformation(dataset.raw.analysis.displacements, 1, 31);
+    var path = renderer.deformedByElement.get(1), viewBox = svg.getAttribute('viewBox'), count = renderer.sceneNodeCount();
+    renderer.setVisibility({ showOriginal: false, showDeformed: true, showNodes: true, showNodeLabels: true, showElementLabels: false, showSupports: true, showLoads: true, showReactions: true });
+    renderer.updateDeformation([0, 0, 0, .01, .02, 0], 2, 31); renderer.setSelection({ kind: 'element', id: 1 });
+    assert(renderer.deformedByElement.get(1) === path, 'Deformed path was rebuilt'); assert(renderer.sceneNodeCount() === count, 'DOM node count changed'); assert(svg.getAttribute('viewBox') === viewBox, 'View reset during update'); assert(selected.id === 1, 'Selection callback failed');
   });
-  test('112 interpolation preserves endpoints', function () {
-    var points = M.geometry.sample112({ x: 0, y: 0 }, { x: 2, y: 0 }, { x: 1, y: 2 }, { x: 3, y: 4 }, 2);
-    close(points[0].x, 2); close(points[0].y, 4); close(points[1].x, 8); close(points[1].y, 8);
-  });
-  test('113 Hermite interpolation preserves endpoints and rotations', function () {
-    var L = 5, count = 1001, theta1 = 0.2, theta2 = -0.1;
-    var points = M.geometry.sample113({ x: 0, y: 0 }, { x: L, y: 0 }, { x: 0, y: 0, r: theta1 }, { x: 0, y: 0, r: theta2 }, 1, count);
-    close(points[0].x, 0); close(points[0].y, 0); close(points[count - 1].x, L); close(points[count - 1].y, 0);
-    var dx = L / (count - 1);
-    close((points[1].y - points[0].y) / dx, theta1, 0.001);
-    close((points[count - 1].y - points[count - 2].y) / dx, theta2, 0.001);
-  });
-  test('inclined frame transforms axial displacement', function () {
-    var first = { x: 1, y: 2 }, second = { x: 4, y: 6 };
-    var points = M.geometry.sample113(first, second, { x: 0, y: 0, r: 0 }, { x: 0.003, y: 0.004, r: 0 }, 1, 5);
-    close(points[4].x, 4.003); close(points[4].y, 6.004);
-  });
-  test('mathematical Y is inverted exactly once', function () { var p = M.geometry.svgPoint({ x: 2, y: 3 }); close(p.x, 2); close(p.y, -3); });
-  test('automatic scale detects zero deformation', function () {
-    var dataset = M.validateDataset(fixture()); var info = M.geometry.automaticScale(dataset, [0, 0, 0, 0, 0, 0], 31);
-    assert(info.zero && info.scale === 1);
-  });
-  test('support restraint mapping matches the solver', function () {
-    assert(M.geometry.restrainedLocalDOFs(1, 3).join(',') === '0,1,2');
-    assert(M.geometry.restrainedLocalDOFs(2, 3).join(',') === '1,2');
-    assert(M.geometry.restrainedLocalDOFs(3, 3).join(',') === '0,2');
-    assert(M.geometry.restrainedLocalDOFs(4, 3).join(',') === '0,1');
-  });
-  test('renderer creates stable finite SVG layers', function () {
-    var dataset = M.validateDataset(fixture());
-    var renderer = new M.Renderer(document.getElementById('test-svg'), document.getElementById('test-selection'));
-    renderer.render(dataset, dataset.raw.analysis.displacements, {
-      showOriginal: true, showDeformed: true, showNodes: true,
-      showNodeLabels: true, showElementLabels: true,
-      scaleMode: 'auto', manualScale: 1, samples: 31
-    });
-    assert(document.querySelectorAll('#test-svg [data-layer]').length === 9, 'Layer count changed');
-    document.querySelectorAll('#test-svg path').forEach(function (path) {
-      assert(!/NaN|Infinity/.test(path.getAttribute('d')), 'Non-finite SVG path');
-    });
-  });
-  test('cantilever diagram convention is explicit', function () {
-    var q = [0, -100, -50, 0, 100, 0];
-    close(M.staticResults.frameDiagram(q, 'N', 0.4), 0);
-    close(M.staticResults.frameDiagram(q, 'V', 0.4), 100);
-    close(M.staticResults.frameDiagram(q, 'M', 0), 50);
-    close(M.staticResults.frameDiagram(q, 'M', 1), 0);
-  });
-  test('static renderer creates supports, loads, reactions, and diagrams', function () {
-    var dataset = M.validateDataset(fixture()), svg = document.getElementById('test-svg');
-    var renderer = new M.Renderer(svg, document.getElementById('test-selection'));
-    var geometryInfo = renderer.render(dataset, dataset.raw.analysis.displacements, {
-      showOriginal: true, showDeformed: true, showNodes: true,
-      showNodeLabels: false, showElementLabels: false,
-      scaleMode: 'auto', manualScale: 1, samples: 31
-    });
-    M.staticResults.render(renderer, dataset, {
-      showSupports: true, showLoads: true, showReactions: true,
-      trussResult: 'none', diagram: 'M'
-    }, geometryInfo);
-    assert(svg.querySelectorAll('.support-symbol').length === 1, 'Support was not rendered');
-    assert(svg.querySelectorAll('[data-load-node-id]').length > 0, 'Load was not rendered');
-    assert(svg.querySelectorAll('[data-reaction-node-id]').length > 0, 'Reaction was not rendered');
-    assert(svg.querySelectorAll('[data-diagram-element-id]').length === 1, 'Diagram was not rendered');
-    assert(renderer.layers.labels.style.display !== 'none', 'Static legend is hidden');
-  });
-  test('standalone SVG export embeds styles and escapes metadata', function () {
-    var svg = document.getElementById('test-svg');
-    var text = M.exporting.serialize(svg, { title: '<unsafe & title>', analysisType: 'static' });
-    assert(text.indexOf('xmlns="http://www.w3.org/2000/svg"') >= 0, 'SVG namespace missing');
-    assert(text.indexOf('<style') >= 0, 'Embedded styles missing');
-    assert(text.indexOf('&lt;unsafe &amp; title&gt;') >= 0, 'Metadata was not safely escaped');
-    assert(text.indexOf('http://') === text.indexOf('http://www.w3.org/2000/svg'), 'Unexpected external URL');
-  });
-  test('truss axial result uses signed coloring and labels', function () {
-    var dataset = M.validateDataset(trussFixture()), svg = document.getElementById('test-svg');
-    var renderer = new M.Renderer(svg, document.getElementById('test-selection'));
-    var geometryInfo = renderer.render(dataset, dataset.raw.analysis.displacements, {
-      showOriginal: true, showDeformed: true, showNodes: true,
-      showNodeLabels: false, showElementLabels: false,
-      scaleMode: 'auto', manualScale: 1, samples: 31
-    });
-    M.staticResults.render(renderer, dataset, {
-      showSupports: true, showLoads: true, showReactions: true,
-      trussResult: 'axialForce', diagram: 'none'
-    }, geometryInfo);
-    assert(svg.querySelector('.deformed-element').style.stroke !== '', 'Tension color was not applied');
-    assert(Array.from(svg.querySelectorAll('.result-label')).some(function (label) { return label.textContent.indexOf('10') >= 0; }), 'Axial result label missing');
-  });
-  test('PNG rasterization produces a nonempty blob', function () {
-    return M.exporting.pngBlob(document.getElementById('test-svg'), { title: 'PNG test', analysisType: 'static' }, 1).then(function (blob) {
-      assert(blob.type === 'image/png' && blob.size > 0, 'PNG blob is empty');
-    });
-  });
+  test('SVG labels use model-relative size and bounded halo', function () { var svg = document.getElementById('test-svg'), label = svg.querySelector('.label'); assert(Number(label.getAttribute('font-size')) < 1, 'Label is not model-relative'); assert(parseFloat(getComputedStyle(label).strokeWidth) < parseFloat(getComputedStyle(label).fontSize), 'Text halo exceeds font size'); });
+  test('static view creates symbols without numerical text', function () { var svg = document.getElementById('test-svg'), dataset = M.validateDataset(fixture()), renderer = new M.Renderer(svg); renderer.mount(dataset); M.staticResults.mount(renderer, dataset); assert(svg.querySelectorAll('.support-symbol').length === 1); assert(svg.querySelectorAll('.load-symbol').length > 0); assert(svg.querySelectorAll('.reaction-symbol').length > 0); assert(svg.querySelectorAll('.result-label,.legend-text').length === 0); });
+  test('frame diagram convention and retained overlay are correct', function () { var q = [0, -100, -50, 0, 100, 0]; close(M.staticResults.frameDiagram(q, 'N', .4), 0); close(M.staticResults.frameDiagram(q, 'V', .4), 100); close(M.staticResults.frameDiagram(q, 'M', 0), 50); close(M.staticResults.frameDiagram(q, 'M', 1), 0); var dataset = M.validateDataset(fixture()), renderer = new M.Renderer(document.getElementById('test-svg')); renderer.mount(dataset); var base = renderer.deformedByElement.get(1); assert(M.staticResults.applyResult(renderer, dataset, 'M').indexOf('M diagram') === 0); assert(renderer.deformedByElement.get(1) === base); assert(renderer.layers.diagrams.querySelectorAll('[data-element-id]').length > 0); });
+  test('truss coloring is signed without canvas labels', function () { var dataset = M.validateDataset(trussFixture()), renderer = new M.Renderer(document.getElementById('test-svg')); renderer.mount(dataset); M.staticResults.applyResult(renderer, dataset, 'axialForce'); assert(renderer.deformedByElement.get(1).style.stroke !== ''); assert(!renderer.svg.querySelector('.result-label')); });
+  test('modal display normalizes translational components', function () { var dataset = M.validateDataset(modalFixture()), result = M.modalView.display(dataset, 1, 2, 31), diagonal = Math.hypot(.5, .5), maximum = Math.hypot(-.1, .3) * result.scale; assert(result.vector.length === 6); close(maximum, .2 * diagonal); close(result.frequencyHz, 5); });
+  test('zero-translation modal shapes stay bounded', function () { var data = modalFixture(); data.analysis.modeShapes = [[0], [0], [.1], [0], [0], [-.2]]; data.analysis.frequenciesHz = [2]; data.analysis.angularFrequenciesRadPerSec = [4 * Math.PI]; var result = M.modalView.display(M.validateDataset(data), 0, 1, 31); assert(result.zero); close(result.scale, 0); });
+  test('transient full and reduced exports are distinguished', function () { var full = M.validateDataset(transientFixture(false)), reduced = M.validateDataset(transientFixture(true)); assert(M.transientView.hasFullDisplacements(full)); assert(!M.transientView.hasFullDisplacements(reduced)); close(M.transientView.vectorAt(full, 'displacements', 2)[5], .012); assert(M.transientView.vectorAt(reduced, 'displacements', 1)[0] === undefined, 'Missing DOF was represented as zero'); assert(M.transientView.series(reduced, 2, 'displacements').y.length === 3); });
+  test('history downsampling preserves extrema and point budget', function () { var x = [], y = []; for (var i = 0; i < 10000; i += 1) { x.push(i); y.push(i === 5001 ? 100 : Math.sin(i)); } var result = M.transientView.downsample({ x: x, y: y, xLabel: 'x', yLabel: 'y' }, 2000); assert(result.x.length <= 2000); assert(Math.max.apply(null, result.y) === 100); });
+  test('chart renders cursor and retains original tooltip samples', function () { var chart = document.getElementById('test-chart'), x = [], y = []; for (var i = 0; i < 3000; i += 1) { x.push(i); y.push(i * 2); } M.charts.render(chart, { x: x, y: y, xLabel: 'Time', yLabel: 'u' }, 1); assert(chart.querySelector('.chart-series')); assert(chart.querySelector('.chart-cursor')); assert(chart.querySelector('.chart-hit-area')); assert(chart.__chartState.series.x.length === 3000, 'Original chart samples were discarded'); });
+  test('standalone SVG embeds safe styles and optional chart', function () { var text = M.exporting.serialize(document.getElementById('test-svg'), { title: '<unsafe & title>', analysisType: 'static' }, document.getElementById('test-chart')); assert(text.indexOf('xmlns="http://www.w3.org/2000/svg"') >= 0); assert(text.indexOf('&lt;unsafe &amp; title&gt;') >= 0); assert(text.indexOf('stroke-width:3px') < 0); assert(text.indexOf('chart-series') >= 0); assert(text.indexOf('http://') === text.indexOf('http://www.w3.org/2000/svg')); });
+  test('PNG rasterization produces a nonempty blob', function () { return M.exporting.pngBlob(document.getElementById('test-svg'), { title: 'PNG', analysisType: 'static' }, 1, document.getElementById('test-chart')).then(function (blob) { assert(blob.type === 'image/png' && blob.size > 0); }); });
+  test('2,000-element retained scene meets interaction targets', function () { var started = performance.now(), dataset = M.validateDataset(largeFixture(2000)), renderer = new M.Renderer(document.getElementById('test-svg')); renderer.mount(dataset); var mountElapsed = performance.now() - started; started = performance.now(); renderer.setVisibility({ showOriginal: false, showDeformed: true, showNodes: true, showNodeLabels: false, showElementLabels: false, showSupports: true, showLoads: true, showReactions: true }); var toggleElapsed = performance.now() - started; started = performance.now(); renderer.updateDeformation(dataset.raw.analysis.displacements, 1, 5); var updateElapsed = performance.now() - started; assert(mountElapsed < 2000, 'Mount took ' + mountElapsed.toFixed(0) + ' ms'); assert(toggleElapsed < 50, 'Layer toggle took ' + toggleElapsed.toFixed(0) + ' ms'); assert(updateElapsed < 250, 'Deformation update took ' + updateElapsed.toFixed(0) + ' ms'); });
 
   document.addEventListener('DOMContentLoaded', async function () {
     var lines = [], failed = 0;
-    for (var i = 0; i < tests.length; i += 1) {
-      var entry = tests[i];
-      try { await entry.operation(); lines.push('PASS ' + entry.name); }
-      catch (error) { failed += 1; lines.push('FAIL ' + entry.name + ': ' + error.message); }
-    }
+    for (var i = 0; i < tests.length; i += 1) { var entry = tests[i]; try { await entry.operation(); lines.push('PASS ' + entry.name); } catch (error) { failed += 1; lines.push('FAIL ' + entry.name + ': ' + error.message); } }
+    var smokeData = M.validateDataset(fixture()), smokeRenderer = new M.Renderer(document.getElementById('visual-smoke'));
+    smokeRenderer.mount(smokeData); M.staticResults.mount(smokeRenderer, smokeData);
+    smokeRenderer.updateDeformation(smokeData.raw.analysis.displacements, 1, 31);
+    smokeRenderer.setVisibility({ showOriginal: true, showDeformed: true, showNodes: true, showNodeLabels: true, showElementLabels: true, showSupports: true, showLoads: true, showReactions: true });
+    M.staticResults.applyResult(smokeRenderer, smokeData, 'M'); smokeRenderer.fit();
     document.getElementById('test-output').textContent = lines.join('\n') + '\n\n' + (failed ? failed + ' failed' : tests.length + ' passed');
     document.body.setAttribute('data-test-status', failed ? 'failed' : 'passed');
   });

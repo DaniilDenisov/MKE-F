@@ -7,6 +7,13 @@ in MKE-F. GNU Octave remains the numerical backend and exports a small,
 versioned result dataset. A standalone HTML application written in plain
 JavaScript renders the model and results as SVG.
 
+The implementation is organized as three completed layers: a retained static
+scene, static diagrams plus modal shapes, and transient playback plus a
+selected-DOF chart. Geometry is mounted once per dataset; layer switches,
+scales, modes, and time steps update existing SVG attributes. Numerical values
+are shown in HTML details and legend panels rather than as unbounded labels on
+the structural canvas.
+
 The supported analyses are:
 
 - static (`analysisType = 'static'`);

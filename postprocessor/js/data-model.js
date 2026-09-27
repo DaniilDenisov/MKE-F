@@ -185,9 +185,18 @@
 
     var nodesById = new Map(data.model.nodes.map(function (node) { return [node.id, node]; }));
     var elementsById = new Map(data.model.elements.map(function (element) { return [element.id, element]; }));
+    var nodeIndexById = new Map(data.model.nodes.map(function (node, index) { return [node.id, index]; }));
+    var dofById = new Map();
+    data.model.dofMap.forEach(function (row, nodeIndex) {
+      row.forEach(function (dofId, localIndex) {
+        dofById.set(dofId, { id: dofId, nodeId: data.model.nodes[nodeIndex].id, nodeIndex: nodeIndex,
+          localIndex: localIndex, label: data.model.dofLabels[localIndex] });
+      });
+    });
     var resultsByElementId = new Map();
     if (analysis.type === 'static') analysis.elementResults.forEach(function (result) { resultsByElementId.set(result.elementId, result); });
-    return { raw: data, nodesById: nodesById, elementsById: elementsById, resultsByElementId: resultsByElementId };
+    return { raw: data, nodesById: nodesById, elementsById: elementsById,
+      nodeIndexById: nodeIndexById, dofById: dofById, resultsByElementId: resultsByElementId };
   };
   M.DataError = DataError;
 }(window.MKEFPost));
