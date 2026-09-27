@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MKE-F Postprocessor</title>
+  <link rel="stylesheet" href="assets/postprocessor.css">
+  <script defer src="js/namespace.js"></script>
+  <script defer src="js/data-model.js"></script>
+  <script defer src="js/geometry.js"></script>
+  <script defer src="js/svg-renderer.js"></script>
+  <script defer src="js/app.js"></script>
+</head>
+<body>
+  <header class="toolbar">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">M</span>
+      <div><strong>MKE-F Postprocessor</strong><small id="dataset-title">No dataset loaded</small></div>
+    </div>
+    <div class="toolbar-actions">
+      <label class="button primary" for="file-input">Open JSON</label>
+      <input id="file-input" type="file" accept=".json,application/json">
+      <button id="reset-view" type="button" disabled>Reset view</button>
+    </div>
+  </header>
+
+  <main class="app-layout">
+    <aside class="settings" aria-label="View settings">
+      <section>
+        <h2>Layers</h2>
+        <label><input id="show-original" type="checkbox" checked> Original geometry</label>
+        <label><input id="show-deformed" type="checkbox" checked> Deformed geometry</label>
+        <label><input id="show-nodes" type="checkbox" checked> Nodes</label>
+        <label><input id="show-node-labels" type="checkbox"> Node numbers</label>
+        <label><input id="show-element-labels" type="checkbox"> Element numbers</label>
+      </section>
+      <section>
+        <h2>Deformation</h2>
+        <label for="scale-mode">Scale</label>
+        <select id="scale-mode">
+          <option value="auto">Automatic</option>
+          <option value="manual">Manual</option>
+        </select>
+        <label for="manual-scale">Manual factor</label>
+        <input id="manual-scale" type="number" min="0.000001" step="any" value="1" disabled>
+        <label for="sample-count">Frame samples</label>
+        <input id="sample-count" type="number" min="5" max="201" step="1" value="31">
+      </section>
+      <section class="help">
+        <h2>Navigation</h2>
+        <p>Wheel to zoom, drag to pan, and select a node or element for details.</p>
+        <a href="schema-v1.md">JSON format version 1</a>
+      </section>
+    </aside>
+
+    <section class="workspace">
+      <div id="error-panel" class="message error" role="alert" hidden></div>
+      <div id="notice-panel" class="message notice" role="status" hidden></div>
+      <div id="drop-zone" class="drop-zone" tabindex="0" role="button" aria-label="Open a postprocessor JSON file">
+        <div class="drop-copy">
+          <strong>Drop an MKE-F result file here</strong>
+          <span>or use Open JSON · maximum file size 100 MiB</span>
+        </div>
+        <svg id="viewport" aria-label="Structural result viewport" role="img"></svg>
+      </div>
+      <div class="status-bar">
+        <span id="analysis-status">Waiting for a dataset</span>
+        <span id="selection-status">Nothing selected</span>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
