@@ -116,27 +116,27 @@ modalResult = solveModal(model);</code></pre>
         <h3>1. Совместимость GNU Octave и CI</h3>
         <ol>
           <li>Минимальная версия GNU Octave 8.4 и проверка на 11.3 закреплены в <a href="../README.md"><code>README.md</code></a> и <a href="../.github/workflows/octave.yml"><code>.github/workflows/octave.yml</code></a>; точка проверки — <a href="../run_octave_tests.m"><code>run_octave_tests.m</code></a>.</li>
-          <li>Headless-команда реализована в <a href="../run_octave_smoke_tests.m"><code>run_octave_smoke_tests.m</code></a> и вызывается CI.</li>
+          <li>Команда без графического интерфейса реализована в <a href="../run_octave_smoke_tests.m"><code>run_octave_smoke_tests.m</code></a> и вызывается CI.</li>
           <li>Все поставляемые задачи собираются, а статика, моды, импульс и гармоника запускаются в <code>run_octave_smoke_tests.m</code>; матричные инварианты повторяются в <a href="../tests/run_verification_tests.m"><code>tests/run_verification_tests.m</code></a>.</li>
-          <li>Промежуточные concrete fallback-методы старого абстрактного класса позже заменены структурами в <a href="../createStructuralElement.m"><code>createStructuralElement.m</code></a>; интерфейс проверяет <a href="../tests/test_element_matrices.m"><code>tests/test_element_matrices.m</code></a>.</li>
-          <li>Проверка массивов однородных handle-элементов стала неактуальна после перехода на структуры; их массив создаёт <a href="../FEMesh.m"><code>FEMesh.m</code></a> и проверяет smoke suite.</li>
+          <li>Промежуточные конкретные резервные методы старого абстрактного класса позже заменены структурами в <a href="../createStructuralElement.m"><code>createStructuralElement.m</code></a>; интерфейс проверяет <a href="../tests/test_element_matrices.m"><code>tests/test_element_matrices.m</code></a>.</li>
+          <li>Проверка массивов однородных элементов handle-классов стала неактуальна после перехода на структуры; их массив создаёт <a href="../FEMesh.m"><code>FEMesh.m</code></a> и проверяет smoke-тест.</li>
           <li>Необязательные печать и графика реализованы в <a href="../StructFEProblem.m"><code>StructFEProblem.m</code></a>; значения по умолчанию проверяет <a href="../tests/test_input_validation.m"><code>tests/test_input_validation.m</code></a>.</li>
           <li>UTF‑8 закреплён в <a href="../.editorconfig"><code>.editorconfig</code></a>; чтение русских файлов фактически проходит во всех smoke-тестах.</li>
           <li>Поддерживаемые Octave операции и повторное решение сосредоточены в <a href="../solveTransient.m"><code>solveTransient.m</code></a> и <a href="../validateReducedSystem.m"><code>validateReducedSystem.m</code></a>; их проверяет <a href="../tests/test_newmark_transient.m"><code>tests/test_newmark_transient.m</code></a>.</li>
-          <li>Малый runner и CI — <code>run_octave_smoke_tests.m</code> и <code>.github/workflows/octave.yml</code>; успешное завершение является самой проверкой.</li>
-          <li>Одноаргументный конструктор сохранён в <code>StructFEProblem.m</code>, а headless defaults проверены в <code>tests/test_input_validation.m</code>.</li>
+          <li>Небольшая функция запуска и CI — <code>run_octave_smoke_tests.m</code> и <code>.github/workflows/octave.yml</code>; успешное завершение является самой проверкой.</li>
+          <li>Одноаргументный конструктор сохранён в <code>StructFEProblem.m</code>, а настройки работы без графического интерфейса проверены в <code>tests/test_input_validation.m</code>.</li>
         </ol>
 
         <h3>2. Самодостаточная проверочная база</h3>
         <ol>
-          <li>Octave-only suite находится в <a href="../tests/run_verification_tests.m"><code>tests/run_verification_tests.m</code></a> и включён через <code>run_octave_tests.m</code>.</li>
+          <li>Набор проверок только для Octave находится в <a href="../tests/run_verification_tests.m"><code>tests/run_verification_tests.m</code></a> и включён через <code>run_octave_tests.m</code>.</li>
           <li>Размеры, конечность, симметрия <strong>K</strong>/<strong>M</strong> проверяет <code>testMatrixInvariants</code> в том же файле и <code>tests/test_element_matrices.m</code>.</li>
           <li>Формулы <em>FL/(EA)</em> и <em>PL³/(3EI)</em> проверяют <code>testSingleAxialTruss</code> и <code>testCantileverBeam</code>.</li>
           <li>Реакции, масса, одношаговый импульс и гармонические отсчёты проверяет <code>tests/run_verification_tests.m</code>.</li>
-          <li>Все поставляемые файлы являются no-crash regression cases в <code>run_octave_smoke_tests.m</code>.</li>
-          <li>Явные абсолютные и относительные допуски реализуют helpers <code>assertClose</code> и <code>assertRelativeSmall</code> в тестах.</li>
-          <li>Полный suite запускает <code>.github/workflows/octave.yml</code> через <code>run_octave_tests.m</code>.</li>
-          <li>Примеры Mario Paz и ANSYS оставлены только provenance cases; это ограничение проверено не кодом, а явно сохранено выше в разделе «Что не является эталоном».</li>
+          <li>Все поставляемые файлы служат регрессионными проверками отсутствия аварий в <code>run_octave_smoke_tests.m</code>.</li>
+          <li>Явные абсолютные и относительные допуски реализуют вспомогательные функции <code>assertClose</code> и <code>assertRelativeSmall</code> в тестах.</li>
+          <li>Полный набор запускает <code>.github/workflows/octave.yml</code> через <code>run_octave_tests.m</code>.</li>
+          <li>Примеры Mario Paz и ANSYS оставлены только как сведения о происхождении проекта; это ограничение проверено не кодом, а явно сохранено выше в разделе «Что не является эталоном».</li>
         </ol>
 
         <h3>3. Матрицы элементов</h3>
@@ -153,11 +153,11 @@ modalResult = solveModal(model);</code></pre>
           <li>Модель отделяет данные от ответа в <a href="../createAnalysisModel.m"><code>createAnalysisModel.m</code></a>; <code>testFunctionalAnalysisCore</code> проверяет неизменность.</li>
           <li>Чистые точки входа — <code>solveStatic.m</code>, <code>solveModal.m</code>, <code>solveTransient.m</code>; фасад делегирует им в <code>StructFEProblem.m</code>.</li>
           <li><strong>K</strong> и <strong>M</strong> не редактируются: это явно проверяет <code>testFunctionalAnalysisCore</code>.</li>
-          <li>Свежие нагрузки создают <a href="../buildStaticLoad.m"><code>buildStaticLoad.m</code></a> и <a href="../buildTransientLoad.m"><code>buildTransientLoad.m</code></a>; повторные вызовы сравнивает тот же тест.</li>
+          <li>Новые нагрузки для каждого запуска создают <a href="../buildStaticLoad.m"><code>buildStaticLoad.m</code></a> и <a href="../buildTransientLoad.m"><code>buildTransientLoad.m</code></a>; повторные вызовы сравнивает тот же тест.</li>
           <li>Два одинаковых запуска сравниваются в <code>testFunctionalAnalysisCore</code>.</li>
           <li>Независимость от порядка статики, мод и динамики проверяется там же.</li>
           <li>Именованные поля формируют три <code>solve*.m</code>; наличие ключевых полей проверяет тот же тест.</li>
-          <li>Построение графика вынесено в <code>plotTransientResult.m</code>, печать оставлена фасаду; headless-путь проверяют smoke suite и <code>tests/test_input_validation.m</code>.</li>
+          <li>Построение графика вынесено в <code>plotTransientResult.m</code>, печать оставлена фасаду; работу без графического интерфейса проверяют smoke-тест и <code>tests/test_input_validation.m</code>.</li>
         </ol>
 
         <h3>5. Редукция свободных СС</h3>
@@ -172,11 +172,11 @@ modalResult = solveModal(model);</code></pre>
 
         <h3>6. Семантика узловых нагрузок</h3>
         <ol>
-          <li>Индексную сборку по СС выполняет <a href="../getNodalLoadComponents.m"><code>getNodalLoadComponents.m</code></a> вместе с builders; несколько записей проверяет <code>testNodalLoadSemantics</code>.</li>
+          <li>Индексную сборку по СС выполняет <a href="../getNodalLoadComponents.m"><code>getNodalLoadComponents.m</code></a> вместе с функциями построения нагрузок; несколько записей проверяет <code>testNodalLoadSemantics</code>.</li>
           <li>Третья компонента рамы трактуется как <em>Mz</em>, а у фермы отклоняется; код и тест те же.</li>
           <li>Исторический тип 10 даёт один прямоугольный шаг в <code>buildTransientLoad.m</code>; точный отсчёт проверяет <code>testNodalLoadSemantics</code>.</li>
-          <li>Явный <code>bcforce_pulse</code>/тип 12 читает <code>FEMesh.m</code>; fixture <a href="../tests/fixtures/CaseExplicitPulseBeam.txt"><code>CaseExplicitPulseBeam.txt</code></a> проверяется в load test.</li>
-          <li><code>bcforce_step</code>/тип 13 реализован теми же файлами; fixture <a href="../tests/fixtures/CaseStepBeam.txt"><code>CaseStepBeam.txt</code></a> проверяет постоянную историю.</li>
+          <li>Явный <code>bcforce_pulse</code>/тип 12 читает <code>FEMesh.m</code>; входной файл <a href="../tests/fixtures/CaseExplicitPulseBeam.txt"><code>CaseExplicitPulseBeam.txt</code></a> проверяется в тесте нагрузок.</li>
+          <li><code>bcforce_step</code>/тип 13 реализован теми же файлами; входной файл <a href="../tests/fixtures/CaseStepBeam.txt"><code>CaseStepBeam.txt</code></a> проверяет постоянную историю.</li>
           <li>Суммирование нескольких нагрузок в одном и разных узлах проверяет <code>testNodalLoadSemantics</code>.</li>
         </ol>
 
@@ -184,11 +184,11 @@ modalResult = solveModal(model);</code></pre>
         <ol>
           <li>Средние ускорения β=1/4, γ=1/2 реализованы в <code>solveTransient.m</code>; параметры проверяет <code>tests/test_newmark_transient.m</code>.</li>
           <li>Сетка с первым столбцом <em>t=0</em> реализована там же и проверяется в <code>testFreeVibrationAndInitialState</code>.</li>
-          <li>Начальные <strong>u</strong>, <strong>v</strong> и ускорение из равновесия реализованы там же; проверяются тем же тестом и validation cases.</li>
-          <li>Истории размера <code>stepCount+1</code> предвыделяются в <code>solveTransient.m</code>; размер проверяет transient test.</li>
-          <li>Постоянная эффективная матрица факторизуется один раз там же; согласованность ответа проверяет весь transient suite.</li>
+          <li>Начальные <strong>u</strong>, <strong>v</strong> и ускорение из равновесия реализованы там же; проверяются тем же тестом и сценариями ошибочного ввода.</li>
+          <li>Истории размера <code>stepCount+1</code> предвыделяются в <code>solveTransient.m</code>; размер проверяет тест переходного анализа.</li>
+          <li>Постоянная эффективная матрица факторизуется один раз там же; согласованность ответа проверяет весь набор тестов переходного расчёта.</li>
           <li>FFT и одностороннюю нормировку выполняет <a href="../computeSingleSidedSpectrum.m"><code>computeSingleSidedSpectrum.m</code></a>; пик проверяет <code>testSingleSidedSpectrum</code>.</li>
-          <li>Истории и спектр возвращаются независимо от графики; поля проверяют transient tests, построение вынесено в <code>plotTransientResult.m</code>.</li>
+          <li>Истории и спектр возвращаются независимо от графики; поля проверяют тесты переходного анализа, построение вынесено в <code>plotTransientResult.m</code>.</li>
           <li>Аналитический SDOF, энергия и сходимость проверяются в <code>testFreeVibrationAndInitialState</code>, <code>testImpulseResponseAndConvergence</code> и <code>testBeamImpulseRefinement</code>.</li>
         </ol>
 
@@ -202,24 +202,24 @@ modalResult = solveModal(model);</code></pre>
 
         <h3>9. Упрощение и ускорение сборки</h3>
         <ol>
-          <li>Выбор структур и чистых функций реализован в <code>createStructuralElement.m</code>; интерфейс проверяют matrix/recovery tests.</li>
-          <li>Пункт о value semantics классов закрыт удалением изменяемой иерархии; отсутствие handle-элементов следует из структур <code>FEMesh.allMeshElems</code> и проверяется smoke suite.</li>
+          <li>Выбор структур и чистых функций реализован в <code>createStructuralElement.m</code>; интерфейс проверяют тесты матриц и восстановления результатов.</li>
+          <li>Пункт о семантике значений классов закрыт удалением изменяемой иерархии; отсутствие элементов handle-классов следует из структур <code>FEMesh.allMeshElems</code> и проверяется smoke-тестом.</li>
           <li>Единый интерфейс полей используется <code>assembleGlobalMatrices.m</code> и <code>recoverElementResults.m</code>; оба пути покрыты отдельными тестами.</li>
           <li>Один <code>element.dofs</code> создаёт <code>createStructuralElement.m</code>; карту и суммирование проверяет <a href="../tests/test_sparse_assembly.m"><code>tests/test_sparse_assembly.m</code></a>.</li>
           <li>Триплетные sparse-матрицы создаёт <code>assembleGlobalMatrices.m</code>; <code>testSuppliedCasesAreSparse</code> и <code>testLargeTrussChain</code> проверяют результат.</li>
-          <li>Длина и преобразование кешируются в структуре элемента; matrix/recovery tests используют и проверяют эти данные.</li>
-          <li>Сохранение базовых результатов контролируют полный verification suite и smoke cases.</li>
+          <li>Длина и преобразование кешируются в структуре элемента; тесты матриц и восстановления результатов используют и проверяют эти данные.</li>
+          <li>Сохранение базовых результатов контролируют полный набор проверок и smoke-тесты.</li>
         </ol>
 
         <h3>10. Ввод, документация и представление</h3>
         <ol>
-          <li>EOF-driven цикл находится в <code>FEMesh.m</code>; повторные секции и неизвестный маркер проверяет <code>tests/test_input_validation.m</code>.</li>
-          <li><code>fopen</code>, <code>onCleanup</code> и номера строк реализованы там же; ошибки открытия и malformed records проверяет тот же тест.</li>
+          <li>Цикл чтения до конца файла находится в <code>FEMesh.m</code>; повторные секции и неизвестный маркер проверяет <code>tests/test_input_validation.m</code>.</li>
+          <li><code>fopen</code>, <code>onCleanup</code> и номера строк реализованы там же; ошибки открытия и неверные записи проверяет тот же тест.</li>
           <li>Повторные опоры и нагрузки дописываются в <code>FEMesh.m</code>; <a href="../tests/fixtures/CaseRepeatedSections.txt"><code>CaseRepeatedSections.txt</code></a> проверяет количество и сумму.</li>
-          <li>Номера узлов, связность, число свойств и выбор СС графика проверяют <code>FEMesh.m</code>/<code>StructFEProblem.m</code>; fixtures и <code>testPlotSelectionAndDefaults</code> проверяют ошибки.</li>
+          <li>Номера узлов, связность, число свойств и выбор СС графика проверяют <code>FEMesh.m</code>/<code>StructFEProblem.m</code>; тестовые входные файлы и <code>testPlotSelectionAndDefaults</code> проверяют ошибки.</li>
           <li>Смешанные типы отклоняются как <code>MKEF:UnsupportedMixedMesh</code>; <a href="../tests/fixtures/CaseMixedElements.txt"><code>CaseMixedElements.txt</code></a> проверяет строку ошибки.</li>
-          <li>Необязательные графика/печать находятся в <code>StructFEProblem.m</code>, а <code>axis equal</code> — в <code>FEMesh.m</code>; defaults проверяет input test.</li>
-          <li>Единицы, СС, нагрузки, ограничения, источники и команды сохранены в этом справочнике, прежде всего в <a href="10-input-format.html">главе 10</a>; исполняемое подтверждение дают examples и полный test suite.</li>
+          <li>Необязательные графика и печать находятся в <code>StructFEProblem.m</code>, а <code>axis equal</code> — в <code>FEMesh.m</code>; значения по умолчанию проверяет тест входных данных.</li>
+          <li>Единицы, СС, нагрузки, ограничения, источники и команды сохранены в этом справочнике, прежде всего в <a href="10-input-format.html">главе 10</a>; исполняемое подтверждение дают лабораторные и полный набор тестов.</li>
         </ol>
       </section>
 

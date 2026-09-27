@@ -1,0 +1,187 @@
+function test_reference_site()
+%TEST_REFERENCE_SITE Verify the complete offline HTML reference.
+
+testsDir = fileparts(mfilename('fullpath'));
+rootDir = fileparts(testsDir);
+referenceDir = fullfile(rootDir, 'reference');
+assertReferenceNamesASCII(referenceDir, 'reference');
+
+chapterPages = { ...
+    '01-model-dofs.html', ...
+    '02-element-matrices.html', ...
+    '03-transformation-assembly.html', ...
+    '04-boundary-loads.html', ...
+    '05-static-analysis.html', ...
+    '06-modal-analysis.html', ...
+    '07-newmark-transient.html', ...
+    '08-result-recovery.html', ...
+    '09-architecture-verification.html', ...
+    '10-input-format.html'};
+pages = [{'index.html'}, chapterPages];
+stylesheet = fullfile(referenceDir, 'assets', 'reference.css');
+
+assertFileExists(stylesheet, 'shared reference stylesheet');
+assertASCIIPath('assets/reference.css');
+css = fileread(stylesheet);
+assert(isempty(regexpi(css, '@import\s|url\s*\(\s*["'']?(?:https?:)?//', ...
+    'once')), ...
+    'MKEF:VerificationFailed: stylesheet uses an external runtime asset.');
+
+expectedPageNavigation = { ...
+    {'01-model-dofs.html'}, ...
+    {'index.html', '02-element-matrices.html'}, ...
+    {'01-model-dofs.html', '03-transformation-assembly.html'}, ...
+    {'02-element-matrices.html', '04-boundary-loads.html'}, ...
+    {'03-transformation-assembly.html', '05-static-analysis.html'}, ...
+    {'04-boundary-loads.html', '06-modal-analysis.html'}, ...
+    {'05-static-analysis.html', '07-newmark-transient.html'}, ...
+    {'06-modal-analysis.html', '08-result-recovery.html'}, ...
+    {'07-newmark-transient.html', '09-architecture-verification.html'}, ...
+    {'08-result-recovery.html', '10-input-format.html'}, ...
+    {'09-architecture-verification.html', 'index.html'}};
+
+for pageNumber = 1:numel(pages)
+    page = pages{pageNumber};
+    pagePath = fullfile(referenceDir, page);
+    assertASCIIPath(page);
+    assertFileExists(pagePath, ['reference page ' page]);
+    html = fileread(pagePath);
+
+    assert(~isempty(strfind(html, ...
+        '<link rel="stylesheet" href="assets/reference.css">')), ...
+        ['MKEF:VerificationFailed: shared stylesheet is missing from ' ...
+         page '.']);
+    assertNoExternalRuntimeAssets(html, page);
+    assertLocalTargetsResolve(html, pagePath);
+
+    contentsNavigation = extractNavigation(html, 'contents', page);
+    contentsLinks = extractHrefs(contentsNavigation);
+    assert(isequal(contentsLinks, chapterPages), ...
+        ['MKEF:VerificationFailed: chapter contents are inconsistent in ' ...
+         page '.']);
+
+    currentLinks = regexp(contentsNavigation, ...
+        '<a\s+aria-current="page"\s+href="([^"]+)"', ...
+        'tokens');
+    if pageNumber == 1
+        assert(isempty(currentLinks), ...
+            'MKEF:VerificationFailed: index marks a chapter as current.');
+    else
+        assert(numel(currentLinks) == 1 && ...
+            strcmp(currentLinks{1}{1}, page), ...
+            ['MKEF:VerificationFailed: current chapter marker is wrong in ' ...
+             page '.']);
+    end
+
+    pageNavigation = extractNavigation(html, 'page-nav', page);
+    pageLinks = extractHrefs(pageNavigation);
+    assert(isequal(pageLinks, expectedPageNavigation{pageNumber}), ...
+        ['MKEF:VerificationFailed: previous/next navigation is wrong in ' ...
+         page '.']);
+end
+end
+
+function navigation = extractNavigation(html, className, page)
+pattern = ['<nav\s+class="' className '"[\s\S]*?</nav>'];
+navigation = regexp(html, pattern, 'match', 'once');
+assert(~isempty(navigation), ...
+    ['MKEF:VerificationFailed: missing ' className ...
+     ' navigation in ' page '.']);
+end
+
+function hrefs = extractHrefs(html)
+matches = regexp(html, '<a(?:\s+[^>]*)?\s+href="([^"]+)"', 'tokens');
+hrefs = cell(1, numel(matches));
+for i = 1:numel(matches)
+    hrefs{i} = matches{i}{1};
+end
+end
+
+function assertLocalTargetsResolve(html, sourcePath)
+attributes = regexp(html, ...
+    '(?:href|src)\s*=\s*["'']([^"'']+)["'']', 'tokens');
+for i = 1:numel(attributes)
+    target = attributes{i}{1};
+    if isExternalTarget(target)
+        continue;
+    end
+
+    fragmentMarker = find(target == '#', 1);
+    fragment = '';
+    if isempty(fragmentMarker)
+        pathAndQuery = target;
+    else
+        pathAndQuery = target(1:fragmentMarker - 1);
+        fragment = target(fragmentMarker + 1:end);
+    end
+    queryMarker = find(pathAndQuery == '?', 1);
+    if isempty(queryMarker)
+        relativePath = pathAndQuery;
+    else
+        relativePath = pathAndQuery(1:queryMarker - 1);
+    end
+
+    if isempty(relativePath)
+        targetPath = sourcePath;
+    else
+        relativePath = strrep(relativePath, '/', filesep);
+        targetPath = fullfile(fileparts(sourcePath), relativePath);
+    end
+    assertFileExists(targetPath, ...
+        ['local target ' target ' from ' sourcePath]);
+
+    if ~isempty(fragment)
+        targetContent = fileread(targetPath);
+        escapedFragment = regexptranslate('escape', fragment);
+        fragmentPattern = ['id=["'']' escapedFragment '["'']'];
+        assert(~isempty(regexp(targetContent, fragmentPattern, 'once')), ...
+            ['MKEF:VerificationFailed: missing fragment #' fragment ...
+             ' in target ' targetPath '.']);
+    end
+end
+end
+
+function result = isExternalTarget(target)
+result = ~isempty(regexpi(target, ...
+    '^(?:https?:|mailto:|tel:|data:|javascript:)', 'once'));
+end
+
+function assertNoExternalRuntimeAssets(html, page)
+assert(isempty(regexpi(html, '<script\b', 'once')), ...
+    ['MKEF:VerificationFailed: scripts are not allowed in ' page '.']);
+externalRuntimePattern = [ ...
+    '<(?:link|img|source|video|audio|iframe|object|embed)\b[^>]*' ...
+    '(?:href|src|srcset|data|poster)\s*=\s*["''](?:https?:)?//'];
+assert(isempty(regexpi(html, externalRuntimePattern, 'once')), ...
+    ['MKEF:VerificationFailed: external runtime asset found in ' page '.']);
+assert(isempty(regexpi(html, ...
+    '@import\s|url\s*\(\s*["'']?(?:https?:)?//', 'once')), ...
+    ['MKEF:VerificationFailed: external inline CSS asset found in ' page '.']);
+end
+
+function assertFileExists(path, description)
+assert(exist(path, 'file') == 2, ...
+    ['MKEF:VerificationFailed: missing ' description ': ' path '.']);
+end
+
+function assertASCIIPath(path)
+assert(all(double(path) <= 127), ...
+    ['MKEF:VerificationFailed: reference artifact name is not ASCII: ' ...
+     path '.']);
+end
+
+function assertReferenceNamesASCII(directory, relativeDirectory)
+entries = dir(directory);
+for i = 1:numel(entries)
+    name = entries(i).name;
+    if strcmp(name, '.') || strcmp(name, '..')
+        continue;
+    end
+    relativePath = fullfile(relativeDirectory, name);
+    assertASCIIPath(relativePath);
+    if entries(i).isdir
+        assertReferenceNamesASCII( ...
+            fullfile(directory, name), relativePath);
+    end
+end
+end

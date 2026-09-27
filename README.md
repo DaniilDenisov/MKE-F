@@ -25,6 +25,25 @@ octave --no-gui --quiet --eval "addpath(pwd); run_octave_tests;"
 octave --no-gui --quiet --eval "addpath(pwd); run_octave_smoke_tests;"
 ```
 
+## Автономный учебный справочник
+
+Полный русскоязычный справочник начинается с
+[`reference/index.html`](reference/index.html). Его можно открыть прямо с диска:
+все стили и материалы находятся в репозитории, подключение к интернету для
+чтения и выполнения лабораторных не требуется.
+
+Все семь лабораторных используют функции проекта, проверяют численные инварианты
+и запускаются из корня репозитория одной командой GNU Octave:
+
+```octave
+addpath(fullfile(pwd, 'reference', 'examples'));
+results = run_reference_examples();
+```
+
+Для тихого запуска без печати матриц передайте `false`:
+`run_reference_examples(false)`. Эта проверка также входит в обычный
+`run_octave_tests` и выполняется в CI.
+
 По умолчанию задача создаётся без графиков и диагностической печати:
 
 ```octave

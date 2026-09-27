@@ -131,7 +131,7 @@ localEndForces = element.localStiffness * localDisplacements;</code></pre>
         <p><a href="examples/run_reference_examples.m"><code>run_reference_examples</code></a> последовательно запускает семь примеров и возвращает их результаты в полях с именами функций:</p>
         <pre><code>addpath(fullfile(pwd, "reference", "examples"));
 results = run_reference_examples();</code></pre>
-        <p>Для тихой проверки используйте <code>run_reference_examples(false)</code>. Runner определяет корень репозитория по собственному файлу, поэтому после добавления каталога примеров в путь не зависит от текущего рабочего каталога. Исключения не перехватываются: первая нарушенная проверка немедленно останавливает запуск.</p>
+        <p>Для тихой проверки используйте <code>run_reference_examples(false)</code>. Функция запуска определяет корень репозитория по собственному файлу, поэтому после добавления каталога примеров в путь не зависит от текущего рабочего каталога. Исключения не перехватываются: первая нарушенная проверка немедленно останавливает запуск.</p>
       </section>
 
       <section class="source-list" aria-labelledby="sources-title">
