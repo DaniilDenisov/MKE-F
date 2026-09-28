@@ -2,6 +2,7 @@
   'use strict';
 
   var layerNames = ['original-geometry', 'diagrams', 'deformed-geometry', 'supports', 'loads', 'reactions', 'nodes', 'labels', 'selection-overlay'];
+  var rendererSequence = 0;
 
   function clearElement(element) {
     while (element.firstChild) element.removeChild(element.firstChild);
@@ -38,16 +39,20 @@
     this.originalByElement = new Map();
     this.deformedByElement = new Map();
     this.nodeById = new Map();
+    this.deformedNodeHitById = new Map();
     this.nodeLabels = new Map();
     this.elementLabels = new Map();
     this.selection = null;
     this.size = 1;
+    this.gradientPrefix = 'mkef-result-' + (++rendererSequence) + '-';
     this.createLayers();
     this.bindNavigation();
   }
 
   Renderer.prototype.createLayers = function () {
     clearElement(this.svg);
+    this.resultDefs = M.svgElement('defs', { 'data-result-defs': '' });
+    this.svg.appendChild(this.resultDefs);
     this.svg.appendChild(M.svgElement('rect', { class: 'viewport-background', x: '-1000000', y: '-1000000', width: '2000000', height: '2000000' }));
     layerNames.forEach(function (name) {
       var group = M.svgElement('g', { 'data-layer': name });
@@ -64,8 +69,10 @@
     this.originalByElement.clear();
     this.deformedByElement.clear();
     this.nodeById.clear();
+    this.deformedNodeHitById.clear();
     this.nodeLabels.clear();
     this.elementLabels.clear();
+    clearElement(this.resultDefs);
     layerNames.forEach(function (name) { this.clearLayer(name); }, this);
     this.size = characteristicSize(dataset.raw.model);
     var labelOffset = this.size * .018;
@@ -96,6 +103,11 @@
 
     dataset.raw.model.nodes.forEach(function (node) {
       var point = M.geometry.svgPoint(node);
+      var deformedHit = M.svgElement('circle', { class: 'node-hit deformed-node-hit', cx: point.x, cy: point.y, r: this.size * .008, 'data-node-id': node.id, 'aria-hidden': 'true' });
+      this.layers['deformed-geometry'].appendChild(deformedHit);
+      this.deformedNodeHitById.set(node.id, deformedHit);
+      var hit = M.svgElement('circle', { class: 'node-hit', cx: point.x, cy: point.y, r: this.size * .008, 'data-node-id': node.id, 'aria-hidden': 'true' });
+      this.layers.nodes.appendChild(hit);
       var circle = M.svgElement('circle', { class: 'node', cx: point.x, cy: point.y, r: this.size * .008, 'data-node-id': node.id, tabindex: '0' });
       var title = M.svgElement('title');
       title.textContent = 'Node ' + node.id + ' · (' + node.x + ', ' + node.y + ')';
@@ -127,15 +139,34 @@
       path.setAttribute('d', M.geometry.pathData(points));
       path.firstChild.textContent = 'Element ' + element.id + ' · deformation scale ' + Number(scale).toPrecision(5);
     }, this);
+    this.dataset.raw.model.nodes.forEach(function (node) {
+      var value = M.geometry.nodeDisplacement(this.dataset, node.id, displacement);
+      var point = M.geometry.svgPoint({ x: node.x + scale * value.x, y: node.y + scale * value.y });
+      var hit = this.deformedNodeHitById.get(node.id);
+      hit.setAttribute('cx', point.x); hit.setAttribute('cy', point.y);
+    }, this);
     this.reapplySelection();
   };
 
   Renderer.prototype.resetElementColors = function () {
+    clearElement(this.resultDefs);
     this.deformedByElement.forEach(function (path) { path.style.removeProperty('stroke'); });
   };
   Renderer.prototype.setElementColor = function (elementId, color) {
     var path = this.deformedByElement.get(elementId);
     if (path) path.style.stroke = color;
+  };
+  Renderer.prototype.setElementGradient = function (elementId, first, second, stops) {
+    var path = this.deformedByElement.get(elementId);
+    if (!path) return;
+    var id = this.gradientPrefix + elementId;
+    var a = M.geometry.svgPoint(first), b = M.geometry.svgPoint(second);
+    var gradient = M.svgElement('linearGradient', { id: id, gradientUnits: 'userSpaceOnUse', x1: a.x, y1: a.y, x2: b.x, y2: b.y });
+    stops.forEach(function (stop) {
+      gradient.appendChild(M.svgElement('stop', { offset: (stop.offset * 100) + '%', 'stop-color': stop.color }));
+    });
+    this.resultDefs.appendChild(gradient);
+    path.style.stroke = 'url(#' + id + ')';
   };
 
   Renderer.prototype.setVisibility = function (settings) {
@@ -171,8 +202,33 @@
   };
 
   Renderer.prototype.pointerInViewBox = function (event) {
+    var matrix = this.svg.getScreenCTM();
+    if (matrix && typeof DOMPoint === 'function') return new DOMPoint(event.clientX, event.clientY).matrixTransform(matrix.inverse());
     var rect = this.svg.getBoundingClientRect();
     return { x: this.viewBox.x + (event.clientX - rect.left) / rect.width * this.viewBox.width, y: this.viewBox.y + (event.clientY - rect.top) / rect.height * this.viewBox.height };
+  };
+
+  Renderer.prototype.nearestNodeId = function (point, deformed) {
+    var bestId = null, bestDistance = Infinity;
+    this.dataset.raw.model.nodes.forEach(function (node) {
+      var candidate;
+      if (deformed) {
+        var hit = this.deformedNodeHitById.get(node.id);
+        candidate = { x: Number(hit.getAttribute('cx')), y: Number(hit.getAttribute('cy')) };
+      } else candidate = M.geometry.svgPoint(node);
+      var distance = Math.pow(candidate.x - point.x, 2) + Math.pow(candidate.y - point.y, 2);
+      if (distance < bestDistance) { bestDistance = distance; bestId = node.id; }
+    }, this);
+    return bestId;
+  };
+
+  Renderer.prototype.clickedNodeId = function (event, target) {
+    var fallback = Number(target.getAttribute('data-node-id'));
+    if (!target.classList.contains('node') && !target.classList.contains('node-hit')) return fallback;
+    var rect = this.svg.getBoundingClientRect();
+    var inside = event.clientX >= rect.left && event.clientX <= rect.right && event.clientY >= rect.top && event.clientY <= rect.bottom;
+    if (!inside) return fallback;
+    return this.nearestNodeId(this.pointerInViewBox(event), target.classList.contains('deformed-node-hit'));
   };
 
   Renderer.prototype.bindNavigation = function () {
@@ -189,6 +245,7 @@
     }.bind(this), { passive: false });
     this.svg.addEventListener('pointerdown', function (event) {
       if (event.button !== 0 || !this.viewBox) return;
+      if (event.target.closest('[data-node-id], [data-element-id]')) return;
       this.drag = { pointer: event.pointerId, start: this.pointerInViewBox(event), x: this.viewBox.x, y: this.viewBox.y, moved: false };
       this.svg.setPointerCapture(event.pointerId);
     }.bind(this));
@@ -204,7 +261,7 @@
     this.svg.addEventListener('click', function (event) {
       var target = event.target.closest('[data-node-id], [data-element-id]');
       if (!target) this.setSelection(null);
-      else if (target.hasAttribute('data-node-id')) this.setSelection({ kind: 'node', id: Number(target.getAttribute('data-node-id')) });
+      else if (target.hasAttribute('data-node-id')) this.setSelection({ kind: 'node', id: this.clickedNodeId(event, target) });
       else this.setSelection({ kind: 'element', id: Number(target.getAttribute('data-element-id')) });
     }.bind(this));
     this.svg.addEventListener('keydown', function (event) {
@@ -220,9 +277,16 @@
   Renderer.prototype.reapplySelection = function () {
     this.svg.querySelectorAll('.selected').forEach(function (item) { item.classList.remove('selected'); });
     if (!this.selection) return;
-    var attribute = this.selection.kind === 'node' ? 'data-node-id' : 'data-element-id';
+    if (this.selection.kind === 'node') {
+      var node = this.nodeById.get(this.selection.id);
+      if (node) node.classList.add('selected');
+      var deformedHit = this.deformedNodeHitById.get(this.selection.id);
+      if (deformedHit) deformedHit.classList.add('selected');
+      return;
+    }
+    var attribute = 'data-element-id';
     this.svg.querySelectorAll('[' + attribute + '="' + this.selection.id + '"]').forEach(function (item) {
-      if (item.tagName.toLowerCase() !== 'text') item.classList.add('selected');
+      if (item.tagName.toLowerCase() !== 'text' && !item.classList.contains('node-hit')) item.classList.add('selected');
     });
   };
 

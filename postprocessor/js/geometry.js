@@ -21,13 +21,24 @@
       { x: second.x + scale * secondD.x, y: second.y + scale * secondD.y }
     ];
   };
-  G.sample113 = function (first, second, firstD, secondD, scale, sampleCount) {
+  G.sample112Displacements = function (firstD, secondD, sampleCount) {
+    var values = [];
+    for (var i = 0; i < sampleCount; i += 1) {
+      var xi = i / (sampleCount - 1);
+      values.push({
+        x: (1 - xi) * firstD.x + xi * secondD.x,
+        y: (1 - xi) * firstD.y + xi * secondD.y
+      });
+    }
+    return values;
+  };
+  G.sample113Displacements = function (first, second, firstD, secondD, sampleCount) {
     var basis = G.elementBasis(first, second), c = basis.c, s = basis.s, L = basis.length;
     var u1 = c * firstD.x + s * firstD.y;
     var v1 = -s * firstD.x + c * firstD.y;
     var u2 = c * secondD.x + s * secondD.y;
     var v2 = -s * secondD.x + c * secondD.y;
-    var points = [];
+    var values = [];
     for (var i = 0; i < sampleCount; i += 1) {
       var xi = i / (sampleCount - 1), xi2 = xi * xi, xi3 = xi2 * xi;
       var axial = (1 - xi) * u1 + xi * u2;
@@ -36,10 +47,27 @@
       var n3 = 3 * xi2 - 2 * xi3;
       var n4 = L * (-xi2 + xi3);
       var transverse = n1 * v1 + n2 * firstD.r + n3 * v2 + n4 * secondD.r;
-      var localX = xi * L + scale * axial, localY = scale * transverse;
-      points.push({ x: first.x + c * localX - s * localY, y: first.y + s * localX + c * localY });
+      values.push({ x: c * axial - s * transverse, y: s * axial + c * transverse });
+    }
+    return values;
+  };
+  G.sample113 = function (first, second, firstD, secondD, scale, sampleCount) {
+    var basis = G.elementBasis(first, second), displacements = G.sample113Displacements(first, second, firstD, secondD, sampleCount), points = [];
+    for (var i = 0; i < sampleCount; i += 1) {
+      var xi = i / (sampleCount - 1);
+      points.push({
+        x: first.x + basis.c * xi * basis.length + scale * displacements[i].x,
+        y: first.y + basis.s * xi * basis.length + scale * displacements[i].y
+      });
     }
     return points;
+  };
+  G.sampleElementDisplacements = function (dataset, element, displacement, sampleCount) {
+    var first = dataset.nodesById.get(element.nodeIds[0]);
+    var second = dataset.nodesById.get(element.nodeIds[1]);
+    var firstD = G.nodeDisplacement(dataset, first.id, displacement);
+    var secondD = G.nodeDisplacement(dataset, second.id, displacement);
+    return element.type === 112 ? G.sample112Displacements(firstD, secondD, sampleCount) : G.sample113Displacements(first, second, firstD, secondD, sampleCount);
   };
   G.sampleElement = function (dataset, element, displacement, scale, samples) {
     var first = dataset.nodesById.get(element.nodeIds[0]);

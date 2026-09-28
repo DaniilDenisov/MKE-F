@@ -1,6 +1,6 @@
 (function (M) {
   'use strict';
-  var elements = {}, dataset = null, renderer = null, currentVector = null, currentScale = 1, transientScale = 1, playback = null;
+  var elements = {}, dataset = null, renderer = null, currentVector = null, currentScale = 1, transientScale = 1, playback = null, currentLegend = null;
   function byId(id) { return document.getElementById(id); }
   function option(value, label) { var item = document.createElement('option'); item.value = value; item.textContent = label; return item; }
   function replaceOptions(select, values) { while (select.firstChild) select.removeChild(select.firstChild); values.forEach(function (item) { select.appendChild(option(item.value, item.label)); }); }
@@ -15,7 +15,21 @@
   function showError(error) { elements.error.textContent = error && error.message ? error.message : String(error); elements.error.hidden = false; }
   function clearError() { elements.error.hidden = true; }
   function notice(message) { elements.notice.textContent = message || ''; elements.notice.hidden = !message; }
-  function setLegend(message) { elements.legend.textContent = message || ''; elements.legend.hidden = !message; }
+  function setLegend(descriptor) {
+    while (elements.legend.firstChild) elements.legend.removeChild(elements.legend.firstChild);
+    if (typeof descriptor === 'string') descriptor = descriptor ? { kind: 'text', text: descriptor, summary: descriptor } : { kind: 'none', summary: '' };
+    currentLegend = descriptor || { kind: 'none', summary: '' };
+    if (currentLegend.kind === 'none') { elements.legend.hidden = true; return; }
+    elements.legend.hidden = false;
+    if (currentLegend.kind === 'text') { elements.legend.textContent = currentLegend.text; return; }
+    var header = document.createElement('div'); header.className = 'legend-header';
+    header.textContent = currentLegend.label + (currentLegend.unit ? ' [' + currentLegend.unit + ']' : '');
+    var bar = document.createElement('div'); bar.className = 'legend-bar';
+    bar.style.background = 'linear-gradient(90deg, ' + currentLegend.stops.map(function (stop) { return stop.color + ' ' + (stop.offset * 100) + '%'; }).join(', ') + ')';
+    var ticks = document.createElement('div'); ticks.className = 'legend-ticks' + (currentLegend.ticks.length === 1 ? ' single' : '');
+    currentLegend.ticks.forEach(function (value) { var tick = document.createElement('span'); tick.textContent = number(value); ticks.appendChild(tick); });
+    elements.legend.appendChild(header); elements.legend.appendChild(bar); elements.legend.appendChild(ticks);
+  }
   function setStatus(message) { elements.status.textContent = message; }
   function setSection(section, visible) { section.hidden = !visible; }
 
@@ -41,8 +55,8 @@
   function configureStatic() {
     var type = dataset.raw.model.elements[0].type;
     replaceOptions(elements.staticResult, type === 112 ? [
-      { value: 'none', label: 'None' }, { value: 'axialForce', label: 'Axial force' }, { value: 'axialStress', label: 'Axial stress' }
-    ] : [{ value: 'none', label: 'None' }, { value: 'N', label: 'Axial force N' }, { value: 'V', label: 'Shear force V' }, { value: 'M', label: 'Bending moment M' }]);
+      { value: 'displacementMagnitude', label: 'Deflection |u|' }, { value: 'none', label: 'None' }, { value: 'axialForce', label: 'Axial force' }, { value: 'axialStress', label: 'Axial stress' }
+    ] : [{ value: 'displacementMagnitude', label: 'Deflection |u|' }, { value: 'none', label: 'None' }, { value: 'N', label: 'Axial force N' }, { value: 'V', label: 'Shear force V' }, { value: 'M', label: 'Bending moment M' }]);
     M.staticResults.mount(renderer, dataset);
     currentVector = dataset.raw.analysis.displacements;
     currentScale = M.geometry.automaticScale(dataset, currentVector, samples()).scale;
@@ -50,7 +64,7 @@
     elements.scaleMode.disabled = false; elements.manualScale.disabled = elements.scaleMode.value !== 'manual';
     document.querySelectorAll('.static-layer').forEach(function (item) { item.hidden = false; });
     elements.showLoads.disabled = false; elements.showReactions.disabled = false;
-    setLegend(''); notice('');
+    setLegend(M.staticResults.applyResult(renderer, dataset, elements.staticResult.value, samples())); notice('');
   }
 
   function configureModal() {
@@ -125,7 +139,7 @@
     reader.readAsText(file, 'UTF-8');
   }
 
-  function applyStaticResult() { if (!dataset || dataset.raw.analysis.type !== 'static') return; setLegend(M.staticResults.applyResult(renderer, dataset, elements.staticResult.value)); renderer.reapplySelection(); updateDetails(renderer.selection); }
+  function applyStaticResult() { if (!dataset || dataset.raw.analysis.type !== 'static') return; setLegend(M.staticResults.applyResult(renderer, dataset, elements.staticResult.value, samples())); renderer.reapplySelection(); updateDetails(renderer.selection); }
   function changeMode() {
     if (!dataset || dataset.raw.analysis.type !== 'modal') return;
     var index = Number(elements.modeNumber.value), modal = M.modalView.display(dataset, index, Number(elements.modalAmplitude.value), samples());
@@ -193,8 +207,7 @@
     var analysis = dataset.raw.analysis, lines = [];
     if (selection.kind === 'node') {
       var node = dataset.nodesById.get(selection.id), row = dataset.nodeIndexById.get(selection.id), dofs = dataset.raw.model.dofMap[row];
-      lines.push('Node ' + node.id, 'Coordinates: [' + number(node.x) + ', ' + number(node.y) + ']', 'Global DOFs: [' + dofs.join(', ') + ']');
-      if (analysis.type === 'static') { lines.push(labeledVector('Displacement', valuesAtNode(analysis.displacements, node.id)), labeledVector('Load', valuesAtNode(analysis.loadVector, node.id)), labeledVector('Reaction', valuesAtNode(analysis.reactions, node.id))); }
+      if (analysis.type === 'static') lines = M.staticResults.nodeDetails(dataset, node.id);
       else if (analysis.type === 'modal') lines.push(labeledVector('Mode components', valuesAtNode(currentVector, node.id)));
       else {
         var timeIndex = Number(elements.timeIndex.value);
@@ -236,12 +249,12 @@
     elements.dropZone.addEventListener('click', function (event) { if (!dataset && event.target === this) elements.fileInput.click(); });
     elements.dropZone.addEventListener('keydown', function (event) { if (!dataset && (event.key === 'Enter' || event.key === ' ')) elements.fileInput.click(); });
     elements.reset.addEventListener('click', function () { renderer.fit(); });
-    elements.exportSvg.addEventListener('click', function () { if (dataset) M.exporting.downloadSvg(elements.viewport, exportContext(), elements.chartPanel.hidden ? null : elements.chart); });
-    elements.exportPng.addEventListener('click', function () { if (dataset) M.exporting.downloadPng(elements.viewport, exportContext(), Number(elements.pngScale.value), elements.chartPanel.hidden ? null : elements.chart).catch(showError); });
+    elements.exportSvg.addEventListener('click', function () { if (dataset) M.exporting.downloadSvg(elements.viewport, exportContext(), elements.chartPanel.hidden ? null : elements.chart, currentLegend); });
+    elements.exportPng.addEventListener('click', function () { if (dataset) M.exporting.downloadPng(elements.viewport, exportContext(), Number(elements.pngScale.value), elements.chartPanel.hidden ? null : elements.chart, currentLegend).catch(showError); });
     ['showOriginal', 'showDeformed', 'showNodes', 'showNodeLabels', 'showElementLabels', 'showSupports', 'showLoads', 'showReactions'].forEach(function (name) { elements[name].addEventListener('change', function () { renderer.setVisibility(layerSettings()); }); });
     elements.scaleMode.addEventListener('change', function () { elements.manualScale.disabled = this.value !== 'manual'; updateScale(); updateStatus(); });
     elements.manualScale.addEventListener('change', function () { if (elements.scaleMode.value === 'manual') { updateScale(); updateStatus(); } });
-    elements.sampleCount.addEventListener('change', updateScale);
+    elements.sampleCount.addEventListener('change', function () { updateScale(); if (dataset && dataset.raw.analysis.type === 'static') applyStaticResult(); });
     elements.staticResult.addEventListener('change', applyStaticResult);
     elements.modeNumber.addEventListener('change', changeMode); elements.modalAmplitude.addEventListener('change', changeMode);
     elements.timeIndex.addEventListener('input', function () { setTransientIndex(Number(this.value)); });

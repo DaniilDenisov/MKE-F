@@ -390,8 +390,13 @@ Desktop layout:
 +--------------------------------------------------------------------+
 ```
 
-On narrow screens the settings panel moves above the viewport. Controls must
-remain usable without horizontal page scrolling.
+On desktop screens the toolbar and application shell fit within one browser
+viewport. The structural canvas consumes the remaining flexible height so the
+active legend, selection panel, and status stay visible without document-level
+vertical scrolling; the settings column scrolls independently when necessary.
+On narrow screens the settings panel moves above the viewport and normal page
+scrolling is restored. Controls must remain usable without horizontal page
+scrolling.
 
 The viewport uses one responsive `<svg>` with a `viewBox`. It supports:
 
@@ -483,12 +488,28 @@ bounding boxes fall back to the longest element length.
 The default static view shows:
 
 - undeformed geometry as a muted dashed line;
-- deformed geometry as a solid line;
+- deformed geometry as a solid line, coloured by actual resultant displacement
+  magnitude `|u| = sqrt(ux^2 + uy^2)` by default;
+- a compact Viridis colour legend with zero, half-maximum, and maximum values
+  in the declared length unit; a zero field uses one neutral value;
 - the displacement magnification factor;
 - support symbols derived from support types 1--4;
 - nodal force and moment symbols from `loadVector`;
-- reaction symbols only at restrained DOFs;
+- reaction symbols only at restrained DOFs, with thicker purple dashed force
+  arrows and thicker amber solid moment arcs;
 - optional node and element labels.
+
+Displacement colours always represent the unscaled physical result and do not
+change with automatic or manual display magnification. Element 112 uses linear
+displacement interpolation and element 113 uses the same cubic Hermite field as
+the deformed curve. SVG gradients use at most nine stops per element so the
+renderer retains one path per element and preserves the large-model target.
+
+`Deflection |u|`, `None`, and the applicable force/stress or `N`/`V`/`M`
+results are mutually exclusive selections. Selecting a node reports `|u|`,
+labelled displacement components, rotation where present, and only nonzero
+load/reaction components. Larger transparent node hit targets improve pointer
+selection without adding visible labels.
 
 For element 112, `axialForce` and `axialStress` are constant per element and can
 be displayed as labels and a diverging color scale.
@@ -719,6 +740,9 @@ be driven by a headless installed browser in CI.
 - Assert that required SVG groups and finite path coordinates exist.
 - Change every main selector and verify the context label/state.
 - Export SVG and PNG and confirm nonempty output.
+- Confirm static SVG and PNG exports include the active deflection colour
+  legend, its numerical ticks and unit, and the same reaction styles as the
+  interactive view.
 - Do not use pixel-perfect golden-image comparison; fonts and antialiasing vary
   between browsers.
 
@@ -728,7 +752,11 @@ be driven by a headless installed browser in CI.
 - Shared nodes of neighboring elements remain connected.
 - Frame curvature and end rotations have correct signs.
 - Support/load/reaction symbols do not obscure the structure.
+- Static reaction-force arrows and reaction-moment arcs remain distinguishable
+  by both colour and line style where they overlap at a clamped node.
 - Legends include units and all independent scale factors.
+- A static cantilever colours from zero at the clamp to the maximum at the tip,
+  and selecting the tip reports the analytical displacement.
 - Modal shapes do not change sign between repeated loads.
 - Transient axes and deformation scale remain fixed during animation.
 - Keyboard navigation and visible focus work.
@@ -763,6 +791,8 @@ The postprocessor is complete when:
 - `postprocessor/index.html` opens directly from disk with no server/network;
 - both 112 and 113 render with physically correct deformation interpolation;
 - static results include supports, loads, reactions, stresses, and diagrams;
+- static results default to an unscaled resultant-displacement colour field,
+  provide focused numerical node inspection, and export its legend;
 - modal results provide reliable mode navigation and frequency context;
 - transient results provide histories, spectrum, snapshots, and animation;
 - the current view exports to standalone SVG and PNG;
