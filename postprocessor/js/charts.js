@@ -38,16 +38,17 @@
     svg.__chartBound = true;
     svg.addEventListener('pointermove', function (event) { if (svg.__chartState) showSample(svg, eventIndex(svg, event)); });
     svg.addEventListener('pointerleave', function () { var state = svg.__chartState; if (!state) return; if (state.selectedIndex === null) hideSample(svg); else showSample(svg, state.selectedIndex); });
-    svg.addEventListener('click', function (event) { if (!svg.__chartState) return; var index = eventIndex(svg, event); svg.__chartState.selectedIndex = index; showSample(svg, index); });
+    svg.addEventListener('click', function (event) { if (!svg.__chartState) return; var index = eventIndex(svg, event); svg.__chartState.selectedIndex = index; showSample(svg, index); if (svg.__chartState.onSelect) svg.__chartState.onSelect(index, svg.__chartState.series.x[index], svg.__chartState.series.y[index]); });
     svg.addEventListener('keydown', function (event) {
       var state = svg.__chartState; if (!state || (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight')) return;
       event.preventDefault();
       var index = state.selectedIndex === null ? 0 : state.selectedIndex + (event.key === 'ArrowLeft' ? -1 : 1);
       state.selectedIndex = Math.max(0, Math.min(state.series.x.length - 1, index)); showSample(svg, state.selectedIndex);
+      if (state.onSelect) state.onSelect(state.selectedIndex, state.series.x[state.selectedIndex], state.series.y[state.selectedIndex]);
     });
   }
 
-  C.render = function (svg, inputSeries, cursorX) {
+  C.render = function (svg, inputSeries, cursorX, onSelect) {
     var selectedIndex = svg.__chartState ? svg.__chartState.selectedIndex : null;
     clear(svg);
     svg.__chartState = null;
@@ -55,7 +56,7 @@
     var series = M.transientView.downsample(inputSeries, 2000);
     var width = 800, height = 240, margin = { left: 72, right: 20, top: 20, bottom: 42 };
     var frameWidth = width - margin.left - margin.right, frameHeight = height - margin.top - margin.bottom;
-    var xExtent = finiteExtent(series.x), yExtent = finiteExtent(series.y);
+    var xExtent = finiteExtent(inputSeries.x), yExtent = finiteExtent(series.y);
     function sx(value) { return margin.left + (value - xExtent[0]) / (xExtent[1] - xExtent[0]) * frameWidth; }
     function sy(value) { return margin.top + frameHeight - (value - yExtent[0]) / (yExtent[1] - yExtent[0]) * frameHeight; }
     svg.setAttribute('viewBox', '0 0 ' + width + ' ' + height);
@@ -76,7 +77,7 @@
     var tooltipText = M.svgElement('text', { x: 8, y: 21 }); tooltip.appendChild(tooltipText);
     svg.appendChild(hit); svg.appendChild(sample); svg.appendChild(tooltip);
     svg.__chartState = { series: inputSeries, xExtent: xExtent, margin: margin, frameWidth: frameWidth, selectedIndex: selectedIndex,
-      sx: sx, sy: sy, sample: sample, sampleTitle: sampleTitle, tooltip: tooltip, tooltipText: tooltipText, hoverIndex: null };
+      sx: sx, sy: sy, sample: sample, sampleTitle: sampleTitle, tooltip: tooltip, tooltipText: tooltipText, hoverIndex: null, onSelect: onSelect || null };
     bind(svg);
     if (selectedIndex !== null) { svg.__chartState.selectedIndex = Math.min(selectedIndex, inputSeries.x.length - 1); showSample(svg, svg.__chartState.selectedIndex); }
   };

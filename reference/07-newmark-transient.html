@@ -104,6 +104,35 @@ a3 = 1/(2*beta) - 1;</code></pre>
         <p>Спектральный пик свободного осциллятора должен находиться около его собственной частоты, но конечная длительность и несовпадение частоты с центром дискретного бина создают утечку. Поэтому разумная проверка учитывает разрешение Δf, а не требует побитового совпадения частот.</p>
       </section>
 
+      <section aria-labelledby="viewer-title">
+        <h2 id="viewer-title">Как запустить расчёт и посмотреть результат</h2>
+        <p>В Octave из корневого каталога проекта выполните:</p>
+        <pre><code>problem = StructFEProblem('CaseBeam.txt');
+model = problem.GetAnalysisModel();
+result = problem.RunTransient(1e-4, 1e-2, 3, 2);
+
+options = struct(...
+    'title', 'Переходный отклик', ...
+    'lengthUnit', 'm', 'forceUnit', 'N', ...
+    'momentUnit', 'N*m', 'timeUnit', 's', ...
+    'transientFields', {{'displacements', 'velocities', ...
+                         'accelerations', 'loadHistory', ...
+                         'reactions', 'spectrum'}}, ...
+    'timeStride', 1, 'prettyPrint', true);
+exportPostprocessorData(model, result, 'transient-history.json', options);</code></pre>
+        <p>Затем откройте <a href="../postprocessor/index.html"><code>postprocessor/index.html</code></a>
+          двойным щелчком в Chrome и перетащите на страницу <code>transient-history.json</code>
+          или выберите его через <strong>Open JSON</strong>. Локальный сервер не нужен.</p>
+        <div class="callout callout--inspect">
+          <span class="callout__title">Что посмотреть</span>
+          <p>Выберите узел, степень свободы и величину на графике. Ползунок времени и щелчок по графику показывают точный экспортированный отсчёт. <strong>Play</strong> запускает анимацию; <strong>Frame stride</strong> изменяет шаг просмотра. SVG и PNG сохраняют текущий кадр вместе с графиком и параметрами выбора.</p>
+        </div>
+        <div class="callout callout--warning">
+          <span class="callout__title">Прореживание и реакции</span>
+          <p>Если при экспорте задать <code>timeStride &gt; 1</code>, просмотрщик явно покажет, что история прорежена. Поле <code>reactions</code> хранит полный динамический остаток <code>M*a + K*u - F</code>; опорные реакции — его строки для закреплённых степеней свободы.</p>
+        </div>
+      </section>
+
       <section aria-labelledby="practice-title">
         <h2 id="practice-title">Лабораторная 06</h2>
         <div class="callout">

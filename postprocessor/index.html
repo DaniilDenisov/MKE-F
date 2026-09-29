@@ -78,7 +78,10 @@
         </div>
         <label for="playback-speed">Playback speed</label>
         <select id="playback-speed"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option></select>
+        <label for="frame-stride">Frame stride</label>
+        <select id="frame-stride"><option value="1" selected>Every frame</option><option value="2">Every 2nd frame</option><option value="5">Every 5th frame</option><option value="10">Every 10th frame</option></select>
         <p id="time-value" class="control-note"></p>
+        <p id="transient-metadata" class="control-note"></p>
       </section>
       <section id="chart-controls" hidden>
         <h2>History chart</h2>
@@ -88,6 +91,7 @@
         <select id="history-dof"></select>
         <label for="history-quantity">Quantity</label>
         <select id="history-quantity"></select>
+        <p id="history-value" class="control-note"></p>
       </section>
       <section>
         <h2>Deformation</h2>
@@ -117,7 +121,7 @@
       <div id="result-legend" class="result-legend" hidden></div>
       <section id="chart-panel" class="chart-panel" hidden aria-label="Selected degree of freedom history">
         <svg id="history-chart" role="img" aria-label="Selected degree of freedom history chart"></svg>
-        <p class="chart-help">Move over the chart to inspect original samples; click to keep a sample selected.</p>
+        <p class="chart-help">Move over the chart to inspect original samples. Click or use the arrow keys to select a sample; a history sample also moves the visible frame.</p>
       </section>
       <section class="details-panel" aria-live="polite"><h2>Selection</h2><pre id="selection-details">Nothing selected</pre></section>
       <div class="status-bar"><span id="analysis-status">Waiting for a dataset</span></div>

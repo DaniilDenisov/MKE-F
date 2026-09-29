@@ -154,7 +154,8 @@
     replaceOptions(elements.historyNode, nodeIds.map(function (id) { return { value: String(id), label: 'Node ' + id }; }));
     updateHistoryDofOptions();
     var quantities = M.transientView.availableQuantities(dataset);
-    replaceOptions(elements.historyQuantity, quantities.map(function (name) { return { value: name, label: name === 'spectrum' ? 'Displacement spectrum' : name }; }));
+    var quantityLabels = { displacements: 'Displacement', velocities: 'Velocity', accelerations: 'Acceleration', loadHistory: 'Applied load', reactions: 'Dynamic residual / reaction', spectrum: 'Displacement spectrum' };
+    replaceOptions(elements.historyQuantity, quantities.map(function (name) { return { value: name, label: quantityLabels[name] }; }));
     transientScale = M.transientView.displayScale(dataset);
     var full = M.transientView.hasFullDisplacements(dataset);
     currentVector = full ? M.transientView.vectorAt(dataset, 'displacements', 0) : null;
@@ -163,15 +164,25 @@
     elements.showDeformed.disabled = !full;
     if (!full) { elements.showDeformed.checked = false; notice('This reduced-DOF export supports charts only. Structural playback requires displacement histories for every global DOF.'); }
     else notice('');
+    var sampling = M.transientView.samplingSummary(dataset), fields = M.transientView.fieldStatus(dataset), metadata =
+      'Exported ' + sampling.exported + ' of ' + sampling.original + ' samples · export stride ' + sampling.stride + '. ' +
+      'Available: ' + (fields.present.length ? fields.present.join(', ') : 'none') + '. Omitted: ' + (fields.omitted.length ? fields.omitted.join(', ') : 'none') + '.';
+    if (sampling.decimated) metadata = 'Warning: the exported time history is decimated. ' + metadata;
+    elements.transientMetadata.textContent = metadata;
+    elements.transientMetadata.classList.toggle('warning-note', sampling.decimated);
+    elements.playPause.disabled = analysis.time.length < 2;
     setSection(elements.transientControls, true); setSection(elements.chartControls, quantities.length > 0); elements.chartPanel.hidden = quantities.length === 0;
     document.querySelectorAll('.static-layer').forEach(function (item) { item.hidden = true; });
     elements.showLoads.checked = false; elements.showReactions.checked = false;
+    elements.historyValue.textContent = '';
     setTransientIndex(0, false); setLegend('');
   }
 
   function resetSections() {
     setSection(elements.staticControls, false); setSection(elements.modalControls, false); setSection(elements.transientControls, false); setSection(elements.chartControls, false);
     elements.chartPanel.hidden = true; M.charts.render(elements.chart, null); elements.showDeformed.disabled = false; elements.scaleMode.disabled = false;
+    elements.playPause.disabled = false; elements.previousFrame.disabled = false; elements.nextFrame.disabled = false;
+    elements.transientMetadata.textContent = ''; elements.historyValue.textContent = '';
     currentVector = null; currentScale = 1; modalPresentation = null; modalPhaseAngle = 0; modalPhaseFactor = 1;
   }
 
@@ -207,18 +218,31 @@
   function setTransientIndex(index, stop) {
     if (!dataset || dataset.raw.analysis.type !== 'transient') return;
     if (stop !== false) stopPlayback();
-    var analysis = dataset.raw.analysis, value = Math.max(0, Math.min(analysis.time.length - 1, Number(index)));
+    var analysis = dataset.raw.analysis, value = M.transientView.clampFrameIndex(index, analysis.time.length);
     elements.timeIndex.value = String(value);
+    elements.previousFrame.disabled = value <= 0;
+    elements.nextFrame.disabled = value >= analysis.time.length - 1;
     if (M.transientView.hasFullDisplacements(dataset)) { currentVector = M.transientView.vectorAt(dataset, 'displacements', value); updateGeometry(); }
     elements.timeValue.textContent = 'sample ' + (value + 1) + ' / ' + analysis.time.length + ' · t = ' + number(analysis.time[value]) + (dataset.raw.metadata.units.time ? ' ' + dataset.raw.metadata.units.time : '');
     updateChart(); updateDetails(renderer.selection); updateStatus();
   }
 
+  function setHistoryValue(series, index, xValue, yValue) {
+    if (!series) { elements.historyValue.textContent = ''; return; }
+    if (series.quantity === 'spectrum') elements.historyValue.textContent = 'f = ' + number(xValue) + ' Hz · amplitude = ' + number(yValue) + (series.unit ? ' ' + series.unit : '');
+    else elements.historyValue.textContent = 'sample ' + (index + 1) + ' · ' + series.yLabel + ' = ' + number(yValue);
+  }
+
   function updateChart() {
     if (!dataset || dataset.raw.analysis.type !== 'transient' || !elements.historyDof.value || !elements.historyQuantity.value) return;
     var quantity = elements.historyQuantity.value, series = M.transientView.series(dataset, Number(elements.historyDof.value), quantity);
-    var cursor = quantity === 'spectrum' ? NaN : dataset.raw.analysis.time[Number(elements.timeIndex.value)];
-    M.charts.render(elements.chart, series, cursor);
+    var index = Number(elements.timeIndex.value), cursor = quantity === 'spectrum' ? NaN : dataset.raw.analysis.time[index];
+    if (quantity === 'spectrum') elements.historyValue.textContent = 'Select a spectrum sample to inspect its exact frequency and amplitude.';
+    else setHistoryValue(series, index, series.x[index], series.y[index]);
+    M.charts.render(elements.chart, series, cursor, function (sampleIndex, xValue, yValue) {
+      if (quantity === 'spectrum') setHistoryValue(series, sampleIndex, xValue, yValue);
+      else setTransientIndex(sampleIndex);
+    });
   }
 
   function stopPlayback() {
@@ -256,10 +280,10 @@
     function tick(timestamp) {
       if (!playback || playback.type !== 'transient') return;
       if (playback.startTime === null) playback.startTime = timestamp;
-      var speed = Number(elements.playbackSpeed.value), startProgress = playback.startIndex / (count - 1);
-      var progress = Math.min(1, startProgress + (timestamp - playback.startTime) * speed / 5000);
-      if (timestamp - playback.lastDraw >= 1000 / 30 || progress === 1) { playback.lastDraw = timestamp; setTransientIndex(Math.min(count - 1, Math.floor(progress * (count - 1))), false); }
-      if (progress >= 1) stopPlayback(); else playback.request = requestAnimationFrame(tick);
+      var frame = M.transientView.playbackFrame(dataset.raw.analysis.time, playback.startIndex, timestamp - playback.startTime,
+        Number(elements.playbackSpeed.value), Number(elements.frameStride.value), 5000);
+      if (timestamp - playback.lastDraw >= 1000 / 30 || frame.complete) { playback.lastDraw = timestamp; setTransientIndex(frame.index, false); }
+      if (frame.complete) stopPlayback(); else playback.request = requestAnimationFrame(tick);
     }
     playback.request = requestAnimationFrame(tick);
   }
@@ -285,7 +309,8 @@
     var analysis = dataset.raw.analysis, row = dataset.nodeIndexById.get(nodeId), dofs = dataset.raw.model.dofMap[row];
     return dofs.map(function (id, localIndex) {
       var exportedRow = analysis.globalDOFIds.indexOf(id);
-      var value = analysis[field] && exportedRow >= 0 ? number(analysis[field][exportedRow][timeIndex]) : 'not exported';
+      var descriptor = M.transientView.quantityDescriptor(dataset, id, field);
+      var value = analysis[field] && exportedRow >= 0 ? number(analysis[field][exportedRow][timeIndex]) + (descriptor.unit ? ' ' + descriptor.unit : '') : 'not exported';
       return dataset.raw.model.dofLabels[localIndex] + '=' + value;
     });
   }
@@ -298,7 +323,12 @@
       else if (analysis.type === 'modal') lines = modalNodeDetails(node.id);
       else {
         var timeIndex = Number(elements.timeIndex.value);
-        if (analysis.displacements) lines.push('Displacement: [' + transientNodeValues('displacements', node.id, timeIndex).join(', ') + ']');
+        var fieldLabels = { displacements: 'Displacement', velocities: 'Velocity', accelerations: 'Acceleration', loadHistory: 'Applied load', reactions: 'Dynamic residual / reaction' };
+        lines.push('Node ' + node.id, 'Sample ' + (timeIndex + 1) + ' · t = ' + number(analysis.time[timeIndex]) + (dataset.raw.metadata.units.time ? ' ' + dataset.raw.metadata.units.time : ''));
+        ['displacements', 'velocities', 'accelerations', 'loadHistory', 'reactions'].forEach(function (field) {
+          if (analysis[field]) lines.push(fieldLabels[field] + ': [' + transientNodeValues(field, node.id, timeIndex).join(', ') + ']');
+        });
+        if (analysis.reactions) lines.push('Dynamic residual is M·a + K·u − F; restrained rows are the support reactions.');
         var available = dofs.filter(function (id) { return analysis.globalDOFIds.indexOf(id) >= 0; });
         if (available.length) {
           var current = Number(elements.historyDof.value);
@@ -348,6 +378,30 @@
         'Peak scale ' + number(modalPresentation.peakScale) + ' · effective scale ' + number(currentScale),
         'Mode-shape amplitudes are normalized and arbitrary; they are not physical displacements.'
       ];
+    } else if (dataset.raw.analysis.type === 'transient') {
+      var analysis = dataset.raw.analysis, timeIndex = Number(elements.timeIndex.value), dofId = Number(elements.historyDof.value || 0);
+      var quantity = elements.historyQuantity.value || '', location = dataset.dofById.get(dofId), descriptor = dofId && quantity ? M.transientView.quantityDescriptor(dataset, dofId, quantity) : null;
+      var series = dofId && quantity ? M.transientView.series(dataset, dofId, quantity) : null, selectedIndex = quantity === 'spectrum' ? 0 : timeIndex;
+      if (quantity === 'spectrum' && elements.chart.__chartState && elements.chart.__chartState.selectedIndex !== null) selectedIndex = elements.chart.__chartState.selectedIndex;
+      var sampling = M.transientView.samplingSummary(dataset);
+      context.transientTime = analysis.time[timeIndex];
+      context.transientSampleNumber = timeIndex + 1;
+      context.transientSampleCount = analysis.time.length;
+      context.transientDisplayScale = currentScale;
+      context.transientFrameStride = Number(elements.frameStride.value);
+      context.transientSampling = sampling;
+      context.historySampleIndex = series ? selectedIndex : null;
+      context.historyX = series ? series.x[selectedIndex] : null;
+      context.historyValue = series ? series.y[selectedIndex] : null;
+      context.historyUnit = descriptor ? descriptor.unit : '';
+      context.captionLines = [
+        'Transient sample ' + (timeIndex + 1) + ' / ' + analysis.time.length + ' · t = ' + number(analysis.time[timeIndex]) + (dataset.raw.metadata.units.time ? ' ' + dataset.raw.metadata.units.time : ''),
+        'Deformation scale ' + number(currentScale) + ' · playback frame stride ' + context.transientFrameStride,
+        location && descriptor ? 'Chart: node ' + location.nodeId + ' · ' + location.label + ' (global DOF ' + dofId + ') · ' + descriptor.label : 'No history field was exported',
+        'Sampling: ' + sampling.exported + ' of ' + sampling.original + ' samples exported · export stride ' + sampling.stride + (sampling.decimated ? ' · decimated history' : '')
+      ];
+      if (series) context.captionLines.splice(3, 0, (quantity === 'spectrum' ? 'Selected spectrum sample: f = ' + number(series.x[selectedIndex]) + ' Hz' : 'Current history value') + ' · ' + number(series.y[selectedIndex]) + (descriptor.unit ? ' ' + descriptor.unit : ''));
+      if (quantity === 'reactions') context.captionLines.push('Dynamic residual is M·a + K·u − F; restrained rows are support reactions.');
     }
     return context;
   }
@@ -381,16 +435,18 @@
     });
     elements.modalAmplitude.addEventListener('change', function () { refreshModalPresentation(false); });
     elements.timeIndex.addEventListener('input', function () { setTransientIndex(Number(this.value)); });
-    elements.previousFrame.addEventListener('click', function () { setTransientIndex(Number(elements.timeIndex.value) - 1); });
-    elements.nextFrame.addEventListener('click', function () { setTransientIndex(Number(elements.timeIndex.value) + 1); });
+    elements.previousFrame.addEventListener('click', function () { setTransientIndex(M.transientView.stepFrameIndex(Number(elements.timeIndex.value), -1, dataset.raw.analysis.time.length, Number(elements.frameStride.value))); });
+    elements.nextFrame.addEventListener('click', function () { setTransientIndex(M.transientView.stepFrameIndex(Number(elements.timeIndex.value), 1, dataset.raw.analysis.time.length, Number(elements.frameStride.value))); });
     elements.playPause.addEventListener('click', startTransientPlayback);
+    elements.playbackSpeed.addEventListener('change', function () { if (playback && playback.type === 'transient') { stopPlayback(); startTransientPlayback(); } });
+    elements.frameStride.addEventListener('change', function () { if (playback && playback.type === 'transient') { stopPlayback(); startTransientPlayback(); } });
     elements.historyNode.addEventListener('change', function () { updateHistoryDofOptions(); updateChart(); });
     elements.historyDof.addEventListener('change', updateChart); elements.historyQuantity.addEventListener('change', updateChart);
     document.addEventListener('visibilitychange', function () { if (document.hidden) stopPlayback(); });
   }
 
   document.addEventListener('DOMContentLoaded', function () {
-    ['file-input','reset-view','export-svg','export-png','dataset-title','drop-zone','error-panel','notice-panel','analysis-status','selection-details','viewport','result-legend','chart-panel','history-chart','static-controls','modal-controls','transient-controls','chart-controls','static-result','mode-number','previous-mode','next-mode','modal-play-pause','modal-phase','modal-phase-value','modal-playback-speed','modal-amplitude','mode-frequency','time-index','previous-frame','next-frame','play-pause','playback-speed','time-value','history-node','history-dof','history-quantity','show-original','show-deformed','show-nodes','show-node-labels','show-element-labels','show-supports','show-loads','show-reactions','scale-mode','manual-scale','sample-count','png-scale'].forEach(function (id) { var key = id.replace(/-([a-z])/g, function (_, letter) { return letter.toUpperCase(); }); elements[key] = byId(id); });
+    ['file-input','reset-view','export-svg','export-png','dataset-title','drop-zone','error-panel','notice-panel','analysis-status','selection-details','viewport','result-legend','chart-panel','history-chart','static-controls','modal-controls','transient-controls','chart-controls','static-result','mode-number','previous-mode','next-mode','modal-play-pause','modal-phase','modal-phase-value','modal-playback-speed','modal-amplitude','mode-frequency','time-index','previous-frame','next-frame','play-pause','playback-speed','frame-stride','time-value','transient-metadata','history-node','history-dof','history-quantity','history-value','show-original','show-deformed','show-nodes','show-node-labels','show-element-labels','show-supports','show-loads','show-reactions','scale-mode','manual-scale','sample-count','png-scale'].forEach(function (id) { var key = id.replace(/-([a-z])/g, function (_, letter) { return letter.toUpperCase(); }); elements[key] = byId(id); });
     elements.title = elements.datasetTitle; elements.reset = elements.resetView; elements.error = elements.errorPanel; elements.notice = elements.noticePanel; elements.status = elements.analysisStatus; elements.details = elements.selectionDetails; elements.legend = elements.resultLegend; elements.chart = elements.historyChart;
     renderer = new M.Renderer(elements.viewport, updateDetails); bind();
   });

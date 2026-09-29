@@ -123,6 +123,35 @@ exportPostprocessorData(model, modalResult, 'modal-frame.json', ...
 PNG сохраняется именно текущая видимая фаза вместе с номером формы, частотой и
 масштабом изображения.
 
+## Переходный вид постпроцессора
+
+Переходный результат экспортируется тем же способом и открывается локально в
+[`postprocessor/index.html`](postprocessor/index.html):
+
+```octave
+problem = StructFEProblem('CaseBeam.txt');
+model = problem.GetAnalysisModel();
+transientResult = problem.RunTransient(1e-4, 1e-2, 3, 2);
+
+exportPostprocessorData(model, transientResult, 'transient-history.json', ...
+    struct('title', 'Переходный отклик', 'lengthUnit', 'm', ...
+           'forceUnit', 'N', 'momentUnit', 'N*m', 'timeUnit', 's', ...
+           'transientFields', {{'displacements', 'velocities', ...
+                                'accelerations', 'loadHistory', ...
+                                'reactions', 'spectrum'}}, ...
+           'timeStride', 1, 'prettyPrint', true));
+```
+
+В окне можно выбрать узел, степень свободы и величину, исследовать историю или спектр,
+перейти к точному отсчёту ползунком или щелчком по графику, а также запустить анимацию. Масштаб
+деформации определяется один раз для всей истории, поэтому амплитуды между кадрами сравнимы. `Frame stride`
+управляет шагом просмотра; он не восстанавливает отсчёты, удалённые при экспорте опцией `timeStride`.
+При таком прореживании или при отсутствии необязательных полей интерфейс показывает явное сообщение.
+
+SVG и PNG фиксируют текущий кадр, график, время, номер отсчёта, выбранную величину и масштаб.
+Переходные `reactions` — это полный динамический остаток `M*a + K*u - F`; опорными реакциями являются его строки
+для закреплённых степеней свободы.
+
 ## Формат входного файла
 
 Файл читается до конца. Пустые строки и строки, начинающиеся с `#`, пропускаются.

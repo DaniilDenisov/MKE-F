@@ -157,7 +157,9 @@
     ['displacements', 'velocities', 'accelerations', 'loadHistory', 'reactions'].forEach(function (name) {
       if (Object.prototype.hasOwnProperty.call(analysis, name)) matrix(analysis[name], ids.length, time.length, '$.analysis.' + name);
     });
-    if (Object.prototype.hasOwnProperty.call(analysis, 'spectrumFrequencyHz')) {
+    var hasSpectrumFrequency = Object.prototype.hasOwnProperty.call(analysis, 'spectrumFrequencyHz'), hasSpectrumAmplitude = Object.prototype.hasOwnProperty.call(analysis, 'displacementAmplitudeSpectrum');
+    if (hasSpectrumFrequency !== hasSpectrumAmplitude) fail('$.analysis', 'spectrumFrequencyHz and displacementAmplitudeSpectrum must be provided together');
+    if (hasSpectrumFrequency) {
       var frequency = arrayAt(analysis.spectrumFrequencyHz, '$.analysis.spectrumFrequencyHz');
       frequency.forEach(function (v, i) { numberAt(v, '$.analysis.spectrumFrequencyHz[' + i + ']'); });
       matrix(analysis.displacementAmplitudeSpectrum, ids.length, frequency.length, '$.analysis.displacementAmplitudeSpectrum');
@@ -167,6 +169,8 @@
     positiveInteger(analysis.sampling.exportedSampleCount, '$.analysis.sampling.exportedSampleCount');
     positiveInteger(analysis.sampling.timeStride, '$.analysis.sampling.timeStride');
     if (analysis.sampling.exportedSampleCount !== time.length) fail('$.analysis.sampling.exportedSampleCount', 'does not match time length');
+    if (analysis.sampling.originalSampleCount < analysis.sampling.exportedSampleCount) fail('$.analysis.sampling.originalSampleCount', 'cannot be smaller than exportedSampleCount');
+    if (analysis.sampling.timeStride === 1 && analysis.sampling.originalSampleCount !== analysis.sampling.exportedSampleCount) fail('$.analysis.sampling', 'timeStride 1 requires every original sample to be exported');
   }
 
   M.validateDataset = function (data) {

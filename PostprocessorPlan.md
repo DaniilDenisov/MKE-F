@@ -565,6 +565,11 @@ The transient GUI provides:
 - a deformed snapshot/animation in the structural viewport.
 
 Use the exported `time` array directly. Do not reconstruct it in JavaScript.
+At `1x`, playback traverses the remaining exported time range in five seconds;
+`0.5x` and `2x` change that illustrative viewing rate. The frame-stride control
+applies to stepping and playback, always includes the final exported sample,
+and does not fabricate samples removed by exporter `timeStride`. Changing speed
+or frame stride while playing resumes from the currently visible frame.
 For a displayed reaction, explain that transient `reactions` is the full
 dynamic residual `M*a + K*u - F`; support reactions are its restrained rows.
 
@@ -576,6 +581,11 @@ readout and export.
 Transient files can become large. The exporter therefore supports explicit
 field selection, DOF selection, and `timeStride`. The GUI displays a visible
 warning when a dataset was decimated.
+
+SVG and PNG export synchronously clone the visible transient geometry and chart
+before serialization/rasterization. Their caption and metadata identify the
+sample number, exported time, history DOF/quantity/value, display scale, frame
+stride, and sampling/decimation state.
 
 ## SVG and PNG Export
 

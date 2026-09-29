@@ -34,7 +34,19 @@ arrays, including one-column and one-row matrices.
 - Transient data contains the exported `time` samples, `globalDOFIds`, selected
   histories in `[selected dof][time index]` orientation, optional spectrum data,
   and explicit sampling metadata. `globalDOFIds[row]` identifies the global DOF
-  represented by a history or spectrum row.
+  represented by a history or spectrum row. The optional history fields are
+  `displacements`, `velocities`, `accelerations`, `loadHistory`, and `reactions`;
+  `spectrumFrequencyHz` and `displacementAmplitudeSpectrum` are an optional pair.
+  The viewer uses the exported `time` values directly, keeps one deformation
+  scale for the full exported range, and never interpolates samples removed by
+  export `timeStride`. Its frame-stride control only changes which exported
+  samples are shown during stepping and playback.
+
+`analysis.sampling` records `originalSampleCount`, `exportedSampleCount`, and
+`timeStride`. A viewer must disclose decimation and omitted optional fields.
+Transient `reactions` is the full dynamic residual `M*a + K*u - F`; only its
+restrained rows are support reactions. SVG/PNG snapshots contain the currently
+visible frame and chart, not a reconstructed or subsequently animated frame.
 
 All numbers are finite JSON numbers. Complex, sparse, `NaN`, and infinite
 values are invalid. Missing optional transient fields are omitted. Readers must
