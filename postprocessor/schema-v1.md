@@ -26,6 +26,11 @@ arrays, including one-column and one-row matrices.
   vectors, the three-component equilibrium residual, and one result record per
   element.
 - Modal data contains frequency vectors and `modeShapes[dof][mode]`.
+  Mode-shape amplitudes and signs are arbitrary eigenvector conventions, not
+  physical displacements in the declared length unit. The viewer copies each
+  selected column, fixes its sign deterministically, and normalizes it for
+  display without changing the JSON data. Its animation cycle is illustrative
+  and does not represent the physical modal frequency.
 - Transient data contains the exported `time` samples, `globalDOFIds`, selected
   histories in `[selected dof][time index]` orientation, optional spectrum data,
   and explicit sampling metadata. `globalDOFIds[row]` identifies the global DOF

@@ -78,6 +78,40 @@ modeShapes(freeDOFs, :) = reducedModeShapes;</code></pre>
         <p class="equation">φ<sub>i</sub><sup>T</sup>Mφ<sub>j</sub> = 0, &nbsp; φ<sub>i</sub><sup>T</sup>Kφ<sub>j</sub> = 0, &nbsp; i ≠ j</p>
       </section>
 
+      <section aria-labelledby="viewer-title">
+        <h2 id="viewer-title">Анимация формы в постпроцессоре</h2>
+        <p>Модель и модальный результат можно сохранить в JSON и открыть в <a href="../postprocessor/index.html">автономном постпроцессоре MKE-F</a> без локального сервера и подключения к интернету.</p>
+
+        <h3>1. Выполните расчёт и экспорт</h3>
+        <p>Откройте терминал в корневом каталоге проекта, запустите GNU Octave и выполните:</p>
+        <pre><code>problem = StructFEProblem('CaseBeam.txt');
+model = problem.GetAnalysisModel();
+result = problem.RunModal();
+
+exportPostprocessorData(model, result, 'modal-frame.json', ...
+    struct('title', 'Формы колебаний', ...
+           'lengthUnit', 'm', 'prettyPrint', true));</code></pre>
+        <p>После выполнения в корне проекта появится файл <code>modal-frame.json</code>. В терминале также можно проверить найденные частоты командой <code>result.frequenciesHz</code>.</p>
+
+        <h3>2. Откройте результат</h3>
+        <ol>
+          <li>Откройте <a href="../postprocessor/index.html"><code>postprocessor/index.html</code></a> в Chrome, Edge или Firefox.</li>
+          <li>Нажмите <strong>Open JSON</strong> и выберите созданный файл <code>modal-frame.json</code>. Его также можно перетащить в пунктирную область окна.</li>
+          <li>В списке <strong>Mode</strong> выберите форму. Рядом будут показаны её частота <em>f</em> в Гц и круговая частота <em>ω</em> в рад/с.</li>
+          <li>Нажмите <strong>Play</strong>, чтобы запустить анимацию. Кнопки <strong>−1</strong> и <strong>+1</strong> переходят к соседним формам, <strong>Visualization speed</strong> меняет скорость показа.</li>
+          <li>Перемещайте <strong>Phase factor</strong> от −1 до +1 для ручного просмотра отрицательного пика, недеформированной геометрии и положительного пика. Поле <strong>Display multiplier</strong> изменяет только видимый масштаб формы.</li>
+          <li>Щёлкните узел или элемент: в панели <strong>Selection</strong> появятся нормированные компоненты выбранной формы и их значения в текущей фазе.</li>
+          <li>Нажмите <strong>Export SVG</strong> или <strong>Export PNG</strong>, чтобы сохранить именно текущий кадр вместе с номером формы, частотой, фазой и масштабом.</li>
+        </ol>
+
+        <p>Просмотрщик согласует произвольный знак каждой формы и нормирует её только для изображения. Множитель изображения изменяет видимую амплитуду, но не численные собственные частоты.</p>
+        <div class="callout callout--warning">
+          <span class="callout__title">Не физическое время и не перемещение</span>
+          <p>Двухсекундный цикл и переключатель скорости выбраны для удобства просмотра и не воспроизводят частоту <em>f</em>. Нормированные компоненты формы имеют произвольную амплитуду, поэтому их нельзя читать как перемещения в метрах. Истинные <em>f</em> и <em>ω</em> всегда показаны отдельно.</p>
+        </div>
+        <p>Экспорт SVG или PNG фиксирует текущую видимую фазу. Под изображением записываются номер формы, <em>f</em>, <em>ω</em>, фазовый множитель и масштабы, поэтому сохранённый кадр остаётся однозначным вне приложения.</p>
+      </section>
+
       <section aria-labelledby="residual-title">
         <h2 id="residual-title">Невязка формы</h2>
         <p>Частота сама по себе не проверяет соответствующий вектор. Для каждой пары вычисляют:</p>
@@ -113,6 +147,7 @@ modeShapes(freeDOFs, :) = reducedModeShapes;</code></pre>
         <h2 id="sources-title">Исходный код главы</h2>
         <ul>
           <li><a href="../solveModal.m"><code>solveModal.m</code></a> — редуцированная собственная задача и расширение форм;</li>
+          <li><a href="../postprocessor/js/modal-view.js"><code>postprocessor/js/modal-view.js</code></a> — нормирование, знак, масштаб и фаза изображения;</li>
           <li><a href="../validateReducedSystem.m"><code>validateReducedSystem.m</code></a> — проверка жёсткости и массы;</li>
           <li><a href="examples/example_05_modal_frame.m"><code>example_05_modal_frame.m</code></a> — невязки, нормирование и ортогональность.</li>
         </ul>

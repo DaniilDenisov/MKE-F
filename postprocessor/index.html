@@ -53,6 +53,16 @@
         <h2>Modal result</h2>
         <label for="mode-number">Mode</label>
         <select id="mode-number"></select>
+        <div class="transport" aria-label="Modal navigation and playback">
+          <button id="previous-mode" type="button" aria-label="Previous mode">−1</button>
+          <button id="modal-play-pause" type="button">Play</button>
+          <button id="next-mode" type="button" aria-label="Next mode">+1</button>
+        </div>
+        <label for="modal-phase">Phase factor</label>
+        <input id="modal-phase" type="range" min="-1" max="1" step="0.001" value="1">
+        <p id="modal-phase-value" class="control-note">q = 1</p>
+        <label for="modal-playback-speed">Visualization speed</label>
+        <select id="modal-playback-speed"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option></select>
         <label for="modal-amplitude">Display multiplier</label>
         <input id="modal-amplitude" type="number" min="0.01" step="0.25" value="1">
         <p id="mode-frequency" class="control-note"></p>

@@ -1,6 +1,7 @@
 (function (M) {
   'use strict';
   var elements = {}, dataset = null, renderer = null, currentVector = null, currentScale = 1, transientScale = 1, playback = null, currentLegend = null;
+  var modalPresentation = null, modalPhaseAngle = 0, modalPhaseFactor = 1;
   function byId(id) { return document.getElementById(id); }
   function option(value, label) { var item = document.createElement('option'); item.value = value; item.textContent = label; return item; }
   function replaceOptions(select, values) { while (select.firstChild) select.removeChild(select.firstChild); values.forEach(function (item) { select.appendChild(option(item.value, item.label)); }); }
@@ -42,10 +43,8 @@
     if (!dataset || !currentVector) return;
     var type = dataset.raw.analysis.type;
     if (type === 'modal') {
-      var amplitude = Number(elements.modalAmplitude.value);
-      if (!Number.isFinite(amplitude) || amplitude <= 0) { showError(new Error('Modal display multiplier must be positive.')); return; }
-      var modal = M.modalView.display(dataset, Number(elements.modeNumber.value), amplitude, samples());
-      currentVector = modal.vector; currentScale = modal.scale;
+      refreshModalPresentation(false);
+      return;
     } else if (elements.scaleMode.value === 'manual') currentScale = manualScale();
     else if (type === 'transient') currentScale = transientScale;
     else currentScale = M.geometry.automaticScale(dataset, currentVector, samples()).scale;
@@ -70,14 +69,73 @@
   function configureModal() {
     replaceOptions(elements.modeNumber, dataset.raw.analysis.frequenciesHz.map(function (frequency, index) { return { value: String(index), label: 'Mode ' + (index + 1) + ' · ' + number(frequency) + ' Hz' }; }));
     elements.modeNumber.value = '0';
-    currentVector = M.modalView.displacement(dataset, 0);
-    var modal = M.modalView.display(dataset, 0, Number(elements.modalAmplitude.value), samples()); currentScale = modal.scale;
-    elements.modeFrequency.textContent = 'f = ' + number(modal.frequencyHz) + ' Hz · ω = ' + number(modal.angularFrequency) + ' rad/s';
+    if (!Number.isFinite(Number(elements.modalAmplitude.value)) || Number(elements.modalAmplitude.value) <= 0) elements.modalAmplitude.value = '1';
     setSection(elements.modalControls, true);
     elements.scaleMode.disabled = true; elements.manualScale.disabled = true;
     document.querySelectorAll('.static-layer').forEach(function (item) { item.hidden = true; });
     elements.showLoads.checked = false; elements.showReactions.checked = false;
-    setLegend(modal.zero ? 'This mode has zero translational components; no displaced shape is drawn.' : 'Mode shapes are normalized to 10% of model size before applying the display multiplier.'); notice('');
+    modalPhaseAngle = 0; modalPhaseFactor = 1;
+    refreshModalPresentation(true);
+  }
+
+  function modalMultiplier() {
+    var value = Number(elements.modalAmplitude.value);
+    if (!Number.isFinite(value) || value <= 0) throw new Error('Modal display multiplier must be a finite positive value.');
+    return value;
+  }
+
+  function modalLegendText() {
+    if (!modalPresentation) return '';
+    if (modalPresentation.zero) return 'This mode is identically zero; no displaced shape can be drawn.';
+    return 'Mode ' + (Number(elements.modeNumber.value) + 1) + ' · f = ' + number(modalPresentation.frequencyHz) +
+      ' Hz · normalized arbitrary amplitude · q = ' + number(modalPhaseFactor) + ' · display multiplier ' + number(modalPresentation.displayMultiplier);
+  }
+
+  function updateModalControlState() {
+    var index = Number(elements.modeNumber.value), count = dataset.raw.analysis.frequenciesHz.length;
+    elements.previousMode.disabled = index <= 0;
+    elements.nextMode.disabled = index >= count - 1;
+    elements.modalPlayPause.disabled = modalPresentation.zero;
+    elements.modalPhase.disabled = modalPresentation.zero;
+  }
+
+  function applyModalPhase(factor, angle) {
+    if (!modalPresentation) return;
+    modalPhaseFactor = Math.max(-1, Math.min(1, Number(factor)));
+    if (Number.isFinite(angle)) modalPhaseAngle = angle;
+    elements.modalPhase.value = String(modalPhaseFactor);
+    elements.modalPhaseValue.textContent = 'q = ' + number(modalPhaseFactor) + ' · illustrative phase, not physical time';
+    currentVector = modalPresentation.vector;
+    currentScale = modalPresentation.zero ? 0 : modalPresentation.peakScale * modalPhaseFactor;
+    elements.modeFrequency.textContent = 'f = ' + number(modalPresentation.frequencyHz) + ' Hz · ω = ' +
+      number(modalPresentation.angularFrequency) + ' rad/s · peak scale ' + number(modalPresentation.peakScale) +
+      ' · effective scale ' + number(currentScale);
+    setLegend(modalLegendText()); updateGeometry(); updateStatus();
+  }
+
+  function refreshModalPresentation(resetPhase) {
+    if (!dataset || dataset.raw.analysis.type !== 'modal') return false;
+    var next;
+    try { next = M.modalView.display(dataset, Number(elements.modeNumber.value), modalMultiplier(), samples()); }
+    catch (error) { showError(error); return false; }
+    clearError(); modalPresentation = next; currentVector = next.vector;
+    if (resetPhase) { modalPhaseAngle = 0; modalPhaseFactor = 1; }
+    updateModalControlState(); applyModalPhase(modalPhaseFactor, modalPhaseAngle);
+    return true;
+  }
+
+  function selectModalMode(index) {
+    if (!dataset || dataset.raw.analysis.type !== 'modal') return;
+    var previousIndex = modalPresentation ? modalPresentation.modeIndex : Number(elements.modeNumber.value);
+    var wasPlaying = playback && playback.type === 'modal';
+    if (wasPlaying) stopPlayback();
+    elements.modeNumber.value = String(M.modalView.clampModeIndex(index, dataset.raw.analysis.frequenciesHz.length));
+    if (!refreshModalPresentation(true)) {
+      elements.modeNumber.value = String(previousIndex); updateModalControlState();
+      if (wasPlaying && !modalPresentation.zero) startModalPlayback();
+      return;
+    }
+    if (wasPlaying && !modalPresentation.zero) startModalPlayback();
   }
 
   function updateHistoryDofOptions(preferredId) {
@@ -114,6 +172,7 @@
   function resetSections() {
     setSection(elements.staticControls, false); setSection(elements.modalControls, false); setSection(elements.transientControls, false); setSection(elements.chartControls, false);
     elements.chartPanel.hidden = true; M.charts.render(elements.chart, null); elements.showDeformed.disabled = false; elements.scaleMode.disabled = false;
+    currentVector = null; currentScale = 1; modalPresentation = null; modalPhaseAngle = 0; modalPhaseFactor = 1;
   }
 
   function acceptData(parsed) {
@@ -142,11 +201,7 @@
   function applyStaticResult() { if (!dataset || dataset.raw.analysis.type !== 'static') return; setLegend(M.staticResults.applyResult(renderer, dataset, elements.staticResult.value, samples())); renderer.reapplySelection(); updateDetails(renderer.selection); }
   function changeMode() {
     if (!dataset || dataset.raw.analysis.type !== 'modal') return;
-    var index = Number(elements.modeNumber.value), modal = M.modalView.display(dataset, index, Number(elements.modalAmplitude.value), samples());
-    currentVector = modal.vector; currentScale = modal.scale;
-    elements.modeFrequency.textContent = 'f = ' + number(modal.frequencyHz) + ' Hz · ω = ' + number(modal.angularFrequency) + ' rad/s';
-    setLegend(modal.zero ? 'This mode has zero translational components; no displaced shape is drawn.' : 'Mode shapes are normalized to 10% of model size before applying the display multiplier.');
-    updateGeometry(); updateStatus();
+    selectModalMode(Number(elements.modeNumber.value));
   }
 
   function setTransientIndex(index, stop) {
@@ -169,16 +224,37 @@
   function stopPlayback() {
     if (playback) cancelAnimationFrame(playback.request); playback = null;
     if (elements.playPause) elements.playPause.textContent = 'Play';
+    if (elements.modalPlayPause) elements.modalPlayPause.textContent = 'Play';
   }
-  function startPlayback() {
+
+  function startModalPlayback() {
+    if (!dataset || dataset.raw.analysis.type !== 'modal' || !modalPresentation || modalPresentation.zero) return;
+    if (playback && playback.type === 'modal') { stopPlayback(); return; }
+    stopPlayback();
+    playback = { type: 'modal', startAngle: modalPhaseAngle, startTime: null, lastDraw: -Infinity, request: 0 };
+    elements.modalPlayPause.textContent = 'Pause';
+    function tick(timestamp) {
+      if (!playback || playback.type !== 'modal') return;
+      if (playback.startTime === null) playback.startTime = timestamp;
+      var phase = M.modalView.phaseAt(playback.startAngle, timestamp - playback.startTime, Number(elements.modalPlaybackSpeed.value));
+      if (timestamp - playback.lastDraw >= 1000 / 30) {
+        playback.lastDraw = timestamp; applyModalPhase(phase.factor, phase.angle);
+      }
+      playback.request = requestAnimationFrame(tick);
+    }
+    playback.request = requestAnimationFrame(tick);
+  }
+
+  function startTransientPlayback() {
     if (!dataset || dataset.raw.analysis.type !== 'transient' || dataset.raw.analysis.time.length < 2) return;
-    if (playback) { stopPlayback(); return; }
+    if (playback && playback.type === 'transient') { stopPlayback(); return; }
+    stopPlayback();
     var count = dataset.raw.analysis.time.length, startIndex = Number(elements.timeIndex.value);
     if (startIndex >= count - 1) { startIndex = 0; setTransientIndex(0, false); }
-    playback = { startIndex: startIndex, startTime: null, lastDraw: -Infinity, request: 0 };
+    playback = { type: 'transient', startIndex: startIndex, startTime: null, lastDraw: -Infinity, request: 0 };
     elements.playPause.textContent = 'Pause';
     function tick(timestamp) {
-      if (!playback) return;
+      if (!playback || playback.type !== 'transient') return;
       if (playback.startTime === null) playback.startTime = timestamp;
       var speed = Number(elements.playbackSpeed.value), startProgress = playback.startIndex / (count - 1);
       var progress = Math.min(1, startProgress + (timestamp - playback.startTime) * speed / 5000);
@@ -194,6 +270,17 @@
     return dofs.map(function (id) { return vector[id - 1]; });
   }
   function labeledVector(label, values) { return label + ': [' + values.map(number).join(', ') + ']'; }
+  function labeledModalVector(label, values) {
+    return label + ': [' + values.map(function (value, index) { return dataset.raw.model.dofLabels[index] + '=' + number(value); }).join(', ') + ']';
+  }
+  function modalNodeDetails(nodeId) {
+    var normalized = valuesAtNode(modalPresentation.vector, nodeId);
+    return [
+      labeledModalVector('Normalized shape (arbitrary)', normalized),
+      'Phase factor q = ' + number(modalPhaseFactor),
+      labeledModalVector('Visible normalized shape', normalized.map(function (value) { return value * modalPhaseFactor; }))
+    ];
+  }
   function transientNodeValues(field, nodeId, timeIndex) {
     var analysis = dataset.raw.analysis, row = dataset.nodeIndexById.get(nodeId), dofs = dataset.raw.model.dofMap[row];
     return dofs.map(function (id, localIndex) {
@@ -208,7 +295,7 @@
     if (selection.kind === 'node') {
       var node = dataset.nodesById.get(selection.id), row = dataset.nodeIndexById.get(selection.id), dofs = dataset.raw.model.dofMap[row];
       if (analysis.type === 'static') lines = M.staticResults.nodeDetails(dataset, node.id);
-      else if (analysis.type === 'modal') lines.push(labeledVector('Mode components', valuesAtNode(currentVector, node.id)));
+      else if (analysis.type === 'modal') lines = modalNodeDetails(node.id);
       else {
         var timeIndex = Number(elements.timeIndex.value);
         if (analysis.displacements) lines.push('Displacement: [' + transientNodeValues('displacements', node.id, timeIndex).join(', ') + ']');
@@ -222,6 +309,10 @@
       var element = dataset.elementsById.get(selection.id);
       lines.push('Element ' + element.id, 'Type: ' + element.type, 'Nodes: [' + element.nodeIds.join(', ') + ']');
       if (analysis.type === 'static') { var result = dataset.resultsByElementId.get(element.id); lines.push(labeledVector('Local end forces', result.localEndForces), 'Axial strain: ' + number(result.axialStrain), 'Axial stress: ' + number(result.axialStress), 'Axial force: ' + number(result.axialForce)); }
+      else if (analysis.type === 'modal') {
+        lines = lines.concat(modalNodeDetails(element.nodeIds[0]).map(function (line) { return 'Node ' + element.nodeIds[0] + ' · ' + line; }));
+        lines = lines.concat(modalNodeDetails(element.nodeIds[1]).map(function (line) { return 'Node ' + element.nodeIds[1] + ' · ' + line; }));
+      }
       else if (currentVector) lines.push(labeledVector('First-node components', valuesAtNode(currentVector, element.nodeIds[0])), labeledVector('Second-node components', valuesAtNode(currentVector, element.nodeIds[1])));
       else lines.push('Structural displacement components were not exported for this reduced-DOF result.');
     }
@@ -230,15 +321,35 @@
 
   function updateStatus() {
     if (!dataset) return;
-    var type = dataset.raw.analysis.type, text = type + ' · deformation scale ' + number(currentScale);
-    if (type === 'modal') text += ' · mode ' + (Number(elements.modeNumber.value) + 1);
+    var type = dataset.raw.analysis.type, text;
+    if (type === 'modal') text = 'modal · mode ' + (Number(elements.modeNumber.value) + 1) + ' · q ' + number(modalPhaseFactor) +
+      ' · peak scale ' + number(modalPresentation.peakScale) + ' · effective scale ' + number(currentScale);
+    else text = type + ' · deformation scale ' + number(currentScale);
     if (type === 'transient') text += ' · sample ' + (Number(elements.timeIndex.value) + 1);
     setStatus(text);
   }
   function exportContext() {
-    return { title: dataset.raw.metadata.title, analysisType: dataset.raw.analysis.type, deformationScale: currentScale,
+    var context = { title: dataset.raw.metadata.title, analysisType: dataset.raw.analysis.type, deformationScale: currentScale,
       staticResult: elements.staticResult.value, modeIndex: Number(elements.modeNumber.value || 0), timeIndex: Number(elements.timeIndex.value || 0),
       historyDOF: Number(elements.historyDof.value || 0), historyQuantity: elements.historyQuantity.value || '', exportedUtc: new Date().toISOString() };
+    if (dataset.raw.analysis.type === 'modal') {
+      var modeNumber = Number(elements.modeNumber.value) + 1;
+      context.modalModeNumber = modeNumber;
+      context.modalFrequencyHz = modalPresentation.frequencyHz;
+      context.modalAngularFrequencyRadPerSec = modalPresentation.angularFrequency;
+      context.modalPhaseRadians = modalPhaseAngle;
+      context.modalPhaseFactor = modalPhaseFactor;
+      context.modalDisplayMultiplier = modalPresentation.displayMultiplier;
+      context.modalPeakScale = modalPresentation.peakScale;
+      context.modalEffectiveScale = currentScale;
+      context.captionLines = [
+        'Mode ' + modeNumber + ' · f = ' + number(modalPresentation.frequencyHz) + ' Hz · ω = ' + number(modalPresentation.angularFrequency) + ' rad/s',
+        'Illustrative phase q = ' + number(modalPhaseFactor) + ' · display multiplier ' + number(context.modalDisplayMultiplier),
+        'Peak scale ' + number(modalPresentation.peakScale) + ' · effective scale ' + number(currentScale),
+        'Mode-shape amplitudes are normalized and arbitrary; they are not physical displacements.'
+      ];
+    }
+    return context;
   }
 
   function bind() {
@@ -256,18 +367,30 @@
     elements.manualScale.addEventListener('change', function () { if (elements.scaleMode.value === 'manual') { updateScale(); updateStatus(); } });
     elements.sampleCount.addEventListener('change', function () { updateScale(); if (dataset && dataset.raw.analysis.type === 'static') applyStaticResult(); });
     elements.staticResult.addEventListener('change', applyStaticResult);
-    elements.modeNumber.addEventListener('change', changeMode); elements.modalAmplitude.addEventListener('change', changeMode);
+    elements.modeNumber.addEventListener('change', changeMode);
+    elements.previousMode.addEventListener('click', function () { selectModalMode(Number(elements.modeNumber.value) - 1); });
+    elements.nextMode.addEventListener('click', function () { selectModalMode(Number(elements.modeNumber.value) + 1); });
+    elements.modalPlayPause.addEventListener('click', startModalPlayback);
+    elements.modalPhase.addEventListener('input', function () {
+      stopPlayback();
+      var factor = Number(this.value);
+      applyModalPhase(factor, M.modalView.phaseAngleForFactor(factor));
+    });
+    elements.modalPlaybackSpeed.addEventListener('change', function () {
+      if (playback && playback.type === 'modal') { stopPlayback(); startModalPlayback(); }
+    });
+    elements.modalAmplitude.addEventListener('change', function () { refreshModalPresentation(false); });
     elements.timeIndex.addEventListener('input', function () { setTransientIndex(Number(this.value)); });
     elements.previousFrame.addEventListener('click', function () { setTransientIndex(Number(elements.timeIndex.value) - 1); });
     elements.nextFrame.addEventListener('click', function () { setTransientIndex(Number(elements.timeIndex.value) + 1); });
-    elements.playPause.addEventListener('click', startPlayback);
+    elements.playPause.addEventListener('click', startTransientPlayback);
     elements.historyNode.addEventListener('change', function () { updateHistoryDofOptions(); updateChart(); });
     elements.historyDof.addEventListener('change', updateChart); elements.historyQuantity.addEventListener('change', updateChart);
     document.addEventListener('visibilitychange', function () { if (document.hidden) stopPlayback(); });
   }
 
   document.addEventListener('DOMContentLoaded', function () {
-    ['file-input','reset-view','export-svg','export-png','dataset-title','drop-zone','error-panel','notice-panel','analysis-status','selection-details','viewport','result-legend','chart-panel','history-chart','static-controls','modal-controls','transient-controls','chart-controls','static-result','mode-number','modal-amplitude','mode-frequency','time-index','previous-frame','next-frame','play-pause','playback-speed','time-value','history-node','history-dof','history-quantity','show-original','show-deformed','show-nodes','show-node-labels','show-element-labels','show-supports','show-loads','show-reactions','scale-mode','manual-scale','sample-count','png-scale'].forEach(function (id) { var key = id.replace(/-([a-z])/g, function (_, letter) { return letter.toUpperCase(); }); elements[key] = byId(id); });
+    ['file-input','reset-view','export-svg','export-png','dataset-title','drop-zone','error-panel','notice-panel','analysis-status','selection-details','viewport','result-legend','chart-panel','history-chart','static-controls','modal-controls','transient-controls','chart-controls','static-result','mode-number','previous-mode','next-mode','modal-play-pause','modal-phase','modal-phase-value','modal-playback-speed','modal-amplitude','mode-frequency','time-index','previous-frame','next-frame','play-pause','playback-speed','time-value','history-node','history-dof','history-quantity','show-original','show-deformed','show-nodes','show-node-labels','show-element-labels','show-supports','show-loads','show-reactions','scale-mode','manual-scale','sample-count','png-scale'].forEach(function (id) { var key = id.replace(/-([a-z])/g, function (_, letter) { return letter.toUpperCase(); }); elements[key] = byId(id); });
     elements.title = elements.datasetTitle; elements.reset = elements.resetView; elements.error = elements.errorPanel; elements.notice = elements.noticePanel; elements.status = elements.analysisStatus; elements.details = elements.selectionDetails; elements.legend = elements.resultLegend; elements.chart = elements.historyChart;
     renderer = new M.Renderer(elements.viewport, updateDetails); bind();
   });

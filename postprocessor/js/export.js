@@ -36,24 +36,40 @@
     return height;
   }
 
+  function appendCaption(root, lines, y, width) {
+    var padding = 32, lineHeight = 20, height = 28 + lines.length * lineHeight;
+    var group = M.svgElement('g', { class: 'export-caption', 'data-export-caption': '' });
+    group.appendChild(M.svgElement('rect', { x: 0, y: y, width: width, height: height, fill: '#ffffff', stroke: '#d9e0e9' }));
+    lines.forEach(function (line, index) {
+      var text = M.svgElement('text', { x: padding, y: y + 24 + index * lineHeight, fill: '#18212f', 'font-family': 'sans-serif', 'font-size': index ? 12 : 14, 'font-weight': index ? 400 : 600 });
+      text.textContent = line; group.appendChild(text);
+    });
+    root.appendChild(group);
+    return height;
+  }
+
   E.prepareSvg = function (source, context, chart, legend) {
     var rect = source.getBoundingClientRect(), width = Math.max(Math.round(rect.width), 800), sceneHeight = Math.max(Math.round(rect.height), 600);
     var includeChart = chart && chart.childNodes.length && !chart.closest('[hidden]');
     var includeLegend = legend && legend.kind === 'color';
+    var captionLines = Array.isArray(context.captionLines) ? context.captionLines.map(String) : [];
+    var captionHeight = captionLines.length ? 28 + captionLines.length * 20 : 0;
     var legendHeight = includeLegend ? 92 : 0;
     var chartHeight = includeChart ? Math.max(Math.round(chart.getBoundingClientRect().height), 240) : 0;
-    var root = M.svgElement('svg', { xmlns: M.svgNS, width: width, height: sceneHeight + legendHeight + chartHeight, viewBox: '0 0 ' + width + ' ' + (sceneHeight + legendHeight + chartHeight) });
+    var totalHeight = sceneHeight + captionHeight + legendHeight + chartHeight;
+    var root = M.svgElement('svg', { xmlns: M.svgNS, width: width, height: totalHeight, viewBox: '0 0 ' + width + ' ' + totalHeight });
     var style = M.svgElement('style'); style.textContent = E.svgStyles; root.appendChild(style);
     var metadata = M.svgElement('metadata'); metadata.textContent = JSON.stringify(context); root.appendChild(metadata);
     var scene = source.cloneNode(true);
     scene.removeAttribute('hidden');
     scene.setAttribute('x', 0); scene.setAttribute('y', 0); scene.setAttribute('width', width); scene.setAttribute('height', sceneHeight);
     root.appendChild(scene);
-    if (includeLegend) appendLegend(root, legend, sceneHeight, width);
+    if (captionLines.length) appendCaption(root, captionLines, sceneHeight, width);
+    if (includeLegend) appendLegend(root, legend, sceneHeight + captionHeight, width);
     if (includeChart) {
       var chartClone = chart.cloneNode(true);
       chartClone.setAttribute('class', ((chartClone.getAttribute('class') || '') + ' chart-export').trim());
-      chartClone.setAttribute('x', 0); chartClone.setAttribute('y', sceneHeight + legendHeight); chartClone.setAttribute('width', width); chartClone.setAttribute('height', chartHeight);
+      chartClone.setAttribute('x', 0); chartClone.setAttribute('y', sceneHeight + captionHeight + legendHeight); chartClone.setAttribute('width', width); chartClone.setAttribute('height', chartHeight);
       root.appendChild(chartClone);
     }
     root.querySelectorAll('[tabindex]').forEach(function (element) { element.removeAttribute('tabindex'); });

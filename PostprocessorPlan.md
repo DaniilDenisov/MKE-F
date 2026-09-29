@@ -533,12 +533,20 @@ Because eigenvectors have arbitrary amplitude and sign:
 - normalize by the maximum translational component;
 - choose a deterministic sign by making the largest absolute translational
   component positive;
+- fall back to the largest rotational component for rotation-only shapes;
 - never modify the loaded dataset;
 - show the mode number and frequency in Hz;
-- provide previous/next buttons, a select box, and optional autoplay through
-  modes;
-- allow a tiled comparison of a small selected set of modes after the
-  single-mode view is stable.
+- provide bounded previous/next buttons and a select box;
+- animate the selected shape as `q = cos(2*pi*t/T)` with a fixed illustrative
+  two-second cycle at 1x, independent of the physical frequency;
+- provide play/pause, 0.5x/1x/2x visualization speed, and a `[-1, 1]` phase
+  factor slider;
+- keep the peak deformation scale fixed throughout animation and show the
+  phase factor, display multiplier, peak scale, and effective scale;
+- export the currently visible phase with a caption and machine-readable SVG
+  metadata;
+- leave tiled comparison and automatic cycling through the mode list for a
+  separate enhancement.
 
 Stress and force diagrams are disabled for modal vectors because their absolute
 amplitude is arbitrary.
@@ -666,9 +674,12 @@ Suggested message: `Add modal shape exploration`
 
 - Add mode selector and previous/next navigation.
 - Implement deterministic sign, normalization, and frequency labels.
-- Reuse the common SVG geometry renderer.
-- Add optional mode autoplay and stop it when the tab becomes hidden.
-- Test mode selection, normalization, fixed DOFs, and malformed mode matrices.
+- Reuse the common SVG geometry renderer for sinusoidal single-mode playback.
+- Add phase scrubbing and illustrative playback speed; stop playback when the
+  tab becomes hidden.
+- Export the visible frame with modal context and a visible caption.
+- Test mode selection, normalization, fixed DOFs, rotation-only and zero modes,
+  phase math, scale stability, and export snapshots.
 
 ### Commit 5 — Add transient charts and animation
 

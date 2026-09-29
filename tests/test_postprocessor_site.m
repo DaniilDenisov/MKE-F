@@ -29,6 +29,16 @@ for pageIndex = 1:numel(pages)
     end
 end
 
+mainHtml = fileread(fullfile(postDir, 'index.html'));
+modalControlIds = {'mode-number', 'previous-mode', 'modal-play-pause', ...
+    'next-mode', 'modal-phase', 'modal-phase-value', ...
+    'modal-playback-speed', 'modal-amplitude', 'mode-frequency'};
+for i = 1:numel(modalControlIds)
+    assert(~isempty(strfind(mainHtml, ['id="' modalControlIds{i} '"'])), ...
+        ['MKEF:VerificationFailed: missing modal control ' ...
+         modalControlIds{i} '.']);
+end
+
 assets = [dir(fullfile(postDir, 'js', '*.js')); ...
           dir(fullfile(postDir, 'assets', '*.css'))];
 for i = 1:numel(assets)
