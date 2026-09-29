@@ -4,6 +4,14 @@ The root object contains `format: "mkef-postprocessor"`, `version: 1`,
 `metadata`, `model`, and `analysis`. Identifiers and global degrees of freedom
 are one-based.
 
+`metadata.units` provides display labels for length, force, moment, stress, and
+time. The postprocessor does not convert numerical values. For an SI model
+exported with `length: "m"`, `force: "N"`, `moment: "N*m"`, and
+`stress: "Pa"`, coordinates and displacements are displayed in metres, forces
+(including loads, reactions, and axial forces) in newtons, moments in
+newton-metres, and stresses in pascals. The labels must match the consistent
+unit system used by the source model.
+
 `model` contains `dimension`, `dofPerNode`, `dofLabels`, `nodes`, `elements`,
 `dofMap`, and `supports`. Element properties are named values. Solver matrices,
 element matrices, and transformations are never exported.
