@@ -20,6 +20,7 @@ runNamedTest('sparse triplet assembly', @test_sparse_assembly);
 runNamedTest('input validation', @test_input_validation);
 runNamedTest('single axial truss', @testSingleAxialTruss);
 runNamedTest('cantilever beam stiffness', @testCantileverBeam);
+runNamedTest('Mario Paz modal benchmark', @test_mario_paz_modal);
 runNamedTest('nodal load semantics', @testNodalLoadSemantics);
 runNamedTest('functional analysis core', @testFunctionalAnalysisCore);
 runNamedTest('free-DOF reduction', @testFreeDOFReduction);

@@ -31,6 +31,7 @@
         <li><a href="08-result-recovery.html">Результаты в элементах</a></li>
         <li><a href="09-architecture-verification.html">Архитектура и проверка</a></li>
         <li><a aria-current="page" href="10-input-format.html">Формат входного файла</a></li>
+        <li><a href="11-mario-paz-modal-example.html">Модальный пример Mario Paz</a></li>
       </ol>
     </nav>
 
@@ -255,7 +256,7 @@ dynamicResult = problem.RunTransient(1e-4, 1e-2, 3, 2, initial);</code></pre>
           <li><a href="../tests/test_input_validation.m"><code>tests/test_input_validation.m</code></a> — повторные секции, неверные записи, смешанная сетка, неизвестный маркер, открытие и выбор графика;</li>
           <li><a href="../tests/fixtures/CaseRepeatedSections.txt"><code>CaseRepeatedSections.txt</code></a> — исполняемый пример повторных секций;</li>
           <li>Henri P. Gavin, <a href="https://people.duke.edu/~hpgavin/StructuralDynamics/NumericalIntegration.pdf"><cite>Numerical Integration in Structural Dynamics</cite></a> — внешний материал по схеме Ньюмарка;</li>
-          <li>Mario Paz, William Leigh, <cite>Structural Dynamics: Theory and Computation</cite>, 5-е изд., 2004, DOI 10.1007/978-1-4615-0481-8 — вероятное происхождение геометрии <code>CaseFig11.7p363 MarioPaz.txt</code>; опубликованных эталонных чисел в репозитории нет.</li>
+          <li>Mario Paz, William Leigh, <cite>Structural Dynamics: Theory and Computation</cite>, 5-е изд., 2004, DOI 10.1007/978-1-4615-0481-8 — источник геометрии, матриц, частот и форм <code>CaseFig11.7p363 MarioPaz.txt</code>, проверяемых в <a href="../tests/test_mario_paz_modal.m"><code>tests/test_mario_paz_modal.m</code></a>.</li>
         </ul>
       </section>
     </main>
@@ -263,11 +264,11 @@ dynamicResult = problem.RunTransient(1e-4, 1e-2, 3, 2, initial);</code></pre>
 
   <nav class="page-nav" aria-label="Навигация между главами">
     <a href="09-architecture-verification.html"><span class="page-nav__label">Назад</span>← 9. Архитектура и проверка</a>
-    <a href="index.html"><span class="page-nav__label">К началу</span>Оглавление справочника →</a>
+    <a href="11-mario-paz-modal-example.html"><span class="page-nav__label">Далее</span>11. Модальный пример Mario Paz →</a>
   </nav>
 
   <footer class="site-footer">
-    <div class="site-footer__inner"><p>МКЭ-Ф · автономный учебный справочник · глава 10 из 10</p></div>
+    <div class="site-footer__inner"><p>МКЭ-Ф · автономный учебный справочник · глава 10 из 11</p></div>
   </footer>
 </body>
 </html>

@@ -31,6 +31,7 @@
         <li><a href="08-result-recovery.html">Результаты в элементах</a></li>
         <li><a aria-current="page" href="09-architecture-verification.html">Архитектура и проверка</a></li>
         <li><a href="10-input-format.html">Формат входного файла</a></li>
+        <li><a href="11-mario-paz-modal-example.html">Модальный пример Mario Paz</a></li>
       </ol>
     </nav>
 
@@ -84,12 +85,12 @@ modalResult = solveModal(model);</code></pre>
         <ol>
           <li><a href="../run_octave_smoke_tests.m"><code>run_octave_smoke_tests</code></a> читает поставляемые задачи, проверяет разреженную сборку и запускает доступные виды анализа.</li>
           <li><a href="../tests/run_verification_tests.m"><code>run_verification_tests</code></a> проверяет элементные и глобальные инварианты, независимые формулы, реакции, нагрузки и порядок вызовов.</li>
-          <li>Специализированные файлы проверяют <a href="../tests/test_element_matrices.m">матрицы элементов</a>, <a href="../tests/test_sparse_assembly.m">сборку</a>, <a href="../tests/test_newmark_transient.m">Ньюмарка</a>, <a href="../tests/test_result_recovery.m">усилия</a> и <a href="../tests/test_input_validation.m">ввод</a>.</li>
+          <li>Специализированные файлы проверяют <a href="../tests/test_element_matrices.m">матрицы элементов</a>, <a href="../tests/test_sparse_assembly.m">сборку</a>, <a href="../tests/test_mario_paz_modal.m">модальный пример Mario Paz</a>, <a href="../tests/test_newmark_transient.m">Ньюмарка</a>, <a href="../tests/test_result_recovery.m">усилия</a> и <a href="../tests/test_input_validation.m">ввод</a>.</li>
           <li>Лабораторные справочника добавляют учебные, но исполняемые проверки реального производственного кода.</li>
         </ol>
         <div class="callout callout--warning">
           <span class="callout__title">Что не является эталоном</span>
-          <p>Файл <code>CaseFig11.7p363 MarioPaz.txt</code> по имени похож на пример из Mario Paz и William Leigh, но издание и опубликованные ответы не восстановлены. Старые снимки вывода и расхождение с ANSYS также не объявлены оракулами: эталонами служат аналитические решения и явно записанные инварианты.</p>
+          <p>Матрицы, частоты и формы Illustrative Example 11.1 из Mario Paz и William Leigh восстановлены и проверяются отдельным тестом. Старые снимки вывода и расхождение с ANSYS по-прежнему не объявлены оракулами: эталонами служат опубликованный пример, аналитические решения и явно записанные инварианты.</p>
         </div>
       </section>
 
@@ -136,7 +137,7 @@ modalResult = solveModal(model);</code></pre>
           <li>Все поставляемые файлы служат регрессионными проверками отсутствия аварий в <code>run_octave_smoke_tests.m</code>.</li>
           <li>Явные абсолютные и относительные допуски реализуют вспомогательные функции <code>assertClose</code> и <code>assertRelativeSmall</code> в тестах.</li>
           <li>Полный набор запускает <code>.github/workflows/octave.yml</code> через <code>run_octave_tests.m</code>.</li>
-          <li>Примеры Mario Paz и ANSYS оставлены только как сведения о происхождении проекта; это ограничение проверено не кодом, а явно сохранено выше в разделе «Что не является эталоном».</li>
+          <li>Пример Mario Paz проверяется по опубликованным матрицам, частотам и формам в <a href="../tests/test_mario_paz_modal.m"><code>tests/test_mario_paz_modal.m</code></a>; пример ANSYS остаётся только сведением о происхождении проекта.</li>
         </ol>
 
         <h3>3. Матрицы элементов</h3>
@@ -263,7 +264,7 @@ modalResult = solveModal(model);</code></pre>
   </nav>
 
   <footer class="site-footer">
-    <div class="site-footer__inner"><p>МКЭ-Ф · автономный учебный справочник · глава 9 из 10</p></div>
+    <div class="site-footer__inner"><p>МКЭ-Ф · автономный учебный справочник · глава 9 из 11</p></div>
   </footer>
 </body>
 </html>
