@@ -55,7 +55,15 @@
             </tbody>
           </table>
         </div>
-        <pre><code>problem = StructFEProblem(fullfile( ...
+        <p>Корневая функция <code>setup</code> явно добавляет каталоги <code>src/model</code>,
+          <code>src/analysis</code>, <code>src/results</code> и <code>scripts</code> в путь Octave.
+          Поставляемые модели находятся в <code>examples/cases</code>, готовые данные
+          постпроцессора — в <code>examples/results</code>, а новые результаты записываются
+          в игнорируемый каталог <code>output</code>.</p>
+        <pre><code>addpath(pwd);
+setup;
+
+problem = StructFEProblem(fullfile( ...
     "examples", "cases", "CaseBeam.txt"));
 model = problem.GetAnalysisModel();
 
@@ -78,13 +86,13 @@ modalResult = solveModal(model);</code></pre>
         <h2 id="headless-title">Валидация и работа без рабочего стола</h2>
         <p><code>FEMesh</code> проверяет открытие файла, порядок секций, число полей, конечность чисел, номера узлов, свойства элементов, типы нагрузок и запрет смешанной сетки. <code>onCleanup</code> закрывает файл и при ошибке. Сообщение парсера содержит имя файла и строку; полный контракт приведён в <a href="10-input-format.html">главе 10</a>.</p>
         <p>По умолчанию <code>verbose=false</code> и <code>plotting=false</code>. Поэтому создание задачи и все три расчёта работают в терминале и CI без графического дисплея. Отрисовка сетки и истории — отдельные действия; <code>axis equal</code> не искажает геометрию сетки.</p>
-        <pre><code>octave --no-gui --quiet --eval "addpath(pwd); run_octave_tests;"</code></pre>
+        <pre><code>octave --no-gui --quiet --eval "addpath(pwd); setup; run_octave_tests;"</code></pre>
       </section>
 
       <section aria-labelledby="verification-title">
         <h2 id="verification-title">Лестница проверки</h2>
         <ol>
-          <li><a href="../run_octave_smoke_tests.m"><code>run_octave_smoke_tests</code></a> читает поставляемые задачи, проверяет разреженную сборку и запускает доступные виды анализа.</li>
+          <li><a href="../scripts/run_octave_smoke_tests.m"><code>run_octave_smoke_tests</code></a> читает поставляемые задачи, проверяет разреженную сборку и запускает доступные виды анализа.</li>
           <li><a href="../tests/run_verification_tests.m"><code>run_verification_tests</code></a> проверяет элементные и глобальные инварианты, независимые формулы, реакции, нагрузки и порядок вызовов.</li>
           <li>Специализированные файлы проверяют <a href="../tests/test_element_matrices.m">матрицы элементов</a>, <a href="../tests/test_sparse_assembly.m">сборку</a>, <a href="../tests/test_mario_paz_modal.m">модальный пример Mario Paz</a>, <a href="../tests/test_newmark_transient.m">Ньюмарка</a>, <a href="../tests/test_result_recovery.m">усилия</a> и <a href="../tests/test_input_validation.m">ввод</a>.</li>
           <li>Лабораторные справочника добавляют учебные, но исполняемые проверки реального производственного кода.</li>
@@ -117,8 +125,8 @@ modalResult = solveModal(model);</code></pre>
 
         <h3>1. Совместимость GNU Octave и CI</h3>
         <ol>
-          <li>Минимальная версия GNU Octave 8.4 и проверка на 11.3 закреплены в <a href="../README.md"><code>README.md</code></a> и <a href="../.github/workflows/octave.yml"><code>.github/workflows/octave.yml</code></a>; точка проверки — <a href="../run_octave_tests.m"><code>run_octave_tests.m</code></a>.</li>
-          <li>Команда без графического интерфейса реализована в <a href="../run_octave_smoke_tests.m"><code>run_octave_smoke_tests.m</code></a> и вызывается CI.</li>
+          <li>Минимальная версия GNU Octave 8.4 и проверка на 11.3 закреплены в <a href="../README.md"><code>README.md</code></a> и <a href="../.github/workflows/octave.yml"><code>.github/workflows/octave.yml</code></a>; точка проверки — <a href="../scripts/run_octave_tests.m"><code>run_octave_tests.m</code></a>.</li>
+          <li>Команда без графического интерфейса реализована в <a href="../scripts/run_octave_smoke_tests.m"><code>run_octave_smoke_tests.m</code></a> и вызывается CI.</li>
           <li>Все поставляемые задачи собираются, а статика, моды, импульс и гармоника запускаются в <code>run_octave_smoke_tests.m</code>; матричные инварианты повторяются в <a href="../tests/run_verification_tests.m"><code>tests/run_verification_tests.m</code></a>.</li>
           <li>Промежуточные конкретные резервные методы старого абстрактного класса позже заменены структурами в <a href="../src/model/createStructuralElement.m"><code>createStructuralElement.m</code></a>; интерфейс проверяет <a href="../tests/test_element_matrices.m"><code>tests/test_element_matrices.m</code></a>.</li>
           <li>Проверка массивов однородных элементов handle-классов стала неактуальна после перехода на структуры; их массив создаёт <a href="../src/model/FEMesh.m"><code>FEMesh.m</code></a> и проверяет smoke-тест.</li>
@@ -247,7 +255,7 @@ modalResult = solveModal(model);</code></pre>
           <li><a href="../src/model/FEMesh.m"><code>FEMesh.m</code></a> — парсер, валидация и данные сетки;</li>
           <li><a href="../src/model/createAnalysisModel.m"><code>createAnalysisModel.m</code></a> и <a href="../src/model/StructFEProblem.m"><code>StructFEProblem.m</code></a> — граница модели и совместимого фасада;</li>
           <li><a href="../src/model/assembleGlobalMatrices.m"><code>assembleGlobalMatrices.m</code></a> — разреженная сборка;</li>
-          <li><a href="../run_octave_tests.m"><code>run_octave_tests.m</code></a> и <a href="../tests/run_verification_tests.m"><code>tests/run_verification_tests.m</code></a> — общие точки проверки.</li>
+          <li><a href="../scripts/run_octave_tests.m"><code>run_octave_tests.m</code></a> и <a href="../tests/run_verification_tests.m"><code>tests/run_verification_tests.m</code></a> — общие точки проверки.</li>
         </ul>
         <h3>История проекта</h3>
         <ul>

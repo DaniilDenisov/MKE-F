@@ -224,7 +224,7 @@ dynamicResult = problem.RunTransient(1e-4, 1e-2, 3, 2, initial);</code></pre>
           </table>
         </div>
         <p>В результатах стержня положительные <code>axialStrain</code>, <code>axialStress</code> и <code>axialForce</code> означают растяжение. У рамы <code>localEndForces</code> упорядочен как <code>[N1,V1,M1,N2,V2,M2]</code>.</p>
-        <pre><code>octave --no-gui --quiet --eval "addpath(pwd); run_octave_tests;"</code></pre>
+        <pre><code>octave --no-gui --quiet --eval "addpath(pwd); setup; run_octave_tests;"</code></pre>
       </section>
 
       <section aria-labelledby="diagnostics-title">

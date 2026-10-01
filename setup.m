@@ -1,8 +1,9 @@
 function setup()
-%SETUP Add the MKE-F implementation directories to the Octave path.
+%SETUP Add the MKE-F source and launcher directories to the Octave path.
 
 repositoryRoot = fileparts(mfilename('fullpath'));
 sourceDirectories = {
+    fullfile(repositoryRoot, 'scripts')
     fullfile(repositoryRoot, 'src', 'model')
     fullfile(repositoryRoot, 'src', 'analysis', 'common')
     fullfile(repositoryRoot, 'src', 'analysis', 'static')

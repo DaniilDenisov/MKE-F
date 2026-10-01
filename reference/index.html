@@ -97,7 +97,9 @@
       <section aria-labelledby="start-title">
         <h2 id="start-title">Быстрый старт</h2>
         <p>Откройте терминал в корне репозитория, добавьте каталог примеров в путь Octave и запустите все лабораторные:</p>
-        <pre><code>addpath(fullfile(pwd, "reference", "examples"));
+        <pre><code>addpath(pwd);
+setup;
+addpath(fullfile(pwd, "reference", "examples"));
 results = run_reference_examples();</code></pre>
 
         <div class="callout">

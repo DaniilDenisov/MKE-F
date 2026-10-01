@@ -18,4 +18,4 @@ jobs:
           octave --version
 
       - name: Run headless verification suite
-        run: octave --no-gui --quiet --eval "addpath(pwd); run_octave_tests;"
+        run: octave --no-gui --quiet --eval "addpath(pwd); setup; run_octave_tests;"

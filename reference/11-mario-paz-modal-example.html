@@ -263,7 +263,7 @@ frequencyHz = result.frequenciesHz
 Phi = result.modeShapes(result.freeDOFs, :)</code></pre>
 
         <p>Автоматическая проверка находится в <a href="../tests/test_mario_paz_modal.m"><code>tests/test_mario_paz_modal.m</code></a> и запускается вместе со всем набором:</p>
-        <pre><code>run_octave_tests</code></pre>
+        <pre><code>addpath(pwd); setup; run_octave_tests;</code></pre>
 
         <div class="callout">
           <span class="callout__title">Как тест учитывает числа с плавающей точкой</span>

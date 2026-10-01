@@ -1,7 +1,8 @@
 function run_octave_smoke_tests()
 %RUN_OCTAVE_SMOKE_TESTS Дымовые тесты GNU Octave без графического интерфейса.
 
-rootDir = fileparts(mfilename('fullpath'));
+scriptsDir = fileparts(mfilename('fullpath'));
+rootDir = fileparts(scriptsDir);
 previousDir = pwd;
 cleanup = onCleanup(@() cd(previousDir));
 cd(rootDir);
