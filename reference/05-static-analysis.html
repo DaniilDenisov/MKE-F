@@ -54,7 +54,7 @@
 
       <section aria-labelledby="validation-title">
         <h2 id="validation-title">Проверка перед решением</h2>
-        <p><a href="../validateReducedSystem.m"><code>validateReducedSystem</code></a> проверяет конечность коэффициентов и положительную определённость симметризованной <strong>K<sub>ff</sub></strong> разложением Холецкого. Неуспех обычно означает одно из двух:</p>
+        <p><a href="../src/analysis/common/validateReducedSystem.m"><code>validateReducedSystem</code></a> проверяет конечность коэффициентов и положительную определённость симметризованной <strong>K<sub>ff</sub></strong> разложением Холецкого. Неуспех обычно означает одно из двух:</p>
         <ul>
           <li>модель может перемещаться как твёрдое тело из-за недостаточных опор;</li>
           <li>внутри конструкции остался механизм, например узел соединён только поперечными направлениями ферменных стержней.</li>
@@ -75,7 +75,7 @@ u(freeDOFs) = K(freeDOFs, freeDOFs) \ F(freeDOFs);</code></pre>
         <p>Реакции вычисляются после расширения решения из полного уравнения:</p>
         <p class="equation">R = K u − F</p>
         <p>В идеальном решении компоненты <strong>R</strong> на свободных СС равны нулю. На закреплённых СС они показывают силы и моменты, которыми опоры действуют на модель.</p>
-        <p>Одного малого невязочного вектора <strong>Ku − F − R</strong> недостаточно: он проверяет алгебру, но не знаки и расположение внешних сил. Поэтому <a href="../calculateStaticEquilibrium.m"><code>calculateStaticEquilibrium</code></a> независимо суммирует:</p>
+        <p>Одного малого невязочного вектора <strong>Ku − F − R</strong> недостаточно: он проверяет алгебру, но не знаки и расположение внешних сил. Поэтому <a href="../src/analysis/static/calculateStaticEquilibrium.m"><code>calculateStaticEquilibrium</code></a> независимо суммирует:</p>
         <p class="equation">ΣF<sub>x</sub> = 0, &nbsp; ΣF<sub>y</sub> = 0, &nbsp; ΣM<sub>z</sub> = 0</p>
         <p>Моменты включают плечи узловых сил <em>xF<sub>y</sub> − yF<sub>x</sub></em> и собственные узловые моменты <em>M<sub>z</sub></em> рам.</p>
       </section>
@@ -115,7 +115,7 @@ exportOptions = struct( ...
 
 exportPostprocessorData(model, result, ...
     fullfile('output', 'static-frame.json'), exportOptions);</code></pre>
-        <p><a href="../exportPostprocessorData.m"><code>exportPostprocessorData</code></a> проверяет размеры и конечность чисел, исключает глобальные и элементные матрицы и записывает версионированный UTF-8 JSON. Поля единиц являются только подписями: численные значения не пересчитываются. Для показанного экспорта в СИ постпроцессор выводит координаты и перемещения в метрах, силы, нагрузки и реакции — в ньютонах, моменты — в Н·м, напряжения — в Па.</p>
+        <p><a href="../src/results/exportPostprocessorData.m"><code>exportPostprocessorData</code></a> проверяет размеры и конечность чисел, исключает глобальные и элементные матрицы и записывает версионированный UTF-8 JSON. Поля единиц являются только подписями: численные значения не пересчитываются. Для показанного экспорта в СИ постпроцессор выводит координаты и перемещения в метрах, силы, нагрузки и реакции — в ньютонах, моменты — в Н·м, напряжения — в Па.</p>
 
         <h3>2. Откройте и настройте изображение</h3>
         <ol>
@@ -169,12 +169,12 @@ exportPostprocessorData(model, result, ...
       <section class="source-list" aria-labelledby="sources-title">
         <h2 id="sources-title">Исходный код главы</h2>
         <ul>
-          <li><a href="../solveStatic.m"><code>solveStatic.m</code></a> — полный порядок статического решения;</li>
-          <li><a href="../partitionDOFs.m"><code>partitionDOFs.m</code></a> — свободные и закреплённые индексы;</li>
-          <li><a href="../validateReducedSystem.m"><code>validateReducedSystem.m</code></a> — обнаружение механизмов;</li>
-          <li><a href="../calculateStaticEquilibrium.m"><code>calculateStaticEquilibrium.m</code></a> — баланс сил и момента;</li>
-          <li><a href="../createPostprocessorData.m"><code>createPostprocessorData.m</code></a> — подготовка проверенной структуры данных;</li>
-          <li><a href="../exportPostprocessorData.m"><code>exportPostprocessorData.m</code></a> — безопасная запись JSON для постпроцессора;</li>
+          <li><a href="../src/analysis/static/solveStatic.m"><code>solveStatic.m</code></a> — полный порядок статического решения;</li>
+          <li><a href="../src/analysis/common/partitionDOFs.m"><code>partitionDOFs.m</code></a> — свободные и закреплённые индексы;</li>
+          <li><a href="../src/analysis/common/validateReducedSystem.m"><code>validateReducedSystem.m</code></a> — обнаружение механизмов;</li>
+          <li><a href="../src/analysis/static/calculateStaticEquilibrium.m"><code>calculateStaticEquilibrium.m</code></a> — баланс сил и момента;</li>
+          <li><a href="../src/results/createPostprocessorData.m"><code>createPostprocessorData.m</code></a> — подготовка проверенной структуры данных;</li>
+          <li><a href="../src/results/exportPostprocessorData.m"><code>exportPostprocessorData.m</code></a> — безопасная запись JSON для постпроцессора;</li>
           <li><a href="../postprocessor/index.html"><code>postprocessor/index.html</code></a> — автономная визуализация и экспорт изображений;</li>
           <li><a href="examples/example_03_static_bar.m"><code>example_03_static_bar.m</code></a> — исполняемая лабораторная.</li>
         </ul>

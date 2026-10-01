@@ -4,6 +4,7 @@ function run_octave_tests()
 
 rootDir = fileparts(mfilename('fullpath'));
 addpath(rootDir);
+setup();
 addpath(fullfile(rootDir, 'tests'));
 
 if ~exist('OCTAVE_VERSION', 'builtin')

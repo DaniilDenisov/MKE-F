@@ -6,6 +6,7 @@ previousDir = pwd;
 cleanup = onCleanup(@() cd(previousDir));
 cd(rootDir);
 addpath(rootDir);
+setup();
 caseDirectory = fullfile(rootDir, 'examples', 'cases');
 
 options = struct('verbose', false, 'plotting', false);

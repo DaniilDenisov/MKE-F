@@ -38,7 +38,7 @@
     <main class="chapter" id="main">
       <span class="chapter-number">Глава 10</span>
       <h1>Входной файл МКЭ‑Ф</h1>
-      <p class="lead">Файл — последовательность именованных текстовых секций. Этот раздел полностью заменяет прежнее корневое руководство и соответствует текущему парсеру <a href="../FEMesh.m"><code>FEMesh</code></a>.</p>
+      <p class="lead">Файл — последовательность именованных текстовых секций. Этот раздел полностью заменяет прежнее корневое руководство и соответствует текущему парсеру <a href="../src/model/FEMesh.m"><code>FEMesh</code></a>.</p>
 
       <section aria-labelledby="scope-title">
         <h2 id="scope-title">1. Область применения</h2>
@@ -256,7 +256,7 @@ dynamicResult = problem.RunTransient(1e-4, 1e-2, 3, 2, initial);</code></pre>
       <section aria-labelledby="sources-title" class="source-list">
         <h2 id="sources-title">11. Код, тесты и источники</h2>
         <ul>
-          <li><a href="../FEMesh.m"><code>FEMesh.m</code></a> — единственный действующий контракт синтаксического разбора;</li>
+          <li><a href="../src/model/FEMesh.m"><code>FEMesh.m</code></a> — единственный действующий контракт синтаксического разбора;</li>
           <li><a href="../tests/test_input_validation.m"><code>tests/test_input_validation.m</code></a> — повторные секции, неверные записи, смешанная сетка, неизвестный маркер, открытие и выбор графика;</li>
           <li><a href="../tests/fixtures/CaseRepeatedSections.txt"><code>CaseRepeatedSections.txt</code></a> — исполняемый пример повторных секций;</li>
           <li>Henri P. Gavin, <a href="https://people.duke.edu/~hpgavin/StructuralDynamics/NumericalIntegration.pdf"><cite>Numerical Integration in Structural Dynamics</cite></a> — внешний материал по схеме Ньюмарка;</li>

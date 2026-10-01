@@ -9,6 +9,7 @@ previousDir = pwd;
 cleanup = onCleanup(@() cd(previousDir));
 cd(rootDir);
 addpath(rootDir);
+setup();
 addpath(testsDir);
 
 requireOctave();

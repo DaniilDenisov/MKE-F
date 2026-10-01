@@ -42,7 +42,7 @@
 
       <section aria-labelledby="partition-title">
         <h2 id="partition-title">Свободные и закреплённые СС</h2>
-        <p>Функция <a href="../partitionDOFs.m"><code>partitionDOFs</code></a> преобразует записи опор в два непересекающихся списка:</p>
+        <p>Функция <a href="../src/analysis/common/partitionDOFs.m"><code>partitionDOFs</code></a> преобразует записи опор в два непересекающихся списка:</p>
         <ul>
           <li><code>fixedDOFs</code> — СС с заданным нулевым перемещением;</li>
           <li><code>freeDOFs</code> — неизвестные, которые войдут в редуцированную систему.</li>
@@ -130,10 +130,10 @@ step  = [F0, F0, F0, F0, F0];</code></pre>
       <section class="source-list" aria-labelledby="sources-title">
         <h2 id="sources-title">Исходный код главы</h2>
         <ul>
-          <li><a href="../partitionDOFs.m"><code>partitionDOFs.m</code></a> — проверка опор и разбиение СС;</li>
-          <li><a href="../getNodalLoadComponents.m"><code>getNodalLoadComponents.m</code></a> — соответствие нагрузок узловым СС;</li>
-          <li><a href="../buildStaticLoad.m"><code>buildStaticLoad.m</code></a> — свежий статический вектор;</li>
-          <li><a href="../buildTransientLoad.m"><code>buildTransientLoad.m</code></a> — временные истории;</li>
+          <li><a href="../src/analysis/common/partitionDOFs.m"><code>partitionDOFs.m</code></a> — проверка опор и разбиение СС;</li>
+          <li><a href="../src/analysis/common/getNodalLoadComponents.m"><code>getNodalLoadComponents.m</code></a> — соответствие нагрузок узловым СС;</li>
+          <li><a href="../src/analysis/static/buildStaticLoad.m"><code>buildStaticLoad.m</code></a> — свежий статический вектор;</li>
+          <li><a href="../src/analysis/transient/buildTransientLoad.m"><code>buildTransientLoad.m</code></a> — временные истории;</li>
           <li><a href="examples/example_04_load_histories.m"><code>example_04_load_histories.m</code></a> — исполняемая лабораторная.</li>
         </ul>
       </section>

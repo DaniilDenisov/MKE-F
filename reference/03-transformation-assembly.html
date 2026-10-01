@@ -86,7 +86,7 @@ element(2).dofs = [3; 4; 5; 6];</code></pre>
       <section aria-labelledby="sparse-title">
         <h2 id="sparse-title">Почему сборка разреженная</h2>
         <p>Один элемент соединяет только свои узлы, поэтому влияет на небольшое число пар СС. В большой модели подавляющее большинство глобальных коэффициентов нулевые. Хранить полную квадратную матрицу означает расходовать память на нули.</p>
-        <p><a href="../assembleGlobalMatrices.m"><code>assembleGlobalMatrices</code></a> сначала создаёт четыре линейных массива:</p>
+        <p><a href="../src/model/assembleGlobalMatrices.m"><code>assembleGlobalMatrices</code></a> сначала создаёт четыре линейных массива:</p>
         <ul>
           <li><code>rows</code> — глобальные номера строк;</li>
           <li><code>columns</code> — глобальные номера столбцов;</li>
@@ -130,8 +130,8 @@ globalK = sparse(rows, columns, stiffnessValues, nDOF, nDOF);</code></pre>
       <section class="source-list" aria-labelledby="sources-title">
         <h2 id="sources-title">Исходный код главы</h2>
         <ul>
-          <li><a href="../createStructuralElement.m"><code>createStructuralElement.m</code></a> — направляющие косинусы, <strong>T</strong> и поворот матриц;</li>
-          <li><a href="../assembleGlobalMatrices.m"><code>assembleGlobalMatrices.m</code></a> — индексированная триплетная сборка;</li>
+          <li><a href="../src/model/createStructuralElement.m"><code>createStructuralElement.m</code></a> — направляющие косинусы, <strong>T</strong> и поворот матриц;</li>
+          <li><a href="../src/model/assembleGlobalMatrices.m"><code>assembleGlobalMatrices.m</code></a> — индексированная триплетная сборка;</li>
           <li><a href="../tests/test_sparse_assembly.m"><code>tests/test_sparse_assembly.m</code></a> — проверки разреженности и большой цепочки;</li>
           <li><a href="examples/example_02_sparse_assembly.m"><code>example_02_sparse_assembly.m</code></a> — учебная сборка двух элементов.</li>
         </ul>

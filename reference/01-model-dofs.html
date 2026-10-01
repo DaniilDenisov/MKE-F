@@ -105,7 +105,7 @@ iMnod = [ 1   2    3;
 
       <section aria-labelledby="structures-title">
         <h2 id="structures-title">Данные модели и данные результата</h2>
-        <p><a href="../createStructuralElement.m"><code>createStructuralElement</code></a> возвращает неизменяемую по смыслу структуру элемента. Ключевые поля:</p>
+        <p><a href="../src/model/createStructuralElement.m"><code>createStructuralElement</code></a> возвращает неизменяемую по смыслу структуру элемента. Ключевые поля:</p>
         <div class="table-wrap">
           <table>
             <thead><tr><th>Поле</th><th>Назначение</th></tr></thead>
@@ -120,7 +120,7 @@ iMnod = [ 1   2    3;
             </tbody>
           </table>
         </div>
-        <p><a href="../createAnalysisModel.m"><code>createAnalysisModel</code></a> копирует собранные матрицы и описание сетки в обычную структуру для чистых решателей. Решатели возвращают новые структуры результатов. Благодаря этому повторный расчёт не зависит от порядка предыдущих запусков.</p>
+        <p><a href="../src/model/createAnalysisModel.m"><code>createAnalysisModel</code></a> копирует собранные матрицы и описание сетки в обычную структуру для чистых решателей. Решатели возвращают новые структуры результатов. Благодаря этому повторный расчёт не зависит от порядка предыдущих запусков.</p>
       </section>
 
       <section aria-labelledby="practice-title">
@@ -150,9 +150,9 @@ iMnod = [ 1   2    3;
       <section class="source-list" aria-labelledby="sources-title">
         <h2 id="sources-title">Исходный код главы</h2>
         <ul>
-          <li><a href="../FEMesh.m"><code>FEMesh.m</code></a> — чтение узлов, выбор числа СС и построение <code>iMnod</code>;</li>
-          <li><a href="../createStructuralElement.m"><code>createStructuralElement.m</code></a> — единый интерфейс данных элемента;</li>
-          <li><a href="../createAnalysisModel.m"><code>createAnalysisModel.m</code></a> — структура модели для решателей;</li>
+          <li><a href="../src/model/FEMesh.m"><code>FEMesh.m</code></a> — чтение узлов, выбор числа СС и построение <code>iMnod</code>;</li>
+          <li><a href="../src/model/createStructuralElement.m"><code>createStructuralElement.m</code></a> — единый интерфейс данных элемента;</li>
+          <li><a href="../src/model/createAnalysisModel.m"><code>createAnalysisModel.m</code></a> — структура модели для решателей;</li>
           <li><a href="examples/example_01_element_matrices.m"><code>example_01_element_matrices.m</code></a> — исполняемая лабораторная.</li>
         </ul>
       </section>

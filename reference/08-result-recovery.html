@@ -42,7 +42,7 @@
 
       <section aria-labelledby="pipeline-title">
         <h2 id="pipeline-title">Три шага восстановления</h2>
-        <p>Для элемента <em>e</em> функция <a href="../recoverElementResults.m"><code>recoverElementResults</code></a> выполняет:</p>
+        <p>Для элемента <em>e</em> функция <a href="../src/results/recoverElementResults.m"><code>recoverElementResults</code></a> выполняет:</p>
         <p class="equation">u<sub>e</sub> = u(dofs<sub>e</sub>)</p>
         <p class="equation">u<sub>local</sub> = T<sub>e</sub> u<sub>e</sub></p>
         <p class="equation">q<sub>local</sub> = k<sub>local</sub> u<sub>local</sub></p>
@@ -54,7 +54,7 @@ localEndForces = element.localStiffness * localDisplacements;</code></pre>
 
       <section aria-labelledby="fields-title">
         <h2 id="fields-title">Что возвращает статический расчёт</h2>
-        <p><a href="../solveStatic.m"><code>solveStatic</code></a> помещает массив <code>elementResults</code> в структуру результата. Запись каждого элемента содержит:</p>
+        <p><a href="../src/analysis/static/solveStatic.m"><code>solveStatic</code></a> помещает массив <code>elementResults</code> в структуру результата. Запись каждого элемента содержит:</p>
         <div class="table-wrap">
           <table>
             <thead>
@@ -138,8 +138,8 @@ results = run_reference_examples();</code></pre>
       <section class="source-list" aria-labelledby="sources-title">
         <h2 id="sources-title">Исходный код главы</h2>
         <ul>
-          <li><a href="../recoverElementResults.m"><code>recoverElementResults.m</code></a> — выбор СС, переход в локальные оси и вычисление усилий;</li>
-          <li><a href="../solveStatic.m"><code>solveStatic.m</code></a> — реакции и включение результатов элементов в ответ;</li>
+          <li><a href="../src/results/recoverElementResults.m"><code>recoverElementResults.m</code></a> — выбор СС, переход в локальные оси и вычисление усилий;</li>
+          <li><a href="../src/analysis/static/solveStatic.m"><code>solveStatic.m</code></a> — реакции и включение результатов элементов в ответ;</li>
           <li><a href="../tests/test_result_recovery.m"><code>tests/test_result_recovery.m</code></a> — регрессионные проверки стержня, поворота и консоли;</li>
           <li><a href="examples/example_07_result_recovery.m"><code>example_07_result_recovery.m</code></a> — исполняемая лабораторная;</li>
           <li><a href="examples/run_reference_examples.m"><code>run_reference_examples.m</code></a> — единая точка запуска лабораторных.</li>

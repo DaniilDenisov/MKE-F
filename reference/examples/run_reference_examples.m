@@ -16,6 +16,7 @@ referenceDirectory = fileparts(exampleDirectory);
 repositoryRoot = fileparts(referenceDirectory);
 addpath(exampleDirectory);
 addpath(repositoryRoot);
+setup();
 
 exampleFunctions = { ...
     @example_01_element_matrices, ...

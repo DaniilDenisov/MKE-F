@@ -48,7 +48,7 @@
         <p class="equation">K φ = λ M φ, &nbsp; λ = ω<sup>2</sup></p>
         <p>Собственная круговая частота равна <em>ω = √λ</em>, а частота в герцах:</p>
         <p class="equation">f = ω/(2π)</p>
-        <p>В <a href="../solveModal.m"><code>solveModal</code></a> пары вычисляются функцией <code>eig(Kff, Mff)</code>, затем сортируются по возрастанию λ.</p>
+        <p>В <a href="../src/analysis/modal/solveModal.m"><code>solveModal</code></a> пары вычисляются функцией <code>eig(Kff, Mff)</code>, затем сортируются по возрастанию λ.</p>
       </section>
 
       <section aria-labelledby="reduction-title">
@@ -56,7 +56,7 @@
         <p>Как и в статике, сначала строятся <code>fixedDOFs</code> и <code>freeDOFs</code>. Собственная задача формируется для редуцированных матриц:</p>
         <p class="equation">K<sub>ff</sub> φ<sub>f</sub> = λ M<sub>ff</sub> φ<sub>f</sub></p>
         <p>Если оставить закреплённые компоненты в полной задаче искусственным изменением строк, спектр будет зависеть от выбранного численного приёма наложения опор. Редукция сохраняет физические матрицы свободной подсистемы.</p>
-        <p><a href="../validateReducedSystem.m"><code>validateReducedSystem</code></a> проверяет положительную определённость <strong>K<sub>ff</sub></strong> и <strong>M<sub>ff</sub></strong>. Механизм или безмассовая свободная СС останавливают расчёт до вызова <code>eig</code>.</p>
+        <p><a href="../src/analysis/common/validateReducedSystem.m"><code>validateReducedSystem</code></a> проверяет положительную определённость <strong>K<sub>ff</sub></strong> и <strong>M<sub>ff</sub></strong>. Механизм или безмассовая свободная СС останавливают расчёт до вызова <code>eig</code>.</p>
       </section>
 
       <section aria-labelledby="expand-title">
@@ -149,9 +149,9 @@ exportPostprocessorData(model, result, ...
       <section class="source-list" aria-labelledby="sources-title">
         <h2 id="sources-title">Исходный код главы</h2>
         <ul>
-          <li><a href="../solveModal.m"><code>solveModal.m</code></a> — редуцированная собственная задача и расширение форм;</li>
+          <li><a href="../src/analysis/modal/solveModal.m"><code>solveModal.m</code></a> — редуцированная собственная задача и расширение форм;</li>
           <li><a href="../postprocessor/js/modal-view.js"><code>postprocessor/js/modal-view.js</code></a> — нормирование, знак, масштаб и фаза изображения;</li>
-          <li><a href="../validateReducedSystem.m"><code>validateReducedSystem.m</code></a> — проверка жёсткости и массы;</li>
+          <li><a href="../src/analysis/common/validateReducedSystem.m"><code>validateReducedSystem.m</code></a> — проверка жёсткости и массы;</li>
           <li><a href="examples/example_05_modal_frame.m"><code>example_05_modal_frame.m</code></a> — невязки, нормирование и ортогональность.</li>
         </ul>
         <h3>Теория</h3>

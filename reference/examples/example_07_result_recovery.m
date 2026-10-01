@@ -105,6 +105,7 @@ exampleDirectory = fileparts(mfilename('fullpath'));
 referenceDirectory = fileparts(exampleDirectory);
 repositoryRoot = fileparts(referenceDirectory);
 addpath(repositoryRoot);
+setup();
 end
 
 function validateVerbose(verbose)

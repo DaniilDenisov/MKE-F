@@ -13,16 +13,24 @@ https://конструкторский.рф/
 GNU Octave является единственной поддерживаемой средой выполнения. Совместимость
 с MATLAB не тестируется и не гарантируется.
 
+Перед работой добавьте корень репозитория в путь и подключите каталоги исходного
+кода:
+
+```octave
+addpath(pwd);
+setup;
+```
+
 Запуск полного набора тестов без графического интерфейса:
 
 ```sh
-octave --no-gui --quiet --eval "addpath(pwd); run_octave_tests;"
+octave --no-gui --quiet --eval "addpath(pwd); setup; run_octave_tests;"
 ```
 
 Запуск только быстрого smoke-теста:
 
 ```sh
-octave --no-gui --quiet --eval "addpath(pwd); run_octave_smoke_tests;"
+octave --no-gui --quiet --eval "addpath(pwd); setup; run_octave_smoke_tests;"
 ```
 
 ## Автономный учебный справочник
@@ -40,6 +48,8 @@ octave --no-gui --quiet --eval "addpath(pwd); run_octave_smoke_tests;"
 и запускаются из корня репозитория одной командой GNU Octave:
 
 ```octave
+addpath(pwd);
+setup;
 addpath(fullfile(pwd, 'reference', 'examples'));
 results = run_reference_examples();
 ```
@@ -278,7 +288,7 @@ transientResult = dynamic.RunTransient(1e-4, 1e-2, 3, 2);
 входных файлов запускается командой:
 
 ```sh
-octave --no-gui --quiet --eval "addpath(pwd); run_octave_tests;"
+octave --no-gui --quiet --eval "addpath(pwd); setup; run_octave_tests;"
 ```
 
 ## Результаты в элементах
