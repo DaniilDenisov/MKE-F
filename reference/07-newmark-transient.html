@@ -108,7 +108,8 @@ a3 = 1/(2*beta) - 1;</code></pre>
       <section aria-labelledby="viewer-title">
         <h2 id="viewer-title">Как запустить расчёт и посмотреть результат</h2>
         <p>В Octave из корневого каталога проекта выполните:</p>
-        <pre><code>problem = StructFEProblem('CaseBeam.txt');
+        <pre><code>problem = StructFEProblem(fullfile( ...
+    'examples', 'cases', 'CaseBeam.txt'));
 model = problem.GetAnalysisModel();
 result = problem.RunTransient(1e-4, 1e-2, 3, 2);
 
@@ -120,10 +121,13 @@ options = struct(...
                          'accelerations', 'loadHistory', ...
                          'reactions', 'spectrum'}}, ...
     'timeStride', 1, 'prettyPrint', true);
-exportPostprocessorData(model, result, 'transient-history.json', options);</code></pre>
+exportPostprocessorData(model, result, ...
+    fullfile('output', 'transient-history.json'), options);</code></pre>
         <p>Затем откройте <a href="../postprocessor/index.html"><code>postprocessor/index.html</code></a>
-          двойным щелчком в Chrome и перетащите на страницу <code>transient-history.json</code>
-          или выберите его через <strong>Open JSON</strong>. Локальный сервер не нужен.</p>
+          двойным щелчком в Chrome и перетащите на страницу <code>output/transient-history.json</code>
+          или выберите его через <strong>Open JSON</strong>. Готовый пример находится в
+          <a href="../examples/results/transient-history.json"><code>examples/results/transient-history.json</code></a>.
+          Локальный сервер не нужен.</p>
         <div class="callout callout--inspect">
           <span class="callout__title">Что посмотреть</span>
           <p>Выберите узел, степень свободы и величину на графике. Ползунок времени и щелчок по графику показывают точный экспортированный отсчёт. <strong>Play</strong> запускает анимацию; <strong>Frame stride</strong> изменяет шаг просмотра. SVG и PNG сохраняют текущий кадр вместе с графиком и параметрами выбора.</p>

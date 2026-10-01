@@ -2,7 +2,7 @@ function test_postprocessor_export()
 %TEST_POSTPROCESSOR_EXPORT Verify schema-v1 conversion and safe file output.
 
 options = struct('verbose', false, 'plotting', false);
-problem = StructFEProblem('Case1ElementBeam.txt', options);
+problem = StructFEProblem(exampleCasePath('Case1ElementBeam.txt'), options);
 model = problem.GetAnalysisModel();
 modelBefore = model;
 
@@ -36,7 +36,8 @@ assert(isfield(trussData.model.elements(1).properties, 'area'));
 assert(~isfield(trussData.model.elements(1).properties, 'momentOfInertia'));
 assertClose(trussData.analysis.elementResults(1).axialForce, 1000);
 
-frameProblem = StructFEProblem('ANSYSBeamStatic01.txt', options);
+frameProblem = StructFEProblem( ...
+    exampleCasePath('ANSYSBeamStatic01.txt'), options);
 frameData = createPostprocessorData(frameProblem.GetAnalysisModel(), ...
     frameProblem.RunStatic());
 assert(numel(frameData.model.nodes) == frameProblem.mesh.numberOfNodes);

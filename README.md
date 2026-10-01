@@ -51,7 +51,8 @@ results = run_reference_examples();
 По умолчанию задача создаётся без графиков и диагностической печати:
 
 ```octave
-problem = StructFEProblem('Case1ElementBeam.txt');
+problem = StructFEProblem(fullfile('examples', 'cases', ...
+    'Case1ElementBeam.txt'));
 staticResult = problem.RunStatic();
 ```
 
@@ -59,7 +60,8 @@ staticResult = problem.RunStatic();
 
 ```octave
 options = struct('verbose', true, 'plotting', true);
-problem = StructFEProblem('Case1ElementBeam.txt', options);
+problem = StructFEProblem(fullfile('examples', 'cases', ...
+    'Case1ElementBeam.txt'), options);
 ```
 
 Методы `RunStatic`, `RunModal` и `RunTransient` возвращают структуры с явно
@@ -110,12 +112,17 @@ dynamicResult = solveTransient(model, ...
 Результат модального расчёта можно экспортировать в JSON и открыть локально в
 [`postprocessor/index.html`](postprocessor/index.html):
 
+Готовые примеры для всех трёх видов расчёта находятся в
+[`examples/results`](examples/results). Новые результаты примеров записываются
+в каталог `output`, содержимое которого не отслеживается Git.
+
 ```octave
-problem = StructFEProblem('CaseBeam.txt');
+problem = StructFEProblem(fullfile('examples', 'cases', 'CaseBeam.txt'));
 model = problem.GetAnalysisModel();
 modalResult = problem.RunModal();
 
-exportPostprocessorData(model, modalResult, 'modal-frame.json', ...
+exportPostprocessorData(model, modalResult, ...
+    fullfile('output', 'modal-frame.json'), ...
     struct('title', 'Формы колебаний', 'lengthUnit', 'm', ...
            'timeUnit', 's', 'prettyPrint', true));
 ```
@@ -133,11 +140,12 @@ PNG сохраняется именно текущая видимая фаза �
 [`postprocessor/index.html`](postprocessor/index.html):
 
 ```octave
-problem = StructFEProblem('CaseBeam.txt');
+problem = StructFEProblem(fullfile('examples', 'cases', 'CaseBeam.txt'));
 model = problem.GetAnalysisModel();
 transientResult = problem.RunTransient(1e-4, 1e-2, 3, 2);
 
-exportPostprocessorData(model, transientResult, 'transient-history.json', ...
+exportPostprocessorData(model, transientResult, ...
+    fullfile('output', 'transient-history.json'), ...
     struct('title', 'Переходный отклик', 'lengthUnit', 'm', ...
            'forceUnit', 'N', 'momentUnit', 'N*m', 'timeUnit', 's', ...
            'transientFields', {{'displacements', 'velocities', ...
@@ -250,18 +258,19 @@ result = problem.RunTransient(1e-4, 1e-2, 2, 1, initial);
 
 ```octave
 % Статика: консоль с силой 100 Н.
-beam = StructFEProblem('Case1ElementBeam.txt');
+beam = StructFEProblem(fullfile('examples', 'cases', ...
+    'Case1ElementBeam.txt'));
 staticResult = beam.RunStatic();
 staticResult.displacements(5) % FL^3/(3EI)
 staticResult.reactions(2:3)   % [-F; -F*L]
 
 % Собственные частоты.
-frame = StructFEProblem('CaseBeam.txt');
+frame = StructFEProblem(fullfile('examples', 'cases', 'CaseBeam.txt'));
 modalResult = frame.RunModal();
 modalResult.frequenciesHz
 
 % Переходный отклик; строится DOF uy узла 3 только при plotting=true.
-dynamic = StructFEProblem('CaseBeamDyn.txt');
+dynamic = StructFEProblem(fullfile('examples', 'cases', 'CaseBeamDyn.txt'));
 transientResult = dynamic.RunTransient(1e-4, 1e-2, 3, 2);
 ```
 

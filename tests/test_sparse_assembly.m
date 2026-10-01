@@ -8,13 +8,13 @@ end
 function testSuppliedCasesAreSparse()
 options = struct('verbose', false, 'plotting', false);
 caseFiles = {
-    'ANSYSBeamStatic01.txt'
-    'Case1ElementBeam.txt'
-    'CaseATransSite.txt'
-    'CaseBeam.txt'
-    'CaseBeamDyn.txt'
-    'CaseBeamFreq.txt'
-    'CaseFig11.7p363 MarioPaz.txt'
+    exampleCasePath('ANSYSBeamStatic01.txt')
+    exampleCasePath('Case1ElementBeam.txt')
+    exampleCasePath('CaseATransSite.txt')
+    exampleCasePath('CaseBeam.txt')
+    exampleCasePath('CaseBeamDyn.txt')
+    exampleCasePath('CaseBeamFreq.txt')
+    exampleCasePath('CaseFig11.7p363 MarioPaz.txt')
 };
 
 for i = 1:numel(caseFiles)

@@ -108,7 +108,7 @@ end
 
 function testBeamImpulseRefinement()
 options = struct('verbose', false, 'plotting', false);
-problem = StructFEProblem('CaseBeamDyn.txt', options);
+problem = StructFEProblem(exampleCasePath('CaseBeamDyn.txt'), options);
 baseModel = problem.GetAnalysisModel();
 impulse = -0.1;
 timeSteps = [2e-4, 1e-4, 5e-5];
@@ -174,7 +174,8 @@ assertThrows('MKEF:InvalidInitialConditions', ...
     @() solveTransient(model, restrainedMotion));
 
 facadeOptions = struct('verbose', false, 'plotting', false);
-problem = StructFEProblem('Case1ElementBeam.txt', facadeOptions);
+problem = StructFEProblem( ...
+    exampleCasePath('Case1ElementBeam.txt'), facadeOptions);
 facadeInitialDisplacement = zeros(6, 1);
 facadeInitialDisplacement(5) = 1e-5;
 facadeResult = problem.RunTransient(1e-4, 2e-4, 2, 2, ...

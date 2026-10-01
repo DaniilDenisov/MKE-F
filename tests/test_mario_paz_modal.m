@@ -6,7 +6,8 @@ function test_mario_paz_modal()
 % the corresponding full-precision values for the exact 100-inch geometry.
 
 options = struct('verbose', false, 'plotting', false);
-problem = StructFEProblem('CaseFig11.7p363 MarioPaz.txt', options);
+problem = StructFEProblem( ...
+    exampleCasePath('CaseFig11.7p363 MarioPaz.txt'), options);
 model = problem.GetAnalysisModel();
 result = problem.RunModal();
 

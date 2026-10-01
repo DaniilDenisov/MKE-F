@@ -11,7 +11,8 @@ validateVerbose(verbose);
 repositoryRoot = addRepositoryRoot();
 
 options = struct('verbose', false, 'plotting', false);
-problem = StructFEProblem(fullfile(repositoryRoot, 'CaseBeam.txt'), options);
+problem = StructFEProblem(fullfile(repositoryRoot, 'examples', 'cases', ...
+    'CaseBeam.txt'), options);
 model = problem.GetAnalysisModel();
 analysis = solveModal(model);
 

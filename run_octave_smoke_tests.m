@@ -6,6 +6,7 @@ previousDir = pwd;
 cleanup = onCleanup(@() cd(previousDir));
 cd(rootDir);
 addpath(rootDir);
+caseDirectory = fullfile(rootDir, 'examples', 'cases');
 
 options = struct('verbose', false, 'plotting', false);
 
@@ -14,13 +15,13 @@ options = struct('verbose', false, 'plotting', false);
 % В smoke-наборе примеры ANSYS и Mario Paz проверяют чтение и сборку. Матрицы,
 % частоты и формы Mario Paz отдельно сверяются с книгой в проверочном наборе.
 caseFiles = {
-    'ANSYSBeamStatic01.txt'
-    'Case1ElementBeam.txt'
-    'CaseATransSite.txt'
-    'CaseBeam.txt'
-    'CaseBeamDyn.txt'
-    'CaseBeamFreq.txt'
-    'CaseFig11.7p363 MarioPaz.txt'
+    fullfile(caseDirectory, 'ANSYSBeamStatic01.txt')
+    fullfile(caseDirectory, 'Case1ElementBeam.txt')
+    fullfile(caseDirectory, 'CaseATransSite.txt')
+    fullfile(caseDirectory, 'CaseBeam.txt')
+    fullfile(caseDirectory, 'CaseBeamDyn.txt')
+    fullfile(caseDirectory, 'CaseBeamFreq.txt')
+    fullfile(caseDirectory, 'CaseFig11.7p363 MarioPaz.txt')
 };
 
 fprintf('Runtime: %s\n', runtimeName());
@@ -43,19 +44,20 @@ end
 % Проверка всех видов анализа с умышленно короткими временными историями.
 % Это интеграционные проверки отсутствия сбоев; аналитические значения
 % проверяются отдельно в наборе проверочных тестов.
-problem = StructFEProblem('Case1ElementBeam.txt', options);
+problem = StructFEProblem(fullfile(caseDirectory, ...
+    'Case1ElementBeam.txt'), options);
 problem.RunStatic();
 
-problem = StructFEProblem('CaseBeam.txt', options);
+problem = StructFEProblem(fullfile(caseDirectory, 'CaseBeam.txt'), options);
 problem.RunModal();
 
-problem = StructFEProblem('CaseBeamDyn.txt', options);
+problem = StructFEProblem(fullfile(caseDirectory, 'CaseBeamDyn.txt'), options);
 problem.RunTransient(1e-4, 3e-4, 3, 2);
 
-problem = StructFEProblem('CaseBeamFreq.txt', options);
+problem = StructFEProblem(fullfile(caseDirectory, 'CaseBeamFreq.txt'), options);
 problem.RunTransient(1e-4, 3e-4, 3, 2);
 
-problem = StructFEProblem('CaseATransSite.txt', options);
+problem = StructFEProblem(fullfile(caseDirectory, 'CaseATransSite.txt'), options);
 problem.RunTransient(1e-4, 3e-4, 5, 2);
 
 fprintf('All smoke tests passed.\n');

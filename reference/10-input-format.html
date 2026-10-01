@@ -179,24 +179,28 @@ bcfix
 bcforce_stat
 1
 10,2,0,100,0</code></pre>
-        <p>Эквивалентный файл уже находится в корне как <a href="../Case1ElementBeam.txt"><code>Case1ElementBeam.txt</code></a>. Запуск:</p>
-        <pre><code>problem = StructFEProblem("Case1ElementBeam.txt");
+        <p>Эквивалентный файл находится в каталоге примеров как <a href="../examples/cases/Case1ElementBeam.txt"><code>examples/cases/Case1ElementBeam.txt</code></a>. Запуск:</p>
+        <pre><code>problem = StructFEProblem(fullfile( ...
+    "examples", "cases", "Case1ElementBeam.txt"));
 result = problem.RunStatic();
 result.displacements
 result.reactions
 result.elementResults(1).localEndForces</code></pre>
         <p>По умолчанию графика и диагностическая печать выключены. Их можно включить явно:</p>
         <pre><code>options = struct("verbose", true, "plotting", true);
-problem = StructFEProblem("Case1ElementBeam.txt", options);</code></pre>
+problem = StructFEProblem(fullfile( ...
+    "examples", "cases", "Case1ElementBeam.txt"), options);</code></pre>
       </section>
 
       <section aria-labelledby="dynamic-title">
         <h2 id="dynamic-title">9. Модальный и переходный расчёты</h2>
-        <pre><code>problem = StructFEProblem("CaseBeam.txt");
+        <pre><code>problem = StructFEProblem(fullfile( ...
+    "examples", "cases", "CaseBeam.txt"));
 modalResult = problem.RunModal();
 modalResult.frequenciesHz
 
-problem = StructFEProblem("CaseBeamDyn.txt");
+problem = StructFEProblem(fullfile( ...
+    "examples", "cases", "CaseBeamDyn.txt"));
 dynamicResult = problem.RunTransient(1e-4, 1e-2, 3, 2);</code></pre>
         <p>Последние два аргумента — узел 3 и локальная СС 2 (<code>uy</code>) для необязательного графика. Их целочисленность и диапазон проверяются даже при <code>plotting=false</code>. При включённой графике строятся перемещение и односторонний амплитудный спектр выбранной СС.</p>
         <p>Все истории используют сетку <em>t = 0, dt, …, N·dt</em>, где <code>N=fix(duration/dt)</code>. Первый столбец соответствует <em>t=0</em>, последний — фактическому <em>N·dt</em>; число столбцов равно <code>N+1</code>.</p>

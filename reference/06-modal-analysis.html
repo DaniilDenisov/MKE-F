@@ -85,19 +85,21 @@ modeShapes(freeDOFs, :) = reducedModeShapes;</code></pre>
 
         <h3>1. Выполните расчёт и экспорт</h3>
         <p>Откройте терминал в корневом каталоге проекта, запустите GNU Octave и выполните:</p>
-        <pre><code>problem = StructFEProblem('CaseBeam.txt');
+        <pre><code>problem = StructFEProblem(fullfile( ...
+    'examples', 'cases', 'CaseBeam.txt'));
 model = problem.GetAnalysisModel();
 result = problem.RunModal();
 
-exportPostprocessorData(model, result, 'modal-frame.json', ...
+exportPostprocessorData(model, result, ...
+    fullfile('output', 'modal-frame.json'), ...
     struct('title', 'Формы колебаний', ...
            'lengthUnit', 'm', 'prettyPrint', true));</code></pre>
-        <p>После выполнения в корне проекта появится файл <code>modal-frame.json</code>. В терминале также можно проверить найденные частоты командой <code>result.frequenciesHz</code>.</p>
+        <p>После выполнения файл <code>modal-frame.json</code> появится в каталоге <code>output</code>. В терминале также можно проверить найденные частоты командой <code>result.frequenciesHz</code>.</p>
 
         <h3>2. Откройте результат</h3>
         <ol>
           <li>Откройте <a href="../postprocessor/index.html"><code>postprocessor/index.html</code></a> в Chrome, Edge или Firefox.</li>
-          <li>Нажмите <strong>Open JSON</strong> и выберите созданный файл <code>modal-frame.json</code>. Его также можно перетащить в пунктирную область окна.</li>
+          <li>Нажмите <strong>Open JSON</strong> и выберите созданный файл <code>output/modal-frame.json</code>. Его также можно перетащить в пунктирную область окна. Готовый пример находится в <a href="../examples/results/modal-frame.json"><code>examples/results/modal-frame.json</code></a>.</li>
           <li>В списке <strong>Mode</strong> выберите форму. Рядом будут показаны её частота <em>f</em> в Гц и круговая частота <em>ω</em> в рад/с.</li>
           <li>Нажмите <strong>Play</strong>, чтобы запустить анимацию. Кнопки <strong>−1</strong> и <strong>+1</strong> переходят к соседним формам, <strong>Visualization speed</strong> меняет скорость показа.</li>
           <li>Перемещайте <strong>Phase factor</strong> от −1 до +1 для ручного просмотра отрицательного пика, недеформированной геометрии и положительного пика. Поле <strong>Display multiplier</strong> изменяет только видимый масштаб формы.</li>

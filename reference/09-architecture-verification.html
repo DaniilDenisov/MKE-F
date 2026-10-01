@@ -55,7 +55,8 @@
             </tbody>
           </table>
         </div>
-        <pre><code>problem = StructFEProblem("CaseBeam.txt");
+        <pre><code>problem = StructFEProblem(fullfile( ...
+    "examples", "cases", "CaseBeam.txt"));
 model = problem.GetAnalysisModel();
 
 staticResult = solveStatic(model);

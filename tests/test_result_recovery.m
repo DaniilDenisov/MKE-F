@@ -67,7 +67,7 @@ end
 
 function testCantileverEndForces()
 options = struct('verbose', false, 'plotting', false);
-problem = StructFEProblem('Case1ElementBeam.txt', options);
+problem = StructFEProblem(exampleCasePath('Case1ElementBeam.txt'), options);
 result = problem.RunStatic();
 element = result.elementResults(1);
 

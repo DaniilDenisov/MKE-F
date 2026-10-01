@@ -100,7 +100,8 @@ u(freeDOFs) = K(freeDOFs, freeDOFs) \ F(freeDOFs);</code></pre>
 
         <h3>1. Выполните расчёт и экспортируйте результат</h3>
         <p>Запустите GNU Octave из корневого каталога проекта и выполните:</p>
-        <pre><code>problem = StructFEProblem('ANSYSBeamStatic01.txt');
+        <pre><code>problem = StructFEProblem(fullfile( ...
+    'examples', 'cases', 'ANSYSBeamStatic01.txt'));
 model = problem.GetAnalysisModel();
 result = problem.RunStatic();
 
@@ -113,13 +114,13 @@ exportOptions = struct( ...
     'prettyPrint', true);
 
 exportPostprocessorData(model, result, ...
-    'static-frame.json', exportOptions);</code></pre>
+    fullfile('output', 'static-frame.json'), exportOptions);</code></pre>
         <p><a href="../exportPostprocessorData.m"><code>exportPostprocessorData</code></a> проверяет размеры и конечность чисел, исключает глобальные и элементные матрицы и записывает версионированный UTF-8 JSON. Поля единиц являются только подписями: численные значения не пересчитываются. Для показанного экспорта в СИ постпроцессор выводит координаты и перемещения в метрах, силы, нагрузки и реакции — в ньютонах, моменты — в Н·м, напряжения — в Па.</p>
 
         <h3>2. Откройте и настройте изображение</h3>
         <ol>
           <li>Откройте <a href="../postprocessor/index.html"><code>postprocessor/index.html</code></a> в современном Edge, Chromium или Firefox.</li>
-          <li>Нажмите <strong>Open JSON</strong> или перетащите <code>static-frame.json</code> в пунктирную область.</li>
+          <li>Нажмите <strong>Open JSON</strong> или перетащите <code>output/static-frame.json</code> в пунктирную область. Готовый пример также находится в <a href="../examples/results/static-frame.json"><code>examples/results/static-frame.json</code></a>.</li>
           <li>Включайте исходную и деформированную геометрию, опоры, нагрузки, реакции и номера узлов или элементов в панели <strong>Layers</strong>.</li>
           <li>Оставьте <strong>Scale = Automatic</strong> для автоматического увеличения перемещений либо задайте положительный коэффициент вручную. Колесо мыши изменяет масштаб, перетаскивание перемещает вид, а <strong>Reset view</strong> возвращает модель в окно.</li>
           <li>Щёлкните узел или элемент, чтобы выделить его и увидеть идентификатор и основные данные.</li>

@@ -48,7 +48,7 @@ assertClose(truss.localEndForces(3), trussAnalysis.loadVector(3), ...
     1e-12, 1e-9, 'The truss free-end force disagrees with the nodal load.');
 
 frameProblem = StructFEProblem(fullfile(repositoryRoot, ...
-    'Case1ElementBeam.txt'), options);
+    'examples', 'cases', 'Case1ElementBeam.txt'), options);
 frameModel = frameProblem.GetAnalysisModel();
 frameAnalysis = solveStatic(frameModel);
 frame = frameAnalysis.elementResults(1);

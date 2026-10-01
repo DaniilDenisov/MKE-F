@@ -248,7 +248,8 @@ Mff = M1(ff) + M2(ff)
       <section aria-labelledby="run-title">
         <h2 id="run-title">8. Воспроизведение в GNU Octave</h2>
         <pre><code>problem = StructFEProblem( ...
-    'CaseFig11.7p363 MarioPaz.txt', ...
+    fullfile('examples', 'cases', ...
+        'CaseFig11.7p363 MarioPaz.txt'), ...
     struct('verbose', false, 'plotting', false));
 
 model = problem.GetAnalysisModel();
@@ -283,7 +284,7 @@ Phi = result.modeShapes(result.freeDOFs, :)</code></pre>
       <section class="source-list" aria-labelledby="sources-title">
         <h2 id="sources-title">Код и источник</h2>
         <ul>
-          <li><a href="../CaseFig11.7p363 MarioPaz.txt"><code>CaseFig11.7p363 MarioPaz.txt</code></a> — точная геометрия, свойства и закрепления;</li>
+          <li><a href="../examples/cases/CaseFig11.7p363 MarioPaz.txt"><code>CaseFig11.7p363 MarioPaz.txt</code></a> — точная геометрия, свойства и закрепления;</li>
           <li><a href="../createStructuralElement.m"><code>createStructuralElement.m</code></a> — локальные матрицы и преобразование;</li>
           <li><a href="../assembleGlobalMatrices.m"><code>assembleGlobalMatrices.m</code></a> — прямая разреженная сборка;</li>
           <li><a href="../solveModal.m"><code>solveModal.m</code></a> — редукция и обобщённая собственная задача;</li>

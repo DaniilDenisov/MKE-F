@@ -50,7 +50,7 @@ assertThrows('MKEF:InputFileOpenFailed', ...
 end
 
 function testPlotSelectionAndDefaults()
-problem = StructFEProblem('CaseBeamDyn.txt');
+problem = StructFEProblem(exampleCasePath('CaseBeamDyn.txt'));
 assert(~problem.verbose);
 assert(~problem.plotting);
 assertThrows('MKEF:InvalidPlotSelection', ...

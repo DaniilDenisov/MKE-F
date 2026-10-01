@@ -42,13 +42,13 @@ options = quietOptions();
 % Загружаем все старые примеры, чтобы проверить чтение входных данных и глобальную
 % сборку матриц рамных и ферменных моделей. Эти тесты не воспроизводят результаты примеров.
 caseFiles = {
-    'ANSYSBeamStatic01.txt'
-    'Case1ElementBeam.txt'
-    'CaseATransSite.txt'
-    'CaseBeam.txt'
-    'CaseBeamDyn.txt'
-    'CaseBeamFreq.txt'
-    'CaseFig11.7p363 MarioPaz.txt'
+    exampleCasePath('ANSYSBeamStatic01.txt')
+    exampleCasePath('Case1ElementBeam.txt')
+    exampleCasePath('CaseATransSite.txt')
+    exampleCasePath('CaseBeam.txt')
+    exampleCasePath('CaseBeamDyn.txt')
+    exampleCasePath('CaseBeamFreq.txt')
+    exampleCasePath('CaseFig11.7p363 MarioPaz.txt')
 };
 
 for i = 1:numel(caseFiles)
@@ -109,7 +109,7 @@ end
 
 function testCantileverBeam()
 options = quietOptions();
-problem = StructFEProblem('Case1ElementBeam.txt', options);
+problem = StructFEProblem(exampleCasePath('Case1ElementBeam.txt'), options);
 
 % Теория Эйлера-Бернулли даёт точные прогиб и угол поворота конца этой консоли
 % из одного элемента под действием поперечной узловой силы.
@@ -147,7 +147,8 @@ stepCount = 4;
 
 % Рамный узел принимает [Fx, Fy, Mz]. Нагрузки в одном узле и в разных
 % узлах должны суммироваться через общую карту степеней свободы.
-staticProblem = StructFEProblem('Case1ElementBeam.txt', options);
+staticProblem = StructFEProblem( ...
+    exampleCasePath('Case1ElementBeam.txt'), options);
 staticModel = staticProblem.GetAnalysisModel();
 staticModel.forceBoundaryConditions = ...
     [10, 1, -4,  6,  8; ...
@@ -164,7 +165,7 @@ assertClose(staticResult.equilibriumResidual, zeros(3, 1), 0, 1e-8, ...
 
 % Нагрузка типа 10 в динамическом расчёте намеренно действует как прямоугольный
 % импульс длительностью в один шаг для обратной совместимости.
-pulseProblem = StructFEProblem('CaseBeamDyn.txt', options);
+pulseProblem = StructFEProblem(exampleCasePath('CaseBeamDyn.txt'), options);
 pulseLoads = buildTransientLoad(pulseProblem.GetAnalysisModel(), ...
     timeStep, stepCount);
 pulseExpected = zeros(size(pulseLoads));
@@ -208,7 +209,8 @@ assertThrows('MKEF:TimeDependentLoadInStaticAnalysis', ...
     @() buildStaticLoad(stepModel));
 
 % Для типа 11 все компоненты, включая Mz, равны F0*sin(2*pi*f*t).
-harmonicProblem = StructFEProblem('CaseBeamFreq.txt', options);
+harmonicProblem = StructFEProblem( ...
+    exampleCasePath('CaseBeamFreq.txt'), options);
 harmonicModel = harmonicProblem.GetAnalysisModel();
 harmonicModel.forceBoundaryConditions(1, 5) = 25;
 harmonicLoads = buildTransientLoad(harmonicModel, ...
@@ -233,7 +235,7 @@ end
 
 function testFunctionalAnalysisCore()
 options = quietOptions();
-problem = StructFEProblem('CaseBeamDyn.txt', options);
+problem = StructFEProblem(exampleCasePath('CaseBeamDyn.txt'), options);
 originalK = problem.K;
 originalM = problem.M;
 sentinelF = (1:size(problem.K, 1)).';
@@ -294,7 +296,7 @@ end
 
 function testFreeDOFReduction()
 options = quietOptions();
-problem = StructFEProblem('CaseBeam.txt', options);
+problem = StructFEProblem(exampleCasePath('CaseBeam.txt'), options);
 originalK = problem.K;
 originalM = problem.M;
 model = problem.GetAnalysisModel();
@@ -322,7 +324,8 @@ assert(all(all(transientResult.accelerations(fixedDOFs, :) == 0)));
 
 % Нагрузка на заделанную СС не входит в редуцированную систему, но должна
 % сохраниться в полном векторе нагрузки и учитываться в реакции.
-cantilever = StructFEProblem('Case1ElementBeam.txt', options);
+cantilever = StructFEProblem( ...
+    exampleCasePath('Case1ElementBeam.txt'), options);
 loadedSupportModel = cantilever.GetAnalysisModel();
 loadedSupportModel.forceBoundaryConditions(end + 1, :) = ...
     [10, 1, 25, -30, 0, 0];
