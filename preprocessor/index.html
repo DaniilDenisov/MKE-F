@@ -7,6 +7,7 @@
   <link rel="stylesheet" href="assets/preprocessor.css">
   <script defer src="js/namespace.js"></script>
   <script defer src="../shared/support-markers.js"></script>
+  <script defer src="../shared/api-client.js"></script>
   <script defer src="js/case-format.js"></script>
   <script defer src="js/renderer.js"></script>
   <script defer src="js/app.js"></script>
@@ -15,9 +16,12 @@
   <header class="toolbar">
     <div class="brand"><span class="brand-mark">M</span><div><strong>MKE-F Preprocessor</strong><small id="case-status">New case</small></div></div>
     <div class="toolbar-actions">
+      <nav class="app-nav" aria-label="Application"><a aria-current="page" href="index.html">Preprocessor</a><a href="../postprocessor/index.html">Results</a><a href="../reference/index.html">Reference</a></nav>
       <button id="new-case" type="button">New</button>
       <label class="button" for="file-input">Open TXT</label><input id="file-input" type="file" accept=".txt,text/plain">
       <button id="download-case" class="primary" type="button">Download TXT</button>
+      <button id="run-analysis" class="primary" type="button" aria-describedby="solver-message" disabled>Run analysis</button>
+      <span id="solver-message" class="solver-message" hidden></span>
       <button id="undo" type="button" disabled>Undo</button><button id="redo" type="button" disabled>Redo</button>
       <button id="reset-view" type="button">Reset view</button>
     </div>
@@ -32,6 +36,10 @@
       <section class="help"><p>Place nodes, then use Add element and select its endpoints. Exact values remain editable in the tables. Wheel to zoom and drag empty canvas to pan.</p></section>
     </aside>
     <section class="workspace" id="drop-zone">
+      <section id="run-panel" class="run-panel" aria-live="polite" hidden>
+        <div class="run-summary"><div><strong id="run-status">Waiting</strong><span id="run-elapsed">0.0 s</span></div><button id="cancel-run" type="button">Cancel</button></div>
+        <details><summary>Solver log</summary><pre id="run-log">No solver output yet.</pre></details>
+      </section>
       <div id="error-panel" class="message error" role="alert" hidden></div>
       <div id="notice-panel" class="message notice" role="status" hidden></div>
       <div class="canvas-wrap"><svg id="viewport" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Editable structural model with X and Y coordinate axes"></svg><span class="drop-hint">Drop an MKE-F case file anywhere here</span></div>

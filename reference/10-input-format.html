@@ -32,6 +32,7 @@
         <li><a href="09-architecture-verification.html">Архитектура и проверка</a></li>
         <li><a aria-current="page" href="10-input-format.html">Формат входного файла</a></li>
         <li><a href="11-mario-paz-modal-example.html">Модальный пример Mario Paz</a></li>
+        <li><a href="12-local-octave-workflow.html">Локальный запуск в GNU Octave</a></li>
       </ol>
     </nav>
 
@@ -223,6 +224,10 @@ dynamicResult = problem.RunTransient(1e-4, 1e-2, 3, 2);</code></pre>
 dynamicResult = problem.RunTransient(1e-4, 1e-2, 3, 2, initial);</code></pre>
         <p>Векторы <code>u0</code> и <code>v0</code> имеют полный размер модели и нули на закреплённых СС. Начальное ускорение вычисляется из равновесия. Интегрирование использует метод средних ускорений Ньюмарка с β=1/4 и γ=1/2.</p>
         <p>Если файл содержит секцию <code>analysis</code>, тот же расчёт запускается как <code>result = problem.RunSelected()</code>. Настроенный переходный запуск использует нулевые начальные перемещения и скорости.</p>
+        <div class="callout callout--inspect">
+          <span class="callout__title">Запуск файла через GUI</span>
+          <p>Выполните из корня репозитория <code>docker compose up --build</code> (или <code>docker-compose up --build</code>), откройте <a href="http://127.0.0.1:8080/preprocessor/">http://127.0.0.1:8080/preprocessor/</a> и загрузите TXT-файл кнопкой <strong>Open TXT</strong>. Для старого файла без секции <code>analysis</code> сначала выберите вид расчёта и, при необходимости, параметры переходного процесса. Кнопка <strong>Run analysis</strong> сериализует проверенную модель, вызывает <code>RunSelected()</code> в контейнере Octave и открывает результат без ручного переноса файлов.</p>
+        </div>
       </section>
 
       <section aria-labelledby="results-title">
@@ -289,7 +294,7 @@ dynamicResult = problem.RunTransient(1e-4, 1e-2, 3, 2, initial);</code></pre>
   </nav>
 
   <footer class="site-footer">
-    <div class="site-footer__inner"><p>МКЭ-Ф · автономный учебный справочник · глава 10 из 11</p></div>
+    <div class="site-footer__inner"><p>МКЭ-Ф · автономный учебный справочник · глава 10 из 12</p></div>
   </footer>
 </body>
 </html>

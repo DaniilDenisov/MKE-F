@@ -7,6 +7,7 @@
   <link rel="stylesheet" href="assets/postprocessor.css">
   <script defer src="js/namespace.js"></script>
   <script defer src="../shared/support-markers.js"></script>
+  <script defer src="../shared/api-client.js"></script>
   <script defer src="js/data-model.js"></script>
   <script defer src="js/geometry.js"></script>
   <script defer src="js/svg-renderer.js"></script>
@@ -24,8 +25,10 @@
       <div><strong>MKE-F Postprocessor</strong><small id="dataset-title">No dataset loaded</small></div>
     </div>
     <div class="toolbar-actions">
+      <nav class="app-nav" aria-label="Application"><a href="../preprocessor/index.html">Preprocessor</a><a aria-current="page" href="index.html">Results</a><a href="../reference/index.html">Reference</a></nav>
       <label class="button primary" for="file-input">Open JSON</label>
       <input id="file-input" type="file" accept=".json,application/json">
+      <button id="download-json" type="button" disabled>Download JSON</button>
       <button id="export-svg" type="button" disabled>Export SVG</button>
       <button id="export-png" type="button" disabled>Export PNG</button>
       <button id="reset-view" type="button" disabled>Reset view</button>

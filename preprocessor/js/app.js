@@ -3,6 +3,8 @@
   var M = global.MKEFPre, F = M.caseFormat;
   var state, renderer, undoStack = [], redoStack = [], dirty = false, selection = null;
   var elements = {};
+  var apiReady = false, activeJobId = null, pollTimer = null, navigatingToResult = false;
+  var activeJobStorageKey = 'mkef-active-job';
 
   function byId(id) { return document.getElementById(id); }
   function clone(value) {
@@ -34,6 +36,89 @@
 
   function setNotice(message) { elements.notice.textContent = message || ''; elements.notice.hidden = !message; }
   function setError(message) { elements.error.textContent = message || ''; elements.error.hidden = !message; }
+
+  function storedJobId() {
+    try { return global.sessionStorage.getItem(activeJobStorageKey); } catch (_) { return null; }
+  }
+  function storeJobId(value) {
+    try { if (value) global.sessionStorage.setItem(activeJobStorageKey, value); else global.sessionStorage.removeItem(activeJobStorageKey); } catch (_) { /* storage is optional */ }
+  }
+  function runStatusLabel(status) {
+    return { queued: 'Queued', running: 'Running in GNU Octave', succeeded: 'Completed', failed: 'Calculation failed', canceled: 'Canceled', timed_out: 'Timed out' }[status] || status;
+  }
+  function updateRunPanel(job) {
+    elements.runPanel.hidden = false;
+    elements.runStatus.textContent = runStatusLabel(job.status);
+    elements.runElapsed.textContent = Number(job.elapsedSeconds || 0).toFixed(1) + ' s';
+    elements.runLog.textContent = job.logTail || 'No solver output yet.';
+    elements.cancelRun.disabled = ['queued', 'running'].indexOf(job.status) < 0;
+  }
+  function clearPollTimer() { if (pollTimer) { global.clearTimeout(pollTimer); pollTimer = null; } }
+  function finishActiveJob(job) {
+    clearPollTimer(); storeJobId(null); activeJobId = null; render();
+    if (job.status === 'failed' || job.status === 'timed_out') setError(job.error && job.error.message ? job.error.message : 'The calculation failed.');
+  }
+
+  async function pollActiveJob() {
+    if (!activeJobId) return;
+    try {
+      var job = await global.MKEFApi.getJob(activeJobId);
+      updateRunPanel(job);
+      if (job.status === 'succeeded') {
+        var completedId = activeJobId;
+        clearPollTimer(); storeJobId(null); activeJobId = null; navigatingToResult = true;
+        global.location.assign('../postprocessor/?job=' + encodeURIComponent(completedId));
+        return;
+      }
+      if (['failed', 'canceled', 'timed_out'].indexOf(job.status) >= 0) { finishActiveJob(job); return; }
+      pollTimer = global.setTimeout(pollActiveJob, 1000);
+    } catch (error) {
+      if (error.status === 404) { clearPollTimer(); storeJobId(null); activeJobId = null; render(); }
+      setError(error.message);
+    }
+  }
+
+  async function submitCurrentCase() {
+    if (!apiReady || activeJobId) return;
+    var caseText;
+    try { caseText = F.serialize(state); } catch (error) { setError(error.message); return; }
+    elements.run.disabled = true; setError('');
+    elements.runPanel.hidden = false; elements.runStatus.textContent = 'Submitting'; elements.runElapsed.textContent = '0.0 s'; elements.runLog.textContent = 'No solver output yet.'; elements.cancelRun.disabled = true;
+    try {
+      var job = await global.MKEFApi.createJob(state.name || 'Case', caseText);
+      activeJobId = job.id; storeJobId(activeJobId); updateRunPanel(job); pollActiveJob();
+    } catch (error) { elements.runPanel.hidden = true; render(); setError(error.message); }
+  }
+
+  async function cancelActiveJob() {
+    if (!activeJobId) return;
+    elements.cancelRun.disabled = true;
+    try { var job = await global.MKEFApi.cancelJob(activeJobId); updateRunPanel(job); finishActiveJob(job); }
+    catch (error) { setError(error.message); elements.cancelRun.disabled = false; }
+  }
+
+  async function configureSolver() {
+    if (!global.MKEFApi || !global.MKEFApi.isHosted()) {
+      elements.run.title = 'Run analysis is available when the application is started with Docker Compose.';
+      elements.solverMessage.textContent = elements.run.title;
+      elements.solverMessage.hidden = false;
+      render(); return;
+    }
+    try {
+      var health = await global.MKEFApi.health();
+      apiReady = health.status === 'ready';
+      elements.run.title = apiReady ? 'Run this case with ' + health.octaveVersion : 'The local solver is unavailable.';
+      elements.solverMessage.textContent = apiReady ? '' : elements.run.title;
+      elements.solverMessage.hidden = apiReady;
+      var candidate = storedJobId();
+      if (candidate && global.MKEFApi.isValidJobId(candidate)) { activeJobId = candidate; pollActiveJob(); }
+    } catch (error) {
+      apiReady = false; elements.run.title = error.message;
+      elements.solverMessage.textContent = 'Local solver unavailable: ' + error.message;
+      elements.solverMessage.hidden = false;
+    }
+    render();
+  }
 
   function currentNode() { return selection && selection.kind === 'node' ? selection.index + 1 : 1; }
   function placementPoint(point) {
@@ -162,6 +247,7 @@
     if (!errors.length) { text = F.serialize(state); elements.validationStatus.textContent = 'Valid ' + state.analysis.type + ' case · ready to download'; elements.validationStatus.className = 'status-valid'; elements.download.disabled = false; }
     else { text = '# Resolve validation errors to generate a case file.\n'; elements.validationStatus.textContent = errors.length + ' validation issue' + (errors.length === 1 ? '' : 's'); elements.validationStatus.className = ''; elements.download.disabled = true; }
     elements.preview.value = text; setError(errors.slice(0, 6).join('\n') + (errors.length > 6 ? '\n…' : ''));
+    elements.run.disabled = errors.length > 0 || !apiReady || !!activeJobId;
     elements.undo.disabled = !undoStack.length; elements.redo.disabled = !redoStack.length; elements.caseStatus.textContent = dirty ? state.name + ' · modified' : state.name;
   }
 
@@ -184,6 +270,7 @@
   function bind() {
     elements = {
       caseStatus: byId('case-status'), fileInput: byId('file-input'), download: byId('download-case'), undo: byId('undo'), redo: byId('redo'),
+      run: byId('run-analysis'), solverMessage: byId('solver-message'), runPanel: byId('run-panel'), runStatus: byId('run-status'), runElapsed: byId('run-elapsed'), runLog: byId('run-log'), cancelRun: byId('cancel-run'),
       error: byId('error-panel'), notice: byId('notice-panel'), caseName: byId('case-name'), analysisType: byId('analysis-type'), elementType: byId('element-type'),
       transientSettings: byId('transient-settings'), timeStep: byId('time-step'), duration: byId('duration'), monitorNode: byId('monitor-node'), monitorDOF: byId('monitor-dof'),
       gridEnabled: byId('grid-enabled'), snapEnabled: byId('snap-enabled'), gridSpacing: byId('grid-spacing'), defaultArea: byId('default-area'), defaultYoung: byId('default-young'), defaultDensity: byId('default-density'), defaultInertia: byId('default-inertia'), defaultInertiaLabel: byId('default-inertia-label'),
@@ -193,6 +280,8 @@
     state = F.newModel('', 0); render(); renderer.fit(); renderer.draw(state);
     byId('new-case').addEventListener('click', function () { if (!confirmDiscard()) return; state = F.newModel('', 0); undoStack = []; redoStack = []; dirty = false; selection = null; render(); renderer.fit(); });
     elements.fileInput.addEventListener('change', function () { openFile(elements.fileInput.files[0]); elements.fileInput.value = ''; });
+    elements.run.addEventListener('click', submitCurrentCase);
+    elements.cancelRun.addEventListener('click', cancelActiveJob);
     elements.download.addEventListener('click', function () { try { var text = F.serialize(state), blob = new Blob([text], { type: 'text/plain;charset=utf-8' }), url = URL.createObjectURL(blob), link = document.createElement('a'); link.href = url; link.download = (state.name.replace(/[^A-Za-z0-9._ -]/g, '_') || 'Case') + '.txt'; link.click(); setTimeout(function () { URL.revokeObjectURL(url); }, 0); dirty = false; render(); } catch (error) { setError(error.message); } });
     elements.undo.addEventListener('click', function () { if (!undoStack.length) return; redoStack.push(snapshot()); state = undoStack.pop(); selection = null; dirty = true; render(); });
     elements.redo.addEventListener('click', function () { if (!redoStack.length) return; undoStack.push(snapshot()); state = redoStack.pop(); selection = null; dirty = true; render(); });
@@ -211,14 +300,19 @@
     byId('add-node').addEventListener('click', function () { addNode({ x: 0, y: 0 }); });
     byId('add-element').addEventListener('click', function () {
       if (state.nodes.length < 2) { setNotice('Add at least two nodes first.'); return; }
-      var firstNode = selection && selection.kind === 'node' ? selection.index : null;
-      activateCanvasTool('member', firstNode);
-      setNotice(firstNode === null ? 'Element Add mode: select first node for element' : 'Element Add mode: select second node for element');
+      if (selection && selection.kind === 'node') {
+        activateCanvasTool('member', selection.index);
+        setNotice('Element Add mode: select second node for element');
+      } else {
+        activateCanvasTool('member', null);
+        setNotice('Element Add mode: select first node for element');
+      }
     });
     byId('add-support').addEventListener('click', function () { commit(function () { state.supports.push({ type: 1, node: currentNode() }); }); });
     elements.addLoad.addEventListener('click', function () { if (state.analysis.type === 'modal') return; commit(function () { state.loads.push({ type: state.analysis.type === 'static' ? 10 : 13, node: currentNode(), fx: 0, fy: -1, mz: 0, frequency: null }); }); });
     var drop = byId('drop-zone'); drop.addEventListener('dragover', function (event) { event.preventDefault(); }); drop.addEventListener('drop', function (event) { event.preventDefault(); if (event.dataTransfer.files.length) openFile(event.dataTransfer.files[0]); });
-    global.addEventListener('beforeunload', function (event) { if (!dirty) return; event.preventDefault(); event.returnValue = ''; });
+    global.addEventListener('beforeunload', function (event) { if (!dirty || navigatingToResult) return; event.preventDefault(); event.returnValue = ''; });
+    configureSolver();
   }
 
   document.addEventListener('DOMContentLoaded', bind);

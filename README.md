@@ -13,6 +13,47 @@ https://конструкторский.рф/
 GNU Octave является единственной поддерживаемой средой выполнения. Совместимость
 с MATLAB не тестируется и не гарантируется.
 
+## Единый интерфейс через Docker Compose
+
+Препроцессор, расчёт в GNU Octave 11.3.0 и постпроцессор можно запустить как
+единое локальное приложение. Установленный на компьютере Octave для этого не
+нужен — требуется Docker Desktop или Docker Engine с Compose:
+
+```sh
+docker compose up --build
+```
+
+Для старой отдельной команды Compose используется эквивалентный запуск
+`docker-compose up --build`. После готовности контейнеров откройте
+`http://127.0.0.1:8080`. Кнопка `Run analysis` передаёт текущую проверенную
+модель локальному API, показывает состояние и журнал Octave, а после расчёта
+автоматически открывает результат. JSON результата нужно скачать, если его
+требуется сохранить после остановки контейнеров.
+
+Снаружи публикуется только Nginx на loopback-интерфейсе. FastAPI и Octave
+доступны лишь во внутренней сети Compose; произвольные скрипты и выражения API
+не принимает. Одновременно выполняется один расчёт. По умолчанию действуют
+тайм-аут 30 минут, лимиты 10 МиБ для кейса и 100 МиБ для результата. Порт и
+основные лимиты можно переопределить переменными `MKEF_PORT`,
+`MKEF_JOB_TIMEOUT_SECONDS`, `MKEF_SOLVER_CPUS` и `MKEF_SOLVER_MEMORY`.
+
+Проверка контейнерного стека после запуска:
+
+```powershell
+./scripts/compose_smoke_test.ps1
+```
+
+Сборка и запуск Python/Octave интеграционных тестов в отдельном тестовом образе:
+
+```sh
+docker build --target test -t mkef-solver-test -f docker/solver.Dockerfile .
+docker run --rm mkef-solver-test
+```
+
+Прямое открытие `preprocessor/index.html` и `postprocessor/index.html` с диска
+по-прежнему поддерживается; в этом режиме доступны прежние операции с файлами,
+но запуск расчёта отключён.
+
 Перед работой добавьте корень репозитория в путь и подключите каталоги исходного
 кода:
 
@@ -60,6 +101,12 @@ octave --no-gui --quiet --eval "addpath(pwd); setup; run_octave_smoke_tests;"
 Полный численный разбор двухэлементной рамы Mario Paz — от локальных матриц
 жёсткости и масс до частот и форм — находится в
 [`reference/11-mario-paz-modal-example.html`](reference/11-mario-paz-modal-example.html).
+
+Отдельный путь для студентов с установленным GNU Octave, но без Docker и
+браузерного GUI, приведён в
+[`reference/12-local-octave-workflow.html`](reference/12-local-octave-workflow.html):
+там показаны `RunSelected`, явные методы анализа, чистые функции ядра и локальные
+smoke- и verification-тесты.
 
 Все семь лабораторных используют функции проекта, проверяют численные инварианты
 и запускаются из корня репозитория одной командой GNU Octave:
@@ -235,14 +282,16 @@ SVG и PNG фиксируют текущий кадр, график, время,
 
 ## Тесты браузерных приложений
 
-Численные тесты в [`postprocessor/tests`](postprocessor/tests) и
-[`preprocessor/tests`](preprocessor/tests) запускаются вручную в браузере и не
+Численные тесты в [`postprocessor/tests`](postprocessor/tests),
+[`preprocessor/tests`](preprocessor/tests) и [`shared/tests`](shared/tests)
+запускаются вручную в браузере и не
 входят в `run_octave_tests`. Статические проверки файлов обоих приложений входят
 в Octave-набор. Сборка, установка пакетов и подключение к интернету не нужны.
 
 1. Откройте файл [`postprocessor/tests/index.html`](postprocessor/tests/index.html)
    в браузере прямо с диска (например, двойным щелчком в файловом менеджере).
-   Затем так же откройте [`preprocessor/tests/index.html`](preprocessor/tests/index.html).
+   Затем так же откройте [`preprocessor/tests/index.html`](preprocessor/tests/index.html)
+   и [`shared/tests/index.html`](shared/tests/index.html).
 2. Дождитесь окончания проверки: вместо `Running…` появится список результатов.
 3. Успешный запуск содержит только строки `PASS`, а в последней строке указано
    `<число> passed`. Ниже также должна отображаться тестовая сцена с исходной и
@@ -258,7 +307,8 @@ python -m http.server 8000
 
 Затем откройте
 `http://localhost:8000/postprocessor/tests/` и
-`http://localhost:8000/preprocessor/tests/`. Сервер остановится после нажатия
+`http://localhost:8000/preprocessor/tests/`, а также
+`http://localhost:8000/shared/tests/`. Сервер остановится после нажатия
 `Ctrl+C` в терминале.
 
 ## Формат входного файла

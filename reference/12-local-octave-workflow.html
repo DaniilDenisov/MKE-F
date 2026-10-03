@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Локальный запуск численного ядра МКЭ-Ф в GNU Octave без Docker и браузерного GUI: настройка пути, три вида анализа, чистые решатели и тесты.">
+  <title>12. Локальный запуск в GNU Octave — МКЭ-Ф</title>
+  <link rel="stylesheet" href="assets/reference.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">К содержанию</a>
+  <header class="site-header">
+    <div class="site-header__inner">
+      <p class="eyebrow">Student FEM Reference · Глава 12</p>
+      <p class="site-title">Численное ядро без Docker</p>
+      <p class="site-subtitle">Прямой локальный путь от TXT-модели до матриц и результатов через GNU Octave — без веб-интерфейса, контейнера и ручного копирования кода.</p>
+    </div>
+  </header>
+
+  <div class="layout">
+    <nav class="contents" aria-label="Оглавление справочника">
+      <h2>Оглавление</h2>
+      <ol>
+        <li><a href="01-model-dofs.html">Модель, узлы, элементы и СС</a></li>
+        <li><a href="02-element-matrices.html">Матрицы элементов</a></li>
+        <li><a href="03-transformation-assembly.html">Преобразование и сборка</a></li>
+        <li><a href="04-boundary-loads.html">Граничные условия и нагрузки</a></li>
+        <li><a href="05-static-analysis.html">Статический расчёт</a></li>
+        <li><a href="06-modal-analysis.html">Модальный анализ</a></li>
+        <li><a href="07-newmark-transient.html">Переходный анализ Ньюмарка</a></li>
+        <li><a href="08-result-recovery.html">Результаты в элементах</a></li>
+        <li><a href="09-architecture-verification.html">Архитектура и проверка</a></li>
+        <li><a href="10-input-format.html">Формат входного файла</a></li>
+        <li><a href="11-mario-paz-modal-example.html">Модальный пример Mario Paz</a></li>
+        <li><a aria-current="page" href="12-local-octave-workflow.html">Локальный запуск в GNU Octave</a></li>
+      </ol>
+    </nav>
+
+    <main class="chapter" id="main">
+      <span class="chapter-number">Глава 12</span>
+      <h1>Запуск решателя непосредственно в Octave</h1>
+      <p class="lead">Этот режим продолжает исходный способ работы МКЭ-Ф: студент открывает проект в установленном GNU Octave, читает входной файл и вызывает численное ядро напрямую. Docker и браузерный GUI не требуются. Теми же точками входа выполняется большая часть автоматических проверок решателя.</p>
+
+      <section aria-labelledby="requirements-title">
+        <h2 id="requirements-title">1. Что необходимо</h2>
+        <ul>
+          <li>GNU Octave 8.4 или новее; проект локально проверяется на Octave 11.3.0;</li>
+          <li>полная копия каталога МКЭ-Ф с файлами <a href="../setup.m"><code>setup.m</code></a>, <code>src</code>, <code>scripts</code>, <code>examples</code> и <code>tests</code>;</li>
+          <li>право чтения исходных файлов и право записи только в выбранный студентом каталог результатов.</li>
+        </ul>
+        <p>Дополнительные пакеты Octave, Python, npm и сетевое подключение для вычислений не нужны. Можно использовать графическое окно Octave только как терминал либо полностью безоконный <code>octave-cli</code>.</p>
+        <div class="callout callout--warning">
+          <span class="callout__title">Рабочий каталог</span>
+          <p>Все команды ниже начинают из корня репозитория — каталога, в котором лежит <code>setup.m</code>. Если Octave открыт в другом месте, сначала выполните <code>cd</code> с собственным абсолютным путём к МКЭ-Ф.</p>
+        </div>
+      </section>
+
+      <section aria-labelledby="setup-title">
+        <h2 id="setup-title">2. Подключение ядра к пути Octave</h2>
+        <p>В окне команд GNU Octave:</p>
+        <pre><code>cd('C:/путь/к/MKE-F');
+addpath(pwd);
+setup;</code></pre>
+        <p>На Linux и macOS путь может выглядеть как <code>/home/student/MKE-F</code>. Функция <a href="../setup.m"><code>setup</code></a> добавляет только каталоги модели, общих операций, трёх решателей, результатов и скриптов. Она не запускает расчёт и не изменяет входные данные.</p>
+        <p>Проверить подключение можно без вычислений:</p>
+        <pre><code>which StructFEProblem
+which solveStatic
+which solveModal
+which solveTransient</code></pre>
+        <p>Каждая команда должна показать файл внутри текущего проекта, а не другую копию МКЭ-Ф.</p>
+      </section>
+
+      <section aria-labelledby="selected-title">
+        <h2 id="selected-title">3. Первый расчёт через RunSelected</h2>
+        <p>Файлы <code>CasePreprocessorStatic.txt</code>, <code>CasePreprocessorModal.txt</code> и <code>CasePreprocessorTransient.txt</code> уже содержат секцию <code>analysis</code>. Поэтому один и тот же вызов выбирает нужный решатель из входного файла:</p>
+        <pre><code>addpath(pwd);
+setup;
+
+casePath = fullfile('examples', 'cases', ...
+    'CasePreprocessorStatic.txt');
+options = struct('verbose', true, 'plotting', false);
+problem = StructFEProblem(casePath, options);
+result = problem.RunSelected();
+
+result.analysisType
+result.displacements
+result.reactions</code></pre>
+        <p><code>StructFEProblem</code> читает TXT, строит сетку, нумерует степени свободы, создаёт элементы и собирает разреженные матрицы <strong>K</strong> и <strong>M</strong>. <code>RunSelected()</code> читает только конфигурацию <code>analysis</code> и вызывает <code>RunStatic</code>, <code>RunModal</code> или <code>RunTransient</code>.</p>
+        <div class="callout callout--inspect">
+          <span class="callout__title">Попробуйте три готовых файла</span>
+          <p>Заменяйте имя на <code>CasePreprocessorModal.txt</code> или <code>CasePreprocessorTransient.txt</code>. Для модального ответа смотрите <code>result.frequenciesHz</code> и <code>result.modeShapes</code>; для переходного — <code>result.time</code>, <code>result.displacements</code>, <code>result.velocities</code> и <code>result.accelerations</code>.</p>
+        </div>
+      </section>
+
+      <section aria-labelledby="legacy-title">
+        <h2 id="legacy-title">4. Старые файлы и явные методы</h2>
+        <p>Файлы, созданные до появления секции <code>analysis</code>, остаются допустимыми. Для них вид расчёта задаётся методом, как в историческом интерфейсе программы:</p>
+        <pre><code>staticProblem = StructFEProblem(fullfile( ...
+    'examples', 'cases', 'Case1ElementBeam.txt'));
+staticResult = staticProblem.RunStatic();
+
+modalProblem = StructFEProblem(fullfile( ...
+    'examples', 'cases', 'CaseBeam.txt'));
+modalResult = modalProblem.RunModal();
+
+transientProblem = StructFEProblem(fullfile( ...
+    'examples', 'cases', 'CaseBeamDyn.txt'));
+transientResult = transientProblem.RunTransient( ...
+    1e-4, 1e-2, 3, 2);</code></pre>
+        <p>Аргументы переходного метода — шаг времени, длительность, номер контрольного узла и локальная степень свободы. Последние два значения проверяются даже при <code>plotting=false</code>, хотя в безоконном режиме график не строится.</p>
+      </section>
+
+      <section aria-labelledby="kernel-title">
+        <h2 id="kernel-title">5. Чистые функции численного ядра</h2>
+        <p>Для изучения алгоритма полезно отделить чтение и сборку от решения. <code>GetAnalysisModel()</code> создаёт обычную структуру значений, которую решатели не изменяют:</p>
+        <pre><code>addpath(pwd);
+setup;
+
+problem = StructFEProblem(fullfile( ...
+    'examples', 'cases', 'Case1ElementBeam.txt'));
+model = problem.GetAnalysisModel();
+staticResult = solveStatic(model);
+
+modalProblem = StructFEProblem(fullfile( ...
+    'examples', 'cases', 'CaseBeam.txt'));
+modalModel = modalProblem.GetAnalysisModel();
+modalResult = solveModal(modalModel);
+
+transientProblem = StructFEProblem(fullfile( ...
+    'examples', 'cases', 'CaseBeamDyn.txt'));
+transientModel = transientProblem.GetAnalysisModel();
+transientOptions = struct('timeStep', 1e-4, ...
+    'duration', 1e-2);
+transientResult = solveTransient( ...
+    transientModel, transientOptions);</code></pre>
+        <p>Это точные функции ядра, на которые ссылаются главы о расчётах:</p>
+        <ul>
+          <li><a href="../src/analysis/static/solveStatic.m"><code>solveStatic.m</code></a> — редукция, решение, реакции, равновесие и результаты элементов;</li>
+          <li><a href="../src/analysis/modal/solveModal.m"><code>solveModal.m</code></a> — обобщённая собственная задача и полные формы;</li>
+          <li><a href="../src/analysis/transient/solveTransient.m"><code>solveTransient.m</code></a> — метод средних ускорений Ньюмарка и полные истории;</li>
+          <li><a href="../src/model/createAnalysisModel.m"><code>createAnalysisModel.m</code></a> — контракт неизменяемой структуры модели.</li>
+        </ul>
+        <p>Повторный вызов с той же структурой должен дать тот же ответ: решатели не сохраняют состояние между запусками.</p>
+      </section>
+
+      <section aria-labelledby="matrices-title">
+        <h2 id="matrices-title">6. Доступ к матрицам и промежуточным данным</h2>
+        <p>Матрицы хранятся разреженно. Для лабораторной сначала смотрите размер, число ненулевых коэффициентов и симметрию; превращайте в полную матрицу только небольшие примеры:</p>
+        <pre><code>size(problem.K)
+nnz(problem.K)
+norm(problem.K - problem.K.', inf)
+
+K = full(problem.K);       % только для небольшой модели
+M = full(problem.M);
+dofMap = problem.mesh.iMnod</code></pre>
+        <p>У чистой модели те же данные называются <code>model.stiffness</code>, <code>model.mass</code>, <code>model.dofMap</code> и <code>model.nodeCoordinates</code>. Так можно сопоставлять каждую строку формулы с исполняемым массивом.</p>
+      </section>
+
+      <section aria-labelledby="headless-title">
+        <h2 id="headless-title">7. Полностью безоконный запуск</h2>
+        <p>Тот же код можно выполнить из системного терминала. На Windows официальный дистрибутив обычно предоставляет <code>octave-cli</code>; на Linux часто доступна команда <code>octave</code>:</p>
+        <pre><code>octave-cli --no-gui --quiet --no-history --eval "addpath(pwd); setup; problem = StructFEProblem(fullfile('examples','cases','CasePreprocessorStatic.txt')); result = problem.RunSelected(); disp(result.displacements);"</code></pre>
+        <p>Эквивалентная команда с исполняемым файлом <code>octave</code>:</p>
+        <pre><code>octave --no-gui --quiet --no-history --eval "addpath(pwd); setup; run_octave_smoke_tests;"</code></pre>
+        <p>Ключ <code>--no-gui</code> отключает окно Octave, <code>--quiet</code> убирает стартовый баннер, <code>--no-history</code> не записывает историю команд. Параметр модели <code>plotting=false</code> предотвращает создание графических окон самим проектом.</p>
+      </section>
+
+      <section aria-labelledby="tests-title">
+        <h2 id="tests-title">8. Те же проверки, которыми сопровождается решатель</h2>
+        <p>Быстрая интеграционная проверка читает десять входных файлов, проверяет разреженную сборку и запускает статику, моды, импульсные и гармонические переходные задачи:</p>
+        <pre><code>addpath(pwd);
+setup;
+run_octave_smoke_tests;</code></pre>
+        <p>Полная локальная проверка затем добавляет независимые численные инварианты, восстановление результатов, экспорт и целостность автономных HTML-страниц:</p>
+        <pre><code>addpath(pwd);
+setup;
+run_octave_tests;</code></pre>
+        <ul>
+          <li><a href="../scripts/run_octave_smoke_tests.m"><code>scripts/run_octave_smoke_tests.m</code></a> показывает реальную последовательность сборки и запуска всех видов анализа;</li>
+          <li><a href="../scripts/run_octave_tests.m"><code>scripts/run_octave_tests.m</code></a> является общей локальной точкой входа;</li>
+          <li><a href="../tests/run_verification_tests.m"><code>tests/run_verification_tests.m</code></a> перечисляет проверяемые физические и численные свойства.</li>
+        </ul>
+        <div class="callout">
+          <span class="callout__title">Что означает успешный тест</span>
+          <p>Smoke-набор отвечает на вопрос «все поставляемые задачи собираются и выполняются?». Verification-набор отдельно проверяет формулы, размерности, симметрию, равновесие, модальный эталон Mario Paz, схему Ньюмарка и восстановление усилий. Для изменения ядра нужны оба уровня.</p>
+        </div>
+      </section>
+
+      <section aria-labelledby="results-title">
+        <h2 id="results-title">9. Сохранение и последующий анализ</h2>
+        <p>Структуры Octave можно сохранить для продолжения лабораторной:</p>
+        <pre><code>save('-mat7-binary', fullfile('output', ...
+    'local-static.mat'), 'model', 'staticResult');</code></pre>
+        <p>Если нужен автономный браузерный просмотр только результата, Docker всё равно не требуется:</p>
+        <pre><code>exportPostprocessorData(model, staticResult, ...
+    fullfile('output', 'local-static.json'), ...
+    struct('title', 'Локальный статический расчёт', ...
+           'prettyPrint', true));</code></pre>
+        <p>После этого откройте <a href="../postprocessor/index.html"><code>postprocessor/index.html</code></a> прямо с диска и выберите JSON. Это не запускает код Octave из браузера: вычисление уже завершено локально, а HTML только проверяет и визуализирует данные.</p>
+      </section>
+
+      <section aria-labelledby="diagnostics-title">
+        <h2 id="diagnostics-title">10. Типичные затруднения</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Сообщение или симптом</th><th>Что проверить</th></tr></thead>
+            <tbody>
+              <tr><td><code>StructFEProblem undefined</code></td><td>Octave открыт не в корне проекта либо не выполнены <code>addpath(pwd); setup;</code>.</td></tr>
+              <tr><td><code>MKEF:MissingAnalysisConfiguration</code></td><td>Старый файл не содержит <code>analysis</code>. Используйте явный <code>RunStatic</code>, <code>RunModal</code> или <code>RunTransient</code>.</td></tr>
+              <tr><td>Файл не найден</td><td>Проверьте <code>pwd</code> и собирайте путь через <code>fullfile</code>, не полагаясь на разделитель конкретной ОС.</td></tr>
+              <tr><td>Механизм или вырожденная система</td><td>Проверьте закрепления, нулевые длины, свойства элементов и наличие массы на свободных СС.</td></tr>
+              <tr><td>Появляется окно графика</td><td>Создавайте задачу с <code>struct('verbose', false, 'plotting', false)</code> и запускайте Octave с <code>--no-gui</code>.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="source-list" aria-labelledby="sources-title">
+        <h2 id="sources-title">Маршрут чтения исходного кода</h2>
+        <ol>
+          <li><a href="../src/model/StructFEProblem.m"><code>StructFEProblem.m</code></a> — совместимый фасад чтения, сборки и запуска;</li>
+          <li><a href="../src/model/FEMesh.m"><code>FEMesh.m</code></a> — разбор TXT и проверка входа;</li>
+          <li><a href="../src/model/createStructuralElement.m"><code>createStructuralElement.m</code></a> — элементные матрицы;</li>
+          <li><a href="../src/model/assembleGlobalMatrices.m"><code>assembleGlobalMatrices.m</code></a> — глобальная разреженная сборка;</li>
+          <li><a href="../src/analysis/common/partitionDOFs.m"><code>partitionDOFs.m</code></a> — свободные и закреплённые СС;</li>
+          <li>один из трёх <code>solve*.m</code>, перечисленных выше;</li>
+          <li><a href="../src/results/recoverElementResults.m"><code>recoverElementResults.m</code></a> — локальные перемещения и усилия.</li>
+        </ol>
+        <p>Контейнерный backend и браузерный GUI являются оболочкой вокруг этой последовательности. Локальный запуск обращается к тем же файлам ядра напрямую.</p>
+      </section>
+    </main>
+  </div>
+
+  <nav class="page-nav" aria-label="Навигация между главами">
+    <a href="11-mario-paz-modal-example.html"><span class="page-nav__label">Назад</span>← 11. Модальный пример Mario Paz</a>
+    <a href="index.html"><span class="page-nav__label">К началу</span>Оглавление справочника →</a>
+  </nav>
+
+  <footer class="site-footer">
+    <div class="site-footer__inner"><p>МКЭ-Ф · автономный учебный справочник · глава 12 из 12</p></div>
+  </footer>
+</body>
+</html>

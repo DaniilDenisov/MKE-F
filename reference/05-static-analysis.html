@@ -32,6 +32,7 @@
         <li><a href="09-architecture-verification.html">Архитектура и проверка</a></li>
         <li><a href="10-input-format.html">Формат входного файла</a></li>
         <li><a href="11-mario-paz-modal-example.html">Модальный пример Mario Paz</a></li>
+        <li><a href="12-local-octave-workflow.html">Локальный запуск в GNU Octave</a></li>
       </ol>
     </nav>
 
@@ -116,6 +117,10 @@ exportOptions = struct( ...
     'prettyPrint', true);
 
 exportPostprocessorData(model, result, fullfile('output', 'static-frame.json'), exportOptions);</code></pre>
+        <div class="callout callout--inspect">
+          <span class="callout__title">Тот же расчёт через GUI</span>
+          <p>Из корня репозитория выполните <code>docker compose up --build</code> (для старой отдельной команды — <code>docker-compose up --build</code>) и откройте <a href="http://127.0.0.1:8080/preprocessor/">препроцессор</a>. Выберите <strong>Open TXT</strong>, загрузите <code>examples/cases/CasePreprocessorStatic.txt</code> и нажмите <strong>Run analysis</strong>. После расчёта GNU Octave результат откроется автоматически; кнопка <strong>Download JSON</strong> сохранит его вне временного контейнерного сеанса.</p>
+        </div>
         <p><a href="../src/results/exportPostprocessorData.m"><code>exportPostprocessorData</code></a> проверяет размеры и конечность чисел, исключает глобальные и элементные матрицы и записывает версионированный UTF-8 JSON. Поля единиц являются только подписями: численные значения не пересчитываются. Для показанного экспорта в СИ постпроцессор выводит координаты и перемещения в метрах, силы, нагрузки и реакции — в ньютонах, моменты — в Н·м, напряжения — в Па.</p>
 
         <h3>2. Откройте и настройте изображение</h3>
@@ -189,7 +194,7 @@ exportPostprocessorData(model, result, fullfile('output', 'static-frame.json'), 
   </nav>
 
   <footer class="site-footer">
-    <div class="site-footer__inner"><p>МКЭ-Ф · автономный учебный справочник · глава 5 из 11</p></div>
+    <div class="site-footer__inner"><p>МКЭ-Ф · автономный учебный справочник · глава 5 из 12</p></div>
   </footer>
 </body>
 </html>

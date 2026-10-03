@@ -190,7 +190,7 @@
     stopPlayback(); clearError();
     var next = M.validateDataset(parsed); dataset = next;
     elements.title.textContent = parsed.metadata.title || 'Untitled dataset'; elements.dropZone.classList.add('has-data');
-    elements.reset.disabled = false; elements.exportSvg.disabled = false; elements.exportPng.disabled = false;
+    elements.reset.disabled = false; elements.exportSvg.disabled = false; elements.exportPng.disabled = false; elements.downloadJson.disabled = false;
     resetSections(); renderer.mount(dataset);
     if (parsed.analysis.type === 'static') configureStatic();
     else if (parsed.analysis.type === 'modal') configureModal();
@@ -207,6 +207,36 @@
     reader.onerror = function () { showError(new Error('The selected file could not be read.')); };
     reader.onload = function () { try { acceptData(JSON.parse(reader.result)); } catch (error) { showError(error instanceof SyntaxError ? new Error('Invalid JSON: ' + error.message) : error); } };
     reader.readAsText(file, 'UTF-8');
+  }
+
+  function delay(milliseconds) { return new Promise(function (resolve) { globalThis.setTimeout(resolve, milliseconds); }); }
+
+  async function loadJobFromLocation() {
+    if (!window.MKEFApi || !window.MKEFApi.isHosted()) return;
+    var jobId = new URLSearchParams(window.location.search).get('job');
+    if (!jobId) return;
+    if (!window.MKEFApi.isValidJobId(jobId)) { showError(new Error('The result URL contains an invalid solver job ID.')); return; }
+    notice('Loading solver result…');
+    try {
+      while (true) {
+        var job = await window.MKEFApi.getJob(jobId);
+        if (job.status === 'succeeded') {
+          acceptData(await window.MKEFApi.getResult(jobId));
+          notice('Loaded result from the local GNU Octave solver. Download the JSON to keep it after Docker stops.');
+          return;
+        }
+        if (['failed', 'canceled', 'timed_out'].indexOf(job.status) >= 0) {
+          throw new Error(job.error && job.error.message ? job.error.message : 'The solver job did not complete.');
+        }
+        notice((job.status === 'queued' ? 'The calculation is queued' : 'GNU Octave is running') + ' · ' + Number(job.elapsedSeconds || 0).toFixed(1) + ' s');
+        await delay(1000);
+      }
+    } catch (error) { showError(error); notice(''); }
+  }
+
+  function downloadCurrentJson() {
+    if (!dataset) return;
+    window.MKEFApi.downloadJson(dataset.raw, dataset.raw.metadata.title || 'MKE-F-result');
   }
 
   function applyStaticResult() { if (!dataset || dataset.raw.analysis.type !== 'static') return; setLegend(M.staticResults.applyResult(renderer, dataset, elements.staticResult.value, samples())); renderer.reapplySelection(); updateDetails(renderer.selection); }
@@ -408,6 +438,7 @@
 
   function bind() {
     elements.fileInput.addEventListener('change', function () { readFile(this.files[0]); this.value = ''; });
+    elements.downloadJson.addEventListener('click', downloadCurrentJson);
     ['dragenter', 'dragover'].forEach(function (name) { elements.dropZone.addEventListener(name, function (event) { event.preventDefault(); this.classList.add('dragging'); }); });
     ['dragleave', 'drop'].forEach(function (name) { elements.dropZone.addEventListener(name, function (event) { event.preventDefault(); this.classList.remove('dragging'); }); });
     elements.dropZone.addEventListener('drop', function (event) { readFile(event.dataTransfer.files[0]); });
@@ -446,8 +477,8 @@
   }
 
   document.addEventListener('DOMContentLoaded', function () {
-    ['file-input','reset-view','export-svg','export-png','dataset-title','drop-zone','error-panel','notice-panel','analysis-status','selection-details','viewport','result-legend','chart-panel','history-chart','static-controls','modal-controls','transient-controls','chart-controls','static-result','mode-number','previous-mode','next-mode','modal-play-pause','modal-phase','modal-phase-value','modal-playback-speed','modal-amplitude','mode-frequency','time-index','previous-frame','next-frame','play-pause','playback-speed','frame-stride','time-value','transient-metadata','history-node','history-dof','history-quantity','history-value','show-original','show-deformed','show-nodes','show-node-labels','show-element-labels','show-supports','show-loads','show-reactions','scale-mode','manual-scale','sample-count','png-scale'].forEach(function (id) { var key = id.replace(/-([a-z])/g, function (_, letter) { return letter.toUpperCase(); }); elements[key] = byId(id); });
+    ['file-input','download-json','reset-view','export-svg','export-png','dataset-title','drop-zone','error-panel','notice-panel','analysis-status','selection-details','viewport','result-legend','chart-panel','history-chart','static-controls','modal-controls','transient-controls','chart-controls','static-result','mode-number','previous-mode','next-mode','modal-play-pause','modal-phase','modal-phase-value','modal-playback-speed','modal-amplitude','mode-frequency','time-index','previous-frame','next-frame','play-pause','playback-speed','frame-stride','time-value','transient-metadata','history-node','history-dof','history-quantity','history-value','show-original','show-deformed','show-nodes','show-node-labels','show-element-labels','show-supports','show-loads','show-reactions','scale-mode','manual-scale','sample-count','png-scale'].forEach(function (id) { var key = id.replace(/-([a-z])/g, function (_, letter) { return letter.toUpperCase(); }); elements[key] = byId(id); });
     elements.title = elements.datasetTitle; elements.reset = elements.resetView; elements.error = elements.errorPanel; elements.notice = elements.noticePanel; elements.status = elements.analysisStatus; elements.details = elements.selectionDetails; elements.legend = elements.resultLegend; elements.chart = elements.historyChart;
-    renderer = new M.Renderer(elements.viewport, updateDetails); bind();
+    renderer = new M.Renderer(elements.viewport, updateDetails); bind(); loadJobFromLocation();
   });
 }(window.MKEFPost));
