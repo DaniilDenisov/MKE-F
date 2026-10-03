@@ -132,7 +132,7 @@ modalResult = solveModal(model);</code></pre>
 
         <h3>1. Совместимость GNU Octave и локальная проверка</h3>
         <ol>
-          <li>Минимальная версия GNU Octave 8.4 и локальная проверка на 11.3 закреплены в <a href="../README.md"><code>README.md</code></a>; точка проверки — <a href="../scripts/run_octave_tests.m"><code>run_octave_tests.m</code></a>.</li>
+          <li>Минимальная версия GNU Octave 8.4 и локальная проверка на 11.3 указаны в <a href="12-local-octave-workflow.html">главе о локальном запуске</a>; точка проверки — <a href="../scripts/run_octave_tests.m"><code>run_octave_tests.m</code></a>.</li>
           <li>Команда без графического интерфейса реализована в <a href="../scripts/run_octave_smoke_tests.m"><code>run_octave_smoke_tests.m</code></a> и запускается разработчиком локально.</li>
           <li>Все поставляемые задачи собираются, а статика, моды, импульс и гармоника запускаются в <code>run_octave_smoke_tests.m</code>; матричные инварианты повторяются в <a href="../tests/run_verification_tests.m"><code>tests/run_verification_tests.m</code></a>.</li>
           <li>Промежуточные конкретные резервные методы старого абстрактного класса позже заменены структурами в <a href="../src/model/createStructuralElement.m"><code>createStructuralElement.m</code></a>; интерфейс проверяет <a href="../tests/test_element_matrices.m"><code>tests/test_element_matrices.m</code></a>.</li>
