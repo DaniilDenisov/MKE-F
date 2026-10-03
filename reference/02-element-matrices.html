@@ -33,17 +33,94 @@
         <li><a href="10-input-format.html">Формат входного файла</a></li>
         <li><a href="11-mario-paz-modal-example.html">Модальный пример Mario Paz</a></li>
         <li><a href="12-local-octave-workflow.html">Локальный запуск в GNU Octave</a></li>
+        <li><a href="13-fem-assembly-visualizer.html">Интерактивная сборка МКЭ</a></li>
+        <li><a href="14-mario-paz-matrices-visualizer.html">Интерактивные матрицы рамы</a></li>
       </ol>
     </nav>
 
     <main class="chapter" id="main">
       <span class="chapter-number">Глава 2</span>
       <h1>Матрицы жёсткости и масс</h1>
-      <p class="lead">Матрица элемента связывает узловые движения с усилиями и инерцией. До сборки системы её можно проверить независимо: по размеру, симметрии, рангу, единицам и поведению при движении как твёрдого тела.</p>
+      <p class="lead">У конечного элемента формируются две основные матрицы: матрица жёсткости связывает узловые перемещения с внутренними узловыми усилиями, а матрица масс — узловые ускорения с инерционными силами. До сборки системы обе матрицы можно проверить независимо: по размеру, симметрии, рангу, единицам и поведению при движении как твёрдого тела.</p>
+
+      <section aria-labelledby="approximation-title">
+        <h2 id="approximation-title">От непрерывного элемента к узловым матрицам</h2>
+        <p>Реальный стержень имеет непрерывное поле перемещений: значение можно определить в любой точке по длине. В конечном элементе это бесконечное число неизвестных заменяется несколькими узловыми степенями свободы <strong>q<sub>e</sub></strong>. Перемещение между узлами не угадывается заново, а восстанавливается заранее выбранными <strong>функциями формы</strong>:</p>
+        <p class="equation">u(x) = N(x) q<sub>e</sub></p>
+        <p>Именно выбор <strong>N(x)</strong> задаёт закон распределения перемещений внутри элемента. Матрицы возникают после подстановки этой аппроксимации в выражения для энергии деформации и кинетической энергии:</p>
+        <p class="equation">K<sub>e</sub> = ∫<sub>V</sub> B<sup>T</sup>DB dV, &nbsp;&nbsp; M<sub>e</sub> = ∫<sub>V</sub> ρN<sup>T</sup>N dV, &nbsp;&nbsp; ε = Bq<sub>e</sub></p>
+        <p>Для двухузлового стержня типа 112 осевое перемещение интерполируется линейно. При <em>ξ = x/L</em>:</p>
+        <p class="equation">u(x) = (1 − ξ)u′<sub>1</sub> + ξu′<sub>2</sub></p>
+        <p>Поэтому осевая деформация <em>ε = du/dx</em> постоянна внутри такого элемента. Здесь оператор <strong>B</strong> содержит первую производную функций формы. Для рамы типа 113 осевое перемещение также линейно, но поперечный прогиб описывается кубическими функциями Эрмита:</p>
+        <p class="equation">v(x) = H<sub>1</sub>(x)v′<sub>1</sub> + H<sub>2</sub>(x)θ<sub>1</sub> + H<sub>3</sub>(x)v′<sub>2</sub> + H<sub>4</sub>(x)θ<sub>2</sub></p>
+        <p>В изгибной части оператор <strong>B</strong> содержит уже вторые производные функций <strong>H</strong>. Поэтому кривизна <em>κ = d²v/dx²</em> и, при постоянном <em>EI</em>, изгибающий момент изменяются по длине линейно.</p>
+        <div class="callout callout--inspect">
+          <span class="callout__title">Что именно считается линейным</span>
+          <p>В текущих элементах <em>E, A, ρ</em> и <em>I</em> считаются постоянными в пределах одного элемента. Линейной для типа 112 является аппроксимация осевого перемещения, а не «все параметры элемента». Матричная форма появляется потому, что непрерывное поле выражено через конечный набор узловых значений. Другой порядок функций формы, дополнительные узлы или переменные свойства дадут другие коэффициенты <strong>K<sub>e</sub></strong> и <strong>M<sub>e</sub></strong>.</p>
+        </div>
+        <p>Таким образом, две точки не воспроизводят произвольную деформированную форму: они задают выбранную аппроксимацию. Разбиение конструкции на большее число элементов добавляет узлы и позволяет точнее описать распределение перемещений и деформаций.</p>
+      </section>
 
       <section aria-labelledby="truss-title">
         <h2 id="truss-title">Плоский стержень фермы, тип 112</h2>
         <p>В локальных осях <em>x′, y′</em> элемент сопротивляется только изменению расстояния между узлами. В реализации сохранены обе поступательные компоненты каждого узла, поэтому локальный вектор имеет четыре компоненты.</p>
+
+        <figure class="model-figure">
+          <svg viewBox="0 0 820 430" role="img" aria-labelledby="truss-112-title truss-112-desc">
+            <title id="truss-112-title">Степени свободы и деформированное состояние стержня типа 112</title>
+            <desc id="truss-112-desc">Двухузловой стержень имеет по две поступательные степени свободы в каждом узле. Исходное положение показано серой пунктирной линией, а увеличенное осевое удлинение — зелёной линией.</desc>
+            <defs>
+              <marker id="truss-112-arrow" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto" markerUnits="strokeWidth">
+                <path d="M0,0 L0,6 L8,3 Z" fill="#285b89"></path>
+              </marker>
+              <marker id="truss-112-dimension" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto-start-reverse" markerUnits="strokeWidth">
+                <path d="M0,0 L8,4 L0,8 Z" fill="#7d370e"></path>
+              </marker>
+            </defs>
+
+            <text x="410" y="32" text-anchor="middle" fill="#0c3d2d" font-size="22" font-weight="700" font-family="Segoe UI, Arial">Тип 112 · четыре поступательные СС</text>
+
+            <line x1="235" y1="66" x2="290" y2="66" stroke="#7d8780" stroke-width="5" stroke-dasharray="10 7"></line>
+            <text x="302" y="72" fill="#5d685f" font-size="16" font-family="Segoe UI, Arial">исходное положение</text>
+            <line x1="465" y1="66" x2="520" y2="66" stroke="#16805f" stroke-width="8" stroke-linecap="round"></line>
+            <text x="532" y="72" fill="#0c6047" font-size="16" font-family="Segoe UI, Arial">деформированное</text>
+
+            <line x1="140" y1="205" x2="690" y2="205" stroke="#16805f" stroke-width="10" stroke-linecap="round"></line>
+            <circle cx="140" cy="205" r="12" fill="#fff" stroke="#0c6047" stroke-width="4"></circle>
+            <circle cx="690" cy="205" r="12" fill="#fff" stroke="#0c6047" stroke-width="4"></circle>
+            <line x1="180" y1="205" x2="640" y2="205" stroke="#7d8780" stroke-width="5" stroke-dasharray="11 8"></line>
+            <circle cx="180" cy="205" r="10" fill="#fff" stroke="#5d685f" stroke-width="3" stroke-dasharray="4 3"></circle>
+            <circle cx="640" cy="205" r="10" fill="#fff" stroke="#5d685f" stroke-width="3" stroke-dasharray="4 3"></circle>
+            <text x="140" y="184" text-anchor="middle" fill="#17211b" font-size="18" font-weight="700" font-family="Segoe UI, Arial">1</text>
+            <text x="690" y="184" text-anchor="middle" fill="#17211b" font-size="18" font-weight="700" font-family="Segoe UI, Arial">2</text>
+
+            <line x1="180" y1="171" x2="180" y2="112" stroke="#285b89" stroke-width="3" marker-end="url(#truss-112-arrow)"></line>
+            <line x1="640" y1="171" x2="640" y2="112" stroke="#285b89" stroke-width="3" marker-end="url(#truss-112-arrow)"></line>
+            <text x="194" y="128" fill="#194d77" font-size="18" font-weight="700" font-family="Segoe UI, Arial">v′₁</text>
+            <text x="654" y="128" fill="#194d77" font-size="18" font-weight="700" font-family="Segoe UI, Arial">v′₂</text>
+
+            <line x1="168" y1="235" x2="108" y2="235" stroke="#285b89" stroke-width="3" marker-end="url(#truss-112-arrow)"></line>
+            <line x1="652" y1="235" x2="722" y2="235" stroke="#285b89" stroke-width="3" marker-end="url(#truss-112-arrow)"></line>
+            <text x="116" y="261" fill="#194d77" font-size="18" font-weight="700" font-family="Segoe UI, Arial">u′₁</text>
+            <text x="694" y="261" fill="#194d77" font-size="18" font-weight="700" font-family="Segoe UI, Arial">u′₂</text>
+
+            <line x1="180" y1="287" x2="640" y2="287" stroke="#7d370e" stroke-width="2" marker-start="url(#truss-112-dimension)" marker-end="url(#truss-112-dimension)"></line>
+            <line x1="180" y1="270" x2="180" y2="300" stroke="#7d370e" stroke-width="2"></line>
+            <line x1="640" y1="270" x2="640" y2="300" stroke="#7d370e" stroke-width="2"></line>
+            <text x="410" y="313" text-anchor="middle" fill="#7d370e" font-size="18" font-weight="700" font-family="Segoe UI, Arial">L</text>
+
+            <line x1="104" y1="350" x2="176" y2="350" stroke="#285b89" stroke-width="3" marker-end="url(#truss-112-arrow)"></line>
+            <line x1="104" y1="350" x2="104" y2="294" stroke="#285b89" stroke-width="3" marker-end="url(#truss-112-arrow)"></line>
+            <text x="184" y="356" fill="#194d77" font-size="18" font-weight="700" font-family="Segoe UI, Arial">x′</text>
+            <text x="91" y="290" fill="#194d77" font-size="18" font-weight="700" font-family="Segoe UI, Arial">y′</text>
+
+            <rect x="250" y="343" width="455" height="48" rx="24" fill="#e9f2fa"></rect>
+            <text x="477" y="374" text-anchor="middle" fill="#194d77" font-size="18" font-weight="700" font-family="Cascadia Mono, Consolas, monospace">qₑ = [u′₁, v′₁, u′₂, v′₂]ᵀ</text>
+            <text x="410" y="417" text-anchor="middle" fill="#5d685f" font-size="15" font-family="Segoe UI, Arial">Перемещения на рисунке условно увеличены</text>
+          </svg>
+          <figcaption>Синий цвет показывает положительные направления локальных СС. Зелёная форма иллюстрирует осевое растяжение: она остаётся прямой, а относительное перемещение <em>u′<sub>2</sub> − u′<sub>1</sub></em> создаёт деформацию. Поперечные <em>v′</em> входят в вектор элемента, но не создают локальной упругой энергии стержня.</figcaption>
+        </figure>
+
         <p class="equation">k = EA/L</p>
         <pre><code>K_local = k · [ 1  0 -1  0
                 0  0  0  0
@@ -54,12 +131,84 @@
                     0  2  0  1
                     1  0  2  0
                     0  1  0  2 ]</code></pre>
+        <p>Коэффициенты 2 и 1 получаются из интеграла <strong>∫N<sup>T</sup>N dx</strong>. Недиагональные члены — не искусственная связь, а следствие того, что движение любой внутренней точки одновременно зависит от перемещений обоих узлов. Поэтому такая масса называется согласованной с выбранными функциями формы.</p>
         <p>У свободного стержня ранг <strong>K</strong> равен 1: лишь одна линейная комбинация перемещений создаёт осевую деформацию. Остальные три независимые формы — два поступательных перемещения и бесконечно малый поворот элемента как единого целого — в линейной постановке не вызывают осевого удлинения. Поэтому упругая энергия для них равна нулю.</p>
       </section>
 
       <section aria-labelledby="frame-title">
         <h2 id="frame-title">Плоская рама Эйлера–Бернулли, тип 113</h2>
         <p>Рамный элемент объединяет осевую жёсткость и изгиб. Принято допущение Эйлера–Бернулли: поперечный сдвиг не деформирует сечение, поэтому поворот связан с производной прогиба.</p>
+
+        <figure class="model-figure">
+          <svg viewBox="0 0 820 520" role="img" aria-labelledby="frame-113-title frame-113-desc">
+            <title id="frame-113-title">Степени свободы и деформированное состояние рамного элемента типа 113</title>
+            <desc id="frame-113-desc">В каждом из двух узлов рамного элемента имеются два поступательных перемещения и поворот. Ниже показана исходная прямая ось и увеличенная изогнутая форма, определяемая перемещениями и поворотами концов.</desc>
+            <defs>
+              <marker id="frame-113-arrow" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto" markerUnits="strokeWidth">
+                <path d="M0,0 L0,6 L8,3 Z" fill="#285b89"></path>
+              </marker>
+              <marker id="frame-113-rotation" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto" markerUnits="strokeWidth">
+                <path d="M0,0 L0,6 L8,3 Z" fill="#a24d16"></path>
+              </marker>
+            </defs>
+
+            <text x="410" y="31" text-anchor="middle" fill="#0c3d2d" font-size="22" font-weight="700" font-family="Segoe UI, Arial">Тип 113 · шесть узловых СС</text>
+            <text x="35" y="75" fill="#5d685f" font-size="16" font-weight="700" font-family="Segoe UI, Arial">Узловые степени свободы</text>
+
+            <line x1="180" y1="150" x2="640" y2="150" stroke="#165c45" stroke-width="10" stroke-linecap="round"></line>
+            <circle cx="180" cy="150" r="12" fill="#fff" stroke="#0c3d2d" stroke-width="4"></circle>
+            <circle cx="640" cy="150" r="12" fill="#fff" stroke="#0c3d2d" stroke-width="4"></circle>
+            <text x="158" y="128" text-anchor="middle" fill="#17211b" font-size="18" font-weight="700" font-family="Segoe UI, Arial">1</text>
+            <text x="618" y="128" text-anchor="middle" fill="#17211b" font-size="18" font-weight="700" font-family="Segoe UI, Arial">2</text>
+
+            <line x1="156" y1="179" x2="98" y2="179" stroke="#285b89" stroke-width="3" marker-end="url(#frame-113-arrow)"></line>
+            <line x1="664" y1="179" x2="724" y2="179" stroke="#285b89" stroke-width="3" marker-end="url(#frame-113-arrow)"></line>
+            <text x="108" y="205" fill="#194d77" font-size="18" font-weight="700" font-family="Segoe UI, Arial">u′₁</text>
+            <text x="691" y="205" fill="#194d77" font-size="18" font-weight="700" font-family="Segoe UI, Arial">u′₂</text>
+
+            <line x1="180" y1="139" x2="180" y2="83" stroke="#285b89" stroke-width="3" marker-end="url(#frame-113-arrow)"></line>
+            <line x1="640" y1="139" x2="640" y2="83" stroke="#285b89" stroke-width="3" marker-end="url(#frame-113-arrow)"></line>
+            <text x="194" y="100" fill="#194d77" font-size="18" font-weight="700" font-family="Segoe UI, Arial">v′₁</text>
+            <text x="654" y="100" fill="#194d77" font-size="18" font-weight="700" font-family="Segoe UI, Arial">v′₂</text>
+
+            <path d="M216 150 A36 36 0 1 0 193 116" fill="none" stroke="#a24d16" stroke-width="3" marker-end="url(#frame-113-rotation)"></path>
+            <path d="M676 150 A36 36 0 1 0 653 116" fill="none" stroke="#a24d16" stroke-width="3" marker-end="url(#frame-113-rotation)"></path>
+            <text x="216" y="137" fill="#7d370e" font-size="18" font-weight="700" font-family="Segoe UI, Arial">θ₁</text>
+            <text x="676" y="137" fill="#7d370e" font-size="18" font-weight="700" font-family="Segoe UI, Arial">θ₂</text>
+
+            <rect x="232" y="218" width="356" height="43" rx="21" fill="#e9f2fa"></rect>
+            <text x="410" y="246" text-anchor="middle" fill="#194d77" font-size="17" font-weight="700" font-family="Cascadia Mono, Consolas, monospace">qₑ = [u′₁, v′₁, θ₁, u′₂, v′₂, θ₂]ᵀ</text>
+
+            <line x1="35" y1="282" x2="785" y2="282" stroke="#d7ddd8" stroke-width="2"></line>
+            <text x="35" y="315" fill="#5d685f" font-size="16" font-weight="700" font-family="Segoe UI, Arial">Деформированное состояние</text>
+
+            <line x1="180" y1="382" x2="640" y2="382" stroke="#7d8780" stroke-width="6" stroke-dasharray="11 8"></line>
+            <circle cx="180" cy="382" r="9" fill="#fff" stroke="#5d685f" stroke-width="3" stroke-dasharray="4 3"></circle>
+            <circle cx="640" cy="382" r="9" fill="#fff" stroke="#5d685f" stroke-width="3" stroke-dasharray="4 3"></circle>
+
+            <path d="M145 404 C290 430 510 310 688 337" fill="none" stroke="#16805f" stroke-width="10" stroke-linecap="round"></path>
+            <circle cx="145" cy="404" r="12" fill="#fff" stroke="#0c6047" stroke-width="4"></circle>
+            <circle cx="688" cy="337" r="12" fill="#fff" stroke="#0c6047" stroke-width="4"></circle>
+            <line x1="105" y1="397" x2="225" y2="418" stroke="#16805f" stroke-width="3" stroke-dasharray="9 7"></line>
+            <line x1="613" y1="326" x2="748" y2="348" stroke="#16805f" stroke-width="3" stroke-dasharray="9 7"></line>
+            <text x="83" y="425" fill="#0c6047" font-size="15" font-family="Segoe UI, Arial">касательная θ₁</text>
+            <text x="666" y="374" fill="#0c6047" font-size="15" font-family="Segoe UI, Arial">касательная θ₂</text>
+
+            <line x1="220" y1="461" x2="275" y2="461" stroke="#7d8780" stroke-width="5" stroke-dasharray="9 6"></line>
+            <text x="286" y="467" fill="#5d685f" font-size="16" font-family="Segoe UI, Arial">исходная ось</text>
+            <line x1="455" y1="461" x2="510" y2="461" stroke="#16805f" stroke-width="8" stroke-linecap="round"></line>
+            <text x="522" y="467" fill="#0c6047" font-size="16" font-family="Segoe UI, Arial">кубическая форма</text>
+            <text x="410" y="503" text-anchor="middle" fill="#5d685f" font-size="15" font-family="Segoe UI, Arial">Перемещения и кривизна условно увеличены</text>
+          </svg>
+          <figcaption>Положение каждого конца задают поступательные СС <em>u′, v′</em>, а наклон оси — поворот <em>θ</em>. Между узлами поперечный прогиб восстанавливается кубическими функциями Эрмита, поэтому элемент может описывать изгиб, хотя геометрически задан всего двумя узлами.</figcaption>
+        </figure>
+
+        <div class="callout callout--inspect">
+          <span class="callout__title">Функции Эрмита в постпроцессоре</span>
+          <p>Постпроцессор использует функции Эрмита явно. Функция <a href="../postprocessor/js/geometry.js"><code>sample113Displacements</code></a> вычисляет четыре кубические функции <em>H<sub>1</sub>…H<sub>4</sub></em> и по значениям <em>v′<sub>1</sub>, θ<sub>1</sub>, v′<sub>2</sub>, θ<sub>2</sub></em> восстанавливает поперечное перемещение во внутренних точках элемента. По этим точкам строится изогнутая форма в статическом, модальном и переходном представлениях. В расчётном ядре та же интерполяция присутствует неявно — в уже проинтегрированных коэффициентах матриц жёсткости и масс.</p>
+        </div>
+
+        <p>Интегрирование производных этих функций формы даёт характерные изгибные коэффициенты 12, 6, 4 и 2 в матрице жёсткости:</p>
         <p class="equation">a = EA/L, &nbsp; b = 12EI/L<sup>3</sup>, &nbsp; c = 6EI/L<sup>2</sup>, &nbsp; d = 4EI/L, &nbsp; e = 2EI/L</p>
         <pre><code>K_local = [ a   0   0  -a   0   0
             0   b   c   0  -b   c
@@ -75,6 +224,7 @@
    70    0       0    140    0        0
     0    54     13L     0  156      -22L
     0  -13L    -3L²     0  -22L      4L² ]</code></pre>
+        <p>Та же кубическая интерполяция прогиба используется в кинетической энергии и приводит к коэффициентам 156, 54, 22<em>L</em>, 13<em>L</em> и другим членам согласованной матрицы масс.</p>
         <p>У свободного рамного элемента три движения как твёрдого тела: два переноса и один поворот. Поэтому ранг матрицы жёсткости 6×6 равен 3.</p>
       </section>
 
@@ -148,7 +298,7 @@
   </nav>
 
   <footer class="site-footer">
-    <div class="site-footer__inner"><p>МКЭ-Ф · автономный учебный справочник · глава 2 из 12</p></div>
+    <div class="site-footer__inner"><p>МКЭ-Ф · автономный учебный справочник · глава 2 из 14</p></div>
   </footer>
 </body>
 </html>

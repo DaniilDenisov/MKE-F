@@ -1,0 +1,1438 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Интерактивная сборка матриц жёсткости и масс двухэлементной рамы и переход к системе переходного анализа.">
+  <title>14. Матрицы двухэлементной рамы — интерактивная визуализация</title>
+  <link rel="stylesheet" href="assets/reference.css">
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #17211b;
+      --muted: #647168;
+      --paper: #f7f5ee;
+      --panel: #ffffff;
+      --soft: #f5f8f5;
+      --line: #d7ddd6;
+      --green: #165c45;
+      --green-dark: #0c3d2d;
+      --green-soft: #e4f1e9;
+      --blue: #26608e;
+      --blue-soft: #e8f2fa;
+      --amber: #a75317;
+      --amber-soft: #fff0da;
+      --red: #a33935;
+      --red-soft: #f9e8e6;
+      --violet: #6753a3;
+      --violet-soft: #eee9f8;
+      --shadow: 0 18px 55px rgba(27, 48, 36, 0.10);
+      --radius: 18px;
+    }
+
+    * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+
+    body {
+      margin: 0;
+      min-width: 320px;
+      color: var(--ink);
+      background:
+        linear-gradient(90deg, rgba(22, 92, 69, 0.035) 1px, transparent 1px),
+        linear-gradient(rgba(22, 92, 69, 0.035) 1px, transparent 1px),
+        var(--paper);
+      background-size: 32px 32px;
+      font-family: Inter, "Segoe UI", Arial, sans-serif;
+      line-height: 1.45;
+    }
+
+    button,
+    input { font: inherit; }
+
+    button { cursor: pointer; }
+
+    button:focus-visible,
+    input:focus-visible,
+    [tabindex="0"]:focus-visible {
+      outline: 3px solid rgba(38, 96, 142, 0.42);
+      outline-offset: 3px;
+    }
+
+    .page-header {
+      color: #fff;
+      background:
+        radial-gradient(circle at 86% 18%, rgba(255, 255, 255, 0.17), transparent 28%),
+        linear-gradient(135deg, #102f27, var(--green));
+      border-bottom: 5px solid #d8a648;
+    }
+
+    .page-header__inner,
+    main,
+    footer {
+      width: min(1500px, calc(100% - 32px));
+      margin-inline: auto;
+    }
+
+    .page-header__inner { padding: 27px 0 24px; }
+
+    .eyebrow {
+      margin: 0 0 6px;
+      color: #cfe6d9;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.13em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 0;
+      max-width: 25ch;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: clamp(32px, 5vw, 58px);
+      font-weight: 500;
+      line-height: 1.04;
+      letter-spacing: -0.025em;
+    }
+
+    .subtitle {
+      max-width: 92ch;
+      margin: 10px 0 0;
+      color: #e3f0e8;
+      font-size: 16px;
+    }
+
+    main { padding: 24px 0 36px; }
+
+    .app {
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--panel);
+      box-shadow: var(--shadow);
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px 18px;
+      align-items: center;
+      justify-content: space-between;
+      padding: 15px 18px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .toolbar__group,
+    .segmented,
+    .playback {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .button,
+    .segment,
+    .stage-button,
+    .element-button {
+      min-height: 40px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      color: var(--ink);
+      background: #fff;
+      font-weight: 700;
+      transition: transform 140ms ease, border-color 140ms ease, background 140ms ease;
+    }
+
+    .button { padding: 8px 13px; }
+    .button:hover:not(:disabled),
+    .segment:hover:not(:disabled),
+    .element-button:hover { border-color: #8fa398; }
+    .button:disabled,
+    .segment:disabled { cursor: not-allowed; opacity: 0.42; }
+
+    .button--primary {
+      border-color: var(--green);
+      color: #fff;
+      background: var(--green);
+    }
+
+    .button--icon { min-width: 42px; padding-inline: 10px; font-size: 18px; }
+
+    .segment { padding: 8px 12px; }
+    .segment[aria-pressed="true"] {
+      border-color: var(--green-dark);
+      color: #fff;
+      background: var(--green-dark);
+    }
+
+    .segment[data-matrix="M"][aria-pressed="true"] {
+      border-color: var(--blue);
+      background: var(--blue);
+    }
+
+    .segment[data-matrix="Keff"][aria-pressed="true"] {
+      border-color: var(--violet);
+      background: var(--violet);
+    }
+
+    .speed-label {
+      display: grid;
+      grid-template-columns: auto 92px;
+      gap: 8px;
+      align-items: center;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    input[type="range"] { accent-color: var(--green); }
+
+    .stage-strip {
+      display: grid;
+      grid-template-columns: repeat(8, minmax(118px, 1fr));
+      gap: 1px;
+      overflow-x: auto;
+      border-bottom: 1px solid var(--line);
+      background: var(--line);
+    }
+
+    .stage-button {
+      min-width: 122px;
+      min-height: 66px;
+      padding: 10px 12px;
+      border: 0;
+      border-radius: 0;
+      text-align: left;
+      background: #fff;
+    }
+
+    .stage-button span {
+      display: block;
+      margin-bottom: 2px;
+      color: var(--muted);
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .stage-button[aria-current="step"] {
+      color: var(--green-dark);
+      background: var(--green-soft);
+      box-shadow: inset 0 -4px 0 var(--green);
+    }
+
+    .stage-button.is-complete span { color: var(--green); }
+
+    .status-band {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 18px;
+      align-items: center;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--line);
+      background: var(--soft);
+    }
+
+    .status-band h2 {
+      margin: 0 0 3px;
+      color: var(--green-dark);
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 23px;
+      font-weight: 500;
+    }
+
+    .status-band p { margin: 0; color: var(--muted); }
+
+    .status-badge {
+      padding: 7px 11px;
+      border-radius: 999px;
+      color: var(--green-dark);
+      background: var(--green-soft);
+      font-size: 12px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .workspace {
+      display: grid;
+      grid-template-columns: minmax(390px, 0.88fr) minmax(560px, 1.42fr);
+      min-height: 760px;
+    }
+
+    .left-column,
+    .right-column { min-width: 0; padding: 20px; }
+
+    .left-column {
+      border-right: 1px solid var(--line);
+      background: #fcfdfb;
+    }
+
+    .section-heading,
+    .matrix-header {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 14px;
+      align-items: baseline;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+
+    .section-heading h3,
+    .matrix-header h3 {
+      margin: 0;
+      color: var(--green-dark);
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 21px;
+      font-weight: 500;
+    }
+
+    .section-heading p,
+    .matrix-header p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .model-canvas {
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background:
+        linear-gradient(90deg, rgba(22, 92, 69, 0.045) 1px, transparent 1px),
+        linear-gradient(rgba(22, 92, 69, 0.045) 1px, transparent 1px),
+        #fff;
+      background-size: 24px 24px;
+    }
+
+    .model-canvas svg { display: block; width: 100%; height: auto; }
+    .member { stroke: #7e8b82; stroke-width: 12; stroke-linecap: round; }
+    .member-hit { stroke: transparent; stroke-width: 38; fill: none; cursor: pointer; }
+    .member-selected { stroke: var(--green); filter: drop-shadow(0 3px 4px rgba(22, 92, 69, 0.24)); }
+    .member-current { stroke: var(--amber); animation: member-pulse 850ms ease-in-out infinite alternate; }
+    .member-assembled { stroke: var(--blue); }
+    .node { fill: #fff; stroke: var(--green-dark); stroke-width: 5; }
+    .node-free { fill: var(--amber-soft); stroke: var(--amber); }
+    .svg-label { fill: var(--ink); font: 700 17px "Segoe UI", Arial, sans-serif; }
+    .svg-small { fill: var(--muted); font: 600 13px "Segoe UI", Arial, sans-serif; }
+    .svg-force { stroke: var(--red); stroke-width: 5; fill: none; }
+    .dof-arrow { stroke: var(--violet); stroke-width: 3; fill: none; }
+    .dof-orbit { stroke: var(--violet); stroke-width: 3; stroke-dasharray: 7 5; fill: none; }
+    .dynamic-dofs { animation: dof-pulse 1s ease-in-out infinite alternate; }
+
+    @keyframes member-pulse { from { stroke-width: 12; } to { stroke-width: 17; } }
+    @keyframes dof-pulse { from { opacity: 0.55; } to { opacity: 1; } }
+
+    .element-picker {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      margin: 12px 0 16px;
+    }
+
+    .element-button { padding: 8px; }
+    .element-button[aria-pressed="true"] {
+      border-color: var(--green);
+      color: var(--green-dark);
+      background: var(--green-soft);
+    }
+
+    .dof-panel {
+      margin-bottom: 16px;
+      padding: 13px;
+      border: 1px solid var(--line);
+      border-radius: 13px;
+      background: #fff;
+    }
+
+    .dof-panel h4 {
+      margin: 0 0 9px;
+      color: var(--green-dark);
+      font-size: 13px;
+    }
+
+    .dof-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 6px;
+    }
+
+    .dof-chip {
+      min-width: 0;
+      padding: 6px 7px;
+      border-radius: 8px;
+      color: var(--muted);
+      background: var(--soft);
+      font: 700 12px "Cascadia Mono", Consolas, monospace;
+      text-align: center;
+    }
+
+    .dof-chip.fixed {
+      color: var(--red);
+      background: var(--red-soft);
+      text-decoration: line-through;
+    }
+
+    .dof-chip.free {
+      color: var(--green-dark);
+      background: var(--green-soft);
+      box-shadow: inset 0 0 0 1px #b7cfbf;
+    }
+
+    .property-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .property {
+      min-width: 0;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 11px;
+      background: #fff;
+    }
+
+    .property span { display: block; }
+    .property__label { color: var(--muted); font-size: 10px; font-weight: 800; text-transform: uppercase; }
+    .property__value { margin-top: 3px; color: var(--green-dark); font: 800 13px "Cascadia Mono", Consolas, monospace; }
+
+    .formula-panel {
+      padding: 14px;
+      border: 1px solid #bfd3e5;
+      border-left: 5px solid var(--blue);
+      border-radius: 12px;
+      background: var(--blue-soft);
+    }
+
+    .formula-panel h4 {
+      margin: 0 0 7px;
+      color: #194d77;
+      font-size: 13px;
+    }
+
+    .formula-line {
+      overflow-x: auto;
+      margin: 5px 0;
+      color: #194d77;
+      font: 700 12px "Cascadia Mono", Consolas, monospace;
+      white-space: nowrap;
+    }
+
+    .equation-chip {
+      padding: 7px 10px;
+      border-radius: 9px;
+      color: var(--green-dark);
+      background: var(--green-soft);
+      font: 700 12px "Cascadia Mono", Consolas, monospace;
+    }
+
+    .matrix-stage {
+      min-height: 505px;
+      padding: 12px;
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: var(--soft);
+    }
+
+    .matrix-holder {
+      display: grid;
+      place-items: center;
+      min-height: 470px;
+      width: max-content;
+      min-width: 100%;
+    }
+
+    .matrix-table {
+      border-collapse: separate;
+      border-spacing: 3px;
+      font-family: "Cascadia Mono", Consolas, monospace;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .matrix-table th {
+      min-width: 48px;
+      height: 28px;
+      color: var(--muted);
+      font: 700 10px "Segoe UI", Arial, sans-serif;
+      text-align: center;
+      white-space: nowrap;
+    }
+
+    .matrix-table td {
+      min-width: 56px;
+      height: 48px;
+      padding: 0;
+      border: 1px solid #dfe4df;
+      border-radius: 8px;
+      color: #98a29b;
+      text-align: center;
+      background: #fff;
+    }
+
+    .matrix-table.compact td { min-width: 48px; height: 43px; }
+
+    .matrix-table th.fixed-axis {
+      color: #9ba29d;
+      text-decoration: line-through;
+    }
+
+    .matrix-table td.eliminated {
+      position: relative;
+      overflow: hidden;
+      color: #929a94;
+      border-color: #cfd4d0;
+      background: #e4e7e4;
+    }
+
+    .matrix-table td.eliminated::after {
+      content: "";
+      position: absolute;
+      top: 50%;
+      left: 8%;
+      width: 84%;
+      height: 1px;
+      background: #aeb5b0;
+      transform: rotate(-34deg);
+      transform-origin: center;
+    }
+
+    .eliminated-value {
+      opacity: 0.62;
+      font: 700 10px "Cascadia Mono", Consolas, monospace;
+    }
+
+    .matrix-cell {
+      width: 100%;
+      height: 100%;
+      padding: 4px;
+      border: 0;
+      border-radius: 7px;
+      color: var(--ink);
+      background: var(--green-soft);
+      font: 800 11px "Cascadia Mono", Consolas, monospace;
+    }
+
+    .matrix-cell.mass { color: #194d77; background: var(--blue-soft); }
+    .matrix-cell.effective { color: #4e3d83; background: var(--violet-soft); }
+    .matrix-cell.current {
+      color: #733508;
+      background: var(--amber-soft);
+      animation: cell-pulse 760ms ease-out;
+    }
+
+    .matrix-cell.selected { box-shadow: inset 0 0 0 3px var(--amber); }
+
+    @keyframes cell-pulse {
+      0% { transform: scale(0.88); box-shadow: 0 0 0 0 rgba(167, 83, 23, 0.32); }
+      70% { transform: scale(1.04); box-shadow: 0 0 0 9px rgba(167, 83, 23, 0); }
+      100% { transform: scale(1); }
+    }
+
+    .matrix-cell-detail {
+      min-height: 54px;
+      margin-top: 12px;
+      padding: 10px 12px;
+      border-left: 4px solid var(--blue);
+      border-radius: 8px;
+      color: #194d77;
+      background: var(--blue-soft);
+      font: 700 12px "Cascadia Mono", Consolas, monospace;
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 9px;
+      margin-top: 12px;
+    }
+
+    .summary-card {
+      min-width: 0;
+      padding: 11px;
+      border: 1px solid var(--line);
+      border-radius: 11px;
+      background: #fff;
+    }
+
+    .summary-card__label {
+      display: block;
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .summary-card__value {
+      display: block;
+      overflow-x: auto;
+      margin-top: 4px;
+      color: var(--green-dark);
+      font: 800 13px "Cascadia Mono", Consolas, monospace;
+      white-space: nowrap;
+    }
+
+    .newmark-panel {
+      margin-top: 12px;
+      padding: 13px;
+      border: 1px solid #cfc4e5;
+      border-left: 5px solid var(--violet);
+      border-radius: 12px;
+      background: var(--violet-soft);
+    }
+
+    .newmark-panel__row {
+      display: grid;
+      grid-template-columns: auto minmax(120px, 1fr) auto;
+      gap: 10px;
+      align-items: center;
+      color: #4e3d83;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .newmark-panel input { width: 100%; accent-color: var(--violet); }
+
+    .source-block {
+      padding: 16px 20px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      background: var(--soft);
+      font-size: 13px;
+    }
+
+    .source-block p { margin: 0; }
+    .source-block p + p { margin-top: 7px; }
+
+    .source-block strong {
+      color: var(--green-dark);
+    }
+
+    footer {
+      padding: 0 0 30px;
+      color: var(--muted);
+      font-size: 12px;
+      text-align: center;
+    }
+
+    .reference-toc {
+      width: min(1500px, calc(100% - 32px));
+      margin: 16px auto 0;
+    }
+
+    .reference-toc > summary {
+      width: fit-content;
+      padding: 8px 13px;
+      color: var(--green-dark);
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      box-shadow: 0 5px 18px rgba(27, 48, 36, 0.07);
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .reference-toc .contents {
+      position: static;
+      margin-top: 9px;
+      padding: 16px 20px;
+      background: var(--panel);
+    }
+
+    .reference-toc .contents ol {
+      columns: 2;
+      column-gap: 38px;
+    }
+
+    .page-nav {
+      width: min(1180px, calc(100% - 32px));
+      margin: 22px auto 0;
+      padding-bottom: 24px;
+    }
+
+    @media (max-width: 1080px) {
+      .workspace { grid-template-columns: 1fr; min-height: 0; }
+      .left-column { border-right: 0; border-bottom: 1px solid var(--line); }
+    }
+
+    @media (max-width: 700px) {
+      .page-header__inner,
+      main,
+      footer,
+      .reference-toc,
+      .page-nav { width: min(100% - 16px, 1500px); }
+      .reference-toc .contents ol { columns: 1; }
+      .toolbar { align-items: stretch; }
+      .toolbar__group { width: 100%; justify-content: space-between; }
+      .speed-label { grid-template-columns: auto minmax(80px, 1fr); flex: 1 1 170px; }
+      .status-band { grid-template-columns: 1fr; }
+      .status-badge { justify-self: start; }
+      .left-column,
+      .right-column { padding: 13px; }
+      .property-grid,
+      .summary-grid { grid-template-columns: 1fr; }
+      .matrix-stage { padding: 7px; }
+      .matrix-table td { min-width: 52px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="page-header">
+    <div class="page-header__inner">
+      <p class="eyebrow">Дополнительная глава 14 · двухэлементная рама</p>
+      <h1>Матрицы жёсткости и масс</h1>
+      <p class="subtitle">Illustrative Example 11.1: локальные матрицы двух рамных элементов, поворот в глобальные оси, сборка системы 9×9, заделки и переход к уравнению M<sub>ff</sub>ü + K<sub>ff</sub>u = F(t).</p>
+    </div>
+  </header>
+
+  <details class="reference-toc">
+    <summary>Оглавление справочника</summary>
+    <nav class="contents" aria-label="Оглавление справочника">
+      <h2>Четырнадцать глав</h2>
+      <ol>
+        <li><a href="01-model-dofs.html">Модель, узлы, элементы и СС</a></li>
+        <li><a href="02-element-matrices.html">Матрицы элементов</a></li>
+        <li><a href="03-transformation-assembly.html">Преобразование и сборка</a></li>
+        <li><a href="04-boundary-loads.html">Граничные условия и нагрузки</a></li>
+        <li><a href="05-static-analysis.html">Статический расчёт</a></li>
+        <li><a href="06-modal-analysis.html">Модальный анализ</a></li>
+        <li><a href="07-newmark-transient.html">Переходный анализ Ньюмарка</a></li>
+        <li><a href="08-result-recovery.html">Результаты в элементах</a></li>
+        <li><a href="09-architecture-verification.html">Архитектура и проверка</a></li>
+        <li><a href="10-input-format.html">Формат входного файла</a></li>
+        <li><a href="11-mario-paz-modal-example.html">Модальный пример Mario Paz</a></li>
+        <li><a href="12-local-octave-workflow.html">Локальный запуск в GNU Octave</a></li>
+        <li><a href="13-fem-assembly-visualizer.html">Интерактивная сборка МКЭ</a></li>
+        <li><a aria-current="page" href="14-mario-paz-matrices-visualizer.html">Интерактивные матрицы рамы</a></li>
+      </ol>
+    </nav>
+  </details>
+
+  <main>
+    <section class="app" aria-label="Интерактивная визуализация матриц двухэлементной рамы">
+      <div class="toolbar">
+        <div class="toolbar__group playback" aria-label="Управление анимацией">
+          <button class="button button--icon" id="prevButton" type="button" aria-label="Предыдущий шаг">←</button>
+          <button class="button button--primary" id="playButton" type="button">▶ Запустить</button>
+          <button class="button button--icon" id="nextButton" type="button" aria-label="Следующий шаг">→</button>
+          <button class="button" id="resetButton" type="button">Сначала</button>
+        </div>
+        <div class="toolbar__group">
+          <label class="speed-label" for="speedRange">Скорость <input id="speedRange" type="range" min="1" max="3" step="1" value="2"></label>
+          <div class="segmented" aria-label="Выбор матрицы">
+            <button class="segment" type="button" data-matrix="K" aria-pressed="true">K · жёсткость</button>
+            <button class="segment" type="button" data-matrix="M" aria-pressed="false">M · масса</button>
+            <button class="segment" type="button" data-matrix="Keff" aria-pressed="false" disabled>K<sub>eff</sub></button>
+          </div>
+        </div>
+      </div>
+
+      <nav class="stage-strip" aria-label="Этапы построения матриц" id="stageStrip"></nav>
+
+      <div class="status-band" aria-live="polite">
+        <div>
+          <h2 id="stageTitle">Расчётная схема и степени свободы</h2>
+          <p id="stageDescription">Три рамных узла дают девять глобальных степеней свободы. Наружные узлы закреплены, средний узел свободен.</p>
+        </div>
+        <span class="status-badge" id="stageBadge">Шаг 1 из 8</span>
+      </div>
+
+      <div class="workspace">
+        <div class="left-column">
+          <div class="section-heading">
+            <h3>Расчётная схема</h3>
+            <p>Два элемента по 100 in</p>
+          </div>
+
+          <div class="model-canvas">
+            <svg viewBox="0 0 820 330" role="img" aria-labelledby="frameTitle frameDesc">
+              <title id="frameTitle">Двухэлементная плоская рама</title>
+              <desc id="frameDesc">Наклонный рамный элемент соединяет закреплённый узел 1 со свободным узлом 2. Горизонтальный элемент соединяет узел 2 с закреплённым узлом 3.</desc>
+              <defs>
+                <marker id="arrow-red" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#a33935"></path></marker>
+                <marker id="arrow-violet" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L8,3 z" fill="#6753a3"></path></marker>
+              </defs>
+
+              <g id="elementGroup1" data-element="0" role="button" tabindex="0" aria-label="Выбрать наклонный элемент 1">
+                <line class="member" x1="150" y1="250" x2="360" y2="40"></line>
+                <line class="member-hit" x1="150" y1="250" x2="360" y2="40"></line>
+              </g>
+              <g id="elementGroup2" data-element="1" role="button" tabindex="0" aria-label="Выбрать горизонтальный элемент 2">
+                <line class="member" x1="360" y1="40" x2="690" y2="40"></line>
+                <line class="member-hit" x1="360" y1="40" x2="690" y2="40"></line>
+              </g>
+
+              <circle class="node" cx="150" cy="250" r="11"></circle>
+              <circle class="node node-free" cx="360" cy="40" r="12"></circle>
+              <circle class="node" cx="690" cy="40" r="11"></circle>
+
+              <path d="M108 286 L193 286 M118 286 L101 305 M141 286 L124 305 M164 286 L147 305 M187 286 L170 305" fill="none" stroke="#17211b" stroke-width="4"></path>
+              <path d="M730 5 L730 90 M730 13 L750 -3 M730 36 L750 20 M730 59 L750 43 M730 82 L750 66" fill="none" stroke="#17211b" stroke-width="4"></path>
+
+              <line class="svg-force" x1="360" y1="52" x2="360" y2="126" marker-end="url(#arrow-red)"></line>
+              <text class="svg-label" x="377" y="112">F(t)</text>
+
+              <text class="svg-label" x="125" y="238">1</text>
+              <text class="svg-label" x="341" y="25">2</text>
+              <text class="svg-label" x="674" y="25">3</text>
+              <text class="svg-small" x="210" y="130" transform="rotate(-45 210 130)">e₁ · 45° · L=100</text>
+              <text class="svg-small" x="490" y="27">e₂ · 0° · L=100</text>
+              <text class="svg-small" x="76" y="324">u₁=v₁=θ₁=0</text>
+              <text class="svg-small" x="650" y="113">u₃=v₃=θ₃=0</text>
+
+              <g id="dynamicDofs" class="dynamic-dofs" hidden aria-hidden="true">
+                <line class="dof-arrow" x1="360" y1="40" x2="430" y2="40" marker-end="url(#arrow-violet)"></line>
+                <line class="dof-arrow" x1="360" y1="40" x2="360" y2="105" marker-end="url(#arrow-violet)"></line>
+                <path class="dof-orbit" d="M329 39 A31 31 0 1 1 352 69" marker-end="url(#arrow-violet)"></path>
+                <text class="svg-small" x="431" y="33">uₓ₂</text>
+                <text class="svg-small" x="369" y="100">uᵧ₂</text>
+                <text class="svg-small" x="310" y="74">θ₂</text>
+              </g>
+            </svg>
+          </div>
+
+          <div class="element-picker" aria-label="Выбор элемента" id="elementPicker"></div>
+
+          <div class="dof-panel">
+            <h4>Глобальная карта СС: [uₓ, uᵧ, θ] в каждом узле</h4>
+            <div class="dof-grid" id="dofGrid"></div>
+          </div>
+
+          <div class="property-grid" aria-label="Параметры элементов">
+            <div class="property"><span class="property__label">Площадь A</span><span class="property__value">6 in²</span></div>
+            <div class="property"><span class="property__label">Модуль E</span><span class="property__value">10⁷ lb/in²</span></div>
+            <div class="property"><span class="property__label">Плотность ρ</span><span class="property__value">0.7 lb·s²/in⁴</span></div>
+            <div class="property"><span class="property__label">Момент I</span><span class="property__value">100 in⁴</span></div>
+            <div class="property"><span class="property__label">Длина L</span><span class="property__value">100 in</span></div>
+            <div class="property"><span class="property__label">Свободные СС</span><span class="property__value">[4, 5, 6]</span></div>
+          </div>
+
+          <div class="formula-panel">
+            <h4 id="formulaTitle">Коэффициенты локальной матрицы жёсткости</h4>
+            <div id="formulaLines"></div>
+          </div>
+        </div>
+
+        <div class="right-column">
+          <div class="matrix-header">
+            <div>
+              <h3 id="matrixTitle">Глобальная матрица жёсткости K</h3>
+              <p id="matrixSubtitle">нулевая заготовка · 9 × 9</p>
+            </div>
+            <span class="equation-chip" id="equationChip">K = 0</span>
+          </div>
+
+          <div class="matrix-stage">
+            <div class="matrix-holder">
+              <table class="matrix-table" id="matrixTable" aria-label="Матрица расчётной системы"></table>
+            </div>
+          </div>
+
+          <div class="matrix-cell-detail" id="cellDetail" aria-live="polite">Выберите ненулевую ячейку, чтобы увидеть её происхождение.</div>
+
+          <div class="summary-grid" id="summaryGrid"></div>
+
+          <div class="newmark-panel" id="newmarkPanel" hidden>
+            <div class="newmark-panel__row">
+              <span>Шаг Δt</span>
+              <input id="timeStepRange" type="range" min="0.005" max="0.04" step="0.005" value="0.01">
+              <span id="timeStepValue">0.010 s</span>
+            </div>
+            <div class="formula-line" id="effectiveFormula">Keff = Kff + 4/Δt² · Mff</div>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="source-block">
+        <p><strong>Важно:</strong> у Mario Paz этот набор данных опубликован как модальный пример. Здесь те же проверенные K и M доведены до недемпфированного переходного уравнения и эффективной матрицы метода Ньюмарка.</p>
+        <p><strong>Библиография:</strong> <cite>Structural Dynamics. Theory And Computation</cite>, 5th ed., Mario Paz, William Leigh, 2004.</p>
+      </div>
+    </section>
+  </main>
+
+  <nav class="page-nav" aria-label="Навигация между главами">
+    <a href="13-fem-assembly-visualizer.html"><span class="page-nav__label">Назад</span>← 13. Интерактивная сборка МКЭ</a>
+    <a href="index.html"><span class="page-nav__label">К началу</span>Оглавление справочника →</a>
+  </nav>
+
+  <footer>МКЭ-Ф · автономный учебный справочник · глава 14 из 14 · вычисления выполняются локально в браузере</footer>
+
+  <script>
+    'use strict';
+
+    const stages = [
+      { short: 'Схема', title: 'Расчётная схема и степени свободы', description: 'Три рамных узла дают девять глобальных степеней свободы. Наружные узлы закреплены, средний узел свободен.', equation: '9 СС = 3 узла × 3' },
+      { short: 'Локальные', title: 'Локальные матрицы элемента', description: 'Оба элемента имеют одинаковые A, E, ρ, I и L. Поэтому их локальные матрицы жёсткости одинаковы между собой; то же справедливо для локальных матриц масс.', equation: 'kˡ, mˡ · 6 × 6' },
+      { short: 'Поворот e₁', title: 'Поворот наклонного элемента e₁', description: 'Для c = s = 1/√2 локальные матрицы переводятся в глобальные оси одинаковым преобразованием T₁.', equation: 'k₁ = T₁ᵀkˡT₁' },
+      { short: 'Элемент e₂', title: 'Горизонтальный элемент e₂', description: 'Для второго элемента c = 1 и s = 0, поэтому T₂ = I: локальные и глобальные компоненты совпадают.', equation: 'k₂ = kˡ, m₂ = mˡ' },
+      { short: 'Вклад e₁', title: 'Первый вклад в систему 9 × 9', description: 'Матрица e₁ добавляется по карте [1, 2, 3, 4, 5, 6]. Выделенные ячейки принадлежат текущему элементу.', equation: 'K(d₁,d₁) += k₁' },
+      { short: 'Вклад e₂', title: 'Сборка двух элементов', description: 'Матрица e₂ добавляется по карте [4, 5, 6, 7, 8, 9]. В общем узле 2 вклады двух элементов суммируются.', equation: 'K(d₂,d₂) += k₂' },
+      { short: 'Заделки', title: 'Редукция до свободного узла', description: 'Строки и столбцы закреплённых СС [1, 2, 3, 7, 8, 9] исключаются. Остаются Kff и Mff размера 3 × 3.', equation: 'free = [4, 5, 6]' },
+      { short: 'Динамика', title: 'Система переходного анализа', description: 'Редуцированные Kff и Mff образуют уравнение движения. Метод Ньюмарка решает систему с постоянной эффективной матрицей.', equation: 'Mff·ü + Kff·u = F(t)' }
+    ];
+
+    const state = {
+      stage: 0,
+      matrix: 'K',
+      selectedElement: 0,
+      selectedCell: null,
+      timeStep: 0.01,
+      playing: false,
+      timer: null
+    };
+
+    const properties = { A: 6, E: 1e7, rho: 0.7, I: 100, L: 100 };
+    const free = [3, 4, 5];
+    const fixed = [0, 1, 2, 6, 7, 8];
+    const elements = [
+      { name: 'e₁', c: Math.SQRT1_2, s: Math.SQRT1_2, map: [0, 1, 2, 3, 4, 5], nodes: [1, 2] },
+      { name: 'e₂', c: 1, s: 0, map: [3, 4, 5, 6, 7, 8], nodes: [2, 3] }
+    ];
+
+    const fullLabels = ['uₓ₁', 'uᵧ₁', 'θ₁', 'uₓ₂', 'uᵧ₂', 'θ₂', 'uₓ₃', 'uᵧ₃', 'θ₃'];
+    const localLabels = ['u₁', 'v₁', 'θ₁', 'u₂', 'v₂', 'θ₂'];
+    const reducedLabels = ['uₓ₂', 'uᵧ₂', 'θ₂'];
+
+    const dom = {
+      stageStrip: document.getElementById('stageStrip'),
+      stageTitle: document.getElementById('stageTitle'),
+      stageDescription: document.getElementById('stageDescription'),
+      stageBadge: document.getElementById('stageBadge'),
+      prevButton: document.getElementById('prevButton'),
+      nextButton: document.getElementById('nextButton'),
+      playButton: document.getElementById('playButton'),
+      resetButton: document.getElementById('resetButton'),
+      speedRange: document.getElementById('speedRange'),
+      elementPicker: document.getElementById('elementPicker'),
+      dofGrid: document.getElementById('dofGrid'),
+      formulaTitle: document.getElementById('formulaTitle'),
+      formulaLines: document.getElementById('formulaLines'),
+      matrixTitle: document.getElementById('matrixTitle'),
+      matrixSubtitle: document.getElementById('matrixSubtitle'),
+      equationChip: document.getElementById('equationChip'),
+      matrixTable: document.getElementById('matrixTable'),
+      cellDetail: document.getElementById('cellDetail'),
+      summaryGrid: document.getElementById('summaryGrid'),
+      newmarkPanel: document.getElementById('newmarkPanel'),
+      timeStepRange: document.getElementById('timeStepRange'),
+      timeStepValue: document.getElementById('timeStepValue'),
+      effectiveFormula: document.getElementById('effectiveFormula'),
+      dynamicDofs: document.getElementById('dynamicDofs')
+    };
+
+    function zeros(rows, columns = rows) {
+      return Array.from({ length: rows }, () => Array(columns).fill(0));
+    }
+
+    function transpose(matrix) {
+      return matrix[0].map((_, column) => matrix.map(row => row[column]));
+    }
+
+    function multiply(left, right) {
+      const result = zeros(left.length, right[0].length);
+      for (let row = 0; row < left.length; row += 1) {
+        for (let column = 0; column < right[0].length; column += 1) {
+          for (let inner = 0; inner < right.length; inner += 1) result[row][column] += left[row][inner] * right[inner][column];
+        }
+      }
+      return result;
+    }
+
+    function add(left, right) {
+      return left.map((row, i) => row.map((value, j) => value + right[i][j]));
+    }
+
+    function scaleMatrix(matrix, factor) {
+      return matrix.map(row => row.map(value => value * factor));
+    }
+
+    function submatrix(matrix, indices) {
+      return indices.map(row => indices.map(column => matrix[row][column]));
+    }
+
+    function localMatrices() {
+      const { A, E, rho, I, L } = properties;
+      const axial = E * A / L;
+      const b12 = 12 * E * I / L ** 3;
+      const b6 = 6 * E * I / L ** 2;
+      const b4 = 4 * E * I / L;
+      const b2 = 2 * E * I / L;
+      const K = [
+        [axial, 0, 0, -axial, 0, 0],
+        [0, b12, b6, 0, -b12, b6],
+        [0, b6, b4, 0, -b6, b2],
+        [-axial, 0, 0, axial, 0, 0],
+        [0, -b12, -b6, 0, b12, -b6],
+        [0, b6, b2, 0, -b6, b4]
+      ];
+      const factor = rho * A * L / 420;
+      const M = scaleMatrix([
+        [140, 0, 0, 70, 0, 0],
+        [0, 156, 22 * L, 0, 54, -13 * L],
+        [0, 22 * L, 4 * L ** 2, 0, 13 * L, -3 * L ** 2],
+        [70, 0, 0, 140, 0, 0],
+        [0, 54, 13 * L, 0, 156, -22 * L],
+        [0, -13 * L, -3 * L ** 2, 0, -22 * L, 4 * L ** 2]
+      ], factor);
+      return { K, M };
+    }
+
+    function transformation(c, s) {
+      return [
+        [c, s, 0, 0, 0, 0], [-s, c, 0, 0, 0, 0], [0, 0, 1, 0, 0, 0],
+        [0, 0, 0, c, s, 0], [0, 0, 0, -s, c, 0], [0, 0, 0, 0, 0, 1]
+      ];
+    }
+
+    function elementMatrix(index, kind) {
+      const local = localMatrices()[kind];
+      const T = transformation(elements[index].c, elements[index].s);
+      return multiply(multiply(transpose(T), local), T);
+    }
+
+    function assembledMatrix(kind, count = 2) {
+      const global = zeros(9);
+      for (let element = 0; element < count; element += 1) {
+        const matrix = elementMatrix(element, kind);
+        const map = elements[element].map;
+        for (let i = 0; i < 6; i += 1) {
+          for (let j = 0; j < 6; j += 1) global[map[i]][map[j]] += matrix[i][j];
+        }
+      }
+      return global;
+    }
+
+    function reducedMatrices() {
+      return {
+        K: submatrix(assembledMatrix('K'), free),
+        M: submatrix(assembledMatrix('M'), free)
+      };
+    }
+
+    function effectiveMatrix() {
+      const reduced = reducedMatrices();
+      const a0 = 4 / state.timeStep ** 2;
+      return add(reduced.K, scaleMatrix(reduced.M, a0));
+    }
+
+    function displayContext() {
+      let kind = state.matrix;
+      if (kind === 'Keff' && state.stage < 7) kind = 'K';
+      const baseKind = kind === 'Keff' ? 'Keff' : kind;
+
+      if (state.stage === 0) return { matrix: zeros(9), labels: fullLabels, kind: baseKind, title: kindTitle(kind, 'Глобальная'), subtitle: 'нулевая заготовка · 9 × 9', scale: matrixScale(kind) };
+      if (state.stage === 1) return { matrix: localMatrices()[kind], labels: localLabels, kind, title: kindTitle(kind, 'Локальная'), subtitle: 'порядок [u₁, v₁, θ₁, u₂, v₂, θ₂] · 6 × 6', scale: matrixScale(kind) };
+      if (state.stage === 2 || state.stage === 3) {
+        const element = state.stage - 2;
+        const labels = elements[element].map.map(index => fullLabels[index]);
+        return { matrix: elementMatrix(element, kind), labels, kind, title: `${kindTitle(kind, 'Матрица')} элемента e${element + 1}`, subtitle: `${element === 0 ? 'T₁ᵀ · local · T₁' : 'T₂ = I'} · 6 × 6`, scale: matrixScale(kind) };
+      }
+      if (state.stage === 4 || state.stage === 5) {
+        const count = state.stage - 3;
+        return { matrix: assembledMatrix(kind, count), labels: fullLabels, kind, title: kindTitle(kind, 'Глобальная'), subtitle: `${count} из 2 элементов собрано · 9 × 9`, scale: matrixScale(kind) };
+      }
+      if (state.stage === 6) {
+        return {
+          matrix: assembledMatrix(kind),
+          labels: fullLabels,
+          kind,
+          title: kindTitle(kind, 'Редуцированная'),
+          subtitle: 'исходная 9 × 9 · серым погашены закреплённые строки и столбцы · активный блок 3 × 3',
+          scale: matrixScale(kind),
+          reductionPreview: true
+        };
+      }
+      if (kind === 'Keff') return { matrix: effectiveMatrix(), labels: reducedLabels, kind, title: 'Эффективная матрица Kₑff', subtitle: `β = 1/4 · Δt = ${state.timeStep.toFixed(3)} s · 3 × 3`, scale: 1e6 };
+      const reduced = reducedMatrices()[kind];
+      return { matrix: reduced, labels: reducedLabels, kind, title: kindTitle(kind, 'Редуцированная'), subtitle: 'свободные СС [4, 5, 6] · 3 × 3', scale: matrixScale(kind) };
+    }
+
+    function kindTitle(kind, prefix) {
+      if (kind === 'M') return `${prefix} матрица масс M`;
+      if (kind === 'Keff') return 'Эффективная матрица Kₑff';
+      return `${prefix} матрица жёсткости K`;
+    }
+
+    function matrixScale(kind) {
+      return kind === 'M' ? 1 : 1e6;
+    }
+
+    function formatNumber(value, digits = 4) {
+      if (Math.abs(value) < 5e-10) return '0';
+      const rounded = Number(value.toFixed(digits));
+      return String(rounded).replace('-', '−');
+    }
+
+    function formatPhysical(value, kind) {
+      if (kind === 'M') return `${formatNumber(value, 4)}`;
+      return `${formatNumber(value / 1e6, 6)} × 10⁶`;
+    }
+
+    function renderStageStrip() {
+      dom.stageStrip.innerHTML = stages.map((stage, index) => `
+        <button class="stage-button${index < state.stage ? ' is-complete' : ''}" type="button" data-stage="${index}" ${index === state.stage ? 'aria-current="step"' : ''}>
+          <span>${index < state.stage ? '✓ завершено' : `шаг ${index + 1}`}</span>${stage.short}
+        </button>
+      `).join('');
+    }
+
+    function renderElementPicker() {
+      dom.elementPicker.innerHTML = elements.map((element, index) => `
+        <button class="element-button" type="button" data-element-button="${index}" aria-pressed="${state.selectedElement === index}">
+          ${element.name} · карта [${element.map.map(value => value + 1).join(', ')}]
+        </button>
+      `).join('');
+    }
+
+    function renderModel() {
+      for (let index = 0; index < 2; index += 1) {
+        const line = document.querySelector(`#elementGroup${index + 1} .member`);
+        line.className.baseVal = 'member';
+        if ((state.stage === 4 && index === 0) || (state.stage === 5 && index < 2) || state.stage >= 6) line.classList.add('member-assembled');
+        if (index === state.selectedElement) line.classList.add('member-selected');
+        if ((state.stage === 2 && index === 0) || (state.stage === 3 && index === 1) || (state.stage === 4 && index === 0) || (state.stage === 5 && index === 1)) line.classList.add('member-current');
+      }
+      dom.dynamicDofs.toggleAttribute('hidden', state.stage < 6);
+    }
+
+    function renderDofs() {
+      dom.dofGrid.innerHTML = fullLabels.map((label, index) => {
+        const constrained = state.stage >= 6 && fixed.includes(index);
+        const freeDof = state.stage >= 6 && free.includes(index);
+        return `<span class="dof-chip${constrained ? ' fixed' : ''}${freeDof ? ' free' : ''}">${index + 1}: ${label}</span>`;
+      }).join('');
+    }
+
+    function renderFormulaPanel() {
+      if (state.matrix === 'M') {
+        dom.formulaTitle.textContent = 'Согласованная матрица масс';
+        dom.formulaLines.innerHTML = `
+          <div class="formula-line">ρAL / 420 = 0.7 · 6 · 100 / 420 = 1</div>
+          <div class="formula-line">mᵉ = (ρAL/420) · m̄(L)</div>
+          <div class="formula-line">mᵍ = Tᵀ · mᵉ · T</div>`;
+      } else if (state.matrix === 'Keff') {
+        const a0 = 4 / state.timeStep ** 2;
+        dom.formulaTitle.textContent = 'Эффективная жёсткость Ньюмарка';
+        dom.formulaLines.innerHTML = `
+          <div class="formula-line">β = 1/4, γ = 1/2</div>
+          <div class="formula-line">a₀ = 1/(βΔt²) = ${formatNumber(a0, 3)}</div>
+          <div class="formula-line">Keff = Kff + a₀ · Mff</div>`;
+      } else {
+        dom.formulaTitle.textContent = 'Коэффициенты локальной матрицы жёсткости';
+        dom.formulaLines.innerHTML = `
+          <div class="formula-line">EA/L = 600 000</div>
+          <div class="formula-line">12EI/L³ = 12 000 · 6EI/L² = 600 000</div>
+          <div class="formula-line">4EI/L = 40 000 000 · 2EI/L = 20 000 000</div>`;
+      }
+    }
+
+    function currentGlobalCells() {
+      if (state.stage !== 4 && state.stage !== 5) return new Set();
+      const element = state.stage - 4;
+      const matrix = elementMatrix(element, state.matrix === 'M' ? 'M' : 'K');
+      const map = elements[element].map;
+      const result = new Set();
+      for (let i = 0; i < 6; i += 1) {
+        for (let j = 0; j < 6; j += 1) {
+          if (Math.abs(matrix[i][j]) > 1e-9) result.add(`${map[i]}-${map[j]}`);
+        }
+      }
+      return result;
+    }
+
+    function renderMatrix() {
+      const context = displayContext();
+      const current = currentGlobalCells();
+      const compact = context.matrix.length >= 9;
+      dom.matrixTable.classList.toggle('compact', compact);
+      dom.matrixTitle.textContent = context.title;
+      dom.matrixSubtitle.textContent = `${context.subtitle}${context.scale !== 1 ? ' · значения ×10⁶' : ''}`;
+      dom.matrixTable.setAttribute('aria-label', context.title);
+
+      let html = '<thead><tr><th></th>' + context.labels.map((label, index) => `<th scope="col"${context.reductionPreview && fixed.includes(index) ? ' class="fixed-axis"' : ''}>${label}</th>`).join('') + '</tr></thead><tbody>';
+      context.matrix.forEach((row, rowIndex) => {
+        html += `<tr><th scope="row"${context.reductionPreview && fixed.includes(rowIndex) ? ' class="fixed-axis"' : ''}>${context.labels[rowIndex]}</th>`;
+        row.forEach((value, columnIndex) => {
+          const scaled = value / context.scale;
+          const nonzero = Math.abs(value) > 1e-8;
+          const selected = state.selectedCell && state.selectedCell.row === rowIndex && state.selectedCell.column === columnIndex;
+          const currentCell = current.has(`${rowIndex}-${columnIndex}`);
+          const eliminated = context.reductionPreview && (!free.includes(rowIndex) || !free.includes(columnIndex));
+          if (eliminated) {
+            html += `<td class="eliminated" aria-label="${context.labels[rowIndex]}, ${context.labels[columnIndex]}: исключено закреплением"><span class="eliminated-value">${formatNumber(scaled, compact ? 3 : 4)}</span></td>`;
+          } else if (!nonzero) {
+            html += '<td>0</td>';
+          } else {
+            const classes = ['matrix-cell'];
+            if (context.kind === 'M') classes.push('mass');
+            if (context.kind === 'Keff') classes.push('effective');
+            if (currentCell) classes.push('current');
+            if (selected) classes.push('selected');
+            html += `<td><button class="${classes.join(' ')}" type="button" data-cell-row="${rowIndex}" data-cell-column="${columnIndex}" aria-label="${context.labels[rowIndex]}, ${context.labels[columnIndex]}: ${formatNumber(scaled, 5)}">${formatNumber(scaled, compact ? 3 : 4)}</button></td>`;
+          }
+        });
+        html += '</tr>';
+      });
+      html += '</tbody>';
+      dom.matrixTable.innerHTML = html;
+    }
+
+    function contributionAt(kind, globalRow, globalColumn, count = 2) {
+      const contributions = [];
+      for (let element = 0; element < count; element += 1) {
+        const map = elements[element].map;
+        const localRow = map.indexOf(globalRow);
+        const localColumn = map.indexOf(globalColumn);
+        if (localRow >= 0 && localColumn >= 0) {
+          const value = elementMatrix(element, kind)[localRow][localColumn];
+          if (Math.abs(value) > 1e-8) contributions.push({ element, value, localRow, localColumn });
+        }
+      }
+      return contributions;
+    }
+
+    function renderCellDetail() {
+      const context = displayContext();
+      if (!state.selectedCell) {
+        if (state.stage === 5) {
+          dom.cellDetail.textContent = 'Нажмите K₄₄ или M₄₄: в общем узле 2 будет видна сумма вкладов e₁ и e₂.';
+        } else if (state.stage === 6) {
+          dom.cellDetail.textContent = 'Серые строки и столбцы принадлежат закреплённым СС и исключаются. Цветной блок [4, 5, 6] × [4, 5, 6] образует редуцированную матрицу 3 × 3.';
+        } else if (state.stage >= 7) {
+          dom.cellDetail.textContent = 'Нажмите ячейку редуцированной матрицы: будет показан её глобальный адрес и происхождение.';
+        } else {
+          dom.cellDetail.textContent = 'Выберите ненулевую ячейку, чтобы увидеть её происхождение.';
+        }
+        return;
+      }
+
+      const row = state.selectedCell.row;
+      const column = state.selectedCell.column;
+      const value = context.matrix[row][column];
+      const symbol = context.kind === 'M' ? 'M' : context.kind === 'Keff' ? 'Keff' : 'K';
+
+      if (context.kind === 'Keff') {
+        const reduced = reducedMatrices();
+        const a0 = 4 / state.timeStep ** 2;
+        dom.cellDetail.textContent = `${symbol}[${row + 1},${column + 1}] = Kff + a₀Mff = ${formatNumber(reduced.K[row][column], 3)} + ${formatNumber(a0, 3)}·${formatNumber(reduced.M[row][column], 3)} = ${formatNumber(value, 3)}`;
+        return;
+      }
+
+      if (state.stage === 1) {
+        dom.cellDetail.textContent = `${symbol}local[${row + 1},${column + 1}] = ${formatPhysical(value, context.kind)}.`;
+        return;
+      }
+
+      if (state.stage === 2 || state.stage === 3) {
+        const element = state.stage - 2;
+        dom.cellDetail.textContent = `${symbol}${element + 1}[${row + 1},${column + 1}] = (T${element + 1}ᵀ · ${symbol}local · T${element + 1})[${row + 1},${column + 1}] = ${formatPhysical(value, context.kind)}.`;
+        return;
+      }
+
+      let globalRow = row;
+      let globalColumn = column;
+      if (state.stage >= 7) {
+        globalRow = free[row];
+        globalColumn = free[column];
+      }
+      const count = state.stage === 4 ? 1 : 2;
+      const parts = contributionAt(context.kind, globalRow, globalColumn, count);
+      const expression = parts.map(part => `${symbol}${part.element + 1}[${part.localRow + 1},${part.localColumn + 1}] = ${formatPhysical(part.value, context.kind)}`).join(' + ');
+      dom.cellDetail.textContent = `${symbol}${globalRow + 1}${globalColumn + 1}: ${expression || 'нет ненулевых вкладов'}; итог = ${formatPhysical(value, context.kind)}.`;
+    }
+
+    function renderSummary() {
+      const context = displayContext();
+      const nonzeros = context.matrix.flat().filter(value => Math.abs(value) > 1e-8).length;
+      let cards;
+      if (state.stage === 6) {
+        cards = [
+          ['Закреплённые СС', '[1, 2, 3, 7, 8, 9]'],
+          ['Свободные СС', '[4, 5, 6]'],
+          ['Активный блок', '3 × 3 из 9 × 9']
+        ];
+      } else if (state.stage >= 7) {
+        const reduced = reducedMatrices();
+        cards = [
+          ['Свободные СС', '[4, 5, 6]'],
+          ['Kff[1,1]', `${formatNumber(reduced.K[0][0] / 1e6, 6)} ×10⁶`],
+          ['Mff[1,1]', formatNumber(reduced.M[0][0], 3)]
+        ];
+      } else {
+        cards = [
+          ['Размер', `${context.matrix.length} × ${context.matrix.length}`],
+          ['Ненулевых', `${nonzeros}`],
+          ['Выбрано', state.matrix === 'M' ? 'матрица масс' : 'матрица жёсткости']
+        ];
+      }
+      dom.summaryGrid.innerHTML = cards.map(([label, value]) => `<div class="summary-card"><span class="summary-card__label">${label}</span><span class="summary-card__value">${value}</span></div>`).join('');
+    }
+
+    function renderMatrixToggle() {
+      document.querySelectorAll('[data-matrix]').forEach(button => {
+        const isEffective = button.dataset.matrix === 'Keff';
+        button.disabled = isEffective && state.stage < 7;
+        button.setAttribute('aria-pressed', String(button.dataset.matrix === state.matrix));
+      });
+    }
+
+    function renderNewmark() {
+      const visible = state.stage === 7;
+      dom.newmarkPanel.toggleAttribute('hidden', !visible);
+      dom.timeStepValue.textContent = `${state.timeStep.toFixed(3)} s`;
+      const a0 = 4 / state.timeStep ** 2;
+      dom.effectiveFormula.textContent = `a₀ = 4/Δt² = ${formatNumber(a0, 1)};  Kₑff = Kff + a₀ · Mff`;
+    }
+
+    function render() {
+      const stage = stages[state.stage];
+      dom.stageTitle.textContent = stage.title;
+      dom.stageDescription.textContent = stage.description;
+      dom.stageBadge.textContent = `Шаг ${state.stage + 1} из ${stages.length}`;
+      dom.equationChip.textContent = state.stage === 7 && state.matrix === 'Keff' ? 'Kₑff = Kff + 4/Δt² · Mff' : stage.equation;
+      dom.prevButton.disabled = state.stage === 0;
+      dom.nextButton.disabled = state.stage === stages.length - 1;
+      dom.playButton.textContent = state.playing ? '❚❚ Пауза' : '▶ Запустить';
+
+      renderStageStrip();
+      renderElementPicker();
+      renderModel();
+      renderDofs();
+      renderFormulaPanel();
+      renderMatrixToggle();
+      renderMatrix();
+      renderCellDetail();
+      renderSummary();
+      renderNewmark();
+    }
+
+    function selectStage(index) {
+      state.stage = Math.max(0, Math.min(stages.length - 1, index));
+      state.selectedCell = null;
+      if ([2, 4].includes(state.stage)) state.selectedElement = 0;
+      if ([3, 5].includes(state.stage)) state.selectedElement = 1;
+      if (state.stage < 7 && state.matrix === 'Keff') state.matrix = 'K';
+      if (state.stage === 7) state.matrix = 'Keff';
+      if (state.stage === stages.length - 1 && state.playing) stopPlayback();
+      render();
+    }
+
+    function selectElement(index) {
+      state.selectedElement = index;
+      if (state.stage === 0) state.stage = 1;
+      state.selectedCell = null;
+      render();
+    }
+
+    function selectMatrix(kind) {
+      if (kind === 'Keff' && state.stage < 7) return;
+      state.matrix = kind;
+      state.selectedCell = null;
+      render();
+    }
+
+    function stopPlayback() {
+      state.playing = false;
+      window.clearInterval(state.timer);
+      state.timer = null;
+    }
+
+    function restartPlaybackTimer() {
+      window.clearInterval(state.timer);
+      const delays = { 1: 2800, 2: 1800, 3: 1100 };
+      state.timer = window.setInterval(() => {
+        if (state.stage >= stages.length - 1) {
+          stopPlayback();
+          render();
+          return;
+        }
+        selectStage(state.stage + 1);
+      }, delays[dom.speedRange.value]);
+    }
+
+    function togglePlayback() {
+      if (state.playing) {
+        stopPlayback();
+        render();
+        return;
+      }
+      if (state.stage === stages.length - 1) state.stage = 0;
+      state.playing = true;
+      render();
+      restartPlaybackTimer();
+    }
+
+    dom.prevButton.addEventListener('click', () => selectStage(state.stage - 1));
+    dom.nextButton.addEventListener('click', () => selectStage(state.stage + 1));
+    dom.playButton.addEventListener('click', togglePlayback);
+    dom.resetButton.addEventListener('click', () => {
+      stopPlayback();
+      state.stage = 0;
+      state.matrix = 'K';
+      state.selectedElement = 0;
+      state.selectedCell = null;
+      render();
+    });
+
+    dom.speedRange.addEventListener('input', () => { if (state.playing) restartPlaybackTimer(); });
+
+    dom.timeStepRange.addEventListener('input', event => {
+      state.timeStep = Number(event.target.value);
+      state.selectedCell = null;
+      render();
+    });
+
+    document.addEventListener('click', event => {
+      const stageButton = event.target.closest('[data-stage]');
+      if (stageButton) {
+        stopPlayback();
+        selectStage(Number(stageButton.dataset.stage));
+        return;
+      }
+      const matrixButton = event.target.closest('[data-matrix]');
+      if (matrixButton) {
+        selectMatrix(matrixButton.dataset.matrix);
+        return;
+      }
+      const elementButton = event.target.closest('[data-element-button]');
+      if (elementButton) {
+        selectElement(Number(elementButton.dataset.elementButton));
+        return;
+      }
+      const elementGroup = event.target.closest('[data-element]');
+      if (elementGroup) {
+        selectElement(Number(elementGroup.dataset.element));
+        return;
+      }
+      const cell = event.target.closest('[data-cell-row]');
+      if (cell) {
+        state.selectedCell = { row: Number(cell.dataset.cellRow), column: Number(cell.dataset.cellColumn) };
+        renderMatrix();
+        renderCellDetail();
+      }
+    });
+
+    document.querySelectorAll('[data-element]').forEach(group => {
+      group.addEventListener('keydown', event => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          selectElement(Number(group.dataset.element));
+        }
+      });
+    });
+
+    render();
+  </script>
+</body>
+</html>

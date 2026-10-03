@@ -13,7 +13,7 @@
     <div class="site-header__inner">
       <p class="eyebrow">Student FEM Reference · Глава 1</p>
       <p class="site-title">Модель и степени свободы</p>
-      <p class="site-subtitle">Как геометрия и физические компоненты превращаются в индексируемый вектор неизвестных.</p>
+      <p class="site-subtitle">Как геометрия и физические свойства превращаются в вектор неизвестных.</p>
     </div>
   </header>
 
@@ -33,13 +33,15 @@
         <li><a href="10-input-format.html">Формат входного файла</a></li>
         <li><a href="11-mario-paz-modal-example.html">Модальный пример Mario Paz</a></li>
         <li><a href="12-local-octave-workflow.html">Локальный запуск в GNU Octave</a></li>
+        <li><a href="13-fem-assembly-visualizer.html">Интерактивная сборка МКЭ</a></li>
+        <li><a href="14-mario-paz-matrices-visualizer.html">Интерактивные матрицы рамы</a></li>
       </ol>
     </nav>
 
     <main class="chapter" id="main">
       <span class="chapter-number">Глава 1</span>
       <h1>Модель, узлы, элементы и степени свободы</h1>
-      <p class="lead">Конечно-элементная модель — это не рисунок конструкции, а согласованный набор координат, связей, физических свойств и глобальных индексов. Ошибка в этой связи переносится во все последующие матрицы.</p>
+      <p class="lead">Конечно-элементная модель — это дискретное представление непрерывного расчётного объекта, содержащего бесконечное множество точек. В реализованных здесь стержневых моделях каждый конечный элемент задаётся двумя узлами: перемещения и, для рамы, повороты узлов образуют конечный набор неизвестных, а поле между узлами восстанавливается функциями формы. Координаты, связи, свойства материала и сечения определяют, как уравнения отдельных элементов объединяются в глобальную систему.</p>
 
       <section aria-labelledby="levels-title">
         <h2 id="levels-title">Три уровня описания</h2>
@@ -93,15 +95,95 @@
         <h2 id="numbering-title">Глобальная нумерация</h2>
         <p>В проекте СС нумеруются по узлам. Для <em>n</em>-го узла и <em>d</em> компонентов на узел глобальный номер компоненты <em>j</em> равен:</p>
         <p class="equation">globalDOF(n, j) = (n − 1) · d + j</p>
-        <p>Для трёх рамных узлов матрица соответствия <code>iMnod</code> имеет вид:</p>
+        <p>Рассмотрим два рамных элемента из задачи <a href="../examples/cases/CaseFig11.7p363 MarioPaz.txt"><code>CaseFig11.7p363 MarioPaz</code></a>. Для трёх узлов матрица соответствия <code>iMnod</code> имеет вид:</p>
         <pre><code>% столбцы: ux  uy  thetaZ
 iMnod = [ 1   2    3;
           4   5    6;
           7   8    9 ];</code></pre>
-        <p>Если элемент соединяет узлы 1 и 3, функция строит его карту выражением, эквивалентным:</p>
-        <pre><code>elementDOFs = reshape(iMnod([1 3], :).', [], 1)
-% результат: [1; 2; 3; 7; 8; 9]</code></pre>
-        <p>Порядок важен: сначала идут все компоненты первого узла, затем второго. В таком же порядке записаны строки и столбцы элементных матриц.</p>
+
+        <figure class="model-figure">
+          <svg viewBox="0 0 820 660" role="img" aria-labelledby="global-numbering-figure-title global-numbering-figure-desc">
+            <title id="global-numbering-figure-title">Глобальная нумерация степеней свободы двухэлементной рамы</title>
+            <desc id="global-numbering-figure-desc">Наклонный элемент один соединяет закреплённый узел один со свободным узлом два, а горизонтальный элемент два соединяет узел два с закреплённым узлом три. Узлам соответствуют глобальные степени свободы от одного до девяти. Свободными остаются номера четыре, пять и шесть.</desc>
+            <defs>
+              <marker id="global-numbering-arrow" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto" markerUnits="strokeWidth">
+                <path d="M0,0 L0,6 L8,3 Z" fill="#285b89"></path>
+              </marker>
+              <marker id="global-numbering-rotation" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto" markerUnits="strokeWidth">
+                <path d="M0,0 L0,6 L8,3 Z" fill="#a24d16"></path>
+              </marker>
+            </defs>
+
+            <text x="410" y="31" text-anchor="middle" fill="#0c3d2d" font-size="22" font-weight="700" font-family="Segoe UI, Arial">Расчётная схема и номера строк/столбцов</text>
+
+            <line x1="140" y1="245" x2="365" y2="90" stroke="#165c45" stroke-width="10" stroke-linecap="round"></line>
+            <line x1="365" y1="90" x2="690" y2="90" stroke="#165c45" stroke-width="10" stroke-linecap="round"></line>
+            <circle cx="140" cy="245" r="11" fill="#fff" stroke="#0c3d2d" stroke-width="4"></circle>
+            <circle cx="365" cy="90" r="12" fill="#fff1df" stroke="#a24d16" stroke-width="5"></circle>
+            <circle cx="690" cy="90" r="11" fill="#fff" stroke="#0c3d2d" stroke-width="4"></circle>
+
+            <path d="M105 278 L175 278 M111 278 L97 294 M130 278 L116 294 M149 278 L135 294 M168 278 L154 294" fill="none" stroke="#17211b" stroke-width="4"></path>
+            <path d="M724 55 L724 126 M724 60 L740 48 M724 80 L740 68 M724 100 L740 88 M724 120 L740 108" fill="none" stroke="#17211b" stroke-width="4"></path>
+
+            <text x="116" y="235" fill="#17211b" font-size="19" font-weight="700" font-family="Segoe UI, Arial">узел 1</text>
+            <text x="337" y="72" fill="#7d370e" font-size="19" font-weight="700" font-family="Segoe UI, Arial">узел 2</text>
+            <text x="666" y="72" fill="#17211b" font-size="19" font-weight="700" font-family="Segoe UI, Arial">узел 3</text>
+            <text x="205" y="150" transform="rotate(-34 205 150)" fill="#0c6047" font-size="17" font-weight="700" font-family="Segoe UI, Arial">элемент 1</text>
+            <text x="505" y="80" fill="#0c6047" font-size="17" font-weight="700" font-family="Segoe UI, Arial">элемент 2</text>
+
+            <line x1="400" y1="175" x2="520" y2="175" stroke="#285b89" stroke-width="3" marker-end="url(#global-numbering-arrow)"></line>
+            <line x1="400" y1="175" x2="400" y2="115" stroke="#285b89" stroke-width="3" marker-end="url(#global-numbering-arrow)"></line>
+            <line x1="376" y1="111" x2="395" y2="168" stroke="#8eb2d0" stroke-width="2" stroke-dasharray="5 4"></line>
+            <text x="528" y="181" fill="#194d77" font-size="17" font-weight="700" font-family="Segoe UI, Arial">[4]: uₓ₂</text>
+            <text x="409" y="132" fill="#194d77" font-size="17" font-weight="700" font-family="Segoe UI, Arial">[5]: uᵧ₂</text>
+            <path d="M590 204 A31 31 0 1 0 566 175" fill="none" stroke="#a24d16" stroke-width="3" marker-end="url(#global-numbering-rotation)"></path>
+            <text x="598" y="204" fill="#7d370e" font-size="17" font-weight="700" font-family="Segoe UI, Arial">[6]: θ₂</text>
+
+            <g font-family="Segoe UI, Arial">
+              <rect x="35" y="315" width="225" height="68" rx="11" fill="#eef0ed" stroke="#b9c0ba"></rect>
+              <text x="147" y="339" text-anchor="middle" fill="#17211b" font-size="16" font-weight="700">узел 1 · заделка</text>
+              <text x="147" y="366" text-anchor="middle" fill="#5d685f" font-size="17">1: uₓ₁ · 2: uᵧ₁ · 3: θ₁</text>
+
+              <rect x="297" y="315" width="225" height="68" rx="11" fill="#fff1df" stroke="#d7a56b" stroke-width="2"></rect>
+              <text x="409" y="339" text-anchor="middle" fill="#7d370e" font-size="16" font-weight="700">узел 2 · свободен</text>
+              <text x="409" y="366" text-anchor="middle" fill="#7d370e" font-size="17">4: uₓ₂ · 5: uᵧ₂ · 6: θ₂</text>
+
+              <rect x="559" y="315" width="225" height="68" rx="11" fill="#eef0ed" stroke="#b9c0ba"></rect>
+              <text x="671" y="339" text-anchor="middle" fill="#17211b" font-size="16" font-weight="700">узел 3 · заделка</text>
+              <text x="671" y="366" text-anchor="middle" fill="#5d685f" font-size="17">7: uₓ₃ · 8: uᵧ₃ · 9: θ₃</text>
+            </g>
+
+            <text x="35" y="418" fill="#5d685f" font-size="16" font-weight="700" font-family="Segoe UI, Arial">Порядок строк и столбцов глобальных K и M</text>
+            <g font-family="Segoe UI, Arial" text-anchor="middle">
+              <rect x="36" y="432" width="80" height="58" rx="8" fill="#eef0ed" stroke="#b9c0ba"></rect><text x="76" y="455" fill="#17211b" font-size="18" font-weight="700">1</text><text x="76" y="479" fill="#5d685f" font-size="15">uₓ₁</text>
+              <rect x="119" y="432" width="80" height="58" rx="8" fill="#eef0ed" stroke="#b9c0ba"></rect><text x="159" y="455" fill="#17211b" font-size="18" font-weight="700">2</text><text x="159" y="479" fill="#5d685f" font-size="15">uᵧ₁</text>
+              <rect x="202" y="432" width="80" height="58" rx="8" fill="#eef0ed" stroke="#b9c0ba"></rect><text x="242" y="455" fill="#17211b" font-size="18" font-weight="700">3</text><text x="242" y="479" fill="#5d685f" font-size="15">θ₁</text>
+              <rect x="285" y="432" width="80" height="58" rx="8" fill="#fff1df" stroke="#d7a56b" stroke-width="2"></rect><text x="325" y="455" fill="#7d370e" font-size="18" font-weight="700">4</text><text x="325" y="479" fill="#7d370e" font-size="15">uₓ₂</text>
+              <rect x="368" y="432" width="80" height="58" rx="8" fill="#fff1df" stroke="#d7a56b" stroke-width="2"></rect><text x="408" y="455" fill="#7d370e" font-size="18" font-weight="700">5</text><text x="408" y="479" fill="#7d370e" font-size="15">uᵧ₂</text>
+              <rect x="451" y="432" width="80" height="58" rx="8" fill="#fff1df" stroke="#d7a56b" stroke-width="2"></rect><text x="491" y="455" fill="#7d370e" font-size="18" font-weight="700">6</text><text x="491" y="479" fill="#7d370e" font-size="15">θ₂</text>
+              <rect x="534" y="432" width="80" height="58" rx="8" fill="#eef0ed" stroke="#b9c0ba"></rect><text x="574" y="455" fill="#17211b" font-size="18" font-weight="700">7</text><text x="574" y="479" fill="#5d685f" font-size="15">uₓ₃</text>
+              <rect x="617" y="432" width="80" height="58" rx="8" fill="#eef0ed" stroke="#b9c0ba"></rect><text x="657" y="455" fill="#17211b" font-size="18" font-weight="700">8</text><text x="657" y="479" fill="#5d685f" font-size="15">uᵧ₃</text>
+              <rect x="700" y="432" width="80" height="58" rx="8" fill="#eef0ed" stroke="#b9c0ba"></rect><text x="740" y="455" fill="#17211b" font-size="18" font-weight="700">9</text><text x="740" y="479" fill="#5d685f" font-size="15">θ₃</text>
+            </g>
+
+            <rect x="36" y="518" width="352" height="48" rx="11" fill="#e8f2ed" stroke="#9bbdac"></rect>
+            <text x="212" y="548" text-anchor="middle" fill="#0c3d2d" font-size="17" font-weight="700" font-family="Cascadia Mono, Consolas, monospace">e₁.dofs = [1, 2, 3, 4, 5, 6]</text>
+            <rect x="432" y="518" width="352" height="48" rx="11" fill="#e9f2fa" stroke="#8eb2d0"></rect>
+            <text x="608" y="548" text-anchor="middle" fill="#194d77" font-size="17" font-weight="700" font-family="Cascadia Mono, Consolas, monospace">e₂.dofs = [4, 5, 6, 7, 8, 9]</text>
+
+            <rect x="105" y="589" width="610" height="54" rx="14" fill="#fff1df" stroke="#d7a56b" stroke-width="2"></rect>
+            <text x="410" y="612" text-anchor="middle" fill="#7d370e" font-size="17" font-weight="700" font-family="Cascadia Mono, Consolas, monospace">Kff = K([4 5 6], [4 5 6]) · Mff = M([4 5 6], [4 5 6])</text>
+            <text x="410" y="634" text-anchor="middle" fill="#7d370e" font-size="15" font-family="Segoe UI, Arial">строки и столбцы редуцированных матриц: uₓ₂, uᵧ₂, θ₂</text>
+          </svg>
+          <figcaption>Серые СС 1–3 и 7–9 принадлежат заделкам. Оранжевые СС 4–6 среднего узла остаются неизвестными, поэтому именно им соответствуют три строки и три столбца матриц <strong>K<sub>ff</sub></strong> и <strong>M<sub>ff</sub></strong>, приведённых в <a href="11-mario-paz-modal-example.html#assembly-title">численном примере</a>.</figcaption>
+        </figure>
+
+        <pre><code>element(1).dofs = [1; 2; 3; 4; 5; 6];
+element(2).dofs = [4; 5; 6; 7; 8; 9];
+
+fixedDOFs = [1 2 3 7 8 9];
+freeDOFs  = [4 5 6];</code></pre>
+        <p>Порядок важен: сначала идут все компоненты первого узла, затем второго. В таком же порядке записаны строки и столбцы элементных матриц. При сборке оба элемента добавляют свои коэффициенты в общие глобальные строки и столбцы 4, 5 и 6, принадлежащие узлу 2.</p>
       </section>
 
       <section aria-labelledby="structures-title">
@@ -166,7 +248,7 @@ iMnod = [ 1   2    3;
   </nav>
 
   <footer class="site-footer">
-    <div class="site-footer__inner"><p>МКЭ-Ф · автономный учебный справочник · глава 1 из 12</p></div>
+    <div class="site-footer__inner"><p>МКЭ-Ф · автономный учебный справочник · глава 1 из 14</p></div>
   </footer>
 </body>
 </html>
