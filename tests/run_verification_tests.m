@@ -19,6 +19,7 @@ runNamedTest('assembled matrix invariants', @testMatrixInvariants);
 runNamedTest('element matrices', @test_element_matrices);
 runNamedTest('sparse triplet assembly', @test_sparse_assembly);
 runNamedTest('input validation', @test_input_validation);
+runNamedTest('analysis configuration', @test_analysis_configuration);
 runNamedTest('single axial truss', @testSingleAxialTruss);
 runNamedTest('cantilever beam stiffness', @testCantileverBeam);
 runNamedTest('Mario Paz modal benchmark', @test_mario_paz_modal);
@@ -30,6 +31,7 @@ runNamedTest('Newmark transient analysis', @test_newmark_transient);
 runNamedTest('element result recovery', @test_result_recovery);
 runNamedTest('postprocessor export', @test_postprocessor_export);
 runNamedTest('offline postprocessor site', @test_postprocessor_site);
+runNamedTest('offline preprocessor site', @test_preprocessor_site);
 runNamedTest('reference examples', @test_reference_examples);
 runNamedTest('offline reference site', @test_reference_site);
 

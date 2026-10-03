@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MKE-F Preprocessor</title>
+  <link rel="stylesheet" href="assets/preprocessor.css">
+  <script defer src="js/namespace.js"></script>
+  <script defer src="../shared/support-markers.js"></script>
+  <script defer src="js/case-format.js"></script>
+  <script defer src="js/renderer.js"></script>
+  <script defer src="js/app.js"></script>
+</head>
+<body>
+  <header class="toolbar">
+    <div class="brand"><span class="brand-mark">M</span><div><strong>MKE-F Preprocessor</strong><small id="case-status">New case</small></div></div>
+    <div class="toolbar-actions">
+      <button id="new-case" type="button">New</button>
+      <label class="button" for="file-input">Open TXT</label><input id="file-input" type="file" accept=".txt,text/plain">
+      <button id="download-case" class="primary" type="button">Download TXT</button>
+      <button id="undo" type="button" disabled>Undo</button><button id="redo" type="button" disabled>Redo</button>
+      <button id="reset-view" type="button">Reset view</button>
+    </div>
+  </header>
+  <main class="app-layout">
+    <aside class="settings">
+      <section><h2>Case</h2><label for="case-name">Filename</label><input id="case-name" value="Case"><label for="analysis-type">Analysis</label><select id="analysis-type"><option value="">Choose analysis</option><option value="static">Static</option><option value="modal">Modal</option><option value="transient">Transient</option></select><label for="element-type">Element family</label><select id="element-type"><option value="0">Choose element family</option><option value="112">112 · 2D truss</option><option value="113">113 · 2D frame</option></select></section>
+      <section id="transient-settings" hidden><h2>Transient run</h2><label for="time-step">Time step</label><input id="time-step" type="number" min="0" step="any"><label for="duration">Duration</label><input id="duration" type="number" min="0" step="any"><label for="monitor-node">Monitor node</label><input id="monitor-node" type="number" min="1" step="1"><label for="monitor-dof">Monitor local DOF</label><select id="monitor-dof"></select></section>
+      <section><h2>Canvas tool</h2><div class="segmented"><button type="button" data-tool="select" class="active">Select / pan</button><button type="button" data-tool="node">Place node</button></div><label><input id="grid-enabled" type="checkbox" checked> Show coordinate grid</label><label><input id="snap-enabled" type="checkbox" checked> Snap new nodes to grid</label><label for="grid-spacing">Grid and snap size</label><input id="grid-spacing" type="number" min="0" step="any" value="1"><p class="control-note">X points right and Y points up. Exact node values can be entered below.</p></section>
+      <section><h2>New-member defaults</h2><label for="default-area">Area A</label><input id="default-area" type="number" min="0" step="any" value="0.0001"><label for="default-young">Young's modulus E</label><input id="default-young" type="number" min="0" step="any" value="200000000000"><label for="default-density">Density rho</label><input id="default-density" type="number" min="0" step="any" value="7800"><label id="default-inertia-label" for="default-inertia">Moment of inertia I</label><input id="default-inertia" type="number" min="0" step="any" value="3.33e-9"></section>
+      <section><h2>Selection</h2><pre id="selection-details">Nothing selected</pre><div id="node-coordinate-editor" hidden><label for="selected-node-x">Node X</label><input id="selected-node-x" type="number" step="any"><label for="selected-node-y">Node Y</label><input id="selected-node-y" type="number" step="any"></div></section>
+      <section class="help"><p>Place nodes, then use Add element and select its endpoints. Exact values remain editable in the tables. Wheel to zoom and drag empty canvas to pan.</p></section>
+    </aside>
+    <section class="workspace" id="drop-zone">
+      <div id="error-panel" class="message error" role="alert" hidden></div>
+      <div id="notice-panel" class="message notice" role="status" hidden></div>
+      <div class="canvas-wrap"><svg id="viewport" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Editable structural model with X and Y coordinate axes"></svg><span class="drop-hint">Drop an MKE-F case file anywhere here</span></div>
+      <div class="table-actions"><button id="add-node" type="button">Add node</button><button id="add-element" type="button">Add element</button><button id="add-support" type="button">Add support</button><button id="add-load" type="button">Add load</button></div>
+      <div class="tables">
+        <details open><summary>Nodes <span id="node-count"></span></summary><div class="table-scroll"><table><thead><tr><th>ID</th><th>X</th><th>Y</th><th></th></tr></thead><tbody id="nodes-body"></tbody></table></div></details>
+        <details><summary>Elements <span id="element-count"></span></summary><div class="table-scroll"><table><thead id="elements-head"></thead><tbody id="elements-body"></tbody></table></div></details>
+        <details><summary>Supports <span id="support-count"></span></summary><div class="table-scroll"><table><thead><tr><th>ID</th><th>Node</th><th>Type</th><th></th></tr></thead><tbody id="supports-body"></tbody></table></div></details>
+        <details><summary>Loads <span id="load-count"></span></summary><div class="table-scroll"><table><thead><tr><th>ID</th><th>Type</th><th>Node</th><th>Fx</th><th>Fy</th><th>Mz</th><th>Frequency</th><th></th></tr></thead><tbody id="loads-body"></tbody></table></div></details>
+        <details><summary>Case text preview</summary><textarea id="case-preview" readonly spellcheck="false"></textarea></details>
+      </div>
+      <div class="status-bar"><span id="validation-status">Model is incomplete</span></div>
+    </section>
+  </main>
+</body>
+</html>

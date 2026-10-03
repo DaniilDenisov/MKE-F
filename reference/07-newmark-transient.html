@@ -108,7 +108,10 @@ a3 = 1/(2*beta) - 1;</code></pre>
       <section aria-labelledby="viewer-title">
         <h2 id="viewer-title">Как запустить расчёт и посмотреть результат</h2>
         <p>В Octave из корневого каталога проекта выполните:</p>
-        <pre><code>problem = StructFEProblem(fullfile( ...
+        <pre><code>addpath(pwd);
+setup;
+
+problem = StructFEProblem(fullfile( ...
     'examples', 'cases', 'CaseBeam.txt'));
 model = problem.GetAnalysisModel();
 result = problem.RunTransient(1e-4, 1e-2, 3, 2);

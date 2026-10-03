@@ -124,6 +124,31 @@ classdef StructFEProblem < handle
                 disp(result.frequenciesHz);
             end
         end
+        % Запуск расчёта, выбранного в необязательной секции analysis.
+        function result = RunSelected(this)
+            configuration = this.mesh.analysisConfiguration;
+            if isempty(fieldnames(configuration))
+                error('MKEF:MissingAnalysisConfiguration', ...
+                    ['The input file has no analysis section. Use RunStatic, ' ...
+                     'RunModal, or RunTransient explicitly.']);
+            end
+            switch configuration.type
+                case 'static'
+                    result = this.RunStatic();
+                case 'modal'
+                    result = this.RunModal();
+                case 'transient'
+                    result = this.RunTransient(configuration.timeStep, ...
+                        configuration.duration, ...
+                        configuration.monitorNode, ...
+                        configuration.monitorDOF);
+                otherwise
+                    error('MKEF:UnsupportedAnalysisType', ...
+                        'Unsupported configured analysis type %s.', ...
+                        configuration.type);
+            end
+        end
+
         % Метод запуска анализа динамики со внешними силами.
         function result = RunTransient(this,tStep,tDur,node,dofToPlot,options)
             if nargin < 5 || ~isnumeric(node) || ~isscalar(node) || ...

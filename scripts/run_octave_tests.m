@@ -1,6 +1,6 @@
 function run_octave_tests()
 %RUN_OCTAVE_TESTS Запуск полного набора тестов GNU Octave.
-% Это одна точка входа для локального запуска и GitHub Actions.
+% Это одна точка входа для локального запуска.
 
 scriptsDir = fileparts(mfilename('fullpath'));
 rootDir = fileparts(scriptsDir);

@@ -55,6 +55,7 @@ for pageNumber = 1:numel(pages)
          page '.']);
     assertNoExternalRuntimeAssets(html, page);
     assertLocalTargetsResolve(html, pagePath);
+    assertAnalysisModelExamplesAreSelfContained(html, page);
 
     contentsNavigation = extractNavigation(html, 'contents', page);
     contentsLinks = extractHrefs(contentsNavigation);
@@ -80,6 +81,27 @@ for pageNumber = 1:numel(pages)
     assert(isequal(pageLinks, expectedPageNavigation{pageNumber}), ...
         ['MKEF:VerificationFailed: previous/next navigation is wrong in ' ...
          page '.']);
+end
+end
+
+function assertAnalysisModelExamplesAreSelfContained(html, page)
+blocks = regexp(html, '<pre><code>([\s\S]*?)</code></pre>', 'tokens');
+for i = 1:numel(blocks)
+    block = blocks{i}{1};
+    modelPosition = strfind(block, 'model = problem.GetAnalysisModel();');
+    if isempty(modelPosition)
+        continue;
+    end
+    addPathPosition = strfind(block, 'addpath(pwd);');
+    setupPosition = strfind(block, 'setup;');
+    problemPosition = strfind(block, 'problem = StructFEProblem');
+    assert(~isempty(addPathPosition) && ~isempty(setupPosition) && ...
+           ~isempty(problemPosition) && ...
+           addPathPosition(1) < setupPosition(1) && ...
+           setupPosition(1) < problemPosition(1) && ...
+           problemPosition(1) < modelPosition(1), ...
+        ['MKEF:VerificationFailed: GetAnalysisModel example is not ' ...
+         'self-contained in ' page '.']);
 end
 end
 

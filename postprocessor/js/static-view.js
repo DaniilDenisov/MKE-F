@@ -141,6 +141,21 @@
     return lines;
   };
 
+  S.nodeResultDetails = function (dataset, nodeId, mode) {
+    if (mode === 'none' || mode === 'displacementMagnitude') return [];
+    var connected = dataset.raw.model.elements.filter(function (element) { return element.nodeIds.indexOf(nodeId) >= 0; });
+    if (!connected.length) return [];
+    var labels = { axialForce: 'axial force', axialStress: 'axial stress', N: 'axial force N', V: 'shear force V', M: 'bending moment M' };
+    var suffix = mode === 'axialStress' ? unit(dataset, 'stress') : mode === 'M' ? unit(dataset, 'moment') : unit(dataset, 'force');
+    var lines = ['Displayed ' + labels[mode] + ' at connected element' + (connected.length === 1 ? '' : 's') + ':'];
+    connected.forEach(function (element) {
+      var result = dataset.resultsByElementId.get(element.id), endIndex = element.nodeIds[0] === nodeId ? 0 : 1;
+      var value = mode === 'axialForce' || mode === 'axialStress' ? result[mode] : S.frameDiagram(result.localEndForces, mode, endIndex);
+      lines.push('E' + element.id + ' · end ' + (endIndex + 1) + ' = ' + withUnit(value, suffix));
+    });
+    return lines;
+  };
+
   S.frameDiagram = function (q, quantity, xi) {
     if (quantity === 'N') return -q[0];
     if (quantity === 'V') return -q[1];

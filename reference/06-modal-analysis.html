@@ -85,7 +85,10 @@ modeShapes(freeDOFs, :) = reducedModeShapes;</code></pre>
 
         <h3>1. Выполните расчёт и экспорт</h3>
         <p>Откройте терминал в корневом каталоге проекта, запустите GNU Octave и выполните:</p>
-        <pre><code>problem = StructFEProblem(fullfile( ...
+        <pre><code>addpath(pwd);
+setup;
+
+problem = StructFEProblem(fullfile( ...
     'examples', 'cases', 'CaseBeam.txt'));
 model = problem.GetAnalysisModel();
 result = problem.RunModal();

@@ -77,16 +77,17 @@
 
       <section aria-labelledby="syntax-title">
         <h2 id="syntax-title">3. Общие правила синтаксиса</h2>
-        <p>Парсер читает файл до конца. Пустые строки и строки, первый непробельный символ которых <code>#</code>, пропускаются. После маркера секции идёт целое число записей, затем ровно столько непустых строк данных.</p>
+        <p>Парсер читает файл до конца. Пустые строки и строки, первый непробельный символ которых <code>#</code>, пропускаются. После обычного маркера секции идёт целое число записей, затем ровно столько непустых строк данных. Необязательная секция <code>analysis</code> является исключением и содержит одну конфигурационную запись.</p>
         <pre><code>section_marker
 record_count
 comma,separated,record
 ...</code></pre>
-        <p>Рекомендуемый порядок: <code>nodes</code>, затем <code>elems_112</code> или <code>elems_113</code>, затем <code>bcfix</code> и секции нагрузок. Узлы обязаны предшествовать элементам, элементы — опорам и нагрузкам.</p>
+        <p>Рекомендуемый порядок: <code>analysis</code>, <code>nodes</code>, затем <code>elems_112</code> или <code>elems_113</code>, затем <code>bcfix</code> и секции нагрузок. Узлы обязаны предшествовать элементам, элементы — опорам и нагрузкам.</p>
         <div class="table-wrap">
           <table>
             <thead><tr><th>Секция</th><th>Можно повторять</th><th>Правило</th></tr></thead>
             <tbody>
+              <tr><td><code>analysis</code></td><td>Нет</td><td>Необязательная конфигурация для <code>RunSelected</code>.</td></tr>
               <tr><td><code>nodes</code></td><td>Нет</td><td>Ровно одна непустая секция.</td></tr>
               <tr><td><code>elems_112</code> или <code>elems_113</code></td><td>Да</td><td>Записи добавляются; тип во всех секциях должен совпадать.</td></tr>
               <tr><td><code>bcfix</code></td><td>Да</td><td>Записи добавляются; допустимо ноль записей.</td></tr>
@@ -95,6 +96,18 @@ comma,separated,record
           </table>
         </div>
         <p>Поля внутри записи разделяются запятыми; пробелы около значения допустимы. Количество полей проверяется строго. Числа должны быть конечными, а идентификаторы и количества — целыми там, где это требуется.</p>
+      </section>
+
+      <section aria-labelledby="analysis-title">
+        <h2 id="analysis-title">3.1. Конфигурация расчёта</h2>
+        <pre><code>analysis
+static</code></pre>
+        <pre><code>analysis
+modal</code></pre>
+        <pre><code>analysis
+transient,timeStep,duration,monitorNode,monitorDOF</code></pre>
+        <p>Секция необязательна для обратной совместимости и может появиться только один раз. Для переходного расчёта шаг времени положителен, длительность покрывает хотя бы один шаг, а контрольный узел и локальная СС находятся в диапазоне модели. <code>RunSelected</code> запускает указанный расчёт; без секции следует использовать прежние явные методы.</p>
+        <p>Статика допускает только нагрузки типа 10, модальный расчёт — ни одной нагрузки, переходный расчёт — типы 10–13. Тип 10 в переходной задаче сохраняет историческую семантику одношагового импульса.</p>
       </section>
 
       <section aria-labelledby="nodes-title">
@@ -134,8 +147,8 @@ type,node,0,0,0</code></pre>
             <thead><tr><th><code>type</code></th><th>Свободно</th><th>Закреплено</th></tr></thead>
             <tbody>
               <tr><td>1</td><td>—</td><td>Все СС узла</td></tr>
-              <tr><td>2</td><td><code>ux</code></td><td>Остальные СС</td></tr>
-              <tr><td>3</td><td><code>uy</code></td><td>Остальные СС</td></tr>
+              <tr><td>2</td><td>Только <code>ux</code></td><td><code>uy</code> и <code>thetaZ</code> у рамы</td></tr>
+              <tr><td>3</td><td>Только <code>uy</code></td><td><code>ux</code> и <code>thetaZ</code> у рамы</td></tr>
               <tr><td>4</td><td><code>thetaZ</code> у рамы</td><td><code>ux, uy</code></td></tr>
             </tbody>
           </table>
@@ -209,6 +222,7 @@ dynamicResult = problem.RunTransient(1e-4, 1e-2, 3, 2);</code></pre>
     "initialVelocity", v0);
 dynamicResult = problem.RunTransient(1e-4, 1e-2, 3, 2, initial);</code></pre>
         <p>Векторы <code>u0</code> и <code>v0</code> имеют полный размер модели и нули на закреплённых СС. Начальное ускорение вычисляется из равновесия. Интегрирование использует метод средних ускорений Ньюмарка с β=1/4 и γ=1/2.</p>
+        <p>Если файл содержит секцию <code>analysis</code>, тот же расчёт запускается как <code>result = problem.RunSelected()</code>. Настроенный переходный запуск использует нулевые начальные перемещения и скорости.</p>
       </section>
 
       <section aria-labelledby="results-title">
@@ -237,13 +251,15 @@ dynamicResult = problem.RunTransient(1e-4, 1e-2, 3, 2, initial);</code></pre>
               <tr><td><code>MKEF:InputFileOpenFailed</code></td><td>Файл не найден, недоступен или не может быть открыт.</td></tr>
               <tr><td><code>MKEF:UnknownInputMarker</code></td><td>Неизвестное имя секции или опечатка.</td></tr>
               <tr><td><code>MKEF:InputSectionOrder</code></td><td>Элемент встретился до узлов либо опора/нагрузка — до элементов.</td></tr>
-              <tr><td><code>MKEF:DuplicateInputSection</code></td><td>Повторена секция <code>nodes</code>.</td></tr>
+              <tr><td><code>MKEF:DuplicateInputSection</code></td><td>Повторена секция <code>nodes</code> или <code>analysis</code>.</td></tr>
               <tr><td><code>MKEF:MalformedInput</code></td><td>Неверное число полей, нечисловое/бесконечное значение, тип записи, узел, частота или свойства.</td></tr>
               <tr><td><code>MKEF:UnexpectedEndOfFile</code></td><td>Объявленное число записей больше фактического.</td></tr>
               <tr><td><code>MKEF:IncompleteInput</code></td><td>Нет узлов или элементов.</td></tr>
               <tr><td><code>MKEF:UnsupportedMixedMesh</code></td><td>В одном файле встретились типы 112 и 113.</td></tr>
               <tr><td><code>MKEF:UnsupportedConstraintValue</code></td><td>В последних трёх полях <code>bcfix</code> есть ненулевое заданное перемещение.</td></tr>
               <tr><td><code>MKEF:UnsupportedLoadComponent</code></td><td>Для ферменного узла задан ненулевой <code>Mz</code>.</td></tr>
+              <tr><td><code>MKEF:AnalysisLoadMismatch</code></td><td>Тип нагрузки несовместим с настроенным видом расчёта.</td></tr>
+              <tr><td><code>MKEF:MissingAnalysisConfiguration</code></td><td><code>RunSelected</code> вызван для старого файла без секции <code>analysis</code>.</td></tr>
             </tbody>
           </table>
         </div>
@@ -257,6 +273,7 @@ dynamicResult = problem.RunTransient(1e-4, 1e-2, 3, 2, initial);</code></pre>
         <h2 id="sources-title">11. Код, тесты и источники</h2>
         <ul>
           <li><a href="../src/model/FEMesh.m"><code>FEMesh.m</code></a> — единственный действующий контракт синтаксического разбора;</li>
+          <li><a href="../preprocessor/index.html"><code>preprocessor/index.html</code></a> — автономный редактор с координатной сеткой, точным вводом узлов и каноническим экспортом файлов этого формата;</li>
           <li><a href="../tests/test_input_validation.m"><code>tests/test_input_validation.m</code></a> — повторные секции, неверные записи, смешанная сетка, неизвестный маркер, открытие и выбор графика;</li>
           <li><a href="../tests/fixtures/CaseRepeatedSections.txt"><code>CaseRepeatedSections.txt</code></a> — исполняемый пример повторных секций;</li>
           <li>Henri P. Gavin, <a href="https://people.duke.edu/~hpgavin/StructuralDynamics/NumericalIntegration.pdf"><cite>Numerical Integration in Structural Dynamics</cite></a> — внешний материал по схеме Ньюмарка;</li>

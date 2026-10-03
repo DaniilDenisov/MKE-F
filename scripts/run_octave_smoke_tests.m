@@ -24,6 +24,9 @@ caseFiles = {
     fullfile(caseDirectory, 'CaseBeamDyn.txt')
     fullfile(caseDirectory, 'CaseBeamFreq.txt')
     fullfile(caseDirectory, 'CaseFig11.7p363 MarioPaz.txt')
+    fullfile(caseDirectory, 'CasePreprocessorStatic.txt')
+    fullfile(caseDirectory, 'CasePreprocessorModal.txt')
+    fullfile(caseDirectory, 'CasePreprocessorTransient.txt')
 };
 
 fprintf('Runtime: %s\n', runtimeName());
@@ -61,6 +64,18 @@ problem.RunTransient(1e-4, 3e-4, 3, 2);
 
 problem = StructFEProblem(fullfile(caseDirectory, 'CaseATransSite.txt'), options);
 problem.RunTransient(1e-4, 3e-4, 5, 2);
+
+problem = StructFEProblem(fullfile(caseDirectory, ...
+    'CasePreprocessorStatic.txt'), options);
+problem.RunSelected();
+
+problem = StructFEProblem(fullfile(caseDirectory, ...
+    'CasePreprocessorModal.txt'), options);
+problem.RunSelected();
+
+problem = StructFEProblem(fullfile(caseDirectory, ...
+    'CasePreprocessorTransient.txt'), options);
+problem.RunSelected();
 
 fprintf('All smoke tests passed.\n');
 

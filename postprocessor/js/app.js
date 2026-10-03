@@ -319,7 +319,7 @@
     var analysis = dataset.raw.analysis, lines = [];
     if (selection.kind === 'node') {
       var node = dataset.nodesById.get(selection.id), row = dataset.nodeIndexById.get(selection.id), dofs = dataset.raw.model.dofMap[row];
-      if (analysis.type === 'static') lines = M.staticResults.nodeDetails(dataset, node.id);
+      if (analysis.type === 'static') lines = M.staticResults.nodeDetails(dataset, node.id).concat(M.staticResults.nodeResultDetails(dataset, node.id, elements.staticResult.value));
       else if (analysis.type === 'modal') lines = modalNodeDetails(node.id);
       else {
         var timeIndex = Number(elements.timeIndex.value);

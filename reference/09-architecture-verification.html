@@ -83,14 +83,14 @@ modalResult = solveModal(model);</code></pre>
       </section>
 
       <section aria-labelledby="headless-title">
-        <h2 id="headless-title">Валидация и работа без рабочего стола</h2>
+        <h2 id="headless-title">Валидация и работа без GUI</h2>
         <p><code>FEMesh</code> проверяет открытие файла, порядок секций, число полей, конечность чисел, номера узлов, свойства элементов, типы нагрузок и запрет смешанной сетки. <code>onCleanup</code> закрывает файл и при ошибке. Сообщение парсера содержит имя файла и строку; полный контракт приведён в <a href="10-input-format.html">главе 10</a>.</p>
-        <p>По умолчанию <code>verbose=false</code> и <code>plotting=false</code>. Поэтому создание задачи и все три расчёта работают в терминале и CI без графического дисплея. Отрисовка сетки и истории — отдельные действия; <code>axis equal</code> не искажает геометрию сетки.</p>
+        <p>По умолчанию <code>verbose=false</code> и <code>plotting=false</code>. Поэтому создание задачи и все три расчёта работают локально в терминале без графического дисплея. Отрисовка сетки и истории — отдельные действия; <code>axis equal</code> не искажает геометрию сетки.</p>
         <pre><code>octave --no-gui --quiet --eval "addpath(pwd); setup; run_octave_tests;"</code></pre>
       </section>
 
       <section aria-labelledby="verification-title">
-        <h2 id="verification-title">Лестница проверки</h2>
+        <h2 id="verification-title">Порядок проверки</h2>
         <ol>
           <li><a href="../scripts/run_octave_smoke_tests.m"><code>run_octave_smoke_tests</code></a> читает поставляемые задачи, проверяет разреженную сборку и запускает доступные виды анализа.</li>
           <li><a href="../tests/run_verification_tests.m"><code>run_verification_tests</code></a> проверяет элементные и глобальные инварианты, независимые формулы, реакции, нагрузки и порядок вызовов.</li>
@@ -123,17 +123,17 @@ modalResult = solveModal(model);</code></pre>
         <h2 id="map-title">Карта выполненного плана улучшений</h2>
         <p>Ниже сохранены все отмеченные выполненными пункты прежнего <code>ToDo.md</code>. Для каждого указан действующий код и проверка; где промежуточное решение позже заменено, указан его нынешний эквивалент.</p>
 
-        <h3>1. Совместимость GNU Octave и CI</h3>
+        <h3>1. Совместимость GNU Octave и локальная проверка</h3>
         <ol>
-          <li>Минимальная версия GNU Octave 8.4 и проверка на 11.3 закреплены в <a href="../README.md"><code>README.md</code></a> и <a href="../.github/workflows/octave.yml"><code>.github/workflows/octave.yml</code></a>; точка проверки — <a href="../scripts/run_octave_tests.m"><code>run_octave_tests.m</code></a>.</li>
-          <li>Команда без графического интерфейса реализована в <a href="../scripts/run_octave_smoke_tests.m"><code>run_octave_smoke_tests.m</code></a> и вызывается CI.</li>
+          <li>Минимальная версия GNU Octave 8.4 и локальная проверка на 11.3 закреплены в <a href="../README.md"><code>README.md</code></a>; точка проверки — <a href="../scripts/run_octave_tests.m"><code>run_octave_tests.m</code></a>.</li>
+          <li>Команда без графического интерфейса реализована в <a href="../scripts/run_octave_smoke_tests.m"><code>run_octave_smoke_tests.m</code></a> и запускается разработчиком локально.</li>
           <li>Все поставляемые задачи собираются, а статика, моды, импульс и гармоника запускаются в <code>run_octave_smoke_tests.m</code>; матричные инварианты повторяются в <a href="../tests/run_verification_tests.m"><code>tests/run_verification_tests.m</code></a>.</li>
           <li>Промежуточные конкретные резервные методы старого абстрактного класса позже заменены структурами в <a href="../src/model/createStructuralElement.m"><code>createStructuralElement.m</code></a>; интерфейс проверяет <a href="../tests/test_element_matrices.m"><code>tests/test_element_matrices.m</code></a>.</li>
           <li>Проверка массивов однородных элементов handle-классов стала неактуальна после перехода на структуры; их массив создаёт <a href="../src/model/FEMesh.m"><code>FEMesh.m</code></a> и проверяет smoke-тест.</li>
           <li>Необязательные печать и графика реализованы в <a href="../src/model/StructFEProblem.m"><code>StructFEProblem.m</code></a>; значения по умолчанию проверяет <a href="../tests/test_input_validation.m"><code>tests/test_input_validation.m</code></a>.</li>
           <li>UTF‑8 закреплён в <a href="../.editorconfig"><code>.editorconfig</code></a>; чтение русских файлов фактически проходит во всех smoke-тестах.</li>
           <li>Поддерживаемые Octave операции и повторное решение сосредоточены в <a href="../src/analysis/transient/solveTransient.m"><code>solveTransient.m</code></a> и <a href="../src/analysis/common/validateReducedSystem.m"><code>validateReducedSystem.m</code></a>; их проверяет <a href="../tests/test_newmark_transient.m"><code>tests/test_newmark_transient.m</code></a>.</li>
-          <li>Небольшая функция запуска и CI — <code>run_octave_smoke_tests.m</code> и <code>.github/workflows/octave.yml</code>; успешное завершение является самой проверкой.</li>
+          <li>Небольшая функция локального запуска — <code>run_octave_smoke_tests.m</code>; успешное завершение является самой проверкой.</li>
           <li>Одноаргументный конструктор сохранён в <code>StructFEProblem.m</code>, а настройки работы без графического интерфейса проверены в <code>tests/test_input_validation.m</code>.</li>
         </ol>
 
@@ -145,7 +145,7 @@ modalResult = solveModal(model);</code></pre>
           <li>Реакции, масса, одношаговый импульс и гармонические отсчёты проверяет <code>tests/run_verification_tests.m</code>.</li>
           <li>Все поставляемые файлы служат регрессионными проверками отсутствия аварий в <code>run_octave_smoke_tests.m</code>.</li>
           <li>Явные абсолютные и относительные допуски реализуют вспомогательные функции <code>assertClose</code> и <code>assertRelativeSmall</code> в тестах.</li>
-          <li>Полный набор запускает <code>.github/workflows/octave.yml</code> через <code>run_octave_tests.m</code>.</li>
+          <li>Полный локальный набор запускается через <code>run_octave_tests.m</code>.</li>
           <li>Пример Mario Paz проверяется по опубликованным матрицам, частотам и формам в <a href="../tests/test_mario_paz_modal.m"><code>tests/test_mario_paz_modal.m</code></a>; пример ANSYS остаётся только сведением о происхождении проекта.</li>
         </ol>
 

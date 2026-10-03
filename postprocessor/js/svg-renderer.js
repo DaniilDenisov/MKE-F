@@ -13,21 +13,6 @@
     return Math.max(Math.hypot(bounds.maxX - bounds.minX, bounds.maxY - bounds.minY), 1e-9);
   }
 
-  function supportPath(node, type, size) {
-    var p = M.geometry.svgPoint(node);
-    if (type === 1) {
-      return 'M ' + (p.x - size) + ' ' + (p.y + size * .15) + ' L ' + (p.x + size) + ' ' + (p.y + size * .15) +
-        ' M ' + (p.x - size) + ' ' + (p.y + size * .35) + ' L ' + (p.x - size * .55) + ' ' + (p.y + size * .75) +
-        ' M ' + (p.x - size * .3) + ' ' + (p.y + size * .35) + ' L ' + (p.x + size * .15) + ' ' + (p.y + size * .75) +
-        ' M ' + (p.x + size * .4) + ' ' + (p.y + size * .35) + ' L ' + (p.x + size * .85) + ' ' + (p.y + size * .75);
-    }
-    var path = 'M ' + p.x + ' ' + p.y + ' L ' + (p.x - size) + ' ' + (p.y + size) + ' L ' + (p.x + size) + ' ' + (p.y + size) + ' Z';
-    if (type === 2) path += ' M ' + (p.x - size * .7) + ' ' + (p.y + size * 1.25) + ' L ' + (p.x + size * .7) + ' ' + (p.y + size * 1.25);
-    if (type === 3) path += ' M ' + (p.x - size * 1.25) + ' ' + (p.y - size * .7) + ' L ' + (p.x - size * 1.25) + ' ' + (p.y + size * .7);
-    if (type === 4) path += ' M ' + (p.x - size * 1.2) + ' ' + (p.y + size * 1.2) + ' L ' + (p.x + size * 1.2) + ' ' + (p.y + size * 1.2);
-    return path;
-  }
-
   function Renderer(svg, onSelection) {
     this.svg = svg;
     this.svg.classList.add('structural-viewport');
@@ -121,11 +106,9 @@
     }, this);
 
     dataset.raw.model.supports.forEach(function (support) {
-      var symbol = M.svgElement('path', { class: 'support-symbol', d: supportPath(dataset.nodesById.get(support.nodeId), support.type, this.size * .025), 'data-node-id': support.nodeId, 'data-support-node-id': support.nodeId });
-      var title = M.svgElement('title');
-      title.textContent = 'Support type ' + support.type + ' at node ' + support.nodeId;
-      symbol.appendChild(title);
-      this.layers.supports.appendChild(symbol);
+      var point = M.geometry.svgPoint(dataset.nodesById.get(support.nodeId));
+      var supportName = window.MKEFSupportMarkers.label(support.type, dataset.raw.model.dofPerNode);
+      window.MKEFSupportMarkers.append(M.svgElement, this.layers.supports, point.x, point.y, support.type, this.size * .035, { 'data-node-id': support.nodeId, 'data-support-node-id': support.nodeId }, 'Support ' + support.type + ' · ' + supportName + ' at node ' + support.nodeId);
     }, this);
     this.setVisibility({ showOriginal: true, showDeformed: true, showNodes: true, showNodeLabels: false, showElementLabels: false, showSupports: true, showLoads: true, showReactions: true });
     this.fit();

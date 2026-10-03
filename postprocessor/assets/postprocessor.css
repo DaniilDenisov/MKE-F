@@ -58,7 +58,6 @@ input[type="number"],input[type="range"],select { width:100%; padding:.4rem .5re
 .structural-viewport .label { fill:#263847; font-family:sans-serif; paint-order:stroke; stroke:#fff; stroke-linejoin:round; }
 .structural-viewport [data-node-id],.structural-viewport [data-element-id] { cursor:pointer; }
 .structural-viewport path.selected,.structural-viewport circle.selected { stroke:#ef7d18!important; stroke-width:4!important; }
-.structural-viewport .support-symbol { fill:#fff; stroke:#354657; stroke-width:1.8; vector-effect:non-scaling-stroke; }
 .structural-viewport .load-symbol { fill:none; stroke:#b63a3f; stroke-width:2; vector-effect:non-scaling-stroke; }
 .structural-viewport .reaction-symbol { fill:none; vector-effect:non-scaling-stroke; }
 .structural-viewport .reaction-force-symbol { stroke:#6d3ca5; stroke-width:2.8; stroke-dasharray:5 2.5; }

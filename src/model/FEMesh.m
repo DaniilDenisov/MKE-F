@@ -12,11 +12,13 @@ classdef FEMesh < handle
         allNodes;
         allFixBCs;
         allForceBCs;
+        analysisConfiguration;
     end
     properties (Access = private)
         sourceFilename = '';
         sourceLineNumber = 0;
         elementType = 0;
+        analysisSourceLine = 0;
     end
     methods
         function obj = FEMesh(filename)
@@ -33,6 +35,7 @@ classdef FEMesh < handle
             obj.allMeshElems = struct([]);
             obj.allFixBCs = zeros(0, 5);
             obj.allForceBCs = zeros(0, 6);
+            obj.analysisConfiguration = struct();
 
             [fid, message] = fopen(filename, 'rt');
             if fid < 0
@@ -52,6 +55,8 @@ classdef FEMesh < handle
                 end
                 markerLine = obj.sourceLineNumber;
                 switch marker
+                    case 'analysis'
+                        obj.readAnalysis(fid, markerLine);
                     case 'nodes'
                         obj.readNodes(fid, markerLine);
                     case 'elems_112'
@@ -75,6 +80,7 @@ classdef FEMesh < handle
             end
 
             obj.validateCompleteModel();
+            obj.validateAnalysisConfiguration();
             clear fileCleanup;
         end
 
@@ -125,6 +131,62 @@ classdef FEMesh < handle
     end
 
     methods (Access = private)
+        function readAnalysis(this, fid, markerLine)
+            if ~isempty(fieldnames(this.analysisConfiguration))
+                this.fail('MKEF:DuplicateInputSection', markerLine, ...
+                    'The analysis section may appear only once.');
+            end
+
+            [line, lineNumber] = this.readDataLine(fid, ...
+                'analysis configuration');
+            fields = strsplit(line, ',');
+            analysisType = lower(strtrim(fields{1}));
+            configuration = struct('type', analysisType);
+
+            if ismember(analysisType, {'static', 'modal'})
+                if numel(fields) ~= 1
+                    this.fail('MKEF:MalformedInput', lineNumber, ...
+                        'Analysis %s requires exactly one field.', ...
+                        analysisType);
+                end
+            elseif strcmp(analysisType, 'transient')
+                if numel(fields) ~= 5
+                    this.fail('MKEF:MalformedInput', lineNumber, ...
+                        ['Transient analysis requires five fields: ' ...
+                         'transient,timeStep,duration,monitorNode,monitorDOF.']);
+                end
+                values = zeros(1, 4);
+                for i = 1:4
+                    values(i) = str2double(strtrim(fields{i + 1}));
+                end
+                if any(~isfinite(values))
+                    this.fail('MKEF:MalformedInput', lineNumber, ...
+                        'Transient analysis settings must be finite numbers.');
+                end
+                if values(1) <= 0 || values(2) < values(1)
+                    this.fail('MKEF:MalformedInput', lineNumber, ...
+                        ['Transient timeStep must be positive and duration ' ...
+                         'must cover at least one step.']);
+                end
+                if values(3) ~= fix(values(3)) || values(3) < 1 || ...
+                        values(4) ~= fix(values(4)) || values(4) < 1
+                    this.fail('MKEF:MalformedInput', lineNumber, ...
+                        'Transient monitor node and DOF must be positive integers.');
+                end
+                configuration.timeStep = values(1);
+                configuration.duration = values(2);
+                configuration.monitorNode = values(3);
+                configuration.monitorDOF = values(4);
+            else
+                this.fail('MKEF:MalformedInput', lineNumber, ...
+                    ['Unsupported analysis type "%s"; expected static, ' ...
+                     'modal, or transient.'], analysisType);
+            end
+
+            this.analysisConfiguration = configuration;
+            this.analysisSourceLine = markerLine;
+        end
+
         function readNodes(this, fid, markerLine)
             if this.numberOfNodes ~= 0
                 this.fail('MKEF:DuplicateInputSection', markerLine, ...
@@ -331,6 +393,41 @@ classdef FEMesh < handle
             if this.numberOfElems == 0
                 this.fail('MKEF:IncompleteInput', lineNumber, ...
                     'The input file contains no element section.');
+            end
+        end
+
+        function validateAnalysisConfiguration(this)
+            if isempty(fieldnames(this.analysisConfiguration))
+                return;
+            end
+
+            configuration = this.analysisConfiguration;
+            if strcmp(configuration.type, 'transient')
+                if configuration.monitorNode > this.numberOfNodes
+                    this.fail('MKEF:MalformedInput', ...
+                        this.analysisSourceLine, ...
+                        'Transient monitor node %d is outside 1..%d.', ...
+                        configuration.monitorNode, this.numberOfNodes);
+                end
+                if configuration.monitorDOF > this.dofPerNode
+                    this.fail('MKEF:MalformedInput', ...
+                        this.analysisSourceLine, ...
+                        'Transient monitor DOF %d is outside 1..%d.', ...
+                        configuration.monitorDOF, this.dofPerNode);
+                end
+            end
+
+            loadTypes = this.allForceBCs(:, 1);
+            if strcmp(configuration.type, 'static') && ...
+                    any(loadTypes ~= 10)
+                this.fail('MKEF:AnalysisLoadMismatch', ...
+                    this.analysisSourceLine, ...
+                    'Static analysis accepts only load type 10.');
+            elseif strcmp(configuration.type, 'modal') && ...
+                    ~isempty(loadTypes)
+                this.fail('MKEF:AnalysisLoadMismatch', ...
+                    this.analysisSourceLine, ...
+                    'Modal analysis does not accept nodal load sections.');
             end
         end
 

@@ -8,7 +8,7 @@
     '.node{fill:#fff;stroke:#263847;stroke-width:1.4;vector-effect:non-scaling-stroke}',
     '.label{fill:#263847;font-family:sans-serif;paint-order:stroke;stroke:#fff;stroke-linejoin:round}',
     '.node-hit{fill:transparent;stroke:none}',
-    '.support-symbol{fill:#fff;stroke:#354657;stroke-width:1.8;vector-effect:non-scaling-stroke}',
+    window.MKEFSupportMarkers.svgStyles,
     '.load-symbol{fill:none;stroke:#b63a3f;stroke-width:2;vector-effect:non-scaling-stroke}',
     '.reaction-symbol{fill:none;vector-effect:non-scaling-stroke}.reaction-force-symbol{stroke:#6d3ca5;stroke-width:2.8;stroke-dasharray:5 2.5}.reaction-moment-symbol{stroke:#c56a00;stroke-width:3;stroke-dasharray:none}',
     '.diagram-fill{fill:#dceff4;stroke:none}.diagram-line{fill:none;stroke:#176b87;stroke-width:2;vector-effect:non-scaling-stroke}',
