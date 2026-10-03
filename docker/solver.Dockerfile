@@ -51,4 +51,11 @@ USER 10001:10001
 CMD ["pytest", "-q", "-p", "no:cacheprovider", "backend/tests"]
 
 FROM base AS runtime
+ARG MKEF_VERSION=dev
+ARG VCS_REF=unknown
+LABEL org.opencontainers.image.title="MKE-F solver" \
+      org.opencontainers.image.description="GNU Octave solver API for MKE-F" \
+      org.opencontainers.image.source="https://github.com/DaniilDenisov/MKE-F" \
+      org.opencontainers.image.version="${MKEF_VERSION}" \
+      org.opencontainers.image.revision="${VCS_REF}"
 CMD ["uvicorn", "backend.app:app", "--host", "0.0.0.0", "--port", "8000", "--no-access-log"]
