@@ -36,7 +36,7 @@
 
   function updateGeometry() {
     if (!dataset || !currentVector) return;
-    try { renderer.updateDeformation(currentVector, currentScale, samples()); updateDetails(renderer.selection); }
+    try { renderer.updateDeformation(currentVector, currentScale, samples()); if (dataset.raw.analysis.type === 'static') M.staticResults.drawElementLoads(renderer, dataset, currentScale, elements.showOriginal.checked, elements.showDeformed.checked); updateDetails(renderer.selection); }
     catch (error) { showError(error); }
   }
   function updateScale() {
@@ -54,7 +54,7 @@
   function configureStatic() {
     var type = dataset.raw.model.elements[0].type;
     replaceOptions(elements.staticResult, type === 112 ? [
-      { value: 'displacementMagnitude', label: 'Deflection |u|' }, { value: 'none', label: 'None' }, { value: 'axialForce', label: 'Axial force' }, { value: 'axialStress', label: 'Axial stress' }
+      { value: 'displacementMagnitude', label: 'Deflection |u|' }, { value: 'none', label: 'None' }, { value: 'axialForce', label: 'Mean axial force' }, { value: 'axialStress', label: 'Mean axial stress' }
     ] : [{ value: 'displacementMagnitude', label: 'Deflection |u|' }, { value: 'none', label: 'None' }, { value: 'N', label: 'Axial force N' }, { value: 'V', label: 'Shear force V' }, { value: 'M', label: 'Bending moment M' }]);
     M.staticResults.mount(renderer, dataset);
     currentVector = dataset.raw.analysis.displacements;
@@ -368,7 +368,7 @@
     } else {
       var element = dataset.elementsById.get(selection.id);
       lines.push('Element ' + element.id, 'Type: ' + element.type, 'Nodes: [' + element.nodeIds.join(', ') + ']');
-      if (analysis.type === 'static') { var result = dataset.resultsByElementId.get(element.id); lines.push(labeledVector('Local end forces', result.localEndForces), 'Axial strain: ' + number(result.axialStrain), 'Axial stress: ' + number(result.axialStress), 'Axial force: ' + number(result.axialForce)); }
+      if (analysis.type === 'static') { var result = dataset.resultsByElementId.get(element.id); lines.push(labeledVector('Local end forces', result.localEndForces), 'Mean axial strain: ' + number(result.axialStrain), 'Mean axial stress: ' + number(result.axialStress), 'Mean axial force: ' + number(result.axialForce)); }
       else if (analysis.type === 'modal') {
         lines = lines.concat(modalNodeDetails(element.nodeIds[0]).map(function (line) { return 'Node ' + element.nodeIds[0] + ' · ' + line; }));
         lines = lines.concat(modalNodeDetails(element.nodeIds[1]).map(function (line) { return 'Node ' + element.nodeIds[1] + ' · ' + line; }));
@@ -447,7 +447,7 @@
     elements.reset.addEventListener('click', function () { renderer.fit(); });
     elements.exportSvg.addEventListener('click', function () { if (dataset) M.exporting.downloadSvg(elements.viewport, exportContext(), elements.chartPanel.hidden ? null : elements.chart, currentLegend); });
     elements.exportPng.addEventListener('click', function () { if (dataset) M.exporting.downloadPng(elements.viewport, exportContext(), Number(elements.pngScale.value), elements.chartPanel.hidden ? null : elements.chart, currentLegend).catch(showError); });
-    ['showOriginal', 'showDeformed', 'showNodes', 'showNodeLabels', 'showElementLabels', 'showSupports', 'showLoads', 'showReactions'].forEach(function (name) { elements[name].addEventListener('change', function () { renderer.setVisibility(layerSettings()); }); });
+    ['showOriginal', 'showDeformed', 'showNodes', 'showNodeLabels', 'showElementLabels', 'showSupports', 'showLoads', 'showReactions'].forEach(function (name) { elements[name].addEventListener('change', function () { renderer.setVisibility(layerSettings()); updateGeometry(); }); });
     elements.scaleMode.addEventListener('change', function () { elements.manualScale.disabled = this.value !== 'manual'; updateScale(); updateStatus(); });
     elements.manualScale.addEventListener('change', function () { if (elements.scaleMode.value === 'manual') { updateScale(); updateStatus(); } });
     elements.sampleCount.addEventListener('change', function () { updateScale(); if (dataset && dataset.raw.analysis.type === 'static') applyStaticResult(); });

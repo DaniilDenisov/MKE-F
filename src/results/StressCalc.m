@@ -4,9 +4,6 @@ function [sigma, elementResults] = StressCalc(model, displacements)
 % Use result.elementResults from solveStatic for complete element results.
 
 elementResults = recoverElementResults(model, displacements);
-if any([elementResults.type] ~= 112)
-    error('MKEF:UnsupportedStressRecovery', ...
-        'StressCalc supports truss elements only; use elementResults for frames.');
-end
+% For frames this is the mean axial stress, not the extreme bending stress.
 sigma = reshape([elementResults.axialStress], [], 1);
 end

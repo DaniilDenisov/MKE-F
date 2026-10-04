@@ -1,0 +1,16 @@
+# Cantilever: L=2 m, E=200 GPa, I=1e-5 m^4, qY=-1000 N/m
+analysis
+static
+nodes
+2
+0,0,0
+2,0,0
+elems_113
+1
+113,1,2,0.01,200000000000,7800,0.00001
+bcfix
+1
+1,1,0,0,0
+eload_uniform
+1
+20,1,2,0,-1000

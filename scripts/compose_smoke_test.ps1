@@ -11,10 +11,19 @@ if ($health.status -ne 'ready') {
 }
 Write-Host "Solver ready: $($health.octaveVersion)"
 
+foreach ($asset in @('/preprocessor/', '/preprocessor/js/case-format.js', '/postprocessor/js/data-model.js')) {
+    $response = Invoke-WebRequest -Uri "$BaseUri$asset" -Method Get
+    if (($response.Headers['Cache-Control'] -join ',') -notmatch 'no-cache') {
+        throw "Static asset $asset must require cache revalidation after rebuilds."
+    }
+}
+Write-Host 'PASS static assets require cache revalidation'
+
 $cases = @(
-    @{ File = 'CasePreprocessorStatic.txt'; Type = 'static' },
-    @{ File = 'CasePreprocessorModal.txt'; Type = 'modal' },
-    @{ File = 'CasePreprocessorTransient.txt'; Type = 'transient' }
+    @{ File = 'CasePreprocessorStatic.txt'; Type = 'static'; Version = 1 },
+    @{ File = 'CasePreprocessorModal.txt'; Type = 'modal'; Version = 1 },
+    @{ File = 'CasePreprocessorTransient.txt'; Type = 'transient'; Version = 1 },
+    @{ File = 'CaseUniformFrame.txt'; Type = 'static'; Version = 2 }
 )
 
 foreach ($case in $cases) {
@@ -36,10 +45,10 @@ foreach ($case in $cases) {
         throw "$($case.Type) job ended as $($job.status): $($job.error.message)"
     }
     $result = Invoke-RestMethod -Uri "$BaseUri/api/v1/jobs/$($job.id)/result" -Method Get
-    if ($result.format -ne 'mkef-postprocessor' -or $result.version -ne 1 -or $result.analysis.type -ne $case.Type) {
+    if ($result.format -ne 'mkef-postprocessor' -or $result.version -ne $case.Version -or $result.analysis.type -ne $case.Type) {
         throw "Unexpected $($case.Type) result schema."
     }
-    Write-Host "PASS $($case.Type)"
+    Write-Host "PASS $($case.File) (schema v$($case.Version))"
 }
 
 $solverExposed = $false

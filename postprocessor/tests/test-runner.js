@@ -90,6 +90,44 @@
   test('transient PNG rasterization captures the visible frame and chart', function () { var dataset = M.validateDataset(transientFixture(false)), renderer = new M.Renderer(document.getElementById('test-svg')); renderer.mount(dataset); renderer.updateDeformation(M.transientView.vectorAt(dataset, 'displacements', 2), 10, 31); var context = { title: 'Transient PNG', analysisType: 'transient', transientSampleNumber: 3, transientTime: .2, captionLines: ['Transient sample 3 / 3 · t = 0.2 s', 'Current history value · 0.012 m'] }; return M.exporting.pngBlob(document.getElementById('test-svg'), context, 1, document.getElementById('test-chart'), null).then(function (blob) { assert(blob.type === 'image/png' && blob.size > 0); }); });
   test('2,000-element retained scene meets interaction targets', function () { var started = performance.now(), dataset = M.validateDataset(largeFixture(2000)), renderer = new M.Renderer(document.getElementById('test-svg')); renderer.mount(dataset); var mountElapsed = performance.now() - started; started = performance.now(); M.staticResults.applyResult(renderer, dataset, 'displacementMagnitude', 5); var resultElapsed = performance.now() - started; started = performance.now(); renderer.setVisibility({ showOriginal: false, showDeformed: true, showNodes: true, showNodeLabels: false, showElementLabels: false, showSupports: true, showLoads: true, showReactions: true }); var toggleElapsed = performance.now() - started; started = performance.now(); renderer.updateDeformation(dataset.raw.analysis.displacements, 1, 5); var updateElapsed = performance.now() - started; assert(renderer.layers['deformed-geometry'].querySelectorAll('.deformed-element').length === 2000, 'Result coloring changed the one-path-per-element model'); assert(mountElapsed < 2000, 'Mount took ' + mountElapsed.toFixed(0) + ' ms'); assert(resultElapsed < 1000, 'Deflection result took ' + resultElapsed.toFixed(0) + ' ms'); assert(toggleElapsed < 50, 'Layer toggle took ' + toggleElapsed.toFixed(0) + ' ms'); assert(updateElapsed < 250, 'Deformation update took ' + updateElapsed.toFixed(0) + ' ms'); });
 
+  function uniformFixture() {
+    var data=fixture(); data.version=2; data.model.nodes[1]={id:2,x:2,y:0};
+    data.model.nodalLoads=[]; data.model.elementLoads=[{type:20,elementId:1,coordinateSystem:2,qx:0,qy:-1000}];
+    data.analysis.loadVector=[0,-1000,-1000/3,0,-1000,1000/3];
+    data.analysis.elementResults[0].localEndForces=[0,1000,0,0,1000,0];
+    data.analysis.elementResults[0].equivalentLocalLoadVector=data.analysis.loadVector.slice();
+    return data;
+  }
+  test('v2 validation rejects malformed load data and missing equivalent vectors', function () {
+    assert(M.validateDataset(uniformFixture()));
+    [function(d){d.model.elementLoads[0].elementId=7;},function(d){d.model.elementLoads[0].qy=0;},function(d){d.model.elementLoads[0].qx=Infinity;},function(d){delete d.analysis.elementResults[0].equivalentLocalLoadVector;},function(d){d.model.nodalLoads={};}].forEach(function (change) {
+      var data=uniformFixture(); change(data); var rejected=false; try {M.validateDataset(data);} catch (_) {rejected=true;} assert(rejected);
+    });
+  });
+  test('uniform beam diagrams recover the interior moment maximum and both end shears', function () {
+    var dataset=M.validateDataset(uniformFixture()), e=dataset.raw.model.elements[0];
+    close(M.staticResults.elementDiagram(dataset,e,'M',0),0); close(M.staticResults.elementDiagram(dataset,e,'M',1),0);
+    close(M.staticResults.elementDiagram(dataset,e,'M',.5),500);
+    close(M.staticResults.elementDiagram(dataset,e,'V',0),-1000); close(M.staticResults.elementDiagram(dataset,e,'V',1),1000);
+    var values=M.staticResults.diagramSamples(dataset,e,'M',6); close(Math.max.apply(null,values.map(function(v){return v.value;})),500);
+    dataset.raw.model.elementLoads[0].qx=20; dataset.resultsByElementId.get(1).localEndForces[0]=-40;
+    close(M.staticResults.elementDiagram(dataset,e,'N',0),40); close(M.staticResults.elementDiagram(dataset,e,'N',1),0);
+  });
+  test('uniform forces are not double drawn as equivalent nodal forces', function () {
+    var dataset=M.validateDataset(uniformFixture()), renderer=new M.Renderer(document.getElementById('test-svg')); renderer.mount(dataset); M.staticResults.mount(renderer,dataset);
+    assert(renderer.layers.loads.querySelectorAll('.load-symbol').length===0);
+    M.staticResults.drawElementLoads(renderer,dataset,1,true,true); assert(renderer.layers.loads.querySelectorAll('.element-load-symbol').length===14);
+    M.staticResults.drawElementLoads(renderer,dataset,1,false,true); assert(renderer.layers.loads.querySelectorAll('.element-load-symbol').length===7);
+    M.staticResults.drawElementLoads(renderer,dataset,1,false,false); assert(renderer.layers.loads.querySelectorAll('.element-load-symbol').length===0);
+  });
+  test('uniform SVG and PNG exports include distributions and curved diagrams', async function () {
+    var dataset=M.validateDataset(uniformFixture()), svg=document.getElementById('test-svg'), renderer=new M.Renderer(svg); renderer.mount(dataset); M.staticResults.mount(renderer,dataset);
+    M.staticResults.drawElementLoads(renderer,dataset,1,true,false); M.staticResults.applyResult(renderer,dataset,'M',6);
+    var prepared=M.exporting.prepareSvg(svg,{title:'Uniform beam',analysisType:'static'},null,null);
+    assert(prepared.querySelectorAll('.element-load-symbol').length===7); assert(prepared.querySelector('.diagram-line').getAttribute('d').split('L').length>2);
+    var blob=await M.exporting.pngBlob(svg,{title:'Uniform beam',analysisType:'static'},1,null,null); assert(blob.type==='image/png' && blob.size>0);
+  });
+
   document.addEventListener('DOMContentLoaded', async function () {
     var lines = [], failed = 0;
     for (var i = 0; i < tests.length; i += 1) { var entry = tests[i]; try { await entry.operation(); lines.push('PASS ' + entry.name); } catch (error) { failed += 1; lines.push('FAIL ' + entry.name + ': ' + error.message); } }

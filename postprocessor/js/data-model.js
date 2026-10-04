@@ -176,7 +176,7 @@
   M.validateDataset = function (data) {
     objectAt(data, '$');
     if (data.format !== 'mkef-postprocessor') fail('$.format', 'expected "mkef-postprocessor"');
-    if (data.version !== 1) fail('$.version', 'unsupported format version ' + String(data.version));
+    if (data.version !== 1 && data.version !== 2) fail('$.version', 'unsupported format version ' + String(data.version));
     var metadata = objectAt(data.metadata, '$.metadata');
     if (typeof metadata.title !== 'string') fail('$.metadata.title', 'expected a string');
     objectAt(metadata.units, '$.metadata.units');
@@ -186,6 +186,23 @@
     else if (analysis.type === 'modal') validateModal(analysis, context);
     else if (analysis.type === 'transient') validateTransient(analysis, context);
     else fail('$.analysis.type', 'unsupported analysis type');
+    if (data.version === 2) {
+      if (analysis.type !== 'static') fail('$.analysis.type', 'version 2 element loads require static analysis');
+      var memberMap = new Map(data.model.elements.map(function (item) { return [item.id, item]; }));
+      arrayAt(data.model.nodalLoads, '$.model.nodalLoads').forEach(function (load, index) {
+        var path = '$.model.nodalLoads[' + index + ']'; objectAt(load, path);
+        if (load.type !== 10 || !context.nodeIds.has(load.nodeId)) fail(path, 'expected a static load on an existing node');
+        ['fx', 'fy', 'mz'].forEach(function (name) { numberAt(load[name], path + '.' + name); });
+      });
+      arrayAt(data.model.elementLoads, '$.model.elementLoads').forEach(function (load, index) {
+        var path = '$.model.elementLoads[' + index + ']'; objectAt(load, path);
+        var member = memberMap.get(load.elementId);
+        if (load.type !== 20 || !member || member.type !== 113 || [1, 2].indexOf(load.coordinateSystem) < 0) fail(path, 'expected a uniform load on a frame in Local/Global coordinates');
+        numberAt(load.qx, path + '.qx'); numberAt(load.qy, path + '.qy');
+        if (!load.qx && !load.qy) fail(path, 'intensity cannot be zero');
+      });
+      analysis.elementResults.forEach(function (result, index) { vector(result.equivalentLocalLoadVector, result.type === 113 ? 6 : 4, '$.analysis.elementResults[' + index + '].equivalentLocalLoadVector'); });
+    }
 
     var nodesById = new Map(data.model.nodes.map(function (node) { return [node.id, node]; }));
     var elementsById = new Map(data.model.elements.map(function (element) { return [element.id, element]; }));

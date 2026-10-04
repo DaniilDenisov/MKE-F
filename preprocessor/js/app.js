@@ -28,10 +28,20 @@
   function idCell(row, value) { var td = cell(row); td.textContent = String(value); }
   function deleteCell(row, action, label) { var button = document.createElement('button'); button.type = 'button'; button.textContent = 'Delete'; button.setAttribute('aria-label', 'Delete ' + label); button.addEventListener('click', action); cell(row).appendChild(button); }
   function snapshot() { return clone(state); }
+  function equal(a, b) {
+    if (Object.is(a, b)) return true;
+    if (!a || !b || typeof a !== 'object' || typeof b !== 'object') return false;
+    var keys = Object.keys(a);
+    return keys.length === Object.keys(b).length && keys.every(function (key) { return Object.prototype.hasOwnProperty.call(b, key) && equal(a[key], b[key]); });
+  }
 
   function commit(operation) {
-    undoStack.push(snapshot()); if (undoStack.length > 100) undoStack.shift(); redoStack = [];
-    operation(); dirty = true; render();
+    var previous = snapshot(), before = M.modelEdit.counts(state);
+    try { operation(); } catch (error) { state = previous; render(); setError(error.message); return; }
+    if (equal(previous, state)) return;
+    undoStack.push(previous); if (undoStack.length > 100) undoStack.shift(); redoStack = [];
+    dirty = true; render();
+    var message = M.modelEdit.describe(before, state); if (message) setNotice(message);
   }
 
   function setNotice(message) { elements.notice.textContent = message || ''; elements.notice.hidden = !message; }
@@ -152,19 +162,10 @@
   function selectItem(next) { selection = next; render(); }
 
   function deleteNode(index) {
-    var id = index + 1, dependencies = [];
-    if (state.elements.some(function (item) { return item.node1 === id || item.node2 === id; })) dependencies.push('elements');
-    if (state.supports.some(function (item) { return item.node === id; })) dependencies.push('supports');
-    if (state.loads.some(function (item) { return item.node === id; })) dependencies.push('loads');
-    if (state.analysis.type === 'transient' && state.analysis.monitorNode === id) dependencies.push('transient monitor');
-    if (dependencies.length) { setNotice('Node ' + id + ' is still referenced by ' + dependencies.join(', ') + '. Remove those references first.'); return; }
     commit(function () {
-      state.nodes.splice(index, 1);
-      state.elements.forEach(function (item) { if (item.node1 > id) item.node1 -= 1; if (item.node2 > id) item.node2 -= 1; });
-      state.supports.forEach(function (item) { if (item.node > id) item.node -= 1; });
-      state.loads.forEach(function (item) { if (item.node > id) item.node -= 1; });
-      if (state.analysis.monitorNode > id) state.analysis.monitorNode -= 1;
+      M.modelEdit.deleteNode(state, index);
       selection = null;
+      activateCanvasTool('select');
     });
   }
 
@@ -172,8 +173,8 @@
     clear(elements.nodesBody);
     state.nodes.forEach(function (node, index) {
       var row = document.createElement('tr'); if (selection && selection.kind === 'node' && selection.index === index) row.className = 'selected-row'; row.addEventListener('click', function (event) { if (['INPUT', 'SELECT', 'BUTTON'].indexOf(event.target.tagName) < 0) selectItem({ kind: 'node', index: index }); }); idCell(row, index + 1);
-      inputCell(row, node.x, 'number', function (value) { commit(function () { state.nodes[index].x = value; }); });
-      inputCell(row, node.y, 'number', function (value) { commit(function () { state.nodes[index].y = value; }); });
+      inputCell(row, node.x, 'number', function (value) { commit(function () { M.modelEdit.updateNode(state, index, 'x', value); }); });
+      inputCell(row, node.y, 'number', function (value) { commit(function () { M.modelEdit.updateNode(state, index, 'y', value); }); });
       deleteCell(row, function () { deleteNode(index); }, 'node ' + (index + 1)); elements.nodesBody.appendChild(row);
     });
     elements.nodeCount.textContent = '(' + state.nodes.length + ')';
@@ -185,9 +186,9 @@
     headings.forEach(function (heading) { var th = document.createElement('th'); th.textContent = heading; header.appendChild(th); }); elements.elementsHead.appendChild(header);
     state.elements.forEach(function (item, index) {
       var row = document.createElement('tr'); if (selection && selection.kind === 'element' && selection.index === index) row.className = 'selected-row'; row.addEventListener('click', function (event) { if (['INPUT', 'SELECT', 'BUTTON'].indexOf(event.target.tagName) < 0) selectItem({ kind: 'element', index: index }); }); idCell(row, index + 1);
-      ['node1', 'node2', 'area', 'youngsModulus', 'density'].forEach(function (field) { inputCell(row, item[field], 'number', function (value) { commit(function () { state.elements[index][field] = value; }); }); });
-      if (state.elementType === 113) inputCell(row, item.momentOfInertia, 'number', function (value) { commit(function () { state.elements[index].momentOfInertia = value; }); });
-      deleteCell(row, function () { commit(function () { state.elements.splice(index, 1); selection = null; }); }, 'element ' + (index + 1)); elements.elementsBody.appendChild(row);
+      ['node1', 'node2', 'area', 'youngsModulus', 'density'].forEach(function (field) { inputCell(row, item[field], 'number', function (value) { commit(function () { M.modelEdit.updateElement(state, index, field, value); }); }); });
+      if (state.elementType === 113) inputCell(row, item.momentOfInertia, 'number', function (value) { commit(function () { M.modelEdit.updateElement(state, index, 'momentOfInertia', value); }); });
+      deleteCell(row, function () { commit(function () { M.modelEdit.deleteElement(state, index); selection = null; }); }, 'element ' + (index + 1)); elements.elementsBody.appendChild(row);
     });
     elements.elementCount.textContent = '(' + state.elements.length + ')';
   }
@@ -218,6 +219,21 @@
     elements.loadCount.textContent = '(' + state.loads.length + ')';
   }
 
+  function renderElementLoads() {
+    clear(elements.elementLoadsBody);
+    (state.elementLoads || []).forEach(function (load, index) {
+      var row = document.createElement('tr'); idCell(row, index + 1);
+      inputCell(row, load.elementId, 'number', function (value) { commit(function () { state.elementLoads[index].elementId = value; }); });
+      cell(row).textContent = 'Uniform';
+      selectCell(row, load.coordinateSystem, [[1, 'Local'], [2, 'Global']], function (value) { commit(function () { M.modelEdit.changeCoordinates(state, index, value); }); });
+      ['qx', 'qy'].forEach(function (field) { inputCell(row, load[field], 'number', function (value) { commit(function () { state.elementLoads[index][field] = value; }); }); });
+      deleteCell(row, function () { commit(function () { state.elementLoads.splice(index, 1); }); }, 'element load ' + (index + 1));
+      elements.elementLoadsBody.appendChild(row);
+    });
+    elements.elementLoadCount.textContent = '(' + (state.elementLoads || []).length + ')';
+    elements.addElementLoad.disabled = state.analysis.type !== 'static' || state.elementType !== 113 || !selection || selection.kind !== 'element' || !state.elements[selection.index];
+  }
+
   function renderSelection() {
     elements.nodeCoordinateEditor.hidden = true;
     if (!selection) elements.selectionDetails.textContent = 'Nothing selected';
@@ -238,7 +254,7 @@
   }
 
   function render() {
-    setNotice(''); renderAnalysis(); renderNodes(); renderElements(); renderSupports(); renderLoads(); renderSelection();
+    setNotice(''); renderAnalysis(); renderNodes(); renderElements(); renderSupports(); renderLoads(); renderElementLoads(); renderSelection();
     var gridSize = numeric(elements.gridSpacing), validGridSize = Number.isFinite(gridSize) && gridSize > 0;
     elements.gridSpacing.setCustomValidity(validGridSize ? '' : 'Grid size must be positive and finite.');
     renderer.setGrid(elements.gridEnabled.checked, validGridSize ? gridSize : 1);
@@ -274,7 +290,7 @@
       error: byId('error-panel'), notice: byId('notice-panel'), caseName: byId('case-name'), analysisType: byId('analysis-type'), elementType: byId('element-type'),
       transientSettings: byId('transient-settings'), timeStep: byId('time-step'), duration: byId('duration'), monitorNode: byId('monitor-node'), monitorDOF: byId('monitor-dof'),
       gridEnabled: byId('grid-enabled'), snapEnabled: byId('snap-enabled'), gridSpacing: byId('grid-spacing'), defaultArea: byId('default-area'), defaultYoung: byId('default-young'), defaultDensity: byId('default-density'), defaultInertia: byId('default-inertia'), defaultInertiaLabel: byId('default-inertia-label'),
-      selectionDetails: byId('selection-details'), nodeCoordinateEditor: byId('node-coordinate-editor'), selectedNodeX: byId('selected-node-x'), selectedNodeY: byId('selected-node-y'), nodesBody: byId('nodes-body'), elementsHead: byId('elements-head'), elementsBody: byId('elements-body'), supportsBody: byId('supports-body'), loadsBody: byId('loads-body'), nodeCount: byId('node-count'), elementCount: byId('element-count'), supportCount: byId('support-count'), loadCount: byId('load-count'), preview: byId('case-preview'), validationStatus: byId('validation-status'), addLoad: byId('add-load')
+      selectionDetails: byId('selection-details'), nodeCoordinateEditor: byId('node-coordinate-editor'), selectedNodeX: byId('selected-node-x'), selectedNodeY: byId('selected-node-y'), nodesBody: byId('nodes-body'), elementsHead: byId('elements-head'), elementsBody: byId('elements-body'), supportsBody: byId('supports-body'), loadsBody: byId('loads-body'), elementLoadsBody: byId('element-loads-body'), elementLoadCount: byId('element-load-count'), addElementLoad: byId('add-element-load'), nodeCount: byId('node-count'), elementCount: byId('element-count'), supportCount: byId('support-count'), loadCount: byId('load-count'), preview: byId('case-preview'), validationStatus: byId('validation-status'), addLoad: byId('add-load')
     };
     renderer = new M.Renderer(byId('viewport'), { addNode: addNode, addElement: addElement, select: selectItem, placementPoint: placementPoint, elementPending: function () { setNotice('Element Add mode: select second node for element'); } });
     state = F.newModel('', 0); render(); renderer.fit(); renderer.draw(state);
@@ -294,8 +310,8 @@
     elements.gridEnabled.addEventListener('change', function () { renderer.setGrid(elements.gridEnabled.checked, numeric(elements.gridSpacing)); });
     elements.gridSpacing.addEventListener('change', function () { var value = numeric(elements.gridSpacing), valid = Number.isFinite(value) && value > 0; elements.gridSpacing.setCustomValidity(valid ? '' : 'Grid size must be positive and finite.'); if (valid) { renderer.setGrid(elements.gridEnabled.checked, value); renderer.refreshNodePreview(); } });
     elements.snapEnabled.addEventListener('change', function () { renderer.refreshNodePreview(); });
-    elements.selectedNodeX.addEventListener('change', function () { if (!selection || selection.kind !== 'node') return; var index = selection.index, value = numeric(elements.selectedNodeX); commit(function () { state.nodes[index].x = value; }); });
-    elements.selectedNodeY.addEventListener('change', function () { if (!selection || selection.kind !== 'node') return; var index = selection.index, value = numeric(elements.selectedNodeY); commit(function () { state.nodes[index].y = value; }); });
+    elements.selectedNodeX.addEventListener('change', function () { if (!selection || selection.kind !== 'node') return; var index = selection.index, value = numeric(elements.selectedNodeX); commit(function () { M.modelEdit.updateNode(state, index, 'x', value); }); });
+    elements.selectedNodeY.addEventListener('change', function () { if (!selection || selection.kind !== 'node') return; var index = selection.index, value = numeric(elements.selectedNodeY); commit(function () { M.modelEdit.updateNode(state, index, 'y', value); }); });
     document.querySelectorAll('[data-tool]').forEach(function (button) { button.addEventListener('click', function () { activateCanvasTool(button.getAttribute('data-tool')); }); });
     byId('add-node').addEventListener('click', function () { addNode({ x: 0, y: 0 }); });
     byId('add-element').addEventListener('click', function () {
@@ -310,6 +326,7 @@
     });
     byId('add-support').addEventListener('click', function () { commit(function () { state.supports.push({ type: 1, node: currentNode() }); }); });
     elements.addLoad.addEventListener('click', function () { if (state.analysis.type === 'modal') return; commit(function () { state.loads.push({ type: state.analysis.type === 'static' ? 10 : 13, node: currentNode(), fx: 0, fy: -1, mz: 0, frequency: null }); }); });
+    elements.addElementLoad.addEventListener('click', function () { if (elements.addElementLoad.disabled) return; commit(function () { state.elementLoads.push({ type: 20, elementId: selection.index + 1, coordinateSystem: 2, qx: 0, qy: -1 }); }); });
     var drop = byId('drop-zone'); drop.addEventListener('dragover', function (event) { event.preventDefault(); }); drop.addEventListener('drop', function (event) { event.preventDefault(); if (event.dataTransfer.files.length) openFile(event.dataTransfer.files[0]); });
     global.addEventListener('beforeunload', function (event) { if (!dirty || navigatingToResult) return; event.preventDefault(); event.returnValue = ''; });
     configureSolver();

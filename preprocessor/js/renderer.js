@@ -260,12 +260,44 @@
     });
     this.model.supports.forEach(function (support) { self.drawSupport(supportLayer, support, scale); });
     this.model.loads.forEach(function (load) { self.drawLoad(loadLayer, load, scale); });
+    this.drawElementLoads(loadLayer, scale);
     this.model.nodes.forEach(function (node, index) {
       var circle = M.svgElement('circle', { cx: node.x, cy: -node.y, r: scale * 0.012, class: 'model-node' + (self.selection && self.selection.kind === 'node' && self.selection.index === index ? ' selected' : '') + (self.pendingNode === index ? ' pending' : ''), 'data-node-id': index + 1, tabindex: 0, role: 'button', 'aria-label': 'Node ' + (index + 1) });
       circle.addEventListener('click', function (event) { self.nodeClicked(index, event); }); nodeLayer.appendChild(circle);
       circle.addEventListener('keydown', function (event) { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); self.nodeClicked(index, event); } });
       var text = M.svgElement('text', { x: node.x + scale * 0.018, y: -node.y - scale * 0.018, class: 'node-label' }); text.textContent = String(index + 1); labelLayer.appendChild(text);
     });
+  };
+
+  Renderer.prototype.drawElementLoads = function (layer, scale) {
+    var self = this;
+    (this.model.elementLoads || []).forEach(function (load) {
+      var element = self.model.elements[load.elementId - 1], a = element && self.model.nodes[element.node1 - 1], b = element && self.model.nodes[element.node2 - 1];
+      if (!a || !b) return;
+      var L = Math.hypot(b.x-a.x, b.y-a.y), c = (b.x-a.x)/L, s = (b.y-a.y)/L;
+      var x = load.coordinateSystem === 1 ? c*load.qx-s*load.qy : load.qx;
+      var y = load.coordinateSystem === 1 ? s*load.qx+c*load.qy : load.qy;
+      var magnitude = Math.hypot(x, y); if (!Number.isFinite(magnitude) || !magnitude || !L) return;
+      var size = Math.min(scale*.08, L*.3), group = M.svgElement('g', { class: 'element-load-symbol', 'data-element-id': load.elementId });
+      for (var i = 0; i < 7; i += 1) {
+        var xi = (i+.5)/7, px = a.x+(b.x-a.x)*xi, py = a.y+(b.y-a.y)*xi;
+        group.appendChild(M.svgElement('line', { x1: px-x/magnitude*size, y1: -py+y/magnitude*size, x2: px, y2: -py, class: 'load-symbol', 'marker-end': 'url(#arrow)' }));
+      }
+      var label = M.svgElement('text', { x: (a.x+b.x)/2-x/magnitude*size, y: -(a.y+b.y)/2+y/magnitude*size-scale*.015, 'font-size':scale*.018, class: 'element-load-label' });
+      label.textContent = (load.coordinateSystem === 1 ? 'Local' : 'Global') + ' q=(' + Number(load.qx.toPrecision(5)) + ', ' + Number(load.qy.toPrecision(5)) + ')';
+      group.appendChild(label); layer.appendChild(group);
+    });
+    if (this.selection && this.selection.kind === 'element') {
+      var e = this.model.elements[this.selection.index], first = e && this.model.nodes[e.node1-1], second = e && this.model.nodes[e.node2-1];
+      if (!first || !second) return;
+      var length = Math.hypot(second.x-first.x, second.y-first.y); if (!Number.isFinite(length) || !length) return;
+      var c = (second.x-first.x)/length, s = (second.y-first.y)/length, size = Math.min(scale*.07, length*.3);
+      [[c, s, 'x local'], [-s, c, 'y local']].forEach(function (axis) {
+        var x = first.x+axis[0]*size, y = first.y+axis[1]*size;
+        layer.appendChild(M.svgElement('line', { x1:first.x, y1:-first.y, x2:x, y2:-y, class:'local-axis', 'marker-end':'url(#arrow)' }));
+        var text = M.svgElement('text', { x:x, y:-y-scale*.012, 'font-size':scale*.018, class:'element-load-label' }); text.textContent=axis[2]; layer.appendChild(text);
+      });
+    }
   };
 
   M.Renderer = Renderer;

@@ -139,6 +139,7 @@ docker run --rm mkef-solver-test</code></pre>
           <li><a href="12-local-octave-workflow.html">работа без Docker непосредственно в GNU Octave</a>.</li>
         </ul>
       </section>
+      <section><h2>Проверки равномерных нагрузок</h2><p>Полный набор <code>run_octave_tests</code> включает <code>test_element_loads</code>. Контейнерные тесты API проверяют CaseUniformFrame через настоящий GNU Octave. Браузерные наборы доступны по preprocessor/tests/, postprocessor/tests/ и shared/tests/.</p><p>Для автоматического прогона интерфейса установите Playwright в среде разработки, экспортируйте CaseUniformFrame в <code>output/uniform-result.json</code> и запустите <code>node scripts/test_browser.cjs</code>. При необходимости переменная <code>MKEF_PLAYWRIGHT_MODULE</code> задаёт путь к установленному модулю Playwright. Скрипт проверяет каскадное удаление, Undo/Redo, чтение JSON v2 и сохраняет снимки в output.</p></section>
     </main>
   </div>
 

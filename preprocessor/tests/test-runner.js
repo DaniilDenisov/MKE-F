@@ -26,6 +26,61 @@
   test('support types use distinct marker geometry', function () { var svg = document.getElementById('test-svg'), model = MKEFPre.caseFormat.parse(fixture()), renderer = new MKEFPre.Renderer(svg); model.nodes = [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 2, y: 0 }, { x: 3, y: 0 }]; model.supports = [{ type: 1, node: 1 }, { type: 2, node: 2 }, { type: 3, node: 3 }, { type: 4, node: 4 }]; renderer.draw(model); assert(svg.querySelector('.support-type-1 .support-ground') && !svg.querySelector('.support-type-1 path'), 'Type 1 fixed marker is missing.'); assert(svg.querySelectorAll('.support-type-2 circle').length === 1 && svg.querySelector('.support-type-2 path'), 'Type 2 horizontal roller marker is missing.'); assert(svg.querySelectorAll('.support-type-3 circle').length === 1 && svg.querySelector('.support-type-3 path'), 'Type 3 vertical roller marker is missing.'); assert(svg.querySelector('.support-type-4 path') && !svg.querySelector('.support-type-4 circle'), 'Type 4 pinned marker is missing.'); });
   test('loads render above every model layer', function () { var svg = document.getElementById('test-svg'), renderer = new MKEFPre.Renderer(svg); renderer.draw(MKEFPre.caseFormat.parse(fixture())); assert(svg.lastElementChild.classList.contains('loads-layer'), 'Loads layer is not topmost.'); });
 
+  function uniformFixture() { return MKEFPre.caseFormat.parse(fixture() + 'eload_uniform\n1\n20,1,2,0,-7\n'); }
+  test('uniform load sections round trip and accumulate', function () {
+    var model = MKEFPre.caseFormat.parse(fixture() + 'eload_uniform\n1\n20,1,1,2,-7\neload_uniform\n1\n20,1,2,0,3\n');
+    assert(model.elementLoads.length === 2);
+    assert(JSON.stringify(model) === JSON.stringify(MKEFPre.caseFormat.parse(MKEFPre.caseFormat.serialize(model))));
+  });
+  test('uniform parser rejects missing, nonfinite, zero, invalid and unsupported records', function () {
+    ['20,1,2,,7', '20,1,2,0,Infinity', '20,1,2,0,0', '20,2,2,0,7', '20,1,3,0,7', '21,1,2,0,7', '20,1,2,7'].forEach(function (record) {
+      throws('Line', function () { MKEFPre.caseFormat.parse(fixture() + 'eload_uniform\n1\n' + record); });
+    });
+    throws('only for static', function () { MKEFPre.caseFormat.parse(fixture('modal').replace('bcforce_stat\n1\n10,2,5,-2,1\n', '') + 'eload_uniform\n1\n20,1,1,0,1'); });
+    var model = uniformFixture(); model.elementType = 112; assert(MKEFPre.caseFormat.validate(model).some(function (s) { return s.indexOf('frame element 113') >= 0; }));
+  });
+  test('coordinate switch preserves physical force on inclined member', function () {
+    var model = uniformFixture(); model.nodes[1] = {x:3,y:4};
+    MKEFPre.modelEdit.changeCoordinates(model, 0, 1);
+    assert(Math.abs(model.elementLoads[0].qx + 5.6) < 1e-12);
+    assert(Math.abs(model.elementLoads[0].qy + 4.2) < 1e-12);
+    MKEFPre.modelEdit.changeCoordinates(model, 0, 2);
+    assert(Math.abs(model.elementLoads[0].qx) < 1e-12 && Math.abs(model.elementLoads[0].qy + 7) < 1e-12);
+    model.nodes[1] = model.nodes[0]; throws('Valid element geometry', function () { MKEFPre.modelEdit.changeCoordinates(model, 0, 1); });
+  });
+  test('all actual element edits remove loads, unchanged values do not', function () {
+    ['node1','node2','area','youngsModulus','density','momentOfInertia'].forEach(function (field) {
+      var model = uniformFixture(), old = model.elements[0][field];
+      MKEFPre.modelEdit.updateElement(model, 0, field, old); assert(model.elementLoads.length === 1);
+      MKEFPre.modelEdit.updateElement(model, 0, field, old+1); assert(model.elementLoads.length === 0);
+    });
+  });
+  test('moving a node preserves nodal conditions and removes incident element loads', function () {
+    var model = uniformFixture(); MKEFPre.modelEdit.updateNode(model, 1, 'x', 1); assert(model.elementLoads.length === 1);
+    MKEFPre.modelEdit.updateNode(model, 1, 'x', 2); assert(model.elementLoads.length === 0 && model.loads.length === 1 && model.supports.length === 1);
+  });
+  test('node deletion cascades and renumbers only surviving references', function () {
+    var model = uniformFixture(); model.nodes.push({x:2,y:0}, {x:3,y:0});
+    model.elements.push(Object.assign({}, model.elements[0], {node1:3,node2:4}));
+    model.elementLoads.push({type:20,elementId:2,coordinateSystem:1,qx:2,qy:0});
+    model.supports.push({type:4,node:3}); model.analysis.monitorNode=2;
+    MKEFPre.modelEdit.deleteNode(model, 1);
+    assert(model.nodes.length===3 && model.elements.length===1 && model.loads.length===0);
+    assert(model.elements[0].node1===2 && model.elements[0].node2===3);
+    assert(model.elementLoads.length===1 && model.elementLoads[0].elementId===1 && model.elementLoads[0].qx===2);
+    assert(model.supports[0].node===1 && model.supports[1].node===2 && model.analysis.monitorNode===0);
+    MKEFPre.modelEdit.deleteNode(model, 0); assert(model.supports.length===1 && model.supports[0].node===1);
+  });
+  test('deleting a member preserves nodes and nodal conditions', function () {
+    var model=uniformFixture(); MKEFPre.modelEdit.deleteElement(model,0);
+    assert(model.elements.length===0 && model.elementLoads.length===0 && model.nodes.length===2 && model.loads.length===1 && model.supports.length===1);
+  });
+  test('uniform arrows and local axes are visible for selected element', function () {
+    var renderer=new MKEFPre.Renderer(document.getElementById('test-svg')); renderer.draw(uniformFixture()); renderer.setSelection({kind:'element',index:0});
+    assert(document.querySelectorAll('#test-svg .element-load-symbol line').length===7);
+    assert(document.querySelectorAll('#test-svg .local-axis').length===2);
+  });
+
   document.addEventListener('DOMContentLoaded', function () {
     var output = document.getElementById('test-output'), status = document.getElementById('test-status'), lines = [];
     tests.forEach(function (item) { try { item.operation(); passed += 1; lines.push('PASS  ' + item.name); } catch (error) { lines.push('FAIL  ' + item.name + '\n      ' + error.message); } });

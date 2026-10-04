@@ -3,6 +3,7 @@ function result = solveTransient(model, options)
 % All state and load histories are allocated for this call and returned in a
 % result struct. The model is never modified.
 
+rejectElementLoads(model);
 if ~isstruct(options) || ~isfield(options, 'timeStep') || ...
         ~isfield(options, 'duration')
     error('MKEF:InvalidTransientOptions', ...

@@ -12,6 +12,7 @@ classdef FEMesh < handle
         allNodes;
         allFixBCs;
         allForceBCs;
+        elementLoads = struct('type', {}, 'elementId', {}, 'coordinateSystem', {}, 'qx', {}, 'qy', {});
         analysisConfiguration;
     end
     properties (Access = private)
@@ -67,6 +68,8 @@ classdef FEMesh < handle
                         obj.readFixedConditions(fid);
                     case 'bcforce_stat'
                         obj.readLoads(fid, 10, 5, 'static load');
+                    case 'eload_uniform'
+                        obj.readElementLoads(fid);
                     case 'bcforce_harm'
                         obj.readLoads(fid, 11, 6, 'harmonic load');
                     case 'bcforce_pulse'
@@ -289,6 +292,25 @@ classdef FEMesh < handle
             this.numberOfFixBCs = size(this.allFixBCs, 1);
         end
 
+        function readElementLoads(this, fid)
+            this.requireElements(this.sourceLineNumber);
+            count = this.readBlockCount(fid, 'uniform element load', false);
+            for i = 1:count
+                [line, lineNumber] = this.readDataLine(fid, 'uniform element load');
+                v = this.parseNumericRecord(line, lineNumber, 5, 'Uniform element load');
+                if v(1) ~= 20 || v(2) ~= fix(v(2)) || v(2) < 1 || ...
+                        v(2) > this.numberOfElems || ~ismember(v(3), [1 2]) || ...
+                        (v(4) == 0 && v(5) == 0)
+                    this.fail('MKEF:InvalidElementLoad', lineNumber, 'Invalid uniform element load.');
+                end
+                if this.allMeshElems(v(2)).type ~= 113
+                    this.fail('MKEF:UnsupportedElementLoad', lineNumber, 'Uniform loads require frame element 113.');
+                end
+                this.elementLoads(end+1) = struct('type', 20, 'elementId', v(2), ...
+                    'coordinateSystem', v(3), 'qx', v(4), 'qy', v(5));
+            end
+        end
+
         function readLoads(this, fid, expectedType, fieldCount, description)
             this.requireElements(this.sourceLineNumber);
             loadCount = this.readBlockCount(fid, description, false);
@@ -402,6 +424,10 @@ classdef FEMesh < handle
             end
 
             configuration = this.analysisConfiguration;
+            if ~strcmp(configuration.type, 'static') && ~isempty(this.elementLoads)
+                this.fail('MKEF:AnalysisLoadMismatch', this.analysisSourceLine, ...
+                    'Element loads are supported only in static analysis.');
+            end
             if strcmp(configuration.type, 'transient')
                 if configuration.monitorNode > this.numberOfNodes
                     this.fail('MKEF:MalformedInput', ...

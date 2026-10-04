@@ -13,6 +13,11 @@ end
 reactions = model.stiffness * displacements - loads;
 elementResults = recoverElementResults(model, displacements);
 equilibriumResidual = calculateStaticEquilibrium(model, loads, reactions);
+if isfield(model, 'elementLoads') && ~isempty(model.elementLoads)
+    [~, ~, sourceResultant] = getElementLoadData(model);
+    equilibriumResidual = calculateStaticEquilibrium(model, ...
+        buildNodalLoadVector(model), reactions) + sourceResultant;
+end
 equilibriumScale = max([norm(loads, 1), norm(reactions, 1), 1]);
 lengthScale = max([abs(model.nodeCoordinates(:)); 1]);
 equilibriumTolerance = 1e-9 * ...

@@ -23,6 +23,7 @@ model.mass = M;
 model.dofMap = mesh.iMnod;
 model.fixedBoundaryConditions = mesh.allFixBCs;
 model.forceBoundaryConditions = mesh.allForceBCs;
+model.elementLoads = mesh.elementLoads;
 model.nodeCoordinates = mesh.allNodes(:, 1:2);
 model.elementData = mesh.allMeshElems;
 model.numberOfNodes = mesh.numberOfNodes;

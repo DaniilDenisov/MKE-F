@@ -60,10 +60,20 @@
     return stops;
   }
 
+  S.nodalLoadVector = function (dataset) {
+    if (dataset.raw.version === 1) return dataset.raw.analysis.loadVector;
+    var vector = new Array(dataset.raw.analysis.loadVector.length).fill(0);
+    dataset.raw.model.nodalLoads.forEach(function (load) {
+      var dofs = dataset.raw.model.dofMap[dataset.nodeIndexById.get(load.nodeId)];
+      [load.fx, load.fy, load.mz].forEach(function (value, index) { if (index < dofs.length) vector[dofs[index]-1] += value; });
+    });
+    return vector;
+  };
+
   S.mount = function (renderer, dataset) {
     renderer.clearLayer('loads'); renderer.clearLayer('reactions');
     var sets = [
-      { layer: renderer.layers.loads, values: nodeComponents(dataset, dataset.raw.analysis.loadVector, false), forceClass: 'load-symbol load-force-symbol', momentClass: 'load-symbol load-moment-symbol', prefix: 'Load' },
+      { layer: renderer.layers.loads, values: nodeComponents(dataset, S.nodalLoadVector(dataset), false), forceClass: 'load-symbol load-force-symbol', momentClass: 'load-symbol load-moment-symbol', prefix: 'Load' },
       { layer: renderer.layers.reactions, values: nodeComponents(dataset, dataset.raw.analysis.reactions, true), forceClass: 'reaction-symbol reaction-force-symbol', momentClass: 'reaction-symbol reaction-moment-symbol', prefix: 'Reaction' }
     ];
     var size = diagonal(dataset) * .13;
@@ -134,7 +144,7 @@
     components.push((model.dofLabels[1] || 'uy') + '=' + withUnit(values[1], lengthUnit));
     if (values.length > 2) components.push((model.dofLabels[2] || 'rz') + '=' + withUnit(values[2], 'rad'));
     var lines = ['Node ' + nodeId, '|u| = ' + withUnit(Math.hypot(values[0], values[1]), lengthUnit), 'Components: ' + components.join(', ')];
-    var load = compactVector(dataset, dataset.raw.analysis.loadVector, nodeId, 'Load');
+    var load = compactVector(dataset, S.nodalLoadVector(dataset), nodeId, dataset.raw.version === 1 ? 'Load' : 'Nodal load');
     var reaction = compactVector(dataset, dataset.raw.analysis.reactions, nodeId, 'Reaction');
     if (load) lines.push(load);
     if (reaction) lines.push(reaction);
@@ -145,12 +155,12 @@
     if (mode === 'none' || mode === 'displacementMagnitude') return [];
     var connected = dataset.raw.model.elements.filter(function (element) { return element.nodeIds.indexOf(nodeId) >= 0; });
     if (!connected.length) return [];
-    var labels = { axialForce: 'axial force', axialStress: 'axial stress', N: 'axial force N', V: 'shear force V', M: 'bending moment M' };
+    var labels = { axialForce: dataset.raw.version === 1 ? 'axial force' : 'mean axial force', axialStress: dataset.raw.version === 1 ? 'axial stress' : 'mean axial stress', N: 'axial force N', V: 'shear force V', M: 'bending moment M' };
     var suffix = mode === 'axialStress' ? unit(dataset, 'stress') : mode === 'M' ? unit(dataset, 'moment') : unit(dataset, 'force');
     var lines = ['Displayed ' + labels[mode] + ' at connected element' + (connected.length === 1 ? '' : 's') + ':'];
     connected.forEach(function (element) {
       var result = dataset.resultsByElementId.get(element.id), endIndex = element.nodeIds[0] === nodeId ? 0 : 1;
-      var value = mode === 'axialForce' || mode === 'axialStress' ? result[mode] : S.frameDiagram(result.localEndForces, mode, endIndex);
+      var value = mode === 'axialForce' || mode === 'axialStress' ? result[mode] : S.elementDiagram(dataset, element, mode, endIndex);
       lines.push('E' + element.id + ' · end ' + (endIndex + 1) + ' = ' + withUnit(value, suffix));
     });
     return lines;
@@ -162,6 +172,51 @@
     if (quantity === 'M') return (1 - xi) * (-q[2]) + xi * q[5];
     throw new Error('Unsupported frame diagram ' + quantity + '.');
   };
+
+  S.elementIntensities = function (dataset, element) {
+    var a = dataset.nodesById.get(element.nodeIds[0]), b = dataset.nodesById.get(element.nodeIds[1]);
+    var basis = M.geometry.elementBasis(a, b), x = 0, y = 0;
+    (dataset.raw.model.elementLoads || []).forEach(function (load) {
+      if (load.elementId !== element.id) return;
+      x += load.coordinateSystem === 1 ? load.qx : basis.c*load.qx + basis.s*load.qy;
+      y += load.coordinateSystem === 1 ? load.qy : -basis.s*load.qx + basis.c*load.qy;
+    });
+    return { x:x, y:y, length:basis.length };
+  };
+  S.elementDiagram = function (dataset, element, quantity, xi) {
+    var f = dataset.resultsByElementId.get(element.id).localEndForces;
+    if (dataset.raw.version === 1) return S.frameDiagram(f, quantity, xi);
+    var q = S.elementIntensities(dataset, element), x = xi*q.length;
+    if (quantity === 'N') return -f[0]-q.x*x;
+    if (quantity === 'V') return -f[1]-q.y*x;
+    if (quantity === 'M') return -f[2]+f[1]*x+q.y*x*x/2;
+    throw new Error('Unsupported frame diagram ' + quantity + '.');
+  };
+  S.diagramSamples = function (dataset, element, quantity, count) {
+    var positions = [], n = Math.max(5, count || M.config.defaultFrameSamples);
+    for (var i=0; i<n; i+=1) positions.push(i/(n-1));
+    if (quantity === 'M' && dataset.raw.version === 2) {
+      var q = S.elementIntensities(dataset, element), f = dataset.resultsByElementId.get(element.id).localEndForces;
+      var xi = q.y ? -f[1]/(q.y*q.length) : -1;
+      if (xi>0 && xi<1) positions.push(xi);
+    }
+    return positions.sort(function (a,b) { return a-b; }).map(function (xi) { return { xi:xi, value:S.elementDiagram(dataset, element, quantity, xi) }; });
+  };
+
+  S.drawElementLoads = function (renderer, dataset, scale, showOriginal, showDeformed) {
+    Array.prototype.forEach.call(renderer.layers.loads.querySelectorAll('.element-load-symbol'), function (item) { item.remove(); });
+    (dataset.raw.model.elementLoads || []).forEach(function (load) {
+      var element = dataset.elementsById.get(load.elementId), a = dataset.nodesById.get(element.nodeIds[0]), b = dataset.nodesById.get(element.nodeIds[1]), basis = M.geometry.elementBasis(a,b);
+      var vector = { x:load.qx, y:load.qy };
+      if (load.coordinateSystem === 1) vector = { x:basis.c*load.qx-basis.s*load.qy, y:basis.s*load.qx+basis.c*load.qy };
+      var size = Math.min(diagonal(dataset)*.08, basis.length*.3);
+      [showOriginal ? 0 : null, showDeformed && (scale !== 0 || !showOriginal) ? scale : null].forEach(function (factor) {
+        if (factor === null) return;
+        var points = M.geometry.sampleElement(dataset, element, dataset.raw.analysis.displacements, factor, 9);
+        points.slice(1,-1).forEach(function (point) { appendPath(renderer.layers.loads, { d:arrowPath(point, vector, size), class:'element-load-symbol load-symbol load-force-symbol', 'data-element-id':element.id }, (load.coordinateSystem === 1 ? 'Local' : 'Global') + ' q=(' + format(load.qx) + ', ' + format(load.qy) + ') ' + (unit(dataset,'force') && unit(dataset,'length') ? unit(dataset,'force') + '/' + unit(dataset,'length') : 'force/length')); });
+      });
+    });
+  };
   function signedColor(value, maximum) { if (!maximum || value === 0) return '#66788a'; var amount = Math.min(Math.abs(value) / maximum, 1), light = Math.round(68 - amount * 25); return value > 0 ? 'hsl(4 58% ' + light + '%)' : 'hsl(218 55% ' + light + '%)'; }
 
   S.applyResult = function (renderer, dataset, mode, sampleCount) {
@@ -172,18 +227,19 @@
       var values = dataset.raw.model.elements.map(function (element) { return dataset.resultsByElementId.get(element.id)[mode]; });
       var maximum = Math.max.apply(null, values.map(Math.abs).concat([0]));
       dataset.raw.model.elements.forEach(function (element, index) { renderer.setElementColor(element.id, signedColor(values[index], maximum)); });
-      return textLegend((mode === 'axialForce' ? 'Axial force' : 'Axial stress') + ' · max |value| ' + withUnit(maximum, unit(dataset, mode === 'axialForce' ? 'force' : 'stress')) + ' · red tension, blue compression');
+      return textLegend((mode === 'axialForce' ? 'Mean axial force' : 'Mean axial stress') + ' · max |value| ' + withUnit(maximum, unit(dataset, mode === 'axialForce' ? 'force' : 'stress')) + ' · red tension, blue compression');
     }
-    var maximumDiagram = 0;
-    dataset.raw.model.elements.forEach(function (element) { var q = dataset.resultsByElementId.get(element.id).localEndForces; maximumDiagram = Math.max(maximumDiagram, Math.abs(S.frameDiagram(q, mode, 0)), Math.abs(S.frameDiagram(q, mode, 1))); });
+    var maximumDiagram = 0, samplesByElement = new Map();
+    dataset.raw.model.elements.forEach(function (element) {
+      var values = S.diagramSamples(dataset, element, mode, sampleCount); samplesByElement.set(element.id, values);
+      values.forEach(function (item) { maximumDiagram = Math.max(maximumDiagram, Math.abs(item.value)); });
+    });
     var diagramScale = maximumDiagram ? diagonal(dataset) * .14 / maximumDiagram : 0;
     dataset.raw.model.elements.forEach(function (element) {
-      var first = dataset.nodesById.get(element.nodeIds[0]), second = dataset.nodesById.get(element.nodeIds[1]), normal = elementNormal(dataset, element), q = dataset.resultsByElementId.get(element.id).localEndForces;
-      var v1 = S.frameDiagram(q, mode, 0), v2 = S.frameDiagram(q, mode, 1);
-      var d1 = { x: first.x + normal.x * v1 * diagramScale, y: first.y + normal.y * v1 * diagramScale }, d2 = { x: second.x + normal.x * v2 * diagramScale, y: second.y + normal.y * v2 * diagramScale };
-      var points = [first, d1, d2, second].map(M.geometry.svgPoint);
-      var polygon = appendPath(renderer.layers.diagrams, { class: 'diagram-fill', 'data-element-id': element.id, d: 'M ' + points.map(function (p) { return p.x + ' ' + p.y; }).join(' L ') + ' Z', tabindex: '0' }, mode + ' diagram for element ' + element.id);
-      appendPath(renderer.layers.diagrams, { class: 'diagram-line', 'data-element-id': element.id, d: M.geometry.pathData([d1, d2]) }, mode + ' diagram edge for element ' + element.id);
+      var first = dataset.nodesById.get(element.nodeIds[0]), second = dataset.nodesById.get(element.nodeIds[1]), normal = elementNormal(dataset, element);
+      var points = samplesByElement.get(element.id).map(function (item) { return { x:first.x+(second.x-first.x)*item.xi+normal.x*item.value*diagramScale, y:first.y+(second.y-first.y)*item.xi+normal.y*item.value*diagramScale }; });
+      appendPath(renderer.layers.diagrams, { class:'diagram-fill', 'data-element-id':element.id, d:M.geometry.pathData([first].concat(points,[second]))+' Z', tabindex:'0' }, mode+' diagram for element '+element.id);
+      appendPath(renderer.layers.diagrams, { class:'diagram-line', 'data-element-id':element.id, d:M.geometry.pathData(points) }, mode+' diagram edge for element '+element.id);
     });
     return textLegend(mode + ' diagram · max |value| ' + withUnit(maximumDiagram, mode === 'M' ? unit(dataset, 'moment') : unit(dataset, 'force')) + ' · display scale ' + format(diagramScale));
   };

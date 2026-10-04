@@ -154,6 +154,7 @@ r = example_04_load_histories();</code></pre>
           <li><a href="examples/example_04_load_histories.m"><code>example_04_load_histories.m</code></a> — исполняемая лабораторная.</li>
         </ul>
       </section>
+      <section><h2>Статические равномерные нагрузки</h2><p>Секция <code>eload_uniform</code> задаёт погонные qx/qy в локальной или глобальной системе только для рам 113. Полный вектор F складывается из узловых и согласованных элементных вкладов. Для локальной нагрузки fe=[qxL/2, qyL/2, qyL²/12, qxL/2, qyL/2, −qyL²/12]ᵀ, а глобальный вклад равен Tᵀfe. Подробности и правила редактора — в <a href="10-input-format.html#element-loads-title">формате входных данных</a>.</p></section>
     </main>
   </div>
 

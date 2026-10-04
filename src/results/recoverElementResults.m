@@ -23,17 +23,21 @@ emptyResult = struct( ...
     'length', [], ...
     'localDisplacements', [], ...
     'localEndForces', [], ...
+    'equivalentLocalLoadVector', [], ...
     'axialStrain', [], ...
     'axialStress', [], ...
     'axialForce', []);
 elementResults = repmat(emptyResult, numel(model.elementData), 1);
+for i = 1:numel(model.elementData)
+    validateElementData(model.elementData(i), model.numberOfDOFs, i);
+end
+[localLoads, ~, ~] = getElementLoadData(model);
 
 for elementNumber = 1:numel(model.elementData)
     data = model.elementData(elementNumber);
-    validateElementData(data, model.numberOfDOFs, elementNumber);
     globalDisplacements = displacements(data.dofs);
     localDisplacements = data.transformation * globalDisplacements;
-    localEndForces = data.localStiffness * localDisplacements;
+    localEndForces = data.localStiffness * localDisplacements - localLoads{elementNumber};
 
     switch data.type
         case 112
@@ -56,6 +60,7 @@ for elementNumber = 1:numel(model.elementData)
     elementResults(elementNumber).length = data.length;
     elementResults(elementNumber).localDisplacements = localDisplacements;
     elementResults(elementNumber).localEndForces = localEndForces;
+    elementResults(elementNumber).equivalentLocalLoadVector = localLoads{elementNumber};
     elementResults(elementNumber).axialStrain = axialStrain;
     elementResults(elementNumber).axialStress = axialStress;
     elementResults(elementNumber).axialForce = data.properties(1) * axialStress;

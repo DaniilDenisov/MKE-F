@@ -33,7 +33,8 @@
       nodes: [],
       elements: [],
       supports: [],
-      loads: []
+      loads: [],
+      elementLoads: []
     };
   }
 
@@ -41,7 +42,7 @@
     var fields = text.split(',');
     if (fields.length !== count) fail(line, description + ' requires exactly ' + count + ' fields.');
     return fields.map(function (field) {
-      var value = Number(field.trim());
+      var value = field.trim() === '' ? NaN : Number(field.trim());
       if (!Number.isFinite(value)) fail(line, description + ' contains a nonnumeric or non-finite value.');
       return value;
     });
@@ -133,6 +134,15 @@
           model.supports.push({ type: supportValues[0], node: supportValues[1] });
           if (supportValues.slice(2).some(function (value) { return value !== 0; })) fail(supportRecord.line, 'Only zero prescribed displacements are supported.');
         }
+      } else if (marker === 'eload_uniform') {
+        requireElements(markerLine);
+        var elementLoadCount = count(marker, false);
+        for (var el = 0; el < elementLoadCount; el += 1) {
+          var elementLoadRecord = nextData('uniform element load');
+          var v = parseRecord(elementLoadRecord.text, 5, elementLoadRecord.line, 'Uniform element load');
+          if (v[0] !== 20 || !integer(v[1]) || v[1] < 1 || v[1] > model.elements.length || model.elementType !== 113 || [1, 2].indexOf(v[2]) < 0 || (v[3] === 0 && v[4] === 0)) fail(elementLoadRecord.line, 'Invalid uniform element load; requires frame 113, existing element, Local/Global and nonzero intensity.');
+          model.elementLoads.push({ type: 20, elementId: v[1], coordinateSystem: v[2], qx: v[3], qy: v[4] });
+        }
       } else if (['bcforce_stat', 'bcforce_harm', 'bcforce_pulse', 'bcforce_step'].indexOf(marker) >= 0) {
         requireElements(markerLine);
         var loadTypes = { bcforce_stat: 10, bcforce_harm: 11, bcforce_pulse: 12, bcforce_step: 13 };
@@ -204,6 +214,14 @@
       if (model.analysis.type === 'static' && load.type !== 10) add(label + ' is not valid for static analysis.');
       if (model.analysis.type === 'modal') add(label + ' is not valid for modal analysis.');
     });
+    (model.elementLoads || []).forEach(function (load, index) {
+      var label = 'Element load ' + (index + 1);
+      if (load.type !== 20 || model.elementType !== 113) add(label + ' requires uniform load type 20 and frame element 113.');
+      if (!integer(load.elementId) || load.elementId < 1 || load.elementId > model.elements.length) add(label + ' has an invalid element.');
+      if ([1, 2].indexOf(load.coordinateSystem) < 0) add(label + ' requires Local or Global coordinates.');
+      if (![load.qx, load.qy].every(finite) || (load.qx === 0 && load.qy === 0)) add(label + ' requires finite, nonzero intensity.');
+      if (model.analysis.type && model.analysis.type !== 'static') add(label + ' is valid only for static analysis.');
+    });
     if (model.analysis.type === 'transient') {
       if (!finite(model.analysis.timeStep) || model.analysis.timeStep <= 0) add('Transient time step must be positive and finite.');
       if (!finite(model.analysis.duration) || model.analysis.duration < model.analysis.timeStep) add('Transient duration must cover at least one time step.');
@@ -239,6 +257,10 @@
         out.push(values.map(numberText).join(','));
       });
     });
+    if ((model.elementLoads || []).length) {
+      out.push('eload_uniform', String(model.elementLoads.length));
+      model.elementLoads.forEach(function (load) { out.push([20, load.elementId, load.coordinateSystem, load.qx, load.qy].map(numberText).join(',')); });
+    }
     return out.join('\n') + '\n';
   }
 

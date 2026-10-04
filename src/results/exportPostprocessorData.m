@@ -114,6 +114,10 @@ for i = 1:numel(output.model.elements)
 end
 output.model.dofMap = numericMatrix(data.model.dofMap);
 output.model.supports = recordArray(data.model.supports);
+if data.version == 2
+    output.model.nodalLoads = recordArray(data.model.nodalLoads);
+    output.model.elementLoads = recordArray(data.model.elementLoads);
+end
 
 switch data.analysis.type
     case 'static'
@@ -128,6 +132,10 @@ switch data.analysis.type
         for i = 1:numel(output.analysis.elementResults)
             output.analysis.elementResults{i}.localEndForces = numericArray( ...
                 output.analysis.elementResults{i}.localEndForces);
+            if data.version == 2
+                output.analysis.elementResults{i}.equivalentLocalLoadVector = ...
+                    numericArray(output.analysis.elementResults{i}.equivalentLocalLoadVector);
+            end
         end
 
     case 'modal'

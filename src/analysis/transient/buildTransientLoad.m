@@ -4,6 +4,7 @@ function loadHistory = buildTransientLoad(model, timeStep, stepCount)
 % F0*sin(2*pi*f*t). Type 12 is an explicit one-step pulse, and type 13 is a
 % persistent step. Columns correspond to t = 0, dt, ..., stepCount*dt.
 
+rejectElementLoads(model);
 loadHistory = zeros(model.numberOfDOFs, stepCount + 1);
 time = (0:stepCount) * timeStep;
 for i = 1:size(model.forceBoundaryConditions, 1)

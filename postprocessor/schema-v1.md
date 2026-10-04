@@ -1,5 +1,9 @@
 # MKE-F postprocessor JSON format, version 1
 
+Results containing uniform element loads use [version 2](schema-v2.md).
+Results without element loads continue to use this version; the current
+viewer supports both formats.
+
 The root object contains `format: "mkef-postprocessor"`, `version: 1`,
 `metadata`, `model`, and `analysis`. Identifiers and global degrees of freedom
 are one-based.

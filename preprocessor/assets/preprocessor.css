@@ -76,3 +76,7 @@ td button { padding:.3rem .5rem; color:var(--red); }
 .control-note { margin:.55rem 0 0; color:var(--muted); font-size:.82rem; }
 .node-placement-preview { fill:rgba(23,105,170,.08); stroke:var(--blue); stroke-width:1.5px; stroke-dasharray:4 3; vector-effect:non-scaling-stroke; pointer-events:none; }
 @media (max-width:900px) { body { height:auto; } .toolbar { align-items:flex-start; flex-direction:column; } .app-layout { display:block; } .settings { border-right:0; border-bottom:1px solid var(--line); } .workspace { min-height:900px; } .tables { grid-template-columns:1fr; } }
+
+.element-load-symbol { pointer-events:none; }
+.element-load-label { fill:#a23427; pointer-events:none; }
+.local-axis { stroke:#49768c; stroke-width:1.5; vector-effect:non-scaling-stroke; pointer-events:none; }

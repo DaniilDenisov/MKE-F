@@ -1,5 +1,5 @@
 function data = createPostprocessorData(model, result, options)
-%CREATEPOSTPROCESSORDATA Convert an analysis model/result to schema version 1.
+%CREATEPOSTPROCESSORDATA Convert an analysis model/result to schema version 1 or 2.
 % The returned struct contains only postprocessing data; assembled and
 % element matrices are deliberately excluded.
 
@@ -16,6 +16,27 @@ data.format = 'mkef-postprocessor';
 data.version = 1;
 data.metadata = createMetadata(settings, analysisType);
 data.model = createModelData(model, modelInfo);
+if isfield(model, 'elementLoads') && ~isempty(model.elementLoads)
+    if ~strcmp(analysisType, 'static')
+        rejectElementLoads(model);
+    end
+    getElementLoadData(model);
+    data.version = 2;
+    data.model.elementLoads = model.elementLoads;
+    records = model.forceBoundaryConditions;
+    validateNumeric(records, 'model.forceBoundaryConditions');
+    if size(records, 2) < 5 || any(records(:, 1) ~= 10) || ...
+            any(records(:, 2) ~= fix(records(:, 2))) || ...
+            any(records(:, 2) < 1 | records(:, 2) > model.numberOfNodes)
+        invalidModel('Version 2 requires finite static nodal loads on existing nodes.');
+    end
+    nodalLoads = repmat(struct('type', 10, 'nodeId', 0, 'fx', 0, 'fy', 0, 'mz', 0), size(records, 1), 1);
+    for i = 1:size(records, 1)
+        nodalLoads(i) = struct('type', records(i, 1), 'nodeId', records(i, 2), ...
+            'fx', records(i, 3), 'fy', records(i, 4), 'mz', records(i, 5));
+    end
+    data.model.nodalLoads = nodalLoads;
+end
 
 switch analysisType
     case 'static'
@@ -29,6 +50,15 @@ switch analysisType
             'Unsupported analysis type %s.', analysisType);
 end
 
+if data.version == 2
+    for i = 1:numel(data.analysis.elementResults)
+        source = result.elementResults(i);
+        requireFields(source, {'equivalentLocalLoadVector'}, 'element result');
+        validateVector(source.equivalentLocalLoadVector, 6, 'equivalentLocalLoadVector');
+        data.analysis.elementResults(i).equivalentLocalLoadVector = ...
+            double(source.equivalentLocalLoadVector(:).');
+    end
+end
 end
 
 function analysisType = validateAnalysisType(result)

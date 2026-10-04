@@ -53,7 +53,7 @@
         <p>Первое выражение собирает компоненты по <code>element.dofs</code>, а не по номерам узлов. Второе переводит глобальные перемещения в собственные оси элемента. Третье даёт обобщённые узловые силы, действующие на элемент и сопряжённые его локальным СС.</p>
         <pre><code>elementDisplacements = u(element.dofs);
 localDisplacements = element.transformation * elementDisplacements;
-localEndForces = element.localStiffness * localDisplacements;</code></pre>
+localEndForces = element.localStiffness * localDisplacements - feLocal;</code></pre>
       </section>
 
       <section aria-labelledby="fields-title">
@@ -94,7 +94,7 @@ localEndForces = element.localStiffness * localDisplacements;</code></pre>
         <p class="equation">q<sub>local</sub> = [0; −P; −PL; 0; P; 0]</p>
         <div class="callout callout--warning">
           <span class="callout__title">Граница текущей модели</span>
-          <p><code>localEndForces</code> содержит результат <strong>k<sub>local</sub>u<sub>local</sub></strong>. Текущий формат задаёт узловые нагрузки и не добавляет в этот вектор отдельные фиксированные концевые усилия от распределённых нагрузок. Поля <code>axialStress</code> и <code>axialForce</code> описывают только осевое состояние; эпюры изгибающих напряжений функция не строит.</p>
+          <p><code>localEndForces</code> содержит результат <strong>k<sub>local</sub>u<sub>local</sub> − feLocal</strong>. Для элементной нагрузки из этого произведения вычитается суммарный согласованный вектор feLocal; он доступен как equivalentLocalLoadVector. Поля <code>axialStress</code> и <code>axialForce</code> описывают только осевое состояние; эпюры изгибающих напряжений функция не строит.</p>
         </div>
       </section>
 
@@ -172,6 +172,7 @@ results = run_reference_examples();</code></pre>
           <li>R. D. Cook, D. S. Malkus, M. E. Plesha, <cite>Concepts and Applications of Finite Element Analysis</cite>, 3-е изд., с. 113.</li>
         </ul>
       </section>
+      <section><h2>Эпюры загруженных элементов</h2><p>При суммарных локальных интенсивностях qx, qy и концевом векторе f: N(x)=−f₁−qx·x, V(x)=−f₂−qy·x, M(x)=−f₃+f₂·x+qy·x²/2. Постпроцессор учитывает внутренний экстремум M. Скалярные axialStrain, axialStress, axialForce и возвращаемое StressCalc напряжение обозначают средние осевые значения, а не изгибные напряжения. Геометрия перемещений сохраняет интерполяцию конечного элемента.</p><p>Результаты с элементными нагрузками экспортируются в <a href="../postprocessor/schema-v2.md">JSON v2</a>; старые результаты v1 поддерживаются.</p></section>
     </main>
   </div>
 

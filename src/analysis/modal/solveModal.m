@@ -1,6 +1,7 @@
 function result = solveModal(model)
 %SOLVEMODAL Solve the undamped generalized eigenproblem without side effects.
 
+rejectElementLoads(model);
 [fixedDOFs, freeDOFs] = partitionDOFs(model);
 reducedK = model.stiffness(freeDOFs, freeDOFs);
 reducedM = model.mass(freeDOFs, freeDOFs);
