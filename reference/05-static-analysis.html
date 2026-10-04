@@ -152,27 +152,51 @@ exportPostprocessorData(model, result, fullfile('output', 'static-frame.json'), 
       </section>
 
       <section aria-labelledby="practice-title">
-        <h2 id="practice-title">Лабораторная 03</h2>
+        <h2 id="practice-title">Лабораторная 03. Растяжение стержня: перемещение и опорная реакция</h2>
+        <p>Цель — получить перемещение из уравнения равновесия и объяснить, как одно неизвестное превращается в полный вектор четырёх перемещений.</p>
+        <figure class="model-figure lab-figure">
+          <img src="assets/lab-static-bar.svg" alt="Горизонтальный стержень с силой вправо, неподвижным левым узлом и правой опорой, допускающей перемещение по X.">
+          <figcaption>Ферменный элемент 112. Правая опора запрещает только поперечное перемещение.</figcaption>
+        </figure>
+        <h3>Исходные данные и обозначения</h3>
+        <p>Длина <em>L = 2 м</em>, площадь <em>A = 0,01 м²</em>, модуль <em>E = 200 ГПа</em>, сила <em>F = 1000 Н</em>. Положительное направление X — вправо. Полный вектор имеет порядок <code>[u₁x; u₁y; u₂x; u₂y]</code>.</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Глобальная СС</th><th>Перемещение</th><th>Условие</th></tr></thead>
+            <tbody>
+              <tr><td>1</td><td>u₁x</td><td>0, закреплено</td></tr>
+              <tr><td>2</td><td>u₁y</td><td>0, закреплено</td></tr>
+              <tr><td>3</td><td>u₂x</td><td>Неизвестно, действует F</td></tr>
+              <tr><td>4</td><td>u₂y</td><td>0, закреплено</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <h3>До запуска: расчёт на бумаге</h3>
+        <ol>
+          <li>По схеме определите свободное перемещение и выпишите его глобальный номер.</li>
+          <li>Вычислите жёсткость <em>k = EA/L</em> в Н/м. Запишите уравнение <em>k·u₂x = F</em> и найдите <em>u₂x = FL/(EA)</em>.</li>
+          <li>Из равновесия всего стержня найдите реакцию <em>R₁x</em>. Составьте полный вектор перемещений, вписав нули на закреплённых СС.</li>
+        </ol>
+        <h3>Запуск в Octave</h3>
+        <p>Выполните из корня проекта. Готовая функция печатает результаты; для этой работы изменять её код не требуется.</p>
+        <pre><code>addpath(pwd);
+setup;
+addpath(fullfile(pwd, "reference", "examples"));
+r = example_03_static_bar();</code></pre>
+        <h3>Работа с результатами</h3>
+        <ol>
+          <li>В строках <code>Fixed DOFs</code> и <code>Free DOFs</code> найдите номера из своей таблицы. Номер 3 означает горизонтальное перемещение узла 2.</li>
+          <li>Сопоставьте <code>Reduced stiffness Kff [N/m]</code> со своим <em>EA/L</em>, а <code>Reduced load Ff [N]</code> — с силой <em>F</em>. Разделите второе число на первое: результат должен совпасть с третьей компонентой <code>Complete displacement vector [m]</code>.</li>
+          <li>Сравните полный вектор со своим прогнозом, а первую компоненту <code>Reaction vector [N]</code> — с реакцией <em>−F</em>. Проверьте <em>R₁x + F = 0</em>.</li>
+          <li>По формуле предскажите, как изменится перемещение при удвоении отдельно <em>L</em>, <em>A</em> и <em>E</em>. Объясните, почему при той же силе реакция сохранится.</li>
+        </ol>
+
         <div class="callout">
-          <span class="callout__title">Как запустить</span>
-          <p><code>addpath(pwd); setup; addpath(fullfile(pwd,"reference","examples")); r = example_03_static_bar();</code></p>
+          <span class="callout__title">Контрольные значения</span>
+          <p><em>K<sub>ff</sub> = 10⁹ Н/м</em>, <em>F<sub>f</sub> = 1000 Н</em>, <em>u₂x = 10⁻⁶ м = 0,001 мм</em>. Полные векторы: <code>u = [0; 0; 10⁻⁶; 0]</code> м и <code>R = [−1000; 0; 0; 0]</code> Н. Жёсткость, сила и перемещение связаны уравнением, поэтому непосредственно сравнивать их численные значения между собой нельзя.</p>
         </div>
-        <div class="callout callout--inspect">
-          <span class="callout__title">Что исследовать</span>
-          <p>Сравните <code>r.reducedStiffness</code>, <code>r.reducedLoad</code> и полный <code>r.displacements</code>. Единственная свободная СС имеет глобальный номер 3.</p>
-        </div>
-        <div class="callout">
-          <span class="callout__title">Ожидаемый аналитический результат</span>
-          <p>При <em>F = 1000 Н</em>, <em>L = 2 м</em>, <em>A = 0,01 м²</em> и <em>E = 200 ГПа</em> перемещение равно 10<sup>−6</sup> м, а горизонтальная реакция — −1000 Н.</p>
-        </div>
-        <div class="callout callout--warning">
-          <span class="callout__title">Частые ошибки</span>
-          <p>Не удаляйте строки полной матрицы навсегда и не принимайте <strong>Ku</strong> за реакцию: из внутренних узловых сил нужно вычесть полный вектор внешней нагрузки.</p>
-        </div>
-        <div class="callout callout--inspect">
-          <span class="callout__title">Предлагаемый эксперимент</span>
-          <p>Удвойте <em>L</em>, затем отдельно <em>A</em> и <em>E</em>. До запуска предскажите изменение перемещения; реакция при заданной силе должна остаться прежней.</p>
-        </div>
+        <h3>Что включить в отчёт</h3>
+        <p>Схему с нумерацией СС, ручное уравнение, таблицу «величина — ручной расчёт — Octave — единицы» для жёсткости, перемещения и реакции; объяснение нулевых компонент и прогноз для трёх изменений параметров.</p>
       </section>
 
       <section class="source-list" aria-labelledby="sources-title">

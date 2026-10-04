@@ -267,27 +267,41 @@ globalK = sparse(rows, columns, stiffnessValues, nDOF, nDOF);</code></pre>
       </section>
 
       <section aria-labelledby="practice-title">
-        <h2 id="practice-title">Лабораторная 02</h2>
+        <h2 id="practice-title">Лабораторная 02. Сборка двух стержней в общем узле</h2>
+        <p>Цель — вручную собрать продольный блок жёсткости и увидеть, как два элемента совместно сопротивляются перемещению общего узла.</p>
+        <figure class="model-figure lab-figure">
+          <img src="assets/lab-two-bars.svg" alt="Узлы 1, 2, 3 на горизонтали, элементы 1–2 и 2–3, каждый длиной 1 м.">
+          <figcaption>Закреплений и внешних сил нет. В каждом узле сначала нумеруется uₓ, затем uᵧ.</figcaption>
+        </figure>
+        <h3>Исходные данные и обозначения</h3>
+        <p>Координаты X узлов: 0, 1, 2 м; Y = 0. Для обоих элементов <em>A = 0,01 м²</em>, <em>E = 200 ГПа</em>, <em>ρ = 7850 кг/м³</em>. Глобальный порядок: <code>[u₁x; u₁y; u₂x; u₂y; u₃x; u₃y]</code>.</p>
+        <h3>До запуска: расчёт на бумаге</h3>
+        <ol>
+          <li>Найдите жёсткость <em>k = EA/L</em> одного элемента. Запишите его продольный блок <code>k·[1 −1; −1 1]</code>.</li>
+          <li>Составьте блок для трёх перемещений <code>[u₁x; u₂x; u₃x]</code>, сложив вклады элементов в общем узле. Предскажите центральный диагональный коэффициент и связь между узлами 1 и 3.</li>
+          <li>Найдите общую массу двух стержней.</li>
+        </ol>
+        <h3>Запуск в Octave</h3>
+        <p>Выполните из корня проекта. Готовая функция печатает результаты; для этой работы изменять её код не требуется.</p>
+        <pre><code>addpath(pwd);
+setup;
+addpath(fullfile(pwd, "reference", "examples"));
+r = example_02_sparse_assembly();</code></pre>
+        <h3>Работа с результатами</h3>
+        <ol>
+          <li>В <code>Global DOF map [ux uy]</code> найдите продольные СС 1, 3, 5. В <code>Assembled sparse K</code> прочитайте пересечения этих строк и столбцов и сверьте со своим блоком.</li>
+          <li>По двум напечатанным матрицам <code>global stiffness contribution</code> выпишите слагаемые для <em>K₃₃</em>. Объясните, почему <em>K₁₅ = 0</em>.</li>
+          <li>Объясните нулевые строки 2, 4, 6: какой вид движения горизонтальные ферменные элементы не сдерживают? По суммам строк продольного блока проверьте, создаёт ли одинаковый перенос всех узлов внутренние силы.</li>
+          <li>В <code>Assembled sparse M</code> найдите <em>M₃₃</em>: каждый элемент вносит туда <em>ρAL/3</em>. Выполните приведённую проверку общей переносной массы и сопоставьте с ручным расчётом.</li>
+        </ol>
+        <pre><code>tx = [1; 0; 1; 0; 1; 0];
+disp(tx' * r.mass * tx);</code></pre>
         <div class="callout">
-          <span class="callout__title">Как запустить</span>
-          <p><code>addpath(pwd); setup; addpath(fullfile(pwd,"reference","examples")); r = example_02_sparse_assembly();</code></p>
+          <span class="callout__title">Контрольные значения</span>
+          <p><em>k = 2·10⁹ Н/м</em>. Продольный блок: <code>k·[1 −1 0; −1 2 −1; 0 −1 1]</code>. <em>K₃₃ = 4·10⁹ Н/м</em>, <em>M₃₃ ≈ 52,3333 кг</em>, общая масса 157 кг. Ненулевые внедиагональные члены массы тоже участвуют в переносном движении.</p>
         </div>
-        <div class="callout callout--inspect">
-          <span class="callout__title">Что исследовать</span>
-          <p>Сравните <code>r.elements(1).dofs</code>, <code>r.elements(2).dofs</code> и диагональ <code>full(r.stiffness)</code>. Найдите сумму двух вкладов в общей СС 3.</p>
-        </div>
-        <div class="callout">
-          <span class="callout__title">Ожидаемый инвариант</span>
-          <p>Глобальные <strong>K</strong> и <strong>M</strong> разреженные и симметричные. Плотная контрольная сборка совпадает с результатом триплетов, а суммарная переносная масса равна массе двух стержней.</p>
-        </div>
-        <div class="callout callout--warning">
-          <span class="callout__title">Частые ошибки</span>
-          <p>Не присваивайте блок через <code>K(d,d) = Ke</code>: это стирает вклад ранее собранного элемента. Нельзя также переставлять <code>dofs</code> без такой же перестановки строк и столбцов матрицы.</p>
-        </div>
-        <div class="callout callout--inspect">
-          <span class="callout__title">Предлагаемый эксперимент</span>
-          <p>Добавьте четвёртый узел и третий элемент. Предскажите размер глобальной матрицы, её ранг и общую массу до запуска изменённой копии примера.</p>
-        </div>
+        <h3>Что включить в отчёт</h3>
+        <p>Схему, ручной продольный блок, два вклада в K₃₃ и M₃₃, общую массу и объяснение нулевых коэффициентов.</p>
       </section>
 
       <section class="source-list" aria-labelledby="sources-title">

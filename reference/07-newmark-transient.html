@@ -150,27 +150,53 @@ exportPostprocessorData(model, result, ...
       </section>
 
       <section aria-labelledby="practice-title">
-        <h2 id="practice-title">Лабораторная 06</h2>
+        <h2 id="practice-title">Лабораторная 06. Свободные колебания: точность метода Ньюмарка</h2>
+        <p>Цель — сравнить численное движение с аналитическим и определить по трём сеткам порядок сходимости.</p>
+        <figure class="model-figure lab-figure">
+          <img src="assets/lab-oscillator.svg" alt="Масса 2 кг соединена с неподвижной стенкой пружиной 18 Н/м и движется по горизонтали без трения.">
+          <figcaption>Одна физическая степень свободы u(t). В модели Octave вторая, поперечная СС закреплена.</figcaption>
+        </figure>
+        <h3>Исходные данные и обозначения</h3>
+        <p><em>m = 2 кг</em>, <em>k = 18 Н/м</em>, <em>u₀ = 0,02 м</em>, <em>v₀ = −0,01 м/с</em>. Сила и демпфирование равны нулю. Готовый пример рассчитывает три периода с 50, 100 и 200 шагами на период; <em>β = 1/4</em>, <em>γ = 1/2</em>.</p>
+        <h3>До запуска: расчёт на бумаге</h3>
+        <ol>
+          <li>Найдите <em>ω = √(k/m)</em>, <em>f = ω/(2π)</em>, <em>T = 1/f</em> и начальное ускорение <em>a₀ = −ku₀/m</em>.</li>
+          <li>Запишите <em>u(t) = u₀cos(ωt) + (v₀/ω)sin(ωt)</em>. Найдите начальную энергию <em>E₀ = mv₀²/2 + ku₀²/2</em>.</li>
+        </ol>
+        <h3>Запуск в Octave</h3>
+        <p>Выполните из корня проекта. Готовая функция печатает результаты; для этой работы изменять её код не требуется.</p>
+        <pre><code>addpath(pwd);
+setup;
+addpath(fullfile(pwd, "reference", "examples"));
+r = example_06_newmark_sdof();</code></pre>
+        <h3>Работа с результатами</h3>
+        <ol>
+          <li>Сверьте <code>Natural frequency</code>, <code>period</code> и <code>Initial acceleration</code> с расчётом.</li>
+          <li>Из <code>Steps per period and maximum displacement error</code> выпишите три ошибки. Рассчитайте отношения ошибки на 50 шагах к ошибке на 100 и на 100 к 200. Почему отношение около четырёх указывает на второй порядок?</li>
+          <li>Готовыми командами ниже постройте точное и численное движение на самой мелкой сетке, а затем их разность. Отдельный график разности позволяет увидеть погрешность при визуально совпадающих кривых.</li>
+          <li>Сопоставьте <code>Relative energy drift</code> с найденной погрешностью движения. Объясните, почему сохранение энергии ещё не означает точного совпадения фазы.</li>
+          <li>Сверьте <code>Spectrum peak</code> с собственной частотой: расхождение должно укладываться в напечатанную <code>bin width</code>. По формуле <em>Δf = 1/(NΔt)</em> предскажите влияние сокращения длительности записи при прежнем шаге.</li>
+        </ol>
+        <p>После запуска выполните в Octave с доступным графическим окном:</p>
+        <pre><code>figure;
+plot(r.time, r.displacements(1,:), "-", ...
+     r.time, r.exactDisplacement, "--");
+xlabel("t [s]"); ylabel("u [m]");
+legend("Newmark", "Exact"); grid on;
+figure;
+plot(r.time, r.displacements(1,:) - r.exactDisplacement);
+xlabel("t [s]"); ylabel("u - u_exact [m]"); grid on;</code></pre>
+        <p>При безоконном запуске вместо графиков выпишите несколько пар значений и их разность:</p>
+        <pre><code>idx = round(linspace(1, numel(r.time), 13));
+disp([r.time(idx).', r.displacements(1,idx).', ...
+      r.exactDisplacement(idx).', ...
+      (r.displacements(1,idx) - r.exactDisplacement(idx)).']);</code></pre>
         <div class="callout">
-          <span class="callout__title">Как запустить</span>
-          <p><code>addpath(pwd); setup; addpath(fullfile(pwd,"reference","examples")); r = example_06_newmark_sdof();</code></p>
+          <span class="callout__title">Контрольные значения</span>
+          <p><em>ω = 3 рад/с</em>, <em>f ≈ 0,477465 Гц</em>, <em>T ≈ 2,0944 с</em>, <em>a₀ = −0,18 м/с²</em>, <em>E₀ = 0,0037 Дж</em>. Ошибка при уменьшении шага вдвое сокращается примерно в четыре раза; относительный дрейф энергии меньше 10⁻¹⁰. Более короткая запись увеличивает Δf и ухудшает частотное разрешение.</p>
         </div>
-        <div class="callout callout--inspect">
-          <span class="callout__title">Что исследовать</span>
-          <p>Сравните <code>r.displacements(1,:)</code> с <code>r.exactDisplacement</code>, три значения <code>r.maximumDisplacementErrors</code>, историю <code>r.energy</code> и частоту <code>r.spectrumPeakHz</code>.</p>
-        </div>
-        <div class="callout">
-          <span class="callout__title">Ожидаемый аналитический результат</span>
-          <p>При <em>m = 2</em> и <em>k = 18</em> круговая частота равна 3 рад/с, а частота — примерно 0,477465 Гц. При удвоении числа шагов на период ошибка уменьшается примерно в четыре раза.</p>
-        </div>
-        <div class="callout callout--warning">
-          <span class="callout__title">Частые ошибки</span>
-          <p>Безусловная устойчивость не разрешает произвольно крупный шаг. Не задавайте ненулевые начальные значения закреплённым СС и не сравнивайте импульсные решения разных сеток при одинаковом F<sub>0</sub> вместо одинакового F<sub>0</sub>Δt.</p>
-        </div>
-        <div class="callout callout--inspect">
-          <span class="callout__title">Предлагаемый эксперимент</span>
-          <p>Измените <em>k</em> в четыре раза и заранее предскажите новую частоту. Затем сократите расчёт до половины периода и посмотрите, как ухудшится частотное разрешение спектра.</p>
-        </div>
+        <h3>Что включить в отчёт</h3>
+        <p>Ручной расчёт, таблицу ошибок и их отношений, два графика (или таблицу значений при безоконном запуске), объяснение различия между сохранением энергии и точностью движения, вывод о разрешении спектра.</p>
       </section>
 
       <section class="source-list" aria-labelledby="sources-title">

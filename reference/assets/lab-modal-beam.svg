@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 260" role="img" aria-labelledby="title">
+<title id="title">Балка из двух рамных элементов: заделка в узле 1, неподвижная шарнирная опора в узле 2, свободный узел 3</title>
+<defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8" fill="#285b89"/></marker></defs>
+<style>text{font:16px 'Segoe UI',Arial,sans-serif;fill:#17211b} .bar{stroke:#165c45;stroke-width:7;fill:none} .thin{stroke:#5d685f;stroke-width:2;fill:none} .arrow{stroke:#285b89;stroke-width:2;fill:none;marker-end:url(#arrow)} .node{fill:#fff;stroke:#165c45;stroke-width:3}</style>
+<rect width="640" height="260" fill="#fbfaf5"/>
+<path class="arrow" d="M35 85 V30"/><path class="arrow" d="M35 85 H90"/><text x="15" y="25">Y</text><text x="95" y="90">X</text><path class="thin" d="M130 70 V150 M130 75 l-15 15 M130 95 l-15 15 M130 115 l-15 15 M130 135 l-15 15"/>
+<path class="bar" d="M130 110 H550"/>
+<circle class="node" cx="130" cy="110" r="6"/><circle class="node" cx="340" cy="110" r="6"/><circle class="node" cx="550" cy="110" r="6"/>
+<path class="thin" d="M340 118 l-20 30 h40 Z M310 150 H370 M315 150 l-8 10 M330 150 l-8 10 M345 150 l-8 10 M360 150 l-8 10"/>
+<text x="125" y="90">1</text><text x="335" y="90">2</text><text x="545" y="90">3</text>
+<text x="220" y="140">1 м</text><text x="440" y="140">1 м</text>
+<text x="85" y="195">u₁x = u₁y = θ₁ = 0</text><text x="285" y="225">u₂x = u₂y = 0</text>
+<text x="305" y="195">θ₂ свободно</text><text x="485" y="195">u₃x, u₃y, θ₃</text>
+</svg>

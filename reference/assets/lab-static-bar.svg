@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 260" role="img" aria-labelledby="title">
+<title id="title">Стержень длиной 2 м: узел 1 закреплён по X и Y, узел 2 по Y, сила 1000 Н направлена вправо</title>
+<defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8" fill="#285b89"/></marker></defs>
+<style>text{font:16px 'Segoe UI',Arial,sans-serif;fill:#17211b} .bar{stroke:#165c45;stroke-width:7;fill:none} .thin{stroke:#5d685f;stroke-width:2;fill:none} .arrow{stroke:#285b89;stroke-width:2;fill:none;marker-end:url(#arrow)} .node{fill:#fff;stroke:#165c45;stroke-width:3}</style>
+<rect width="640" height="260" fill="#fbfaf5"/>
+<path class="arrow" d="M35 85 V30"/><path class="arrow" d="M35 85 H90"/><text x="15" y="25">Y</text><text x="95" y="90">X</text><path class="thin" d="M130 70 V150 M130 75 l-15 15 M130 95 l-15 15 M130 115 l-15 15 M130 135 l-15 15"/>
+<path class="bar" d="M130 110 H470"/>
+<circle class="node" cx="130" cy="110" r="6"/><circle class="node" cx="470" cy="110" r="6"/>
+<path class="thin" d="M470 118 l-18 24 h36 Z M448 156 H492"/>
+<circle class="thin" cx="460" cy="148" r="4"/><circle class="thin" cx="480" cy="148" r="4"/>
+<path class="arrow" d="M480 110 H595"/><text x="475" y="90">F = 1000 Н</text>
+<text x="145" y="90">1</text><text x="452" y="90">2</text><text x="275" y="145">L = 2 м</text>
+<text x="100" y="190">u₁x = u₁y = 0</text><text x="410" y="190">u₂y = 0; u₂x свободно</text>
+<text x="100" y="230">A = 0,01 м²; E = 200 ГПа; ρ = 7850 кг/м³</text>
+</svg>

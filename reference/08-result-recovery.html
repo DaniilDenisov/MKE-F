@@ -108,27 +108,43 @@ localEndForces = element.localStiffness * localDisplacements;</code></pre>
       </section>
 
       <section aria-labelledby="practice-title">
-        <h2 id="practice-title">Лабораторная 07</h2>
+        <h2 id="practice-title">Лабораторная 07. От перемещений к напряжениям и концевым усилиям</h2>
+        <p>Цель — независимо проверить результаты двух задач через растяжение стержня и равновесие консоли.</p>
+        <figure class="model-figure lab-figure">
+          <img src="assets/lab-static-bar.svg" alt="Горизонтальный стержень с силой вправо, неподвижным левым узлом и правой опорой, допускающей перемещение по X.">
+          <figcaption>Ферменный элемент 112. Правая опора запрещает только поперечное перемещение.</figcaption>
+        </figure>
+        <figure class="model-figure lab-figure">
+          <img src="assets/lab-cantilever.svg" alt="Консоль длиной полметра с силой 100 Н вверх на правом конце и заделкой слева.">
+          <figcaption>Вторая задача — рамный элемент 113. Положительный момент направлен против часовой стрелки.</figcaption>
+        </figure>
+        <h3>Исходные данные и обозначения</h3>
+        <p>Для стержня используются данные схемы лабораторной 03: <em>L = 2 м</em>, <em>A = 0,01 м²</em>, <em>E = 200 ГПа</em>, <em>F = 1000 Н</em>. Для консоли <em>L = 0,5 м</em>, <em>A = 10⁻⁴ м²</em>, <em>E = 200 ГПа</em>, <em>I = 0,33·10⁻⁸ м⁴</em>, <em>P = 100 Н</em> вверх. Обе модели горизонтальны, их локальные оси совпадают с глобальными.</p>
+        <h3>До запуска: расчёт на бумаге</h3>
+        <ol>
+          <li>Для стержня найдите <em>σ = F/A</em>, <em>ε = σ/E</em>, <em>ΔL = εL</em> и <em>N = σA</em>.</li>
+          <li>Для консоли запишите равновесие по Y и по моменту относительно узла 1. Найдите <em>R₁y</em> и <em>M₁</em> с учётом направления силы на схеме.</li>
+        </ol>
+        <h3>Запуск в Octave</h3>
+        <p>Выполните из корня проекта. Готовая функция печатает результаты; для этой работы изменять её код не требуется.</p>
+        <pre><code>addpath(pwd);
+setup;
+addpath(fullfile(pwd, "reference", "examples"));
+r = example_07_result_recovery();</code></pre>
+        <h3>Работа с результатами</h3>
+        <ol>
+          <li>Из <code>Truss local displacements [u1; v1; u2; v2]</code> найдите <em>u₂ − u₁</em> и разделите на длину. Сверьте деформацию, напряжение и продольную силу с напечатанными <code>Truss strain</code>, <code>stress</code> и <code>axial force</code>.</li>
+          <li>В <code>Truss local end forces</code> найдите две осевые компоненты. Объясните, почему их знаки противоположны, хотя продольная сила N положительна и стержень растянут.</li>
+          <li>Подпишите шесть компонент <code>Frame local end forces [N1; V1; M1; N2; V2; M2]</code> с единицами Н или Н·м. Сверьте первые три с <code>Frame support reactions</code>, последние три — с нагрузкой свободного конца.</li>
+          <li>Проверьте равновесие: <em>V₁ + V₂ = 0</em> и <em>M₁ + M₂ + V₂L = 0</em>. По линейности предскажите знаки деформации, напряжения, усилий и реакций при обращении нагрузки.</li>
+        </ol>
+
         <div class="callout">
-          <span class="callout__title">Как запустить</span>
-          <p><code>addpath(pwd); setup; addpath(fullfile(pwd,"reference","examples")); r = example_07_result_recovery();</code></p>
+          <span class="callout__title">Контрольные значения</span>
+          <p>Стержень: <em>ΔL = 10⁻⁶ м</em>, <em>ε = 5·10⁻⁷</em>, <em>σ = 100 кПа</em>, <em>N = 1000 Н</em>; концевые силы <code>[−1000; 0; 1000; 0]</code> Н. Консоль: <code>[0; −100; −50; 0; 100; 0]</code>, где третья и шестая компоненты измеряются в Н·м. Это компоненты узловых концевых сил в положительных локальных осях, а не готовые знаки эпюр в сечениях.</p>
         </div>
-        <div class="callout callout--inspect">
-          <span class="callout__title">Что исследовать</span>
-          <p>Сравните <code>r.truss.elementResults(1)</code> и <code>r.frame.elementResults(1)</code>. Проследите цепочку от <code>globalDOFs</code> до локальных перемещений и усилий.</p>
-        </div>
-        <div class="callout">
-          <span class="callout__title">Ожидаемые аналитические результаты</span>
-          <p>Стержень даёт <em>ε = 5·10<sup>−7</sup></em>, <em>σ = 100 кПа</em> и <em>N = 1000 Н</em>. Для консоли при <em>P = 100 Н</em> и <em>L = 0,5 м</em> получаем <code>[0; −100; −50; 0; 100; 0]</code>.</p>
-        </div>
-        <div class="callout callout--warning">
-          <span class="callout__title">Частые ошибки</span>
-          <p>Не вычисляйте деформацию из глобальной разности координатных перемещений наклонного стержня и не сравнивайте локальную силу с глобальной реакцией без преобразования осей.</p>
-        </div>
-        <div class="callout callout--inspect">
-          <span class="callout__title">Предлагаемый эксперимент</span>
-          <p>Поменяйте знак нагрузки. Все перемещения и усилия должны поменять знак, но их абсолютные значения останутся прежними.</p>
-        </div>
+        <h3>Что включить в отчёт</h3>
+        <p>Обе схемы, ручные расчёты, таблицу «аналитически — Octave — единицы» и два уравнения равновесия консоли; объяснение знаков концевых усилий.</p>
       </section>
 
       <section aria-labelledby="runner-title">

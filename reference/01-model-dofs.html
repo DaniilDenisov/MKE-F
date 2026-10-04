@@ -208,27 +208,14 @@ freeDOFs  = [4 5 6];</code></pre>
       </section>
 
       <section aria-labelledby="practice-title">
-        <h2 id="practice-title">Мини-практика</h2>
-        <div class="callout">
-          <span class="callout__title">Как запустить</span>
-          <p>Из корня репозитория: <code>addpath(pwd); setup; addpath(fullfile(pwd,"reference","examples")); r = example_01_element_matrices();</code></p>
-        </div>
-        <div class="callout callout--inspect">
-          <span class="callout__title">Что исследовать</span>
-          <p>Сравните <code>r.truss.dofs</code> и <code>r.frame.dofs</code>. Затем сопоставьте их с порядком строк напечатанных матриц.</p>
-        </div>
-        <div class="callout">
-          <span class="callout__title">Ожидаемый инвариант</span>
-          <p>Два узла дают 4 СС для ферменного элемента и 6 СС для рамного; число строк каждой матрицы совпадает с длиной <code>element.dofs</code>.</p>
-        </div>
-        <div class="callout callout--warning">
-          <span class="callout__title">Частые ошибки</span>
-          <p>Угол <em>θ<sub>z</sub></em> — вращение, а не перемещение <em>u<sub>z</sub></em>. Компонента нагрузки на эту СС является моментом <em>M<sub>z</sub></em>.</p>
-        </div>
-        <div class="callout callout--inspect">
-          <span class="callout__title">Предлагаемый эксперимент</span>
-          <p>На бумаге составьте <code>iMnod</code> для четырёх рамных узлов и карту элемента между узлами 2 и 4; проверьте результат выражением <code>reshape</code> в Octave.</p>
-        </div>
+        <h2 id="practice-title">Мини-практика. От номера узла к строке матрицы</h2>
+        <p>Используйте <a href="02-element-matrices.html#practice-title">схему и запуск лабораторной 01</a>. До запуска составьте таблицу компонент для двух узлов: по два перемещения для ферменного элемента и по два перемещения и поворот для рамного.</p>
+        <ol>
+          <li>Сверьте свою таблицу со строками вывода <code>Truss DOFs</code> и <code>Frame DOFs</code>. Подпишите каждую строку соответствующей матрицы.</li>
+          <li>Укажите, какой физической величине соответствует третья СС в каждой модели и какая нагрузка ей сопряжена.</li>
+          <li>На бумаге пронумеруйте СС четырёх рамных узлов. Выпишите СС элемента между узлами 2 и 4.</li>
+        </ol>
+        <div class="callout"><span class="callout__title">Контроль и отчёт</span><p>Матрицы имеют размеры 4×4 и 6×6. Третья СС — u₂x у ферменного элемента (нагрузка F₂x) и θ₁ у рамного (момент M₁). Для элемента между рамными узлами 2 и 4 карта равна <code>[4 5 6 10 11 12]</code>. В отчёт включите таблицы нумерации и поясните, почему один и тот же глобальный номер имеет разный смысл в двух моделях.</p></div>
       </section>
 
       <section class="source-list" aria-labelledby="sources-title">

@@ -115,7 +115,7 @@
           </article>
           <article class="card">
             <h3>Принцип лабораторных</h3>
-            <p>Каждый пример вызывает функции проекта, возвращает структуру для экспериментов и останавливается, если нарушен физический или численный инвариант.</p>
+            <p>Сначала студент изучает схему и делает ручной прогноз, затем запускает готовую функцию и объясняет полученные числа. Каждая работа содержит контрольные значения и требования к отчёту.</p>
           </article>
         </div>
       </section>
@@ -140,21 +140,18 @@ results = run_reference_examples();</code></pre>
           <p>Команды рассчитаны на GNU Octave. Для общей проверки без печати матриц используйте <code>run_reference_examples(false)</code>. Отдельную лабораторную можно вызвать по имени, например <code>example_07_result_recovery()</code>.</p>
         </div>
         <div class="callout callout--inspect">
-          <span class="callout__title">Что исследовать</span>
-          <p>Структура <code>results</code> содержит поля <code>example_01_element_matrices</code>–<code>example_07_result_recovery</code>. В них находятся матрицы, карты СС, нагрузки, формы колебаний, истории движения и усилия элементов.</p>
+          <span class="callout__title">Как выполнять лабораторные</span>
+          <p>Откройте нужную работу по ссылке ниже: схема, исходные данные и задания находятся перед контрольными значениями. Работайте с подписями в выводе Octave; дополнительные команды для просмотра и графиков приведены там, где нужны. Строка PASS подтверждает встроенные проверки примера, а в отчёте нужно объяснить расчёт и физический смысл результата. Прогнозы при изменении параметров выполняются по формулам; редактирование готовых функций не требуется.</p>
         </div>
-        <div class="callout">
-          <span class="callout__title">Ожидаемый инвариант</span>
-          <p>Матрицы <strong>K</strong> и <strong>M</strong> симметричны; поворот элемента не меняет его физические собственные значения; вклад в общей СС суммируется.</p>
-        </div>
-        <div class="callout callout--warning">
-          <span class="callout__title">Частая ошибка</span>
-          <p>Не путайте номер узла, локальный номер компоненты и глобальный номер СС. Матрица элемента индексируется его вектором <code>element.dofs</code>, а не номерами узлов.</p>
-        </div>
-        <div class="callout callout--inspect">
-          <span class="callout__title">Предлагаемый эксперимент</span>
-          <p>Измените координаты второго узла с <code>[3 4]</code> на <code>[5 0]</code> в копии примера 1 и сравните локальные и глобальные матрицы.</p>
-        </div>
+        <ol>
+          <li><a href="02-element-matrices.html#practice-title">Жёсткость и масса наклонного элемента</a></li>
+          <li><a href="03-transformation-assembly.html#practice-title">Сборка двух стержней в общем узле</a></li>
+          <li><a href="05-static-analysis.html#practice-title">Растяжение стержня: перемещение и опорная реакция</a></li>
+          <li><a href="04-boundary-loads.html#practice-title">Узловые нагрузки: сумма сил и история во времени</a></li>
+          <li><a href="06-modal-analysis.html#practice-title">Частоты и формы колебаний балки с промежуточной опорой</a></li>
+          <li><a href="07-newmark-transient.html#practice-title">Свободные колебания: точность метода Ньюмарка</a></li>
+          <li><a href="08-result-recovery.html#practice-title">От перемещений к напряжениям и концевым усилиям</a></li>
+        </ol>
       </section>
 
       <section aria-labelledby="notation-title">
