@@ -792,7 +792,7 @@
   <details class="reference-toc">
     <summary>Оглавление справочника</summary>
     <nav class="contents" aria-label="Оглавление справочника">
-      <h2>Четырнадцать глав</h2>
+      <h2>Пятнадцать глав</h2>
       <ol>
         <li><a href="01-model-dofs.html">Модель, узлы, элементы и СС</a></li>
         <li><a href="02-element-matrices.html">Матрицы элементов</a></li>
@@ -808,6 +808,7 @@
         <li><a href="12-local-octave-workflow.html">Локальный запуск в GNU Octave</a></li>
         <li><a aria-current="page" href="13-fem-assembly-visualizer.html">Интерактивная сборка МКЭ</a></li>
         <li><a href="14-mario-paz-matrices-visualizer.html">Интерактивные матрицы рамы</a></li>
+        <li><a href="15-sparse-matrix-assembly.html">Разреженная сборка матриц</a></li>
       </ol>
     </nav>
   </details>
@@ -828,7 +829,7 @@
           </label>
           <div class="segmented" aria-label="Представление матрицы">
             <button class="segment" type="button" data-view="dense" aria-pressed="true">Полная матрица</button>
-            <button class="segment" type="button" data-view="sparse" aria-pressed="false">Триплеты и CSR</button>
+            <button class="segment" type="button" data-view="sparse" aria-pressed="false">Триплеты → sparse()</button>
           </div>
         </div>
       </div>
@@ -980,14 +981,14 @@
                 <div class="triplet-list" id="tripletList"></div>
               </div>
               <div class="sparse-block">
-                <h4 id="csrTitle">CSR после суммирования · индексы с 1</h4>
+                <h4 id="csrTitle">После sparse() · учебное чтение по строкам</h4>
                 <div class="array-line"><span class="array-name">values</span><span id="csrValues">[]</span></div>
                 <div class="array-line"><span class="array-name">columns</span><span id="csrColumns">[]</span></div>
                 <div class="array-line"><span class="array-name">rowPtr</span><span id="csrRowPtr">[1, 1, 1, 1, 1]</span></div>
               </div>
               <div class="sparse-block">
                 <h4>Память в этом учебном примере</h4>
-                <div class="array-line" id="storageComparison">Плотно: 16 чисел · CSR: 0 значений + 5 указателей строк</div>
+                <div class="array-line" id="storageComparison">Плотно: 16 чисел · разреженно: ненулевые значения и служебные индексы</div>
               </div>
             </div>
           </div>
@@ -1026,7 +1027,7 @@
     <a href="14-mario-paz-matrices-visualizer.html"><span class="page-nav__label">Далее</span>14. Интерактивные матрицы рамы →</a>
   </nav>
 
-  <footer>МКЭ-Ф · автономный учебный справочник · глава 13 из 14 · вычисления выполняются локально в браузере</footer>
+  <footer>МКЭ-Ф · автономный учебный справочник · глава 13 из 15 · вычисления выполняются локально в браузере</footer>
 
   <script>
     'use strict';
@@ -1346,12 +1347,12 @@
 
       const matrix = displayedMatrix();
       const csr = matrixToCsr(matrix);
-      dom.csrTitle.textContent = `CSR после суммирования · ${matrix.length} строк · индексы с 1`;
+      dom.csrTitle.textContent = `После sparse() · ${matrix.length} строк · учебное чтение по строкам`;
       dom.csrValues.textContent = `[${csr.values.map(value => formatNumber(value)).join(', ')}]`;
       dom.csrColumns.textContent = `[${csr.columns.join(', ')}]`;
       dom.csrRowPtr.textContent = `[${csr.rowPtr.join(', ')}]`;
       const denseNumbers = matrix.length * matrix.length;
-      dom.storageComparison.textContent = `Плотно: ${denseNumbers} чисел · CSR: ${csr.values.length} значений + ${csr.columns.length} индексов столбцов + ${csr.rowPtr.length} указателей строк`;
+      dom.storageComparison.textContent = `Плотно: ${denseNumbers} чисел · разреженно: ${csr.values.length} ненулевых значений; columns и rowPtr ниже показаны только как учебное построчное представление`;
     }
 
     function operationText() {
@@ -1404,7 +1405,7 @@
 
       dom.footnote.textContent = state.stage >= 5
         ? 'Редукция показана как исключение закреплённой СС. Полная K нужна для восстановления реакции R = Ku − F.'
-        : 'В плотном виде видны все ячейки, включая нули. В режиме CSR сохраняются только ненулевые коэффициенты.';
+        : 'В плотном виде видны все ячейки, включая нули. В программе триплеты передаются библиотечной функции GNU Octave sparse(), которая суммирует совпадающие адреса и создаёт разреженную матрицу.';
     }
 
     function renderViewMode() {

@@ -56,3 +56,5 @@ docker compose up --build
 
 Подробности находятся в [справочнике](reference/index.html), включая
 [настройку и проверку проекта](reference/project-operations.html).
+
+Порядок выпуска новой версии описан в [руководстве разработчика](DEVGUIDE.md).
