@@ -54,7 +54,9 @@ docker compose up --build
 
 После запуска откройте <http://127.0.0.1:8080>.
 
-Подробности находятся в [справочнике](reference/index.html), включая
-[настройку и проверку проекта](reference/project-operations.html).
+Подробности находятся в [справочнике](reference/index.html):
+[Русский](reference/RU/index.html) · [English](reference/EN/index.html).
+Запуск, настройка и проверка проекта:
+[Русский](reference/RU/project-operations.html) · [English](reference/EN/project-operations.html).
 
 Порядок выпуска новой версии описан в [руководстве разработчика](DEVGUIDE.md).

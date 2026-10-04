@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Transient analysis in MKE-F: Newmark average acceleration, time grid, impulse, energy and spectrum.">
+  <title>7. Newmark transient analysis — MKE-F</title>
+  <link rel="stylesheet" href="../assets/reference.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="site-header__inner">
+      <nav class="language-switch" aria-label="Reference language"><a href="../RU/07-newmark-transient.html" lang="ru" hreflang="ru">RU</a> <a href="../EN/07-newmark-transient.html" lang="en" hreflang="en" aria-current="true">EN</a></nav>
+      <p class="eyebrow">Student FEM Reference · Chapter 7</p>
+      <p class="site-title">Newmark transient analysis</p>
+      <p class="site-subtitle">How initial conditions and time-dependent loads become consistent displacement, velocity and acceleration histories.</p>
+    </div>
+  </header>
+
+  <div class="layout">
+    <nav class="contents" aria-label="Reference contents">
+      <h2>Contents</h2>
+      <ol>
+        <li><a href="01-model-dofs.html">Model, nodes, elements and DOFs</a></li>
+        <li><a href="02-element-matrices.html">Element matrices</a></li>
+        <li><a href="03-transformation-assembly.html">Transformation and assembly</a></li>
+        <li><a href="04-boundary-loads.html">Boundary conditions and loads</a></li>
+        <li><a href="05-static-analysis.html">Static analysis</a></li>
+        <li><a href="06-modal-analysis.html">Modal analysis</a></li>
+        <li><a aria-current="page" href="07-newmark-transient.html">Newmark transient analysis</a></li>
+        <li><a href="08-result-recovery.html">Element results</a></li>
+        <li><a href="09-architecture-verification.html">Architecture and verification</a></li>
+        <li><a href="10-input-format.html">Input file format</a></li>
+        <li><a href="11-mario-paz-modal-example.html">Mario Paz modal example</a></li>
+        <li><a href="12-local-octave-workflow.html">Local GNU Octave workflow</a></li>
+        <li><a href="13-fem-assembly-visualizer.html">Interactive FEM assembly</a></li>
+        <li><a href="14-mario-paz-matrices-visualizer.html">Interactive frame matrices</a></li>
+        <li><a href="15-sparse-matrix-assembly.html">Sparse matrix assembly</a></li>
+      </ol>
+    </nav>
+
+    <main class="chapter" id="main">
+      <span class="chapter-number">Chapter 7</span>
+      <h1>Average acceleration method</h1>
+      <p class="lead">Transient analysis finds the system state at successive instants. The current MKE-F implementation considers a linear elastic undamped system and uses the implicit Newmark method with β = 1/4 and γ = 1/2.</p>
+
+      <section aria-labelledby="motion-title">
+        <h2 id="motion-title">Equation of motion and reduction</h2>
+        <p>The free DOFs satisfy:</p>
+        <p class="equation">M<sub>ff</sub> a(t) + K<sub>ff</sub> u(t) = F<sub>f</sub>(t)</p>
+        <p>This is the linear undamped special case of a more general equation with damping matrix <strong>C</strong> and a nonlinear restoring force. In MKE-F, <strong>C = 0</strong>, there is no nonlinear term, and constrained components of the full histories remain exactly zero.</p>
+      </section>
+
+      <section aria-labelledby="grid-title">
+        <h2 id="grid-title">A single time grid</h2>
+        <p>For step Δt and requested duration <em>T</em> the step count is <code>fix(T/dt)</code>. Every returned history has <em>N + 1</em> columns:</p>
+        <p class="equation">t<sub>0</sub> = 0, &nbsp; t<sub>1</sub> = Δt, &nbsp; …, &nbsp; t<sub>N</sub> = NΔt</p>
+        <p>If <em>T/Δt</em> is not an integer, the actual duration <code>result.duration</code> is shorter than the requested <code>result.requestedDuration</code>. Octave column numbers are one greater than step numbers: column 1 corresponds to <em>t = 0</em>.</p>
+      </section>
+
+      <section aria-labelledby="initial-title">
+        <h2 id="initial-title">Initial state</h2>
+        <p>The user may specify full vectors <strong>u</strong><sub>0</sub> and <strong>v</strong><sub>0</sub>. Their constrained components must be zero. Initial acceleration is not an independent input; it is computed from equilibrium:</p>
+        <p class="equation">a<sub>0</sub> = M<sub>ff</sub><sup>−1</sup>[F<sub>f</sub>(0) − K<sub>ff</sub>u<sub>0</sub>]</p>
+        <p>Thus all three initial histories begin from one physically consistent state.</p>
+      </section>
+
+      <section aria-labelledby="newmark-title">
+        <h2 id="newmark-title">Newmark approximations</h2>
+        <p>Displacement and velocity at the next step are related to accelerations:</p>
+        <p class="equation">u<sub>n+1</sub> = u<sub>n</sub> + Δt v<sub>n</sub> + Δt<sup>2</sup>[(1/2 − β)a<sub>n</sub> + βa<sub>n+1</sub>]</p>
+        <p class="equation">v<sub>n+1</sub> = v<sub>n</sub> + Δt[(1 − γ)a<sub>n</sub> + γa<sub>n+1</sub>]</p>
+        <p>The choice <strong>β = 1/4</strong>, <strong>γ = 1/2</strong> gives the average acceleration method. For a linear system it is second-order accurate and unconditionally stable, but stability does not guarantee adequate accuracy when Δt is too large.</p>
+      </section>
+
+      <section aria-labelledby="effective-title">
+        <h2 id="effective-title">Effective stiffness</h2>
+        <p>The code uses these coefficients:</p>
+        <pre><code>a0 = 1/(beta*dt^2);
+a2 = 1/(beta*dt);
+a3 = 1/(2*beta) - 1;</code></pre>
+        <p>One system is solved at each step:</p>
+        <p class="equation">K<sub>eff</sub> u<sub>n+1</sub> = F<sub>n+1</sub> + M(a<sub>0</sub>u<sub>n</sub> + a<sub>2</sub>v<sub>n</sub> + a<sub>3</sub>a<sub>n</sub>)</p>
+        <p class="equation">K<sub>eff</sub> = K<sub>ff</sub> + a<sub>0</sub>M<sub>ff</sub></p>
+        <p>The matrix <strong>K<sub>eff</sub></strong> is constant, so <a href="../../src/analysis/transient/solveTransient.m"><code>solveTransient</code></a> performs Cholesky factorization once and reuses it at every step. Acceleration and velocity are updated after solving.</p>
+      </section>
+
+      <section aria-labelledby="pulse-title">
+        <h2 id="pulse-title">Impulse on the discrete grid</h2>
+        <p>A type 12 load is nonzero only in column <em>t = Δt</em>. For a single-step rectangular pulse:</p>
+        <p class="equation">I<sub>discrete</sub> = F<sub>0</sub>Δt</p>
+        <p>When comparing grids with different Δt, preserve the impulse rather than the amplitude: <em>F<sub>0</sub> = I/Δt</em>. Otherwise refining the step changes both the physical excitation and the numerical error.</p>
+      </section>
+
+      <section aria-labelledby="accuracy-title">
+        <h2 id="accuracy-title">Convergence and energy</h2>
+        <p>For a free undamped oscillator with <em>ω = √(k/m)</em>:</p>
+        <p class="equation">u(t) = u<sub>0</sub>cos(ωt) + [v<sub>0</sub>/ω]sin(ωt)</p>
+        <p>Halving Δt should reduce the error of a second-order method by about a factor of four. This is more reliable than a single check at one step size.</p>
+        <p>Total mechanical energy of the free system:</p>
+        <p class="equation">E(t) = 1/2 v<sup>T</sup>Mv + 1/2 u<sup>T</sup>Ku</p>
+        <p>For a linear undamped problem, the average acceleration method introduces no algorithmic damping, and energy is conserved to rounding accuracy. Under external loading, energy changes through external work, so constant energy is no longer an expected invariant.</p>
+      </section>
+
+      <section aria-labelledby="spectrum-title">
+        <h2 id="spectrum-title">Single-sided spectrum</h2>
+        <p><a href="../../src/analysis/transient/computeSingleSidedSpectrum.m"><code>computeSingleSidedSpectrum</code></a> applies an FFT to each displacement row and returns nonnegative frequencies. For <em>N<sub>s</sub></em> samples:</p>
+        <p class="equation">Δf = 1/(N<sub>s</sub>Δt)</p>
+        <p>The free-oscillator spectral peak should lie near its natural frequency, but finite duration and a frequency falling between discrete bins cause leakage. A reasonable check therefore allows for resolution Δf instead of demanding bitwise frequency agreement.</p>
+      </section>
+
+      <section aria-labelledby="viewer-title">
+        <h2 id="viewer-title">Running the analysis and viewing results</h2>
+        <p>In Octave, from the project root, run:</p>
+        <pre><code>addpath(pwd);
+setup;
+
+problem = StructFEProblem(fullfile( ...
+    'examples', 'cases', 'CaseBeam.txt'));
+model = problem.GetAnalysisModel();
+result = problem.RunTransient(1e-4, 1e-2, 3, 2);
+
+options = struct(...
+    'title', 'Transient response', ...
+    'lengthUnit', 'm', 'forceUnit', 'N', ...
+    'momentUnit', 'N*m', 'timeUnit', 's', ...
+    'transientFields', {{'displacements', 'velocities', ...
+                         'accelerations', 'loadHistory', ...
+                         'reactions', 'spectrum'}}, ...
+    'timeStride', 1, 'prettyPrint', true);
+exportPostprocessorData(model, result, ...
+    fullfile('output', 'transient-history.json'), options);</code></pre>
+        <div class="callout callout--inspect">
+          <span class="callout__title">The same analysis through the GUI</span>
+          <p>From the repository root, run <code>docker compose up --build</code> (or <code>docker-compose up --build</code>) and open the <a href="http://127.0.0.1:8080/preprocessor/">preprocessor</a>. Load <code>examples/cases/CasePreprocessorTransient.txt</code> using <strong>Open TXT</strong> and click <strong>Run analysis</strong>. The interface shows the queue, elapsed time and Octave log, then automatically opens the full history in the postprocessor. To retain the result after stopping Compose, click <strong>Download JSON</strong>.</p>
+        </div>
+        <p>Then open <a href="../../postprocessor/index.html"><code>postprocessor/index.html</code></a>
+          by double-clicking in Chrome and drag onto the page <code>output/transient-history.json</code>
+          or select it using <strong>Open JSON</strong>. A supplied example is in
+          <a href="../../examples/results/transient-history.json"><code>examples/results/transient-history.json</code></a>.
+          No local server is needed.</p>
+        <div class="callout callout--inspect">
+          <span class="callout__title">What to inspect</span>
+          <p>Select a node, DOF and plotted quantity. The time slider and a click on the chart select an exact exported sample. <strong>Play</strong> starts animation; <strong>Frame stride</strong> changes the playback step. SVG and PNG save the current frame together with the chart and selection settings.</p>
+        </div>
+        <div class="callout callout--warning">
+          <span class="callout__title">Downsampling and reactions</span>
+          <p>If the export specifies <code>timeStride &gt; 1</code>, the viewer clearly indicates a downsampled history. The field <code>reactions</code> stores the full dynamic residual <code>M*a + K*u - F</code>; its rows for constrained DOFs are the support reactions.</p>
+        </div>
+      </section>
+
+      <section aria-labelledby="practice-title">
+        <h2 id="practice-title">Laboratory 06. Free vibration: Newmark accuracy</h2>
+        <p>The aim is to compare numerical and analytical motion and determine convergence order from three grids.</p>
+        <figure class="model-figure lab-figure">
+          <img src="assets/lab-oscillator.svg" alt="A 2 kg mass connected to a fixed wall by an 18 N/m spring moves horizontally without friction.">
+          <figcaption>One physical degree of freedom u(t). The second, transverse DOF is constrained in the Octave model.</figcaption>
+        </figure>
+        <h3>Input data and notation</h3>
+        <p><em>m = 2 kg</em>, <em>k = 18 N/m</em>, <em>u₀ = 0.02 m</em>, <em>v₀ = −0.01 m/s</em>. Force and damping are zero. The supplied example calculates three periods with 50, 100 and 200 steps per period; <em>β = 1/4</em>, <em>γ = 1/2</em>.</p>
+        <h3>Before running: hand calculations</h3>
+        <ol>
+          <li>Find <em>ω = √(k/m)</em>, <em>f = ω/(2π)</em>, <em>T = 1/f</em> and the initial acceleration <em>a₀ = −ku₀/m</em>.</li>
+          <li>Write <em>u(t) = u₀cos(ωt) + (v₀/ω)sin(ωt)</em>. Find the initial energy <em>E₀ = mv₀²/2 + ku₀²/2</em>.</li>
+        </ol>
+        <h3>Run in Octave</h3>
+        <p>Run from the project root. The supplied function prints the results; you do not need to edit its code for this exercise.</p>
+        <pre><code>addpath(pwd);
+setup;
+addpath(fullfile(pwd, "reference", "examples"));
+r = example_06_newmark_sdof();</code></pre>
+        <h3>Working with the results</h3>
+        <ol>
+          <li>Compare <code>Natural frequency</code>, <code>period</code> and <code>Initial acceleration</code> with your calculation.</li>
+          <li>From <code>Steps per period and maximum displacement error</code> record the three errors. Calculate the 50-step/100-step and 100-step/200-step error ratios. Why does a ratio near four indicate second order?</li>
+          <li>Use the commands below to plot exact and numerical motion on the finest grid, then their difference. A separate difference plot reveals errors even when the original curves appear identical.</li>
+          <li>Compare <code>Relative energy drift</code> with the motion error. Explain why energy conservation does not imply exact phase agreement.</li>
+          <li>Compare <code>Spectrum peak</code> with the natural frequency: the difference should be within the printed <code>bin width</code>. Using the formula <em>Δf = 1/(NΔt)</em> predict the effect of shortening the recording duration at the same step size.</li>
+        </ol>
+        <p>After running, execute in Octave with a graphics window available:</p>
+        <pre><code>figure;
+plot(r.time, r.displacements(1,:), "-", ...
+     r.time, r.exactDisplacement, "--");
+xlabel("t [s]"); ylabel("u [m]");
+legend("Newmark", "Exact"); grid on;
+figure;
+plot(r.time, r.displacements(1,:) - r.exactDisplacement);
+xlabel("t [s]"); ylabel("u - u_exact [m]"); grid on;</code></pre>
+        <p>For a headless run, record a few value pairs and their differences instead of plotting:</p>
+        <pre><code>idx = round(linspace(1, numel(r.time), 13));
+disp([r.time(idx).', r.displacements(1,idx).', ...
+      r.exactDisplacement(idx).', ...
+      (r.displacements(1,idx) - r.exactDisplacement(idx)).']);</code></pre>
+        <div class="callout">
+          <span class="callout__title">Reference values</span>
+          <p><em>ω = 3 rad/s</em>, <em>f ≈ 0.477465 Hz</em>, <em>T ≈ 2.0944 s</em>, <em>a₀ = −0.18 m/s²</em>, <em>E₀ = 0.0037 J</em>. Halving the step reduces error by about four; relative energy drift is below 10⁻¹⁰. A shorter record increases Δf and worsens frequency resolution.</p>
+        </div>
+        <h3>What to include in the report</h3>
+        <p>Hand calculations, the errors and their ratios, two plots (or a value table for a headless run), an explanation of energy conservation versus motion accuracy, and a conclusion about spectral resolution.</p>
+      </section>
+
+      <section class="source-list" aria-labelledby="sources-title">
+        <h2 id="sources-title">Chapter source code</h2>
+        <ul>
+          <li><a href="../../src/analysis/transient/solveTransient.m"><code>solveTransient.m</code></a> — average acceleration method and full histories;</li>
+          <li><a href="../../src/analysis/transient/buildTransientLoad.m"><code>buildTransientLoad.m</code></a> — loads on the common time grid;</li>
+          <li><a href="../../src/analysis/transient/computeSingleSidedSpectrum.m"><code>computeSingleSidedSpectrum.m</code></a> — single-sided amplitude spectrum;</li>
+          <li><a href="../examples/example_06_newmark_sdof.m"><code>example_06_newmark_sdof.m</code></a> — analytical comparison and convergence.</li>
+        </ul>
+        <h3>Theory and project history</h3>
+        <ul>
+          <li>Henri P. Gavin, <a href="https://people.duke.edu/~hpgavin/StructuralDynamics/NumericalIntegration.pdf"><cite>Numerical Integration in Structural Dynamics</cite></a>, Duke University, revision of July 21, 2025: “The Newmark-β method — incremental formulation.” Equations (22)–(23) give the general Newmark approximations, and (24)–(30) the incremental derivation; (27)–(30) specialize to β = 1/6. MKE-F uses β = 1/4, the linear undamped case and a total-displacement formulation.</li>
+          <li>K.-J. Bathe, E. L. Wilson, <cite>Numerical Methods in Finite Element Analysis</cite>, Russian translation of the 1976 English edition, Moscow: Stroyizdat, 1982, chapter 8, p. 271.</li>
+          <li><a href="https://xn--h1acbaaqgcqcheicn.xn--p1ai/2017/11/25/%D0%BC%D0%BA%D1%8D-%D1%84-%D0%BC%D0%B5%D1%82%D0%BE%D0%B4-%D0%BD%D1%8C%D1%8E%D0%BC%D0%B0%D1%80%D0%BA%D0%B0/">“MKE-F — Newmark method”</a> — historical description of version 0.4 from 2017; old commands and numerical results do not document the current implementation.</li>
+        </ul>
+      </section>
+    </main>
+  </div>
+
+  <nav class="page-nav" aria-label="Chapter navigation">
+    <a href="06-modal-analysis.html"><span class="page-nav__label">Previous</span>← 6. Modal analysis</a>
+    <a href="08-result-recovery.html"><span class="page-nav__label">Next</span>8. Element results →</a>
+  </nav>
+
+  <footer class="site-footer">
+    <div class="site-footer__inner"><p>MKE-F · offline learning reference · chapter 7 of 15</p></div>
+  </footer>
+</body>
+</html>

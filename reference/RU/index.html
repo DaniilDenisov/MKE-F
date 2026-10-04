@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Автономный учебник по реализации метода конечных элементов в МКЭ-Ф.">
+  <title>МКЭ-Ф — автономный учебник</title>
+  <link rel="stylesheet" href="../assets/reference.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">К содержанию</a>
+  <header class="site-header">
+    <div class="site-header__inner">
+      <nav class="language-switch" aria-label="Язык справочника"><a href="../RU/index.html" lang="ru" hreflang="ru" aria-current="true">RU</a> <a href="../EN/index.html" lang="en" hreflang="en">EN</a></nav>
+      <p class="eyebrow">Student FEM Reference · GNU Octave</p>
+      <p class="site-title">МКЭ-Ф: от элемента к системе</p>
+      <p class="site-subtitle">Автономный русскоязычный справочник по тому, как математическая модель превращается в матрицы и вычисления реальной программы.</p>
+    </div>
+  </header>
+
+  <div class="layout">
+    <nav class="contents" aria-label="Оглавление справочника">
+      <h2>Оглавление</h2>
+      <ol>
+        <li><a href="01-model-dofs.html">Модель, узлы, элементы и СС</a></li>
+        <li><a href="02-element-matrices.html">Матрицы элементов</a></li>
+        <li><a href="03-transformation-assembly.html">Преобразование и сборка</a></li>
+        <li><a href="04-boundary-loads.html">Граничные условия и нагрузки</a></li>
+        <li><a href="05-static-analysis.html">Статический расчёт</a></li>
+        <li><a href="06-modal-analysis.html">Модальный анализ</a></li>
+        <li><a href="07-newmark-transient.html">Переходный анализ Ньюмарка</a></li>
+        <li><a href="08-result-recovery.html">Результаты в элементах</a></li>
+        <li><a href="09-architecture-verification.html">Архитектура и проверка</a></li>
+        <li><a href="10-input-format.html">Формат входного файла</a></li>
+        <li><a href="11-mario-paz-modal-example.html">Модальный пример Mario Paz</a></li>
+        <li><a href="12-local-octave-workflow.html">Локальный запуск в GNU Octave</a></li>
+        <li><a href="13-fem-assembly-visualizer.html">Интерактивная сборка МКЭ</a></li>
+        <li><a href="14-mario-paz-matrices-visualizer.html">Интерактивные матрицы рамы</a></li>
+        <li><a href="15-sparse-matrix-assembly.html">Разреженная сборка матриц</a></li>
+      </ol>
+      <h2>Приложение</h2>
+      <p><a href="project-operations.html">Запуск, настройка и проверка проекта</a></p>
+    </nav>
+
+    <main class="chapter" id="main">
+      <span class="chapter-number">Главная</span>
+      <h1>Читаем материал, запускаем код</h1>
+      <p class="lead">Этот справочник - связь основных идей метода конечных элементов с функциями проекта МКЭ-Ф. Он работает без интернета и без Octave.</p>
+
+      <section aria-labelledby="route-title">
+        <h2 id="route-title">Таков путь</h2>
+        <div class="chapter-grid">
+          <article class="card">
+            <h3><a href="01-model-dofs.html">1. Модель и степени свободы</a></h3>
+            <p>Разберём, что хранят узел и элемент, чем ферма отличается от рамы и как локальная компонента получает глобальный номер.</p>
+          </article>
+          <article class="card">
+            <h3><a href="02-element-matrices.html">2. Матрицы элементов</a></h3>
+            <p>Увидим локальные матрицы жёсткости и согласованных масс, проверим симметрию, ранг и движение как твёрдого тела.</p>
+          </article>
+          <article class="card">
+            <h3><a href="03-transformation-assembly.html">3. Преобразование и сборка</a></h3>
+            <p>Повернём матрицы в глобальные оси и соберём их в разреженные матрицы системы по карте степеней свободы.</p>
+          </article>
+          <article class="card">
+            <h3><a href="04-boundary-loads.html">4. Граничные условия и нагрузки</a></h3>
+            <p>Разделим свободные и закреплённые СС, сопоставим силы с перемещениями и построим четыре вида истории нагрузки.</p>
+          </article>
+          <article class="card">
+            <h3><a href="05-static-analysis.html">5. Статический расчёт</a></h3>
+            <p>Решим редуцированную систему, восстановим полный вектор, реакции и проверим глобальное равновесие.</p>
+          </article>
+          <article class="card">
+            <h3><a href="06-modal-analysis.html">6. Модальный анализ</a></h3>
+            <p>Решим обобщённую собственную задачу, расширим формы и проверим их невязки, масштаб и ортогональность.</p>
+          </article>
+          <article class="card">
+            <h3><a href="07-newmark-transient.html">7. Переходный анализ Ньюмарка</a></h3>
+            <p>Построим временную сетку, вычислим начальное ускорение и проследим точность, энергию и спектр отклика.</p>
+          </article>
+          <article class="card">
+            <h3><a href="08-result-recovery.html">8. Результаты в элементах</a></h3>
+            <p>Восстановим локальные перемещения, напряжения и усилия, разберём их знаки и отличие от опорных реакций.</p>
+          </article>
+          <article class="card">
+            <h3><a href="09-architecture-verification.html">9. Архитектура и проверка</a></h3>
+            <p>Проследим путь от парсера до результата, разберём чистые решатели, разреженную сборку, историю проекта и карту регрессионных тестов.</p>
+          </article>
+          <article class="card">
+            <h3><a href="10-input-format.html">10. Формат входного файла</a></h3>
+            <p>Получим точный справочник по секциям, единицам, элементам, опорам, нагрузкам, повторным блокам и диагностике.</p>
+          </article>
+          <article class="card">
+            <h3><a href="11-mario-paz-modal-example.html">11. Модальный пример Mario Paz</a></h3>
+            <p>Соберём жёсткость и согласованную массу двухэлементной рамы, затем воспроизведём опубликованные частоты и массово-нормированные формы.</p>
+          </article>
+          <article class="card">
+            <h3><a href="12-local-octave-workflow.html">12. Локальный запуск в GNU Octave</a></h3>
+            <p>Запустим ядро без Docker и браузерного GUI, вызовем три чистых решателя и повторим smoke- и verification-тесты проекта.</p>
+          </article>
+          <article class="card">
+            <h3><a href="13-fem-assembly-visualizer.html">13. Интерактивная сборка МКЭ</a></h3>
+            <p>Пошагово проследим расчёт матриц трёх стержней, их сборку, разреженное хранение, наложение заделки, решение и реакции.</p>
+          </article>
+          <article class="card">
+            <h3><a href="14-mario-paz-matrices-visualizer.html">14. Интерактивные матрицы рамы</a></h3>
+            <p>Переключимся между жёсткостью и массой двухэлементной рамы, увидим поворот, сборку, редукцию и эффективную матрицу Ньюмарка.</p>
+          </article>
+          <article class="card">
+            <h3><a href="15-sparse-matrix-assembly.html">15. Разреженная сборка матриц</a></h3>
+            <p>Сравним плотный квадрат с триплетным конвейером МКЭ‑Ф, проследим работу <code>sparse()</code> и передадим редуцированную систему решателю Octave.</p>
+          </article>
+          <article class="card">
+            <h3><a href="project-operations.html">Приложение: работа с проектом</a></h3>
+            <p>Запустим контейнерный интерфейс, настроим ограничения, проверим стек и разберём структуру репозитория.</p>
+          </article>
+          <article class="card">
+            <h3>Принцип лабораторных</h3>
+            <p>Сначала студент изучает схему и делает ручной прогноз, затем запускает готовую функцию и объясняет полученные числа. Каждая работа содержит контрольные значения и требования к отчёту.</p>
+          </article>
+        </div>
+      </section>
+
+      <section aria-labelledby="start-title">
+        <h2 id="start-title">Быстрый старт</h2>
+        <p>Откройте терминал в корне репозитория, добавьте каталог примеров в путь Octave и запустите все лабораторные:</p>
+        <pre><code>addpath(pwd);
+setup;
+addpath(fullfile(pwd, "reference", "examples"));
+results = run_reference_examples();</code></pre>
+
+        <div class="callout callout--inspect">
+          <span class="callout__title">Расчёт через GUI</span>
+          <p>Чтобы создать или открыть модель, выполнить расчёт и сразу посмотреть результат в браузере, запустите из корня репозитория:</p>
+          <pre><code>docker compose up --build</code></pre>
+          <p>Для старой отдельной команды Compose используйте <code>docker-compose up --build</code>. Затем откройте <a href="http://127.0.0.1:8080/preprocessor/">http://127.0.0.1:8080/preprocessor/</a>, подготовьте модель и нажмите <strong>Run analysis</strong>. GNU Octave работает внутри контейнера, а готовый JSON автоматически открывается в постпроцессоре.</p>
+        </div>
+
+        <div class="callout">
+          <span class="callout__title">Как запустить</span>
+          <p>Команды рассчитаны на GNU Octave. Для общей проверки без печати матриц используйте <code>run_reference_examples(false)</code>. Отдельную лабораторную можно вызвать по имени, например <code>example_07_result_recovery()</code>.</p>
+        </div>
+        <div class="callout callout--inspect">
+          <span class="callout__title">Как выполнять лабораторные</span>
+          <p>Откройте нужную работу по ссылке ниже: схема, исходные данные и задания находятся перед контрольными значениями. Работайте с подписями в выводе Octave; дополнительные команды для просмотра и графиков приведены там, где нужны. Строка PASS подтверждает встроенные проверки примера, а в отчёте нужно объяснить расчёт и физический смысл результата. Прогнозы при изменении параметров выполняются по формулам; редактирование готовых функций не требуется.</p>
+        </div>
+        <ol>
+          <li><a href="02-element-matrices.html#practice-title">Жёсткость и масса наклонного элемента</a></li>
+          <li><a href="03-transformation-assembly.html#practice-title">Сборка двух стержней в общем узле</a></li>
+          <li><a href="05-static-analysis.html#practice-title">Растяжение стержня: перемещение и опорная реакция</a></li>
+          <li><a href="04-boundary-loads.html#practice-title">Узловые нагрузки: сумма сил и история во времени</a></li>
+          <li><a href="06-modal-analysis.html#practice-title">Частоты и формы колебаний балки с промежуточной опорой</a></li>
+          <li><a href="07-newmark-transient.html#practice-title">Свободные колебания: точность метода Ньюмарка</a></li>
+          <li><a href="08-result-recovery.html#practice-title">От перемещений к напряжениям и концевым усилиям</a></li>
+        </ol>
+      </section>
+
+      <section aria-labelledby="notation-title">
+        <h2 id="notation-title">Обозначения</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Обозначение</th><th>Смысл</th><th>Типичные единицы СИ</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><strong>u</strong></td><td>вектор узловых перемещений и поворотов</td><td>м, рад</td></tr>
+              <tr><td><strong>K</strong></td><td>матрица жёсткости</td><td>зависят от пары СС</td></tr>
+              <tr><td><strong>M</strong></td><td>согласованная матрица масс</td><td>зависят от пары СС</td></tr>
+              <tr><td><em>A, E, ρ, I</em></td><td>площадь, модуль Юнга, плотность, момент инерции</td><td>м², Па, кг/м³, м⁴</td></tr>
+              <tr><td><em>c, s</em></td><td>направляющие косинусы элемента</td><td>безразмерные</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Решатель не преобразует единицы: пользователь обязан выбрать согласованную систему.</p>
+      </section>
+
+      <section class="source-list" aria-labelledby="sources-title">
+        <h2 id="sources-title">Код рядом с текстом</h2>
+        <ul>
+          <li><a href="../../src/model/createStructuralElement.m"><code>createStructuralElement.m</code></a> — геометрия, матрицы и преобразование элемента;</li>
+          <li><a href="../../src/model/assembleGlobalMatrices.m"><code>assembleGlobalMatrices.m</code></a> — разреженная сборка;</li>
+          <li><a href="../examples/example_01_element_matrices.m"><code>example_01_element_matrices.m</code></a> — лабораторная по матрицам;</li>
+          <li><a href="../examples/example_02_sparse_assembly.m"><code>example_02_sparse_assembly.m</code></a> — лабораторная по сборке;</li>
+          <li><a href="../examples/example_03_static_bar.m"><code>example_03_static_bar.m</code></a> — лабораторная по статике;</li>
+          <li><a href="../examples/example_04_load_histories.m"><code>example_04_load_histories.m</code></a> — лабораторная по нагрузкам;</li>
+          <li><a href="../examples/example_05_modal_frame.m"><code>example_05_modal_frame.m</code></a> — лабораторная по модам;</li>
+          <li><a href="../examples/example_06_newmark_sdof.m"><code>example_06_newmark_sdof.m</code></a> — лабораторная по Ньюмарку;</li>
+          <li><a href="../examples/example_07_result_recovery.m"><code>example_07_result_recovery.m</code></a> — лабораторная по результатам элементов;</li>
+          <li><a href="../examples/run_reference_examples.m"><code>run_reference_examples.m</code></a> — запуск всех лабораторных одной командой.</li>
+        </ul>
+      </section>
+    </main>
+  </div>
+
+  <nav class="page-nav" aria-label="Навигация между главами">
+    <span><span class="page-nav__label">Назад</span>Начало справочника</span>
+    <a href="01-model-dofs.html"><span class="page-nav__label">Далее</span>1. Модель и степени свободы →</a>
+  </nav>
+
+  <footer class="site-footer">
+    <div class="site-footer__inner"><p>МКЭ-Ф · автономный учебный справочник · все вычисления выполняются локально</p></div>
+  </footer>
+</body>
+</html>

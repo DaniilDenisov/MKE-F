@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Static analysis in MKE-F: reduced system, full displacement vector, reactions and equilibrium checks.">
+  <title>5. Static analysis — MKE-F</title>
+  <link rel="stylesheet" href="../assets/reference.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="site-header__inner">
+      <nav class="language-switch" aria-label="Reference language"><a href="../RU/05-static-analysis.html" lang="ru" hreflang="ru">RU</a> <a href="../EN/05-static-analysis.html" lang="en" hreflang="en" aria-current="true">EN</a></nav>
+      <p class="eyebrow">Student FEM Reference · Chapter 5</p>
+      <p class="site-title">Static analysis</p>
+      <p class="site-subtitle">From equilibrium on free DOFs to the full displacement vector and support reactions.</p>
+    </div>
+  </header>
+
+  <div class="layout">
+    <nav class="contents" aria-label="Reference contents">
+      <h2>Contents</h2>
+      <ol>
+        <li><a href="01-model-dofs.html">Model, nodes, elements and DOFs</a></li>
+        <li><a href="02-element-matrices.html">Element matrices</a></li>
+        <li><a href="03-transformation-assembly.html">Transformation and assembly</a></li>
+        <li><a href="04-boundary-loads.html">Boundary conditions and loads</a></li>
+        <li><a aria-current="page" href="05-static-analysis.html">Static analysis</a></li>
+        <li><a href="06-modal-analysis.html">Modal analysis</a></li>
+        <li><a href="07-newmark-transient.html">Newmark transient analysis</a></li>
+        <li><a href="08-result-recovery.html">Element results</a></li>
+        <li><a href="09-architecture-verification.html">Architecture and verification</a></li>
+        <li><a href="10-input-format.html">Input file format</a></li>
+        <li><a href="11-mario-paz-modal-example.html">Mario Paz modal example</a></li>
+        <li><a href="12-local-octave-workflow.html">Local GNU Octave workflow</a></li>
+        <li><a href="13-fem-assembly-visualizer.html">Interactive FEM assembly</a></li>
+        <li><a href="14-mario-paz-matrices-visualizer.html">Interactive frame matrices</a></li>
+        <li><a href="15-sparse-matrix-assembly.html">Sparse matrix assembly</a></li>
+      </ol>
+    </nav>
+
+    <main class="chapter" id="main">
+      <span class="chapter-number">Chapter 5</span>
+      <h1>Solution, reactions and equilibrium</h1>
+      <p class="lead">Linear statics finds nodal displacements for which internal elastic forces balance the external load. Zero prescribed displacements allow solving only the free part without changing the full stiffness matrix.</p>
+
+      <section aria-labelledby="equation-title">
+        <h2 id="equation-title">Full and reduced systems</h2>
+        <p>Original equation:</p>
+        <p class="equation">K u = F + R</p>
+        <p>Here <strong>R</strong> denotes support reactions. Partition rows and columns into free <em>f</em> and constrained <em>c</em>:</p>
+        <pre><code>[ Kff  Kfc ] [ uf ] = [ Ff ] + [  0 ]
+[ Kcf  Kcc ] [ uc ]   [ Fc ]   [ Rc ]</code></pre>
+        <p>For the implemented homogeneous supports, <strong>u<sub>c</sub> = 0</strong>. The first block row becomes a system for the unknown free displacements:</p>
+        <p class="equation">K<sub>ff</sub> u<sub>f</sub> = F<sub>f</sub></p>
+        <p>Loads applied to constrained DOFs do not enter the reduced right-hand side but remain in the full <strong>F</strong> and are included in reaction recovery.</p>
+      </section>
+
+      <section aria-labelledby="validation-title">
+        <h2 id="validation-title">Checks before solving</h2>
+        <p><a href="../../src/analysis/common/validateReducedSystem.m"><code>validateReducedSystem</code></a> checks coefficient finiteness and positive definiteness of the symmetrized <strong>K<sub>ff</sub></strong> using Cholesky factorization. Failure usually means one of two things:</p>
+        <ul>
+          <li>insufficient supports allow rigid-body motion;</li>
+          <li>an internal mechanism remains, for example a nodal motion is transverse to every connected truss member.</li>
+        </ul>
+        <p>A fully constrained model is valid in statics: there are no free DOFs, all displacements are zero, and reactions carry all applied loads.</p>
+      </section>
+
+      <section aria-labelledby="expand-title">
+        <h2 id="expand-title">Expanding to the full vector</h2>
+        <p>After solving the reduced system, a zero vector of length <em>n</em> is created and the computed components are inserted at indices <code>freeDOFs</code>:</p>
+        <pre><code>u = zeros(numberOfDOFs, 1);
+u(freeDOFs) = K(freeDOFs, freeDOFs) \ F(freeDOFs);</code></pre>
+        <p>The full vector is needed to recover element strains, reactions and results at any node. Constrained components remain exactly zero.</p>
+      </section>
+
+      <section aria-labelledby="reactions-title">
+        <h2 id="reactions-title">Reactions and global equilibrium</h2>
+        <p>After expanding the solution, reactions are calculated from the full equation:</p>
+        <p class="equation">R = K u − F</p>
+        <p>In an ideal solution, components of <strong>R</strong> at free DOFs are zero. At constrained DOFs, they give the forces and moments exerted by the supports on the model.</p>
+        <p>A small residual vector <strong>Ku − F − R</strong> alone is insufficient: it checks algebra but not the signs and positions of external forces. Therefore <a href="../../src/analysis/static/calculateStaticEquilibrium.m"><code>calculateStaticEquilibrium</code></a> independently sums:</p>
+        <p class="equation">ΣF<sub>x</sub> = 0, &nbsp; ΣF<sub>y</sub> = 0, &nbsp; ΣM<sub>z</sub> = 0</p>
+        <p>Moments include the lever arms of nodal forces <em>xF<sub>y</sub> − yF<sub>x</sub></em> and the applied nodal moments <em>M<sub>z</sub></em> of frames.</p>
+      </section>
+
+      <section aria-labelledby="checks-title">
+        <h2 id="checks-title">Two analytical checks</h2>
+        <h3>Axially loaded member</h3>
+        <p>For a member of length <em>L</em>, area <em>A</em> and Young’s modulus <em>E</em> subjected to axial force <em>F</em>:</p>
+        <p class="equation">u = FL/(EA), &nbsp; R<sub>x</sub> = −F</p>
+        <p>This problem checks axial stiffness, DOF mapping, reduction, reaction sign and global balance.</p>
+
+        <h3>Euler–Bernoulli cantilever</h3>
+        <p>For a cantilever of length <em>L</em> subjected to transverse force <em>P</em> at the free end:</p>
+        <p class="equation">v = PL<sup>3</sup>/(3EI), &nbsp; θ = PL<sup>2</sup>/(2EI)</p>
+        <p class="equation">R<sub>y</sub> = −P, &nbsp; M<sub>z</sub> = −PL</p>
+        <p>One frame element reproduces this solution exactly for a nodal end force. The check is in <a href="../../tests/run_verification_tests.m"><code>tests/run_verification_tests.m</code></a>.</p>
+      </section>
+
+      <section aria-labelledby="postprocessing-title">
+        <h2 id="postprocessing-title">Postprocessing in the offline HTML/SVG viewer</h2>
+        <p>After analysis, save the model and results to a compact JSON file and open it in the <a href="../../postprocessor/index.html">MKE-F offline postprocessor</a>. The viewer works directly through <code>file://</code>: no local server, npm or internet connection is required.</p>
+
+        <h3>1. Run the analysis and export the result</h3>
+        <p>Start GNU Octave from the project root and run:</p>
+        <pre><code>addpath(pwd);
+setup;
+
+problem = StructFEProblem(fullfile('examples', 'cases', 'ANSYSBeamStatic01.txt'));
+model = problem.GetAnalysisModel();
+result = problem.RunStatic();
+
+exportOptions = struct( ...
+    'title', 'Static frame', ...
+    'lengthUnit', 'm', ...
+    'forceUnit', 'N', ...
+    'momentUnit', 'N*m', ...
+    'stressUnit', 'Pa', ...
+    'prettyPrint', true);
+
+exportPostprocessorData(model, result, fullfile('output', 'static-frame.json'), exportOptions);</code></pre>
+        <div class="callout callout--inspect">
+          <span class="callout__title">The same analysis through the GUI</span>
+          <p>From the repository root, run <code>docker compose up --build</code> (or, with the older standalone command, <code>docker-compose up --build</code>) and open the <a href="http://127.0.0.1:8080/preprocessor/">preprocessor</a>. Select <strong>Open TXT</strong>, load <code>examples/cases/CasePreprocessorStatic.txt</code> and click <strong>Run analysis</strong>. After GNU Octave finishes, the result opens automatically; the <strong>Download JSON</strong> button saves it outside the temporary container session.</p>
+        </div>
+        <p><a href="../../src/results/exportPostprocessorData.m"><code>exportPostprocessorData</code></a> checks dimensions and finiteness, excludes global and element matrices, and writes versioned UTF-8 JSON. Unit fields are labels only: numerical values are not converted. For this SI export, the postprocessor displays coordinates and displacements in meters, forces, loads and reactions in newtons, moments in N·m, and stresses in Pa.</p>
+
+        <h3>2. Open and adjust the view</h3>
+        <ol>
+          <li>Open <a href="../../postprocessor/index.html"><code>postprocessor/index.html</code></a> in a modern Edge, Chromium or Firefox browser.</li>
+          <li>Click <strong>Open JSON</strong> or drag <code>output/static-frame.json</code> into the dashed area. A supplied example is also available in <a href="../../examples/results/static-frame.json"><code>examples/results/static-frame.json</code></a>.</li>
+          <li>Toggle original and deformed geometry, supports, loads, reactions, and node or element numbers in the <strong>Layers</strong>.</li>
+          <li>Leave <strong>Scale = Automatic</strong> for automatic displacement magnification, or enter a positive factor manually. Use the mouse wheel to zoom and drag to pan; <strong>Reset view</strong> fits the model to the window.</li>
+          <li>Click a node or element to select it and view its ID and basic data.</li>
+        </ol>
+
+        <h3>3. Select a static result</h3>
+        <ul>
+          <li>For type 112 truss elements, the <strong>Overlay</strong> list displays axial force or stress. Red indicates tension; blue indicates compression.</li>
+          <li>For type 113 frame elements, the <strong>Overlay</strong> list draws diagrams of <em>N</em>, <em>V</em> or <em>M</em>. The convention is <em>N = −q<sub>1</sub></em> with positive tension, <em>V = −q<sub>2</sub></em>, while the moment varies linearly from <em>−q<sub>3</sub></em> to <em>q<sub>6</sub></em>. Positive values are plotted toward the local +Y axis.</li>
+          <li>Deformation, arrow and diagram scales are independent and shown in the legend. An empty or unsupported diagram is replaced with a clear error message.</li>
+        </ul>
+
+        <h3>4. Save the illustration</h3>
+        <p><strong>Export SVG</strong> saves a scalable vector drawing with embedded styles and analysis context. For a raster image, select 1×, 2× or 4× resolution and click <strong>Export PNG</strong>. The export includes the result area and, for transient analysis, the current chart, but excludes buttons and the sidebar.</p>
+
+        <div class="callout callout--warning">
+          <span class="callout__title">If the file does not open</span>
+          <p>Check that the supplied result is <code>RunStatic</code>, all values are finite, and the JSON was created by the current export function. The viewer message identifies the invalid field path, for example <code>$.analysis.displacements</code>. A failed load does not replace the previous valid view.</p>
+        </div>
+      </section>
+
+      <section aria-labelledby="practice-title">
+        <h2 id="practice-title">Laboratory 03. Axial member extension: displacement and support reaction</h2>
+        <p>The aim is to obtain displacement from equilibrium and explain how one unknown becomes a full vector of four displacements.</p>
+        <figure class="model-figure lab-figure">
+          <img src="assets/lab-static-bar.svg" alt="Horizontal member loaded rightward, with a fixed left node and a right support allowing X translation.">
+          <figcaption>Type 112 truss member. The right support restrains only transverse displacement.</figcaption>
+        </figure>
+        <h3>Input data and notation</h3>
+        <p>Length <em>L = 2 m</em>, cross-sectional area <em>A = 0.01 m²</em>, modulus <em>E = 200 GPa</em>, force <em>F = 1000 N</em>. Positive X points right. Full-vector order: <code>[u₁x; u₁y; u₂x; u₂y]</code>.</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Global DOF</th><th>Displacement</th><th>Condition</th></tr></thead>
+            <tbody>
+              <tr><td>1</td><td>u₁x</td><td>0, constrained</td></tr>
+              <tr><td>2</td><td>u₁y</td><td>0, constrained</td></tr>
+              <tr><td>3</td><td>u₂x</td><td>Unknown, F applied</td></tr>
+              <tr><td>4</td><td>u₂y</td><td>0, constrained</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <h3>Before running: hand calculations</h3>
+        <ol>
+          <li>Identify the free displacement in the diagram and write its global number.</li>
+          <li>Calculate the stiffness <em>k = EA/L</em> in N/m. Write the equation <em>k·u₂x = F</em> and find <em>u₂x = FL/(EA)</em>.</li>
+          <li>Use equilibrium of the entire member to find reaction <em>R₁x</em>. Construct the full displacement vector, inserting zeros at constrained DOFs.</li>
+        </ol>
+        <h3>Run in Octave</h3>
+        <p>Run from the project root. The supplied function prints the results; you do not need to edit its code for this exercise.</p>
+        <pre><code>addpath(pwd);
+setup;
+addpath(fullfile(pwd, "reference", "examples"));
+r = example_03_static_bar();</code></pre>
+        <h3>Working with the results</h3>
+        <ol>
+          <li>In the lines <code>Fixed DOFs</code> and <code>Free DOFs</code> find the numbers from your table. Number 3 denotes horizontal displacement of node 2.</li>
+          <li>Compare <code>Reduced stiffness Kff [N/m]</code> with your <em>EA/L</em>, and <code>Reduced load Ff [N]</code> with force <em>F</em>. Divide the second number by the first: the result should equal the third component of <code>Complete displacement vector [m]</code>.</li>
+          <li>Compare the full vector with your prediction and the first component of <code>Reaction vector [N]</code> with reaction <em>−F</em>. Check <em>R₁x + F = 0</em>.</li>
+          <li>Use the formula to predict the displacement change when separately doubling <em>L</em>, <em>A</em> and <em>E</em>. Explain why the reaction stays the same at a fixed force.</li>
+        </ol>
+
+        <div class="callout">
+          <span class="callout__title">Reference values</span>
+          <p><em>K<sub>ff</sub> = 10⁹ N/m</em>, <em>F<sub>f</sub> = 1000 N</em>, <em>u₂x = 10⁻⁶ m = 0.001 mm</em>. Full vectors: <code>u = [0; 0; 10⁻⁶; 0]</code> m and <code>R = [−1000; 0; 0; 0]</code> N. Stiffness, force and displacement are related by an equation, so their numerical values cannot be compared directly with one another.</p>
+        </div>
+        <h3>What to include in the report</h3>
+        <p>The diagram with DOF numbering, the hand-derived equation, a quantity/hand calculation/Octave/units table for stiffness, displacement and reaction; explain zero components and predict the three parameter changes.</p>
+      </section>
+
+      <section class="source-list" aria-labelledby="sources-title">
+        <h2 id="sources-title">Chapter source code</h2>
+        <ul>
+          <li><a href="../../src/analysis/static/solveStatic.m"><code>solveStatic.m</code></a> — complete static solution sequence;</li>
+          <li><a href="../../src/analysis/common/partitionDOFs.m"><code>partitionDOFs.m</code></a> — free and constrained indices;</li>
+          <li><a href="../../src/analysis/common/validateReducedSystem.m"><code>validateReducedSystem.m</code></a> — mechanism detection;</li>
+          <li><a href="../../src/analysis/static/calculateStaticEquilibrium.m"><code>calculateStaticEquilibrium.m</code></a> — force and moment balance;</li>
+          <li><a href="../../src/results/createPostprocessorData.m"><code>createPostprocessorData.m</code></a> — preparing a validated data structure;</li>
+          <li><a href="../../src/results/exportPostprocessorData.m"><code>exportPostprocessorData.m</code></a> — safe postprocessor JSON output;</li>
+          <li><a href="../../postprocessor/index.html"><code>postprocessor/index.html</code></a> — offline visualization and image export;</li>
+          <li><a href="../examples/example_03_static_bar.m"><code>example_03_static_bar.m</code></a> — executable laboratory.</li>
+        </ul>
+      </section>
+      <section><h2>Checking distributed loads</h2><p>Consistent element loads enter the full F before solving and calculating R=Ku−F. For a uniform load, the resultant is qL and acts at the midpoint of the original element; global equilibrium is also checked using these original resultants. For a cantilever, |v(L)|=|q|L⁴/(8EI), |θ(L)|=|q|L³/(6EI); free-end forces are zero.</p></section>
+    </main>
+  </div>
+
+  <nav class="page-nav" aria-label="Chapter navigation">
+    <a href="04-boundary-loads.html"><span class="page-nav__label">Previous</span>← 4. Boundary conditions and loads</a>
+    <a href="06-modal-analysis.html"><span class="page-nav__label">Next</span>6. Modal analysis →</a>
+  </nav>
+
+  <footer class="site-footer">
+    <div class="site-footer__inner"><p>MKE-F · offline learning reference · chapter 5 of 15</p></div>
+  </footer>
+</body>
+</html>

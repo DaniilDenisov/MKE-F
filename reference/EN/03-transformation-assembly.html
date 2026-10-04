@@ -1,0 +1,329 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Element matrix transformation and sparse global assembly in MKE-F.">
+  <title>3. Transformation and assembly — MKE-F</title>
+  <link rel="stylesheet" href="../assets/reference.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="site-header__inner">
+      <nav class="language-switch" aria-label="Reference language"><a href="../RU/03-transformation-assembly.html" lang="ru" hreflang="ru">RU</a> <a href="../EN/03-transformation-assembly.html" lang="en" hreflang="en" aria-current="true">EN</a></nav>
+      <p class="eyebrow">Student FEM Reference · Chapter 3</p>
+      <p class="site-title">Transformation and assembly</p>
+      <p class="site-subtitle">How local element physics enters shared global rows and columns.</p>
+    </div>
+  </header>
+
+  <div class="layout">
+    <nav class="contents" aria-label="Reference contents">
+      <h2>Contents</h2>
+      <ol>
+        <li><a href="01-model-dofs.html">Model, nodes, elements and DOFs</a></li>
+        <li><a href="02-element-matrices.html">Element matrices</a></li>
+        <li><a aria-current="page" href="03-transformation-assembly.html">Transformation and assembly</a></li>
+        <li><a href="04-boundary-loads.html">Boundary conditions and loads</a></li>
+        <li><a href="05-static-analysis.html">Static analysis</a></li>
+        <li><a href="06-modal-analysis.html">Modal analysis</a></li>
+        <li><a href="07-newmark-transient.html">Newmark transient analysis</a></li>
+        <li><a href="08-result-recovery.html">Element results</a></li>
+        <li><a href="09-architecture-verification.html">Architecture and verification</a></li>
+        <li><a href="10-input-format.html">Input file format</a></li>
+        <li><a href="11-mario-paz-modal-example.html">Mario Paz modal example</a></li>
+        <li><a href="12-local-octave-workflow.html">Local GNU Octave workflow</a></li>
+        <li><a href="13-fem-assembly-visualizer.html">Interactive FEM assembly</a></li>
+        <li><a href="14-mario-paz-matrices-visualizer.html">Interactive frame matrices</a></li>
+        <li><a href="15-sparse-matrix-assembly.html">Sparse matrix assembly</a></li>
+      </ol>
+    </nav>
+
+    <main class="chapter" id="main">
+      <span class="chapter-number">Chapter 3</span>
+      <h1>From local axes to the global system</h1>
+      <p class="lead">Element formulas are simpler along the element axis. However, nodes shared by different elements need a common basis. The transformation matrix and DOF map solve these two distinct tasks.</p>
+
+      <div class="callout callout--inspect">
+        <span class="callout__title">What is a degree-of-freedom map?</span>
+        <p><strong>A degree-of-freedom map</strong> is an ordered list of global element DOF numbers. It is stored in <code>element.dofs</code> and specifies the global matrix rows and columns to which each element coefficient is added. The transformation matrix changes the component basis; the DOF map gives their addresses in the assembled system.</p>
+      </div>
+
+      <figure class="model-figure">
+        <svg viewBox="0 0 820 410" role="img" aria-labelledby="dof-map-title dof-map-desc">
+          <title id="dof-map-title">From local element DOFs to global numbers</title>
+          <desc id="dof-map-desc">Element two connects nodes two and three. Its four local degrees of freedom map to global degrees of freedom 3, 4, 5 and 6.</desc>
+          <defs>
+            <marker id="dof-map-arrow" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto" markerUnits="strokeWidth">
+              <path d="M0,0 L0,6 L8,3 Z" fill="#285b89"></path>
+            </marker>
+          </defs>
+
+          <text x="410" y="32" text-anchor="middle" fill="#0c3d2d" font-size="22" font-weight="700" font-family="Segoe UI, Arial">Element e₂ connects nodes 2 and 3</text>
+          <line x1="230" y1="91" x2="590" y2="91" stroke="#165c45" stroke-width="10" stroke-linecap="round"></line>
+          <circle cx="230" cy="91" r="11" fill="#fff" stroke="#0c3d2d" stroke-width="4"></circle>
+          <circle cx="590" cy="91" r="11" fill="#fff" stroke="#0c3d2d" stroke-width="4"></circle>
+          <text x="230" y="68" text-anchor="middle" fill="#17211b" font-size="19" font-weight="700" font-family="Segoe UI, Arial">node 2</text>
+          <text x="590" y="68" text-anchor="middle" fill="#17211b" font-size="19" font-weight="700" font-family="Segoe UI, Arial">node 3</text>
+
+          <text x="25" y="187" fill="#5d685f" font-size="16" font-weight="700" font-family="Segoe UI, Arial">Global DOFs</text>
+          <g font-family="Segoe UI, Arial" text-anchor="middle">
+            <rect x="145" y="151" width="80" height="64" rx="10" fill="#e9f2fa" stroke="#8eb2d0"></rect>
+            <text x="185" y="176" fill="#285b89" font-size="16">uₓ₂</text>
+            <text x="185" y="202" fill="#17211b" font-size="21" font-weight="700">3</text>
+            <rect x="235" y="151" width="80" height="64" rx="10" fill="#e9f2fa" stroke="#8eb2d0"></rect>
+            <text x="275" y="176" fill="#285b89" font-size="16">uᵧ₂</text>
+            <text x="275" y="202" fill="#17211b" font-size="21" font-weight="700">4</text>
+            <rect x="505" y="151" width="80" height="64" rx="10" fill="#e9f2fa" stroke="#8eb2d0"></rect>
+            <text x="545" y="176" fill="#285b89" font-size="16">uₓ₃</text>
+            <text x="545" y="202" fill="#17211b" font-size="21" font-weight="700">5</text>
+            <rect x="595" y="151" width="80" height="64" rx="10" fill="#e9f2fa" stroke="#8eb2d0"></rect>
+            <text x="635" y="176" fill="#285b89" font-size="16">uᵧ₃</text>
+            <text x="635" y="202" fill="#17211b" font-size="21" font-weight="700">6</text>
+          </g>
+
+          <line x1="185" y1="283" x2="185" y2="224" stroke="#285b89" stroke-width="3" marker-end="url(#dof-map-arrow)"></line>
+          <line x1="275" y1="283" x2="275" y2="224" stroke="#285b89" stroke-width="3" marker-end="url(#dof-map-arrow)"></line>
+          <line x1="545" y1="283" x2="545" y2="224" stroke="#285b89" stroke-width="3" marker-end="url(#dof-map-arrow)"></line>
+          <line x1="635" y1="283" x2="635" y2="224" stroke="#285b89" stroke-width="3" marker-end="url(#dof-map-arrow)"></line>
+
+          <text x="25" y="320" fill="#5d685f" font-size="16" font-weight="700" font-family="Segoe UI, Arial">Local DOFs</text>
+          <g font-family="Segoe UI, Arial" text-anchor="middle">
+            <rect x="145" y="283" width="80" height="52" rx="10" fill="#fff1df" stroke="#d7a56b"></rect>
+            <text x="185" y="315" fill="#7d370e" font-size="17" font-weight="700">1</text>
+            <rect x="235" y="283" width="80" height="52" rx="10" fill="#fff1df" stroke="#d7a56b"></rect>
+            <text x="275" y="315" fill="#7d370e" font-size="17" font-weight="700">2</text>
+            <rect x="505" y="283" width="80" height="52" rx="10" fill="#fff1df" stroke="#d7a56b"></rect>
+            <text x="545" y="315" fill="#7d370e" font-size="17" font-weight="700">3</text>
+            <rect x="595" y="283" width="80" height="52" rx="10" fill="#fff1df" stroke="#d7a56b"></rect>
+            <text x="635" y="315" fill="#7d370e" font-size="17" font-weight="700">4</text>
+          </g>
+
+          <rect x="235" y="358" width="350" height="35" rx="17" fill="#e8f2ed"></rect>
+          <text x="410" y="382" text-anchor="middle" fill="#0c3d2d" font-size="18" font-weight="700" font-family="Cascadia Mono, Consolas, monospace">element(2).dofs = [3, 4, 5, 6]</text>
+        </svg>
+        <figcaption>Local numbers specify row and column order within the element. The map <code>element.dofs</code> replaces them with global addresses in the assembled system.</figcaption>
+      </figure>
+
+      <section aria-labelledby="basis-title">
+        <h2 id="basis-title">Direction cosines</h2>
+        <p>Finite element equations are conveniently formed in local coordinates, with one axis along the element. Before assembly, a rotation matrix transforms local vectors and matrices into components in the common global coordinate system. In the diagram, the global system <em>x, y</em> is black, and the local element system <em>x′, y′</em> is blue.</p>
+        <p>For nodes <em>(x<sub>1</sub>, y<sub>1</sub>)</em> and <em>(x<sub>2</sub>, y<sub>2</sub>)</em>:</p>
+        <p class="equation">L = √(Δx² + Δy²), &nbsp; c = Δx/L, &nbsp; s = Δy/L</p>
+
+        <figure class="model-figure">
+          <svg viewBox="0 0 820 430" role="img" aria-labelledby="direction-title direction-desc">
+            <title id="direction-title">Direction cosines of an inclined element</title>
+            <desc id="direction-desc">An element of length L connects node one to node two. Its horizontal projection is delta x and its vertical projection is delta y. The angle cosine is delta x divided by L, and its sine is delta y divided by L.</desc>
+            <defs>
+              <marker id="global-axis-arrow" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto" markerUnits="strokeWidth">
+                <path d="M0,0 L0,6 L8,3 Z" fill="#17211b"></path>
+              </marker>
+              <marker id="local-axis-arrow" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto" markerUnits="strokeWidth">
+                <path d="M0,0 L0,6 L8,3 Z" fill="#285b89"></path>
+              </marker>
+              <marker id="dimension-arrow" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto-start-reverse" markerUnits="strokeWidth">
+                <path d="M0,0 L8,4 L0,8 Z" fill="#a24d16"></path>
+              </marker>
+            </defs>
+
+            <text x="410" y="31" text-anchor="middle" fill="#0c3d2d" font-size="22" font-weight="700" font-family="Segoe UI, Arial">Two projections define the element position</text>
+
+            <line x1="125" y1="335" x2="735" y2="335" stroke="#17211b" stroke-width="3" marker-end="url(#global-axis-arrow)"></line>
+            <line x1="125" y1="335" x2="125" y2="55" stroke="#17211b" stroke-width="3" marker-end="url(#global-axis-arrow)"></line>
+            <text x="748" y="342" fill="#17211b" font-size="19" font-weight="700" font-family="Segoe UI, Arial">x</text>
+            <text x="113" y="50" fill="#17211b" font-size="19" font-weight="700" font-family="Segoe UI, Arial">y</text>
+
+            <line x1="165" y1="300" x2="625" y2="105" stroke="#165c45" stroke-width="11" stroke-linecap="round"></line>
+            <circle cx="165" cy="300" r="11" fill="#fff" stroke="#0c3d2d" stroke-width="4"></circle>
+            <circle cx="625" cy="105" r="11" fill="#fff" stroke="#0c3d2d" stroke-width="4"></circle>
+            <text x="144" y="288" fill="#17211b" font-size="18" font-weight="700" font-family="Segoe UI, Arial">1</text>
+            <text x="638" y="99" fill="#17211b" font-size="18" font-weight="700" font-family="Segoe UI, Arial">2</text>
+
+            <line x1="165" y1="300" x2="625" y2="300" stroke="#a24d16" stroke-width="3" stroke-dasharray="9 7"></line>
+            <line x1="625" y1="300" x2="625" y2="105" stroke="#a24d16" stroke-width="3" stroke-dasharray="9 7"></line>
+            <line x1="178" y1="324" x2="612" y2="324" stroke="#a24d16" stroke-width="2" marker-start="url(#dimension-arrow)" marker-end="url(#dimension-arrow)"></line>
+            <line x1="655" y1="288" x2="655" y2="117" stroke="#a24d16" stroke-width="2" marker-start="url(#dimension-arrow)" marker-end="url(#dimension-arrow)"></line>
+            <text x="395" y="351" text-anchor="middle" fill="#7d370e" font-size="18" font-weight="700" font-family="Segoe UI, Arial">Δx = x₂ − x₁</text>
+            <text x="676" y="210" fill="#7d370e" font-size="18" font-weight="700" font-family="Segoe UI, Arial">Δy</text>
+            <text x="676" y="233" fill="#7d370e" font-size="15" font-family="Segoe UI, Arial">y₂ − y₁</text>
+
+            <path d="M231 300 A66 66 0 0 0 225.8 274.2" fill="none" stroke="#a24d16" stroke-width="3"></path>
+            <text x="239" y="283" fill="#7d370e" font-size="19" font-weight="700" font-family="Segoe UI, Arial">α</text>
+            <text x="390" y="181" transform="rotate(-23 390 181)" text-anchor="middle" fill="#fff" font-size="18" font-weight="700" font-family="Segoe UI, Arial">L</text>
+
+            <line x1="360" y1="217" x2="490" y2="162" stroke="#285b89" stroke-width="3" marker-end="url(#local-axis-arrow)"></line>
+            <line x1="405" y1="198" x2="370" y2="116" stroke="#285b89" stroke-width="3" marker-end="url(#local-axis-arrow)"></line>
+            <text x="498" y="160" fill="#194d77" font-size="18" font-weight="700" font-family="Segoe UI, Arial">x′</text>
+            <text x="354" y="109" fill="#194d77" font-size="18" font-weight="700" font-family="Segoe UI, Arial">y′</text>
+
+            <rect x="165" y="374" width="225" height="40" rx="20" fill="#e9f2fa"></rect>
+            <text x="277" y="400" text-anchor="middle" fill="#194d77" font-size="18" font-weight="700" font-family="Cascadia Mono, Consolas, monospace">c = cos α = Δx/L</text>
+            <rect x="430" y="374" width="225" height="40" rx="20" fill="#e8f2ed"></rect>
+            <text x="542" y="400" text-anchor="middle" fill="#0c3d2d" font-size="18" font-weight="700" font-family="Cascadia Mono, Consolas, monospace">s = sin α = Δy/L</text>
+          </svg>
+          <figcaption>The vector from node 1 to node 2 defines the direction of the local axis <em>x′</em>. The signs of <em>c</em> and <em>s</em> follow automatically from the signs of Δx and Δy.</figcaption>
+        </figure>
+
+        <p>Rotation block for one translational pair:</p>
+        <pre><code>R = [ c  s
+     -s  c ]</code></pre>
+        <p>It converts global components into local ones: the first row projects displacement onto the element axis, the second onto the transverse axis. For a truss member, the block is repeated for both nodes:</p>
+        <pre><code>T_truss = [ R  0
+            0  R ]</code></pre>
+        <p>For a frame element, rotation <em>θ<sub>z</sub></em> has the same measure in both planar systems, so unit entries for rotational DOFs separate the translational blocks.</p>
+      </section>
+
+      <section aria-labelledby="transform-title">
+        <h2 id="transform-title">Transforming displacements and matrices</h2>
+        <p>The project uses the convention:</p>
+        <p class="equation">u<sub>local</sub> = T u<sub>global</sub></p>
+        <p>Equality of potential energy gives:</p>
+        <p class="equation">K<sub>global</sub> = T<sup>T</sup> K<sub>local</sub> T</p>
+        <p>Consistent mass transforms in the same way:</p>
+        <p class="equation">M<sub>global</sub> = T<sup>T</sup> M<sub>local</sub> T</p>
+        <p>The matrix <strong>T</strong> is orthogonal: <strong>TT<sup>T</sup> = I</strong>. A pure rotation therefore preserves eigenvalues, symmetry and rank; only the coordinate representation changes.</p>
+      </section>
+
+      <section aria-labelledby="map-title">
+        <h2 id="map-title">DOF mapping and superposition of contributions</h2>
+        <p>Consider a chain of two truss members and three nodes. The global map is:</p>
+
+        <figure class="model-figure">
+          <svg viewBox="0 0 820 360" role="img" aria-labelledby="chain-title chain-desc">
+            <title id="chain-title">A chain of two truss members and three nodes</title>
+            <desc id="chain-desc">Element one connects nodes one and two and uses global DOFs 1, 2, 3, 4. Element two connects nodes two and three and uses DOFs 3, 4, 5, 6. DOFs 3 and 4 of the shared node appear in both maps.</desc>
+
+            <text x="410" y="32" text-anchor="middle" fill="#0c3d2d" font-size="22" font-weight="700" font-family="Segoe UI, Arial">Two elements share node 2</text>
+            <line x1="120" y1="93" x2="410" y2="93" stroke="#165c45" stroke-width="10" stroke-linecap="round"></line>
+            <line x1="410" y1="93" x2="700" y2="93" stroke="#285b89" stroke-width="10" stroke-linecap="round"></line>
+            <circle cx="120" cy="93" r="11" fill="#fff" stroke="#0c3d2d" stroke-width="4"></circle>
+            <circle cx="410" cy="93" r="13" fill="#fff1df" stroke="#a24d16" stroke-width="5"></circle>
+            <circle cx="700" cy="93" r="11" fill="#fff" stroke="#0c3d2d" stroke-width="4"></circle>
+            <text x="120" y="69" text-anchor="middle" fill="#17211b" font-size="18" font-weight="700" font-family="Segoe UI, Arial">node 1</text>
+            <text x="410" y="65" text-anchor="middle" fill="#7d370e" font-size="18" font-weight="700" font-family="Segoe UI, Arial">node 2 · shared</text>
+            <text x="700" y="69" text-anchor="middle" fill="#17211b" font-size="18" font-weight="700" font-family="Segoe UI, Arial">node 3</text>
+            <text x="265" y="117" text-anchor="middle" fill="#0c3d2d" font-size="16" font-weight="700" font-family="Segoe UI, Arial">e₁</text>
+            <text x="555" y="117" text-anchor="middle" fill="#194d77" font-size="16" font-weight="700" font-family="Segoe UI, Arial">e₂</text>
+
+            <g font-family="Cascadia Mono, Consolas, monospace" text-anchor="middle" font-size="16" font-weight="700">
+              <rect x="75" y="126" width="90" height="38" rx="9" fill="#e8f2ed" stroke="#9bbdac"></rect>
+              <text x="120" y="151" fill="#0c3d2d">[1, 2]</text>
+              <rect x="365" y="126" width="90" height="38" rx="9" fill="#fff1df" stroke="#d7a56b"></rect>
+              <text x="410" y="151" fill="#7d370e">[3, 4]</text>
+              <rect x="655" y="126" width="90" height="38" rx="9" fill="#e9f2fa" stroke="#8eb2d0"></rect>
+              <text x="700" y="151" fill="#194d77">[5, 6]</text>
+            </g>
+
+            <text x="78" y="229" fill="#165c45" font-size="17" font-weight="700" font-family="Segoe UI, Arial">e₁.dofs</text>
+            <text x="78" y="297" fill="#285b89" font-size="17" font-weight="700" font-family="Segoe UI, Arial">e₂.dofs</text>
+            <g font-family="Cascadia Mono, Consolas, monospace" text-anchor="middle" font-size="17" font-weight="700">
+              <rect x="180" y="198" width="68" height="48" rx="8" fill="#e8f2ed" stroke="#9bbdac"></rect><text x="214" y="228" fill="#0c3d2d">1</text>
+              <rect x="254" y="198" width="68" height="48" rx="8" fill="#e8f2ed" stroke="#9bbdac"></rect><text x="288" y="228" fill="#0c3d2d">2</text>
+              <rect x="328" y="198" width="68" height="48" rx="8" fill="#fff1df" stroke="#d7a56b"></rect><text x="362" y="228" fill="#7d370e">3</text>
+              <rect x="402" y="198" width="68" height="48" rx="8" fill="#fff1df" stroke="#d7a56b"></rect><text x="436" y="228" fill="#7d370e">4</text>
+
+              <rect x="328" y="266" width="68" height="48" rx="8" fill="#fff1df" stroke="#d7a56b"></rect><text x="362" y="296" fill="#7d370e">3</text>
+              <rect x="402" y="266" width="68" height="48" rx="8" fill="#fff1df" stroke="#d7a56b"></rect><text x="436" y="296" fill="#7d370e">4</text>
+              <rect x="476" y="266" width="68" height="48" rx="8" fill="#e9f2fa" stroke="#8eb2d0"></rect><text x="510" y="296" fill="#194d77">5</text>
+              <rect x="550" y="266" width="68" height="48" rx="8" fill="#e9f2fa" stroke="#8eb2d0"></rect><text x="584" y="296" fill="#194d77">6</text>
+            </g>
+
+            <path d="M362 249 L362 259 M436 249 L436 259" stroke="#a24d16" stroke-width="4" stroke-linecap="round"></path>
+            <text x="690" y="344" text-anchor="end" fill="#7d370e" font-size="16" font-weight="700" font-family="Segoe UI, Arial">DOFs 3 and 4 receive both element contributions</text>
+          </svg>
+          <figcaption>Node 2 belongs to both elements. Global rows and columns 3 and 4 therefore receive and sum two element contributions.</figcaption>
+        </figure>
+
+        <pre><code>dofMap = [1 2;    % node 1: ux, uy
+          3 4;    % node 2: ux, uy
+          5 6];   % node 3: ux, uy
+
+element(1).dofs = [1; 2; 3; 4];
+element(2).dofs = [3; 4; 5; 6];</code></pre>
+        <p>Rows 3 and 4 belong to the shared node. The global diagonal block at that node therefore equals the sum of both element contributions. Mathematically, for each element <em>e</em>:</p>
+        <p class="equation">K(d<sub>e</sub>, d<sub>e</sub>) ← K(d<sub>e</sub>, d<sub>e</sub>) + K<sub>e</sub></p>
+        <p>Here <em>d<sub>e</sub></em> is the vector <code>element.dofs</code>. The same rule applies to mass.</p>
+      </section>
+
+      <section aria-labelledby="sparse-title">
+        <h2 id="sparse-title">Why assembly is sparse</h2>
+        <p>An element connects only its own nodes, affecting a small number of DOF pairs. Most global coefficients in a large model are zero. Storing a full square matrix wastes memory on those zeros.</p>
+        <p><a href="../../src/model/assembleGlobalMatrices.m"><code>assembleGlobalMatrices</code></a> first creates four linear arrays:</p>
+        <ul>
+          <li><code>rows</code> — global row numbers;</li>
+          <li><code>columns</code> — global column numbers;</li>
+          <li><code>stiffnessValues</code> — stiffness coefficients;</li>
+          <li><code>massValues</code> — mass coefficients.</li>
+        </ul>
+        <p>For each pair of local indices, a row–column–value triplet is recorded. The call <code>sparse</code> then creates the global matrix and automatically sums repeated index pairs.</p>
+        <pre><code>[elementRows, elementColumns] = ndgrid(dofs, dofs);
+rows(indices) = elementRows(:);
+columns(indices) = elementColumns(:);
+stiffnessValues(indices) = element.stiffness(:);
+
+globalK = sparse(rows, columns, stiffnessValues, nDOF, nDOF);</code></pre>
+        <p>The number of prepared entries grows as the sum of squared element DOF counts: linearly with the number of identical elements, rather than quadratically with the total DOF count.</p>
+      </section>
+
+      <section aria-labelledby="practice-title">
+        <h2 id="practice-title">Laboratory 02. Assembling two members at a shared node</h2>
+        <p>The aim is to assemble the axial stiffness block by hand and see how two elements jointly resist displacement of their shared node.</p>
+        <figure class="model-figure lab-figure">
+          <img src="assets/lab-two-bars.svg" alt="Nodes 1, 2, 3 on a horizontal line; elements 1–2 and 2–3 are each 1 m long.">
+          <figcaption>There are no supports or external forces. At each node, uₓ is numbered before uᵧ.</figcaption>
+        </figure>
+        <h3>Input data and notation</h3>
+        <p>Nodal X coordinates: 0, 1, 2 m; Y = 0. For both elements <em>A = 0.01 m²</em>, <em>E = 200 GPa</em>, <em>ρ = 7850 kg/m³</em>. Global order: <code>[u₁x; u₁y; u₂x; u₂y; u₃x; u₃y]</code>.</p>
+        <h3>Before running: hand calculations</h3>
+        <ol>
+          <li>Find the stiffness <em>k = EA/L</em> of one element. Write its axial block <code>k·[1 −1; −1 1]</code>.</li>
+          <li>Construct the block for the three displacements <code>[u₁x; u₂x; u₃x]</code>, adding the element contributions at the shared node. Predict the central diagonal coefficient and the coupling between nodes 1 and 3.</li>
+          <li>Find the total mass of the two members.</li>
+        </ol>
+        <h3>Run in Octave</h3>
+        <p>Run from the project root. The supplied function prints the results; you do not need to edit its code for this exercise.</p>
+        <pre><code>addpath(pwd);
+setup;
+addpath(fullfile(pwd, "reference", "examples"));
+r = example_02_sparse_assembly();</code></pre>
+        <h3>Working with the results</h3>
+        <ol>
+          <li>In <code>Global DOF map [ux uy]</code> find axial DOFs 1, 3, 5. In <code>Assembled sparse K</code> read the intersections of those rows and columns and compare with your block.</li>
+          <li>From the two printed matrices <code>global stiffness contribution</code> write the contributions to <em>K₃₃</em>. Explain why <em>K₁₅ = 0</em>.</li>
+          <li>Explain zero rows 2, 4, 6: which motion is not restrained by horizontal truss members? Use the axial-block row sums to check whether equal translation of all nodes produces internal forces.</li>
+          <li>In <code>Assembled sparse M</code> find <em>M₃₃</em>: each element contributes <em>ρAL/3</em>. Perform the total translational mass check below and compare with your hand calculation.</li>
+        </ol>
+        <pre><code>tx = [1; 0; 1; 0; 1; 0];
+disp(tx' * r.mass * tx);</code></pre>
+        <div class="callout">
+          <span class="callout__title">Reference values</span>
+          <p><em>k = 2·10⁹ N/m</em>. Axial block: <code>k·[1 −1 0; −1 2 −1; 0 −1 1]</code>. <em>K₃₃ = 4·10⁹ N/m</em>, <em>M₃₃ ≈ 52.3333 kg</em>, total mass 157 kg. Nonzero off-diagonal mass terms also contribute to translational motion.</p>
+        </div>
+        <h3>What to include in the report</h3>
+        <p>The diagram, hand-assembled axial block, two contributions to K₃₃ and M₃₃, total mass, and an explanation of zero coefficients.</p>
+      </section>
+
+      <section class="source-list" aria-labelledby="sources-title">
+        <h2 id="sources-title">Chapter source code</h2>
+        <ul>
+          <li><a href="../../src/model/createStructuralElement.m"><code>createStructuralElement.m</code></a> — direction cosines, <strong>T</strong> and matrix rotation;</li>
+          <li><a href="../../src/model/assembleGlobalMatrices.m"><code>assembleGlobalMatrices.m</code></a> — indexed triplet assembly;</li>
+          <li><a href="../../tests/test_sparse_assembly.m"><code>tests/test_sparse_assembly.m</code></a> — sparsity and long-chain checks;</li>
+          <li><a href="../examples/example_02_sparse_assembly.m"><code>example_02_sparse_assembly.m</code></a> — educational two-element assembly.</li>
+        </ul>
+      </section>
+    </main>
+  </div>
+
+  <nav class="page-nav" aria-label="Chapter navigation">
+    <a href="02-element-matrices.html"><span class="page-nav__label">Previous</span>← 2. Element matrices</a>
+    <a href="04-boundary-loads.html"><span class="page-nav__label">Next</span>4. Boundary conditions and loads →</a>
+  </nav>
+
+  <footer class="site-footer">
+    <div class="site-footer__inner"><p>MKE-F · offline learning reference · chapter 3 of 15</p></div>
+  </footer>
+</body>
+</html>

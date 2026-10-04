@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 260" role="img" aria-labelledby="title">
+<title id="title">Осциллятор без трения: масса 2 кг на пружине 18 Н/м, положительное перемещение вправо</title>
+<defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8" fill="#285b89"/></marker></defs>
+<style>text{font:16px 'Segoe UI',Arial,sans-serif;fill:#17211b} .bar{stroke:#165c45;stroke-width:7;fill:none} .thin{stroke:#5d685f;stroke-width:2;fill:none} .arrow{stroke:#285b89;stroke-width:2;fill:none;marker-end:url(#arrow)} .node{fill:#fff;stroke:#165c45;stroke-width:3}</style>
+<rect width="640" height="260" fill="#fbfaf5"/>
+<path class="arrow" d="M35 85 V30"/><path class="arrow" d="M35 85 H90"/><text x="15" y="25">Y</text><text x="95" y="90">X</text><path class="thin" d="M130 70 V150 M130 75 l-15 15 M130 95 l-15 15 M130 115 l-15 15 M130 135 l-15 15"/>
+<path class="thin" d="M130 110 H180 l10 -20 l20 40 l20 -40 l20 40 l20 -40 l20 40 l10 -20 H350"/>
+<rect x="350" y="75" width="125" height="70" rx="4" fill="#e8f2ed" stroke="#165c45" stroke-width="3"/>
+<text x="370" y="115">m = 2 кг</text><text x="175" y="165">k = 18 Н/м</text>
+<path class="arrow" d="M485 110 H595"/><text x="510" y="90">u(t), +X</text>
+<text x="140" y="210">u(0) = 0,02 м; v(0) = −0,01 м/с</text><text x="140" y="240">Внешняя сила и демпфирование отсутствуют</text>
+</svg>

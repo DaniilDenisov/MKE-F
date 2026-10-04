@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Run the MKE-F numerical core locally in GNU Octave without Docker or a browser GUI: path setup, three analysis types, pure solvers and tests.">
+  <title>12. Local GNU Octave workflow — MKE-F</title>
+  <link rel="stylesheet" href="../assets/reference.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="site-header__inner">
+      <nav class="language-switch" aria-label="Reference language"><a href="../RU/12-local-octave-workflow.html" lang="ru" hreflang="ru">RU</a> <a href="../EN/12-local-octave-workflow.html" lang="en" hreflang="en" aria-current="true">EN</a></nav>
+      <p class="eyebrow">Student FEM Reference · Chapter 12</p>
+      <p class="site-title">Numerical core without Docker</p>
+      <p class="site-subtitle">A direct local path from a TXT model to matrices and results in GNU Octave, without a web interface, container or manual code copying.</p>
+    </div>
+  </header>
+
+  <div class="layout">
+    <nav class="contents" aria-label="Reference contents">
+      <h2>Contents</h2>
+      <ol>
+        <li><a href="01-model-dofs.html">Model, nodes, elements and DOFs</a></li>
+        <li><a href="02-element-matrices.html">Element matrices</a></li>
+        <li><a href="03-transformation-assembly.html">Transformation and assembly</a></li>
+        <li><a href="04-boundary-loads.html">Boundary conditions and loads</a></li>
+        <li><a href="05-static-analysis.html">Static analysis</a></li>
+        <li><a href="06-modal-analysis.html">Modal analysis</a></li>
+        <li><a href="07-newmark-transient.html">Newmark transient analysis</a></li>
+        <li><a href="08-result-recovery.html">Element results</a></li>
+        <li><a href="09-architecture-verification.html">Architecture and verification</a></li>
+        <li><a href="10-input-format.html">Input file format</a></li>
+        <li><a href="11-mario-paz-modal-example.html">Mario Paz modal example</a></li>
+        <li><a aria-current="page" href="12-local-octave-workflow.html">Local GNU Octave workflow</a></li>
+        <li><a href="13-fem-assembly-visualizer.html">Interactive FEM assembly</a></li>
+        <li><a href="14-mario-paz-matrices-visualizer.html">Interactive frame matrices</a></li>
+        <li><a href="15-sparse-matrix-assembly.html">Sparse matrix assembly</a></li>
+      </ol>
+    </nav>
+
+    <main class="chapter" id="main">
+      <span class="chapter-number">Chapter 12</span>
+      <h1>Running the solver directly in Octave</h1>
+      <p class="lead">This mode continues the original MKE-F workflow: open the project in an installed GNU Octave, read an input file and call the numerical core directly. Docker and a browser GUI are unnecessary. Most automated solver checks use the same entry points.</p>
+
+      <section aria-labelledby="requirements-title">
+        <h2 id="requirements-title">1. Requirements</h2>
+        <ul>
+          <li>GNU Octave 8.4 or later; the project is locally verified on Octave 11.3.0;</li>
+          <li>a complete MKE-F directory containing files <a href="../../setup.m"><code>setup.m</code></a>, <code>src</code>, <code>scripts</code>, <code>examples</code> and <code>tests</code>;</li>
+          <li>read access to source files and write access only to the result directory chosen by the student.</li>
+        </ul>
+        <p>GNU Octave is the only supported runtime. MATLAB compatibility is neither tested nor guaranteed.</p>
+        <p>No extra Octave packages, Python, npm or network connection are needed for calculations. Use the Octave graphical window as a terminal, or a fully headless <code>octave-cli</code>.</p>
+        <div class="callout callout--warning">
+          <span class="callout__title">Working directory</span>
+          <p>All commands below start at the repository root, the directory containing <code>setup.m</code>. If Octave is open elsewhere, first run <code>cd</code> with your own absolute MKE-F path.</p>
+        </div>
+      </section>
+
+      <section aria-labelledby="setup-title">
+        <h2 id="setup-title">2. Adding the core to the Octave path</h2>
+        <p>In the GNU Octave command window:</p>
+        <pre><code>cd('C:/path/to/MKE-F');
+addpath(pwd);
+setup;</code></pre>
+        <p>On Linux and macOS the path might be <code>/home/student/MKE-F</code>. The function <a href="../../setup.m"><code>setup</code></a> adds only the model, common operations, three solvers, results and scripts directories. It neither runs an analysis nor changes input data.</p>
+        <p>Check the path without performing calculations:</p>
+        <pre><code>which StructFEProblem
+which solveStatic
+which solveModal
+which solveTransient</code></pre>
+        <p>Each command should show a file inside this project rather than another MKE-F copy.</p>
+      </section>
+
+      <section aria-labelledby="selected-title">
+        <h2 id="selected-title">3. First analysis with RunSelected</h2>
+        <p>Files <code>CasePreprocessorStatic.txt</code>, <code>CasePreprocessorModal.txt</code> and <code>CasePreprocessorTransient.txt</code> already contain section <code>analysis</code>. The same call therefore selects the appropriate solver from the input file:</p>
+        <pre><code>addpath(pwd);
+setup;
+
+casePath = fullfile('examples', 'cases', ...
+    'CasePreprocessorStatic.txt');
+options = struct('verbose', true, 'plotting', false);
+problem = StructFEProblem(casePath, options);
+result = problem.RunSelected();
+
+result.analysisType
+result.displacements
+result.reactions</code></pre>
+        <p><code>StructFEProblem</code> reads TXT, builds the mesh, numbers DOFs, creates elements and assembles sparse matrices <strong>K</strong> and <strong>M</strong>. <code>RunSelected()</code> reads only the configuration <code>analysis</code> and calls <code>RunStatic</code>, <code>RunModal</code> or <code>RunTransient</code>.</p>
+        <div class="callout callout--inspect">
+          <span class="callout__title">Try three supplied files</span>
+          <p>Replace the name with <code>CasePreprocessorModal.txt</code> or <code>CasePreprocessorTransient.txt</code>. For modal results inspect <code>result.frequenciesHz</code> and <code>result.modeShapes</code>; for transient results inspect <code>result.time</code>, <code>result.displacements</code>, <code>result.velocities</code> and <code>result.accelerations</code>.</p>
+        </div>
+      </section>
+
+      <section aria-labelledby="legacy-title">
+        <h2 id="legacy-title">4. Older files and explicit methods</h2>
+        <p>Files created before section <code>analysis</code> remain valid. Select the analysis through a method, as in the original program interface:</p>
+        <pre><code>staticProblem = StructFEProblem(fullfile( ...
+    'examples', 'cases', 'Case1ElementBeam.txt'));
+staticResult = staticProblem.RunStatic();
+
+modalProblem = StructFEProblem(fullfile( ...
+    'examples', 'cases', 'CaseBeam.txt'));
+modalResult = modalProblem.RunModal();
+
+transientProblem = StructFEProblem(fullfile( ...
+    'examples', 'cases', 'CaseBeamDyn.txt'));
+transientResult = transientProblem.RunTransient( ...
+    1e-4, 1e-2, 3, 2);</code></pre>
+        <p>Transient-method arguments are time step, duration, monitoring node number and local DOF. The last two are validated even with <code>plotting=false</code>, although headless mode creates no chart.</p>
+      </section>
+
+      <section aria-labelledby="kernel-title">
+        <h2 id="kernel-title">5. Pure numerical-core functions</h2>
+        <p>To study the algorithm, separate reading and assembly from solving. <code>GetAnalysisModel()</code> creates a plain value structure that solvers do not modify:</p>
+        <pre><code>addpath(pwd);
+setup;
+
+problem = StructFEProblem(fullfile( ...
+    'examples', 'cases', 'Case1ElementBeam.txt'));
+model = problem.GetAnalysisModel();
+staticResult = solveStatic(model);
+
+modalProblem = StructFEProblem(fullfile( ...
+    'examples', 'cases', 'CaseBeam.txt'));
+modalModel = modalProblem.GetAnalysisModel();
+modalResult = solveModal(modalModel);
+
+transientProblem = StructFEProblem(fullfile( ...
+    'examples', 'cases', 'CaseBeamDyn.txt'));
+transientModel = transientProblem.GetAnalysisModel();
+transientOptions = struct('timeStep', 1e-4, ...
+    'duration', 1e-2);
+transientResult = solveTransient( ...
+    transientModel, transientOptions);</code></pre>
+        <p>These are the exact core functions referenced by the analysis chapters:</p>
+        <ul>
+          <li><a href="../../src/analysis/static/solveStatic.m"><code>solveStatic.m</code></a> — reduction, solution, reactions, equilibrium and element results;</li>
+          <li><a href="../../src/analysis/modal/solveModal.m"><code>solveModal.m</code></a> — generalized eigenvalue problem and full modes;</li>
+          <li><a href="../../src/analysis/transient/solveTransient.m"><code>solveTransient.m</code></a> — Newmark average acceleration and full histories;</li>
+          <li><a href="../../src/model/createAnalysisModel.m"><code>createAnalysisModel.m</code></a> — immutable model-structure contract.</li>
+        </ul>
+        <p>Repeated calls with the same structure should give identical results: solvers retain no state between runs.</p>
+      </section>
+
+      <section aria-labelledby="matrices-title">
+        <h2 id="matrices-title">6. Matrices and intermediate data</h2>
+        <p>Matrices are stored sparsely. In a laboratory, first inspect size, nonzero count and symmetry; convert to dense only for small examples:</p>
+        <pre><code>size(problem.K)
+nnz(problem.K)
+norm(problem.K - problem.K.', inf)
+
+K = full(problem.K);       % small models only
+M = full(problem.M);
+dofMap = problem.mesh.iMnod</code></pre>
+        <p>In the pure model, the same data are named <code>model.stiffness</code>, <code>model.mass</code>, <code>model.dofMap</code> and <code>model.nodeCoordinates</code>. This lets you match each formula to an executable array.</p>
+      </section>
+
+      <section aria-labelledby="headless-title">
+        <h2 id="headless-title">7. Fully headless execution</h2>
+        <p>Run the same code from a system terminal. On Windows, the official distribution usually provides <code>octave-cli</code>; Linux often provides the command <code>octave</code>:</p>
+        <pre><code>octave-cli --no-gui --quiet --no-history --eval "addpath(pwd); setup; problem = StructFEProblem(fullfile('examples','cases','CasePreprocessorStatic.txt')); result = problem.RunSelected(); disp(result.displacements);"</code></pre>
+        <p>Equivalent command using the executable <code>octave</code>:</p>
+        <pre><code>octave --no-gui --quiet --no-history --eval "addpath(pwd); setup; run_octave_smoke_tests;"</code></pre>
+        <p>The flag <code>--no-gui</code> disables the Octave window, <code>--quiet</code> suppresses the startup banner, <code>--no-history</code> disables command-history recording. The model option <code>plotting=false</code> prevents the project itself from creating graphics windows.</p>
+      </section>
+
+      <section aria-labelledby="tests-title">
+        <h2 id="tests-title">8. The checks used to maintain the solver</h2>
+        <p>The quick integration check reads ten input files, checks sparse assembly and runs static, modal, pulse and harmonic transient problems:</p>
+        <pre><code>addpath(pwd);
+setup;
+run_octave_smoke_tests;</code></pre>
+        <p>The full local check then adds independent numerical invariants, result recovery, export and offline HTML integrity:</p>
+        <pre><code>addpath(pwd);
+setup;
+run_octave_tests;</code></pre>
+        <ul>
+          <li><a href="../../scripts/run_octave_smoke_tests.m"><code>scripts/run_octave_smoke_tests.m</code></a> shows the actual assembly and execution sequence for all analysis types;</li>
+          <li><a href="../../scripts/run_octave_tests.m"><code>scripts/run_octave_tests.m</code></a> is the common local entry point;</li>
+          <li><a href="../../tests/run_verification_tests.m"><code>tests/run_verification_tests.m</code></a> lists the physical and numerical properties being checked.</li>
+        </ul>
+        <div class="callout">
+          <span class="callout__title">What a passing test means</span>
+          <p>The smoke suite checks that all supplied cases assemble and run. The verification suite separately checks formulas, dimensions, symmetry, equilibrium, the Mario Paz modal reference, Newmark integration and force recovery. Core changes require both levels.</p>
+        </div>
+      </section>
+
+      <section aria-labelledby="results-title">
+        <h2 id="results-title">9. Saving and further analysis</h2>
+        <p>Save Octave structures to continue the laboratory later:</p>
+        <pre><code>save('-mat7-binary', fullfile('output', ...
+    'local-static.mat'), 'model', 'staticResult');</code></pre>
+        <p>An offline browser view of the result still does not require Docker:</p>
+        <pre><code>exportPostprocessorData(model, staticResult, ...
+    fullfile('output', 'local-static.json'), ...
+    struct('title', 'Local static analysis', ...
+           'prettyPrint', true));</code></pre>
+        <p>Then open <a href="../../postprocessor/index.html"><code>postprocessor/index.html</code></a> directly from disk and select the JSON. This does not run Octave from the browser: local computation is already complete, and HTML only validates and visualizes the data.</p>
+      </section>
+
+      <section aria-labelledby="diagnostics-title">
+        <h2 id="diagnostics-title">10. Common difficulties</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Message or symptom</th><th>What to check</th></tr></thead>
+            <tbody>
+              <tr><td><code>StructFEProblem undefined</code></td><td>Octave is not at the project root, or these commands were not run: <code>addpath(pwd); setup;</code>.</td></tr>
+              <tr><td><code>MKEF:MissingAnalysisConfiguration</code></td><td>The old file has no <code>analysis</code>. Use explicit <code>RunStatic</code>, <code>RunModal</code> or <code>RunTransient</code>.</td></tr>
+              <tr><td>File not found</td><td>Check <code>pwd</code> and build paths with <code>fullfile</code>, rather than assuming one operating system’s separator.</td></tr>
+              <tr><td>Mechanism or singular system</td><td>Check supports, zero lengths, element properties and mass on free DOFs.</td></tr>
+              <tr><td>A graphics window appears</td><td>Create the problem with <code>struct('verbose', false, 'plotting', false)</code> and start Octave with <code>--no-gui</code>.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="source-list" aria-labelledby="sources-title">
+        <h2 id="sources-title">Source-code reading route</h2>
+        <ol>
+          <li><a href="../../src/model/StructFEProblem.m"><code>StructFEProblem.m</code></a> — compatible reading, assembly and execution facade;</li>
+          <li><a href="../../src/model/FEMesh.m"><code>FEMesh.m</code></a> — TXT parsing and input validation;</li>
+          <li><a href="../../src/model/createStructuralElement.m"><code>createStructuralElement.m</code></a> — element matrices;</li>
+          <li><a href="../../src/model/assembleGlobalMatrices.m"><code>assembleGlobalMatrices.m</code></a> — global sparse assembly;</li>
+          <li><a href="../../src/analysis/common/partitionDOFs.m"><code>partitionDOFs.m</code></a> — free and constrained DOFs;</li>
+          <li>one of the three <code>solve*.m</code>, listed above;</li>
+          <li><a href="../../src/results/recoverElementResults.m"><code>recoverElementResults.m</code></a> — local displacements and forces.</li>
+        </ol>
+        <p>The container backend and browser GUI wrap this sequence. Local execution calls the same core files directly.</p>
+      </section>
+    </main>
+  </div>
+
+  <nav class="page-nav" aria-label="Chapter navigation">
+    <a href="11-mario-paz-modal-example.html"><span class="page-nav__label">Previous</span>← 11. Mario Paz modal example</a>
+    <a href="13-fem-assembly-visualizer.html"><span class="page-nav__label">Next</span>13. Interactive FEM assembly →</a>
+  </nav>
+
+  <footer class="site-footer">
+    <div class="site-footer__inner"><p>MKE-F · offline learning reference · chapter 12 of 15</p></div>
+  </footer>
+</body>
+</html>

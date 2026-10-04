@@ -1,0 +1,322 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Stiffness and mass matrices for truss and frame elements in MKE-F.">
+  <title>2. Element matrices — MKE-F</title>
+  <link rel="stylesheet" href="../assets/reference.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="site-header__inner">
+      <nav class="language-switch" aria-label="Reference language"><a href="../RU/02-element-matrices.html" lang="ru" hreflang="ru">RU</a> <a href="../EN/02-element-matrices.html" lang="en" hreflang="en" aria-current="true">EN</a></nav>
+      <p class="eyebrow">Student FEM Reference · Chapter 2</p>
+      <p class="site-title">Element matrices</p>
+      <p class="site-subtitle">Stiffness, consistent mass and invariants that reveal errors before solving.</p>
+    </div>
+  </header>
+
+  <div class="layout">
+    <nav class="contents" aria-label="Reference contents">
+      <h2>Contents</h2>
+      <ol>
+        <li><a href="01-model-dofs.html">Model, nodes, elements and DOFs</a></li>
+        <li><a aria-current="page" href="02-element-matrices.html">Element matrices</a></li>
+        <li><a href="03-transformation-assembly.html">Transformation and assembly</a></li>
+        <li><a href="04-boundary-loads.html">Boundary conditions and loads</a></li>
+        <li><a href="05-static-analysis.html">Static analysis</a></li>
+        <li><a href="06-modal-analysis.html">Modal analysis</a></li>
+        <li><a href="07-newmark-transient.html">Newmark transient analysis</a></li>
+        <li><a href="08-result-recovery.html">Element results</a></li>
+        <li><a href="09-architecture-verification.html">Architecture and verification</a></li>
+        <li><a href="10-input-format.html">Input file format</a></li>
+        <li><a href="11-mario-paz-modal-example.html">Mario Paz modal example</a></li>
+        <li><a href="12-local-octave-workflow.html">Local GNU Octave workflow</a></li>
+        <li><a href="13-fem-assembly-visualizer.html">Interactive FEM assembly</a></li>
+        <li><a href="14-mario-paz-matrices-visualizer.html">Interactive frame matrices</a></li>
+        <li><a href="15-sparse-matrix-assembly.html">Sparse matrix assembly</a></li>
+      </ol>
+    </nav>
+
+    <main class="chapter" id="main">
+      <span class="chapter-number">Chapter 2</span>
+      <h1>Stiffness and mass matrices</h1>
+      <p class="lead">A finite element has two main matrices: the stiffness matrix relates nodal displacements to internal nodal forces, while the mass matrix relates nodal accelerations to inertial forces. Before assembly, both matrices can be checked independently for size, symmetry, rank, units and rigid-body behavior.</p>
+
+      <section aria-labelledby="approximation-title">
+        <h2 id="approximation-title">From a continuous element to nodal matrices</h2>
+        <p>A real member has a continuous displacement field: its value can be found at any point along the length. A finite element replaces this infinite set of unknowns with a few nodal degrees of freedom <strong>q<sub>e</sub></strong>. Displacements between nodes are interpolated using predefined <strong>shape functions</strong>:</p>
+        <p class="equation">u(x) = N(x) q<sub>e</sub></p>
+        <p>The choice of <strong>N(x)</strong> determines the displacement distribution inside the element. The matrices follow by substituting this approximation into strain energy and kinetic energy expressions:</p>
+        <p class="equation">K<sub>e</sub> = ∫<sub>V</sub> B<sup>T</sup>DB dV, &nbsp;&nbsp; M<sub>e</sub> = ∫<sub>V</sub> ρN<sup>T</sup>N dV, &nbsp;&nbsp; ε = Bq<sub>e</sub></p>
+        <p>For a two-node type 112 member, axial displacement is interpolated linearly. With <em>ξ = x/L</em>:</p>
+        <p class="equation">u(x) = (1 − ξ)u′<sub>1</sub> + ξu′<sub>2</sub></p>
+        <p>The axial strain <em>ε = du/dx</em> is therefore constant within the element. Here the operator <strong>B</strong> contains first derivatives of the shape functions. For a type 113 frame, axial displacement is also linear, but transverse deflection uses cubic Hermite functions:</p>
+        <p class="equation">v(x) = H<sub>1</sub>(x)v′<sub>1</sub> + H<sub>2</sub>(x)θ<sub>1</sub> + H<sub>3</sub>(x)v′<sub>2</sub> + H<sub>4</sub>(x)θ<sub>2</sub></p>
+        <p>In the bending part, the operator <strong>B</strong> contains second derivatives of the functions <strong>H</strong>. Thus the curvature <em>κ = d²v/dx²</em> and, for constant <em>EI</em>, the bending moment vary linearly along the length.</p>
+        <div class="callout callout--inspect">
+          <span class="callout__title">What is actually linear</span>
+          <p>In the current elements, <em>E, A, ρ</em> and <em>I</em> are constant within each element. For type 112, the axial displacement approximation is linear—not every element property. The matrix form arises because a continuous field is expressed using a finite set of nodal values. Different shape-function orders, extra nodes or variable properties produce different coefficients <strong>K<sub>e</sub></strong> and <strong>M<sub>e</sub></strong>.</p>
+        </div>
+        <p>Two points therefore do not reproduce an arbitrary deformed shape: they define the selected approximation. Subdividing a structure into more elements adds nodes and allows a more accurate description of displacement and strain distributions.</p>
+      </section>
+
+      <section aria-labelledby="truss-title">
+        <h2 id="truss-title">Plane truss member, type 112</h2>
+        <p>In local axes, <em>x′, y′</em> the element resists only changes in the distance between its nodes. The implementation retains both translational components at each node, so the local vector has four components.</p>
+
+        <figure class="model-figure">
+          <svg viewBox="0 0 820 430" role="img" aria-labelledby="truss-112-title truss-112-desc">
+            <title id="truss-112-title">Degrees of freedom and deformed shape of a type 112 member</title>
+            <desc id="truss-112-desc">A two-node member has two translational degrees of freedom at each node. The original position is shown by a gray dashed line, and the exaggerated axial elongation by a green line.</desc>
+            <defs>
+              <marker id="truss-112-arrow" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto" markerUnits="strokeWidth">
+                <path d="M0,0 L0,6 L8,3 Z" fill="#285b89"></path>
+              </marker>
+              <marker id="truss-112-dimension" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto-start-reverse" markerUnits="strokeWidth">
+                <path d="M0,0 L8,4 L0,8 Z" fill="#7d370e"></path>
+              </marker>
+            </defs>
+
+            <text x="410" y="32" text-anchor="middle" fill="#0c3d2d" font-size="22" font-weight="700" font-family="Segoe UI, Arial">Type 112 · four translational DOFs</text>
+
+            <line x1="235" y1="66" x2="290" y2="66" stroke="#7d8780" stroke-width="5" stroke-dasharray="10 7"></line>
+            <text x="302" y="72" fill="#5d685f" font-size="16" font-family="Segoe UI, Arial">original position</text>
+            <line x1="465" y1="66" x2="520" y2="66" stroke="#16805f" stroke-width="8" stroke-linecap="round"></line>
+            <text x="532" y="72" fill="#0c6047" font-size="16" font-family="Segoe UI, Arial">deformed</text>
+
+            <line x1="140" y1="205" x2="690" y2="205" stroke="#16805f" stroke-width="10" stroke-linecap="round"></line>
+            <circle cx="140" cy="205" r="12" fill="#fff" stroke="#0c6047" stroke-width="4"></circle>
+            <circle cx="690" cy="205" r="12" fill="#fff" stroke="#0c6047" stroke-width="4"></circle>
+            <line x1="180" y1="205" x2="640" y2="205" stroke="#7d8780" stroke-width="5" stroke-dasharray="11 8"></line>
+            <circle cx="180" cy="205" r="10" fill="#fff" stroke="#5d685f" stroke-width="3" stroke-dasharray="4 3"></circle>
+            <circle cx="640" cy="205" r="10" fill="#fff" stroke="#5d685f" stroke-width="3" stroke-dasharray="4 3"></circle>
+            <text x="140" y="184" text-anchor="middle" fill="#17211b" font-size="18" font-weight="700" font-family="Segoe UI, Arial">1</text>
+            <text x="690" y="184" text-anchor="middle" fill="#17211b" font-size="18" font-weight="700" font-family="Segoe UI, Arial">2</text>
+
+            <line x1="180" y1="171" x2="180" y2="112" stroke="#285b89" stroke-width="3" marker-end="url(#truss-112-arrow)"></line>
+            <line x1="640" y1="171" x2="640" y2="112" stroke="#285b89" stroke-width="3" marker-end="url(#truss-112-arrow)"></line>
+            <text x="194" y="128" fill="#194d77" font-size="18" font-weight="700" font-family="Segoe UI, Arial">v′₁</text>
+            <text x="654" y="128" fill="#194d77" font-size="18" font-weight="700" font-family="Segoe UI, Arial">v′₂</text>
+
+            <line x1="168" y1="235" x2="108" y2="235" stroke="#285b89" stroke-width="3" marker-end="url(#truss-112-arrow)"></line>
+            <line x1="652" y1="235" x2="722" y2="235" stroke="#285b89" stroke-width="3" marker-end="url(#truss-112-arrow)"></line>
+            <text x="116" y="261" fill="#194d77" font-size="18" font-weight="700" font-family="Segoe UI, Arial">u′₁</text>
+            <text x="694" y="261" fill="#194d77" font-size="18" font-weight="700" font-family="Segoe UI, Arial">u′₂</text>
+
+            <line x1="180" y1="287" x2="640" y2="287" stroke="#7d370e" stroke-width="2" marker-start="url(#truss-112-dimension)" marker-end="url(#truss-112-dimension)"></line>
+            <line x1="180" y1="270" x2="180" y2="300" stroke="#7d370e" stroke-width="2"></line>
+            <line x1="640" y1="270" x2="640" y2="300" stroke="#7d370e" stroke-width="2"></line>
+            <text x="410" y="313" text-anchor="middle" fill="#7d370e" font-size="18" font-weight="700" font-family="Segoe UI, Arial">L</text>
+
+            <line x1="104" y1="350" x2="176" y2="350" stroke="#285b89" stroke-width="3" marker-end="url(#truss-112-arrow)"></line>
+            <line x1="104" y1="350" x2="104" y2="294" stroke="#285b89" stroke-width="3" marker-end="url(#truss-112-arrow)"></line>
+            <text x="184" y="356" fill="#194d77" font-size="18" font-weight="700" font-family="Segoe UI, Arial">x′</text>
+            <text x="91" y="290" fill="#194d77" font-size="18" font-weight="700" font-family="Segoe UI, Arial">y′</text>
+
+            <rect x="250" y="343" width="455" height="48" rx="24" fill="#e9f2fa"></rect>
+            <text x="477" y="374" text-anchor="middle" fill="#194d77" font-size="18" font-weight="700" font-family="Cascadia Mono, Consolas, monospace">qₑ = [u′₁, v′₁, u′₂, v′₂]ᵀ</text>
+            <text x="410" y="417" text-anchor="middle" fill="#5d685f" font-size="15" font-family="Segoe UI, Arial">Displacements are exaggerated for illustration</text>
+          </svg>
+          <figcaption>Blue indicates positive local DOF directions. The green shape illustrates axial tension: it stays straight, and the relative displacement <em>u′<sub>2</sub> − u′<sub>1</sub></em> produces strain. Transverse components <em>v′</em> are included in the element vector but do not produce local elastic strain energy in the member.</figcaption>
+        </figure>
+
+        <p class="equation">k = EA/L</p>
+        <pre><code>K_local = k · [ 1  0 -1  0
+                0  0  0  0
+               -1  0  1  0
+                0  0  0  0 ]</code></pre>
+        <p>Consistent mass distributes translational inertia between the two nodes:</p>
+        <pre><code>M_local = ρAL/6 · [ 2  0  1  0
+                    0  2  0  1
+                    1  0  2  0
+                    0  1  0  2 ]</code></pre>
+        <p>The coefficients 2 and 1 come from the integral <strong>∫N<sup>T</sup>N dx</strong>. Off-diagonal terms are not artificial coupling: the motion of every interior point depends on the displacements of both nodes. This mass matrix is therefore consistent with the chosen shape functions.</p>
+        <p>For a free member, the rank of <strong>K</strong> is 1: only one linear combination of displacements produces axial strain. The other three independent modes—two translations and one infinitesimal rigid-body rotation—cause no axial elongation in the linear formulation. Their elastic strain energy is therefore zero.</p>
+      </section>
+
+      <section aria-labelledby="frame-title">
+        <h2 id="frame-title">Plane Euler–Bernoulli frame, type 113</h2>
+        <p>A frame element combines axial stiffness and bending. The Euler–Bernoulli assumption neglects transverse shear deformation, so rotation is related to the derivative of deflection.</p>
+
+        <figure class="model-figure">
+          <svg viewBox="0 0 820 520" role="img" aria-labelledby="frame-113-title frame-113-desc">
+            <title id="frame-113-title">Degrees of freedom and deformed shape of a type 113 frame element</title>
+            <desc id="frame-113-desc">Each of the two frame nodes has two translational displacements and one rotation. The original straight axis and an exaggerated curved shape determined by the end displacements and rotations are shown below.</desc>
+            <defs>
+              <marker id="frame-113-arrow" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto" markerUnits="strokeWidth">
+                <path d="M0,0 L0,6 L8,3 Z" fill="#285b89"></path>
+              </marker>
+              <marker id="frame-113-rotation" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto" markerUnits="strokeWidth">
+                <path d="M0,0 L0,6 L8,3 Z" fill="#a24d16"></path>
+              </marker>
+            </defs>
+
+            <text x="410" y="31" text-anchor="middle" fill="#0c3d2d" font-size="22" font-weight="700" font-family="Segoe UI, Arial">Type 113 · six nodal DOFs</text>
+            <text x="35" y="75" fill="#5d685f" font-size="16" font-weight="700" font-family="Segoe UI, Arial">Nodal degrees of freedom</text>
+
+            <line x1="180" y1="150" x2="640" y2="150" stroke="#165c45" stroke-width="10" stroke-linecap="round"></line>
+            <circle cx="180" cy="150" r="12" fill="#fff" stroke="#0c3d2d" stroke-width="4"></circle>
+            <circle cx="640" cy="150" r="12" fill="#fff" stroke="#0c3d2d" stroke-width="4"></circle>
+            <text x="158" y="128" text-anchor="middle" fill="#17211b" font-size="18" font-weight="700" font-family="Segoe UI, Arial">1</text>
+            <text x="618" y="128" text-anchor="middle" fill="#17211b" font-size="18" font-weight="700" font-family="Segoe UI, Arial">2</text>
+
+            <line x1="156" y1="179" x2="98" y2="179" stroke="#285b89" stroke-width="3" marker-end="url(#frame-113-arrow)"></line>
+            <line x1="664" y1="179" x2="724" y2="179" stroke="#285b89" stroke-width="3" marker-end="url(#frame-113-arrow)"></line>
+            <text x="108" y="205" fill="#194d77" font-size="18" font-weight="700" font-family="Segoe UI, Arial">u′₁</text>
+            <text x="691" y="205" fill="#194d77" font-size="18" font-weight="700" font-family="Segoe UI, Arial">u′₂</text>
+
+            <line x1="180" y1="139" x2="180" y2="83" stroke="#285b89" stroke-width="3" marker-end="url(#frame-113-arrow)"></line>
+            <line x1="640" y1="139" x2="640" y2="83" stroke="#285b89" stroke-width="3" marker-end="url(#frame-113-arrow)"></line>
+            <text x="194" y="100" fill="#194d77" font-size="18" font-weight="700" font-family="Segoe UI, Arial">v′₁</text>
+            <text x="654" y="100" fill="#194d77" font-size="18" font-weight="700" font-family="Segoe UI, Arial">v′₂</text>
+
+            <path d="M216 150 A36 36 0 1 0 193 116" fill="none" stroke="#a24d16" stroke-width="3" marker-end="url(#frame-113-rotation)"></path>
+            <path d="M676 150 A36 36 0 1 0 653 116" fill="none" stroke="#a24d16" stroke-width="3" marker-end="url(#frame-113-rotation)"></path>
+            <text x="216" y="137" fill="#7d370e" font-size="18" font-weight="700" font-family="Segoe UI, Arial">θ₁</text>
+            <text x="676" y="137" fill="#7d370e" font-size="18" font-weight="700" font-family="Segoe UI, Arial">θ₂</text>
+
+            <rect x="232" y="218" width="356" height="43" rx="21" fill="#e9f2fa"></rect>
+            <text x="410" y="246" text-anchor="middle" fill="#194d77" font-size="17" font-weight="700" font-family="Cascadia Mono, Consolas, monospace">qₑ = [u′₁, v′₁, θ₁, u′₂, v′₂, θ₂]ᵀ</text>
+
+            <line x1="35" y1="282" x2="785" y2="282" stroke="#d7ddd8" stroke-width="2"></line>
+            <text x="35" y="315" fill="#5d685f" font-size="16" font-weight="700" font-family="Segoe UI, Arial">Deformed shape</text>
+
+            <line x1="180" y1="382" x2="640" y2="382" stroke="#7d8780" stroke-width="6" stroke-dasharray="11 8"></line>
+            <circle cx="180" cy="382" r="9" fill="#fff" stroke="#5d685f" stroke-width="3" stroke-dasharray="4 3"></circle>
+            <circle cx="640" cy="382" r="9" fill="#fff" stroke="#5d685f" stroke-width="3" stroke-dasharray="4 3"></circle>
+
+            <path d="M145 404 C290 430 510 310 688 337" fill="none" stroke="#16805f" stroke-width="10" stroke-linecap="round"></path>
+            <circle cx="145" cy="404" r="12" fill="#fff" stroke="#0c6047" stroke-width="4"></circle>
+            <circle cx="688" cy="337" r="12" fill="#fff" stroke="#0c6047" stroke-width="4"></circle>
+            <line x1="105" y1="397" x2="225" y2="418" stroke="#16805f" stroke-width="3" stroke-dasharray="9 7"></line>
+            <line x1="613" y1="326" x2="748" y2="348" stroke="#16805f" stroke-width="3" stroke-dasharray="9 7"></line>
+            <text x="83" y="425" fill="#0c6047" font-size="15" font-family="Segoe UI, Arial">tangent θ₁</text>
+            <text x="666" y="374" fill="#0c6047" font-size="15" font-family="Segoe UI, Arial">tangent θ₂</text>
+
+            <line x1="220" y1="461" x2="275" y2="461" stroke="#7d8780" stroke-width="5" stroke-dasharray="9 6"></line>
+            <text x="286" y="467" fill="#5d685f" font-size="16" font-family="Segoe UI, Arial">original axis</text>
+            <line x1="455" y1="461" x2="510" y2="461" stroke="#16805f" stroke-width="8" stroke-linecap="round"></line>
+            <text x="522" y="467" fill="#0c6047" font-size="16" font-family="Segoe UI, Arial">cubic shape</text>
+            <text x="410" y="503" text-anchor="middle" fill="#5d685f" font-size="15" font-family="Segoe UI, Arial">Displacements and curvature are exaggerated</text>
+          </svg>
+          <figcaption>The position of each end is set by translational DOFs <em>u′, v′</em>, and the axis slope by rotation <em>θ</em>. Between nodes, transverse deflection is interpolated using cubic Hermite functions, so the element can represent bending despite being defined geometrically by just two nodes.</figcaption>
+        </figure>
+
+        <div class="callout callout--inspect">
+          <span class="callout__title">Hermite functions in the postprocessor</span>
+          <p>The postprocessor uses Hermite functions explicitly. The function <a href="../../postprocessor/js/geometry.js"><code>sample113Displacements</code></a> evaluates the four cubic functions <em>H<sub>1</sub>…H<sub>4</sub></em> and uses the values <em>v′<sub>1</sub>, θ<sub>1</sub>, v′<sub>2</sub>, θ<sub>2</sub></em> to interpolate transverse displacement at interior element points. These points define the curved shape in static, modal and transient views. The solver contains the same interpolation implicitly in the already integrated stiffness and mass coefficients.</p>
+        </div>
+
+        <p>Integrating derivatives of these shape functions gives the characteristic bending coefficients 12, 6, 4 and 2 in the stiffness matrix:</p>
+        <p class="equation">a = EA/L, &nbsp; b = 12EI/L<sup>3</sup>, &nbsp; c = 6EI/L<sup>2</sup>, &nbsp; d = 4EI/L, &nbsp; e = 2EI/L</p>
+        <pre><code>K_local = [ a   0   0  -a   0   0
+            0   b   c   0  -b   c
+            0   c   d   0  -c   e
+           -a   0   0   a   0   0
+            0  -b  -c   0   b  -c
+            0   c   e   0  -c   d ]</code></pre>
+        <p>In <a href="../../src/model/createStructuralElement.m"><code>createStructuralElement.m</code></a> the standard consistent mass matrix is used:</p>
+        <pre><code>M_local = ρAL/420 ·
+[ 140    0       0     70    0        0
+    0   156     22L     0   54      -13L
+    0   22L     4L²     0   13L     -3L²
+   70    0       0    140    0        0
+    0    54     13L     0  156      -22L
+    0  -13L    -3L²     0  -22L      4L² ]</code></pre>
+        <p>The same cubic deflection interpolation is used in kinetic energy, giving coefficients 156, 54, 22<em>L</em>, 13<em>L</em> and the other terms of the consistent mass matrix.</p>
+        <p>A free frame element has three rigid-body modes: two translations and one rotation. Its 6×6 stiffness matrix therefore has rank 3.</p>
+      </section>
+
+      <section aria-labelledby="units-title">
+        <h2 id="units-title">Units and coefficient meanings</h2>
+        <p>Matrices with rotational DOFs do not have one common physical unit for all entries. For example, force–displacement coupling has units N/m, while moment–rotation coupling has units N·m. Check each generalized-force/generalized-displacement pair individually.</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Coefficient</th><th>Dependence</th><th>Physical effect</th></tr></thead>
+            <tbody>
+              <tr><td><em>EA/L</em></td><td>proportional to area and modulus; inversely proportional to length</td><td>axial extension</td></tr>
+              <tr><td><em>12EI/L³</em></td><td>decreases especially rapidly with length</td><td>transverse force due to deflection</td></tr>
+              <tr><td><em>6EI/L²</em></td><td>couples deflection and rotation</td><td>force and moment coupling</td></tr>
+              <tr><td><em>4EI/L, 2EI/L</em></td><td>rotational diagonal and cross terms</td><td>bending moments</td></tr>
+              <tr><td><em>ρAL</em></td><td>element mass</td><td>translational inertia</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section aria-labelledby="checks-title">
+        <h2 id="checks-title">Five checks before assembly</h2>
+        <ol>
+          <li><strong>Size:</strong> 4×4 for type 112, 6×6 for type 113.</li>
+          <li><strong>Finiteness:</strong> no coefficient is <code>NaN</code> or <code>Inf</code>.</li>
+          <li><strong>Symmetry:</strong> <strong>K = K<sup>T</sup></strong> and <strong>M = M<sup>T</sup></strong>.</li>
+          <li><strong>Rank:</strong> 1 for a free truss member, 3 for a free frame.</li>
+          <li><strong>Mass:</strong> under unit translation, the quadratic form <strong>r<sup>T</sup>Mr</strong> equals <em>ρAL</em>.</li>
+        </ol>
+        <p>A free element stiffness matrix must be singular. This is not an error: the element can move without deforming. After assembly and applying supports, the global matrix should become nonsingular; otherwise the model still has an unrestrained motion or an internal mechanism.</p>
+      </section>
+
+      <section aria-labelledby="practice-title">
+        <h2 id="practice-title">Laboratory 01. Stiffness and mass of an inclined element</h2>
+        <p>The aim is to relate matrix coefficients to geometry and explain why the axial stiffness of an inclined member couples X and Y displacements.</p>
+        <figure class="model-figure lab-figure">
+          <img src="assets/lab-inclined-element.svg" alt="Element between (0, 0) and (3, 4), with the local axis directed from the first node to the second.">
+          <figcaption>One geometry for two separate models: a type 112 truss member and a type 113 frame.</figcaption>
+        </figure>
+        <h3>Input data and notation</h3>
+        <p>Nodes: (0, 0) and (3, 4) m. Truss element: <em>A = 0.01 m²</em>, <em>E = 200 GPa</em>, <em>ρ = 7850 kg/m³</em>. Frame: <em>A = 0.02 m²</em>, <em>E = 210 GPa</em>, <em>ρ = 7850 kg/m³</em>, <em>I = 8·10⁻⁶ m⁴</em>. No supports or loads are specified: the matrices of a single free element are studied.</p>
+        <h3>Before running: hand calculations</h3>
+        <ol>
+          <li>Find <em>L</em>, <em>c = Δx/L</em>, <em>s = Δy/L</em> and the axial member stiffness <em>EA/L</em>.</li>
+          <li>Calculate three coefficients of its global matrix: <em>K₁₁ = (EA/L)c²</em>, <em>K₁₂ = (EA/L)cs</em>, <em>K₂₂ = (EA/L)s²</em>.</li>
+          <li>Find the physical mass <em>ρAL</em> of each model.</li>
+        </ol>
+        <h3>Run in Octave</h3>
+        <p>Run from the project root. The supplied function prints the results; you do not need to edit its code for this exercise.</p>
+        <pre><code>addpath(pwd);
+setup;
+addpath(fullfile(pwd, "reference", "examples"));
+r = example_01_element_matrices();</code></pre>
+        <h3>Working with the results</h3>
+        <ol>
+          <li>Compare the length and direction cosines with the beginning of the output. In <code>Truss local stiffness</code> find the axial stiffness, and in <code>Truss global stiffness</code> find the three calculated coefficients. Explain the nonzero <em>K₁₂</em>.</li>
+          <li>Using the labels <code>Truss DOFs</code> and <code>Frame DOFs</code> label the matrix rows. In a frame element, the third and sixth components are rotations.</li>
+          <li>Examine rows 2 and 4 of the local truss stiffness and the diagonal of its mass matrix: why does zero transverse stiffness not imply zero mass?</li>
+          <li>Run the commands below to find the mass when both nodes undergo equal X translation. Compare with <em>ρAL</em>. Use the formulas to predict how mass and axial stiffness change if the length doubles while the direction stays the same.</li>
+        </ol>
+        <pre><code>tx = [1; 0; 1; 0];
+fx = [1; 0; 0; 1; 0; 0];
+disp(tx' * r.truss.mass * tx);
+disp(fx' * r.frame.mass * fx);</code></pre>
+        <div class="callout">
+          <span class="callout__title">Reference values</span>
+          <p><em>L = 5 m</em>, <em>c = 0,6</em>, <em>s = 0,8</em>. For the truss member, <em>EA/L = 4·10⁸ N/m</em>; <em>K₁₁ = 1,44·10⁸</em>, <em>K₁₂ = 1,92·10⁸</em>, <em>K₂₂ = 2.56·10⁸ N/m</em>. Masses: 392.5 kg and 785 kg. Doubling the length doubles the mass and halves the axial stiffness.</p>
+        </div>
+        <h3>What to include in the report</h3>
+        <p>Geometry calculations, a table of the three coefficients and two masses, and an explanation of X–Y coupling and the difference between transverse stiffness and mass.</p>
+      </section>
+
+      <section class="source-list" aria-labelledby="sources-title">
+        <h2 id="sources-title">Chapter source code</h2>
+        <ul>
+          <li><a href="../../src/model/createStructuralElement.m"><code>createStructuralElement.m</code></a> — formulas for both matrices and input checks;</li>
+          <li><a href="../../tests/test_element_matrices.m"><code>tests/test_element_matrices.m</code></a> — independent reference formulas and orientation checks;</li>
+          <li><a href="../examples/example_01_element_matrices.m"><code>example_01_element_matrices.m</code></a> — educational output of actual matrices.</li>
+        </ul>
+      </section>
+    </main>
+  </div>
+
+  <nav class="page-nav" aria-label="Chapter navigation">
+    <a href="01-model-dofs.html"><span class="page-nav__label">Previous</span>← 1. Model and degrees of freedom</a>
+    <a href="03-transformation-assembly.html"><span class="page-nav__label">Next</span>3. Transformation and assembly →</a>
+  </nav>
+
+  <footer class="site-footer">
+    <div class="site-footer__inner"><p>MKE-F · offline learning reference · chapter 2 of 15</p></div>
+  </footer>
+</body>
+</html>

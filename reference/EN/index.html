@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="An offline guide to the finite element implementation in MKE-F.">
+  <title>MKE-F — offline learning reference</title>
+  <link rel="stylesheet" href="../assets/reference.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="site-header__inner">
+      <nav class="language-switch" aria-label="Reference language"><a href="../RU/index.html" lang="ru" hreflang="ru">RU</a> <a href="../EN/index.html" lang="en" hreflang="en" aria-current="true">EN</a></nav>
+      <p class="eyebrow">Student FEM Reference · GNU Octave</p>
+      <p class="site-title">MKE-F: from element to system</p>
+      <p class="site-subtitle">An offline English reference showing how a mathematical model becomes matrices and calculations in a real program.</p>
+    </div>
+  </header>
+
+  <div class="layout">
+    <nav class="contents" aria-label="Reference contents">
+      <h2>Contents</h2>
+      <ol>
+        <li><a href="01-model-dofs.html">Model, nodes, elements and DOFs</a></li>
+        <li><a href="02-element-matrices.html">Element matrices</a></li>
+        <li><a href="03-transformation-assembly.html">Transformation and assembly</a></li>
+        <li><a href="04-boundary-loads.html">Boundary conditions and loads</a></li>
+        <li><a href="05-static-analysis.html">Static analysis</a></li>
+        <li><a href="06-modal-analysis.html">Modal analysis</a></li>
+        <li><a href="07-newmark-transient.html">Newmark transient analysis</a></li>
+        <li><a href="08-result-recovery.html">Element results</a></li>
+        <li><a href="09-architecture-verification.html">Architecture and verification</a></li>
+        <li><a href="10-input-format.html">Input file format</a></li>
+        <li><a href="11-mario-paz-modal-example.html">Mario Paz modal example</a></li>
+        <li><a href="12-local-octave-workflow.html">Local GNU Octave workflow</a></li>
+        <li><a href="13-fem-assembly-visualizer.html">Interactive FEM assembly</a></li>
+        <li><a href="14-mario-paz-matrices-visualizer.html">Interactive frame matrices</a></li>
+        <li><a href="15-sparse-matrix-assembly.html">Sparse matrix assembly</a></li>
+      </ol>
+      <h2>Appendix</h2>
+      <p><a href="project-operations.html">Running, configuring and verifying the project</a></p>
+    </nav>
+
+    <main class="chapter" id="main">
+      <span class="chapter-number">Home</span>
+      <h1>Read the theory, run the code</h1>
+      <p class="lead">This reference connects the main finite element ideas to MKE-F project functions. It works without internet access or Octave.</p>
+
+      <section aria-labelledby="route-title">
+        <h2 id="route-title">Learning route</h2>
+        <div class="chapter-grid">
+          <article class="card">
+            <h3><a href="01-model-dofs.html">1. Model and degrees of freedom</a></h3>
+            <p>Explore node and element data, truss versus frame behavior, and how a local component receives a global number.</p>
+          </article>
+          <article class="card">
+            <h3><a href="02-element-matrices.html">2. Element matrices</a></h3>
+            <p>Inspect local stiffness and consistent mass matrices, checking symmetry, rank and rigid-body motion.</p>
+          </article>
+          <article class="card">
+            <h3><a href="03-transformation-assembly.html">3. Transformation and assembly</a></h3>
+            <p>Rotate matrices into global axes and assemble sparse system matrices using the DOF map.</p>
+          </article>
+          <article class="card">
+            <h3><a href="04-boundary-loads.html">4. Boundary conditions and loads</a></h3>
+            <p>Separate free and constrained DOFs, match forces to displacements and construct four load histories.</p>
+          </article>
+          <article class="card">
+            <h3><a href="05-static-analysis.html">5. Static analysis</a></h3>
+            <p>Solve the reduced system, recover the full vector and reactions, and check global equilibrium.</p>
+          </article>
+          <article class="card">
+            <h3><a href="06-modal-analysis.html">6. Modal analysis</a></h3>
+            <p>Solve the generalized eigenvalue problem, expand the modes, and check residuals, scale and orthogonality.</p>
+          </article>
+          <article class="card">
+            <h3><a href="07-newmark-transient.html">7. Newmark transient analysis</a></h3>
+            <p>Build the time grid, calculate initial acceleration, and examine accuracy, energy and response spectrum.</p>
+          </article>
+          <article class="card">
+            <h3><a href="08-result-recovery.html">8. Element results</a></h3>
+            <p>Recover local displacements, stresses and forces; understand their signs and how they differ from support reactions.</p>
+          </article>
+          <article class="card">
+            <h3><a href="09-architecture-verification.html">9. Architecture and verification</a></h3>
+            <p>Follow the path from parser to result, exploring pure solvers, sparse assembly, project history and the regression-test map.</p>
+          </article>
+          <article class="card">
+            <h3><a href="10-input-format.html">10. Input file format</a></h3>
+            <p>Find precise rules for sections, units, elements, supports, loads, repeated blocks and diagnostics.</p>
+          </article>
+          <article class="card">
+            <h3><a href="11-mario-paz-modal-example.html">11. Mario Paz modal example</a></h3>
+            <p>Assemble stiffness and consistent mass for a two-element frame, then reproduce the published frequencies and mass-normalized modes.</p>
+          </article>
+          <article class="card">
+            <h3><a href="12-local-octave-workflow.html">12. Local GNU Octave workflow</a></h3>
+            <p>Run the core without Docker or a browser GUI, call the three pure solvers, and repeat the project’s smoke and verification tests.</p>
+          </article>
+          <article class="card">
+            <h3><a href="13-fem-assembly-visualizer.html">13. Interactive FEM assembly</a></h3>
+            <p>Follow three member matrices through assembly, sparse storage, support application, solution and reactions.</p>
+          </article>
+          <article class="card">
+            <h3><a href="14-mario-paz-matrices-visualizer.html">14. Interactive frame matrices</a></h3>
+            <p>Switch between frame stiffness and mass to inspect rotation, assembly, reduction and the Newmark effective matrix.</p>
+          </article>
+          <article class="card">
+            <h3><a href="15-sparse-matrix-assembly.html">15. Sparse matrix assembly</a></h3>
+            <p>Compare a dense square with the MKE-F triplet pipeline, follow <code>sparse()</code> and pass the reduced system to the Octave solver.</p>
+          </article>
+          <article class="card">
+            <h3><a href="project-operations.html">Appendix: project operations</a></h3>
+            <p>Start the container interface, configure limits, verify the stack and explore the repository structure.</p>
+          </article>
+          <article class="card">
+            <h3>Laboratory approach</h3>
+            <p>First inspect the diagram and make a hand prediction, then run the supplied function and explain its output. Each laboratory includes reference values and report requirements.</p>
+          </article>
+        </div>
+      </section>
+
+      <section aria-labelledby="start-title">
+        <h2 id="start-title">Quick start</h2>
+        <p>Open a terminal at the repository root, add the examples directory to the Octave path and run all laboratories:</p>
+        <pre><code>addpath(pwd);
+setup;
+addpath(fullfile(pwd, "reference", "examples"));
+results = run_reference_examples();</code></pre>
+
+        <div class="callout callout--inspect">
+          <span class="callout__title">Analysis through the GUI</span>
+          <p>To create or open a model, run an analysis and view the result immediately in the browser, execute from the repository root:</p>
+          <pre><code>docker compose up --build</code></pre>
+          <p>For the older standalone Compose command, use <code>docker-compose up --build</code>. Then open <a href="http://127.0.0.1:8080/preprocessor/">http://127.0.0.1:8080/preprocessor/</a>, prepare the model and click <strong>Run analysis</strong>. GNU Octave runs inside the container, and the resulting JSON opens automatically in the postprocessor.</p>
+        </div>
+
+        <div class="callout">
+          <span class="callout__title">How to run</span>
+          <p>These commands target GNU Octave. To check everything without printing matrices, use <code>run_reference_examples(false)</code>. Call an individual laboratory by name, for example <code>example_07_result_recovery()</code>.</p>
+        </div>
+        <div class="callout callout--inspect">
+          <span class="callout__title">How to work through the laboratories</span>
+          <p>Open an exercise below: the diagram, input data and tasks precede the reference values. Follow the labels in the Octave output; additional inspection and plotting commands are provided where needed. PASS confirms the example’s built-in checks; your report should explain the calculation and physical meaning of the results. Predict parameter changes from formulas; editing the supplied functions is unnecessary.</p>
+        </div>
+        <ol>
+          <li><a href="02-element-matrices.html#practice-title">Stiffness and mass of an inclined element</a></li>
+          <li><a href="03-transformation-assembly.html#practice-title">Assembling two members at a shared node</a></li>
+          <li><a href="05-static-analysis.html#practice-title">Axial member extension: displacement and support reaction</a></li>
+          <li><a href="04-boundary-loads.html#practice-title">Nodal loads: force sums and time histories</a></li>
+          <li><a href="06-modal-analysis.html#practice-title">Frequencies and modes of a beam with an intermediate support</a></li>
+          <li><a href="07-newmark-transient.html#practice-title">Free vibration: Newmark accuracy</a></li>
+          <li><a href="08-result-recovery.html#practice-title">From displacements to stresses and end forces</a></li>
+        </ol>
+      </section>
+
+      <section aria-labelledby="notation-title">
+        <h2 id="notation-title">Notation</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Symbol</th><th>Meaning</th><th>Typical SI units</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><strong>u</strong></td><td>vector of nodal displacements and rotations</td><td>m, rad</td></tr>
+              <tr><td><strong>K</strong></td><td>stiffness matrix</td><td>depend on the DOF pair</td></tr>
+              <tr><td><strong>M</strong></td><td>consistent mass matrix</td><td>depend on the DOF pair</td></tr>
+              <tr><td><em>A, E, ρ, I</em></td><td>area, Young’s modulus, density, second moment of area</td><td>m², Pa, kg/m³, m⁴</td></tr>
+              <tr><td><em>c, s</em></td><td>element direction cosines</td><td>dimensionless</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>The solver does not convert units: the user must choose a consistent system.</p>
+      </section>
+
+      <section class="source-list" aria-labelledby="sources-title">
+        <h2 id="sources-title">Code alongside the text</h2>
+        <ul>
+          <li><a href="../../src/model/createStructuralElement.m"><code>createStructuralElement.m</code></a> — element geometry, matrices and transformation;</li>
+          <li><a href="../../src/model/assembleGlobalMatrices.m"><code>assembleGlobalMatrices.m</code></a> — sparse assembly;</li>
+          <li><a href="../examples/example_01_element_matrices.m"><code>example_01_element_matrices.m</code></a> — matrix laboratory;</li>
+          <li><a href="../examples/example_02_sparse_assembly.m"><code>example_02_sparse_assembly.m</code></a> — assembly laboratory;</li>
+          <li><a href="../examples/example_03_static_bar.m"><code>example_03_static_bar.m</code></a> — statics laboratory;</li>
+          <li><a href="../examples/example_04_load_histories.m"><code>example_04_load_histories.m</code></a> — load laboratory;</li>
+          <li><a href="../examples/example_05_modal_frame.m"><code>example_05_modal_frame.m</code></a> — modal laboratory;</li>
+          <li><a href="../examples/example_06_newmark_sdof.m"><code>example_06_newmark_sdof.m</code></a> — Newmark laboratory;</li>
+          <li><a href="../examples/example_07_result_recovery.m"><code>example_07_result_recovery.m</code></a> — element-results laboratory;</li>
+          <li><a href="../examples/run_reference_examples.m"><code>run_reference_examples.m</code></a> — run every laboratory with one command.</li>
+        </ul>
+      </section>
+    </main>
+  </div>
+
+  <nav class="page-nav" aria-label="Chapter navigation">
+    <span><span class="page-nav__label">Previous</span>Reference home</span>
+    <a href="01-model-dofs.html"><span class="page-nav__label">Next</span>1. Model and degrees of freedom →</a>
+  </nav>
+
+  <footer class="site-footer">
+    <div class="site-footer__inner"><p>MKE-F · offline learning reference · all calculations run locally</p></div>
+  </footer>
+</body>
+</html>

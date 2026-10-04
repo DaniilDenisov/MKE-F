@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Модальный анализ в МКЭ-Ф: обобщённая задача на собственные значения, формы колебаний, масштабирование и невязки.">
+  <title>6. Модальный анализ — МКЭ-Ф</title>
+  <link rel="stylesheet" href="../assets/reference.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">К содержанию</a>
+  <header class="site-header">
+    <div class="site-header__inner">
+      <nav class="language-switch" aria-label="Язык справочника"><a href="../RU/06-modal-analysis.html" lang="ru" hreflang="ru" aria-current="true">RU</a> <a href="../EN/06-modal-analysis.html" lang="en" hreflang="en">EN</a></nav>
+      <p class="eyebrow">Student FEM Reference · Глава 6</p>
+      <p class="site-title">Модальный анализ</p>
+      <p class="site-subtitle">От свободных степеней свободы к собственным частотам, полным формам колебаний и проверяемым невязкам.</p>
+    </div>
+  </header>
+
+  <div class="layout">
+    <nav class="contents" aria-label="Оглавление справочника">
+      <h2>Оглавление</h2>
+      <ol>
+        <li><a href="01-model-dofs.html">Модель, узлы, элементы и СС</a></li>
+        <li><a href="02-element-matrices.html">Матрицы элементов</a></li>
+        <li><a href="03-transformation-assembly.html">Преобразование и сборка</a></li>
+        <li><a href="04-boundary-loads.html">Граничные условия и нагрузки</a></li>
+        <li><a href="05-static-analysis.html">Статический расчёт</a></li>
+        <li><a aria-current="page" href="06-modal-analysis.html">Модальный анализ</a></li>
+        <li><a href="07-newmark-transient.html">Переходный анализ Ньюмарка</a></li>
+        <li><a href="08-result-recovery.html">Результаты в элементах</a></li>
+        <li><a href="09-architecture-verification.html">Архитектура и проверка</a></li>
+        <li><a href="10-input-format.html">Формат входного файла</a></li>
+        <li><a href="11-mario-paz-modal-example.html">Модальный пример Mario Paz</a></li>
+        <li><a href="12-local-octave-workflow.html">Локальный запуск в GNU Octave</a></li>
+        <li><a href="13-fem-assembly-visualizer.html">Интерактивная сборка МКЭ</a></li>
+        <li><a href="14-mario-paz-matrices-visualizer.html">Интерактивные матрицы рамы</a></li>
+        <li><a href="15-sparse-matrix-assembly.html">Разреженная сборка матриц</a></li>
+      </ol>
+    </nav>
+
+    <main class="chapter" id="main">
+      <span class="chapter-number">Глава 6</span>
+      <h1>Собственные частоты и формы</h1>
+      <p class="lead">Свободные колебания линейной системы без демпфирования определяются жёсткостью, массой и опорами. Модальный расчёт не использует заданные узловые нагрузки: он ищет движения, которые система способна поддерживать после начального возмущения.</p>
+
+      <section aria-labelledby="problem-title">
+        <h2 id="problem-title">Обобщённая задача на собственные значения</h2>
+        <p>Для свободного движения без внешней силы:</p>
+        <p class="equation">M ü(t) + K u(t) = 0</p>
+        <p>Подстановка гармонической формы <strong>u</strong>(t) = <strong>φ</strong> sin(ωt) даёт:</p>
+        <p class="equation">K φ = λ M φ, &nbsp; λ = ω<sup>2</sup></p>
+        <p>Собственная круговая частота равна <em>ω = √λ</em>, а частота в герцах:</p>
+        <p class="equation">f = ω/(2π)</p>
+        <p>В <a href="../../src/analysis/modal/solveModal.m"><code>solveModal</code></a> пары вычисляются функцией <code>eig(Kff, Mff)</code>, затем сортируются по возрастанию λ.</p>
+      </section>
+
+      <section aria-labelledby="reduction-title">
+        <h2 id="reduction-title">Почему задача решается только на свободных СС</h2>
+        <p>Как и в статике, сначала строятся <code>fixedDOFs</code> и <code>freeDOFs</code>. Собственная задача формируется для редуцированных матриц:</p>
+        <p class="equation">K<sub>ff</sub> φ<sub>f</sub> = λ M<sub>ff</sub> φ<sub>f</sub></p>
+        <p>Если оставить закреплённые компоненты в полной задаче искусственным изменением строк, спектр будет зависеть от выбранного численного приёма наложения опор. Редукция сохраняет физические матрицы свободной подсистемы.</p>
+        <p><a href="../../src/analysis/common/validateReducedSystem.m"><code>validateReducedSystem</code></a> проверяет положительную определённость <strong>K<sub>ff</sub></strong> и <strong>M<sub>ff</sub></strong>. Механизм или безмассовая свободная СС останавливают расчёт до вызова <code>eig</code>.</p>
+      </section>
+
+      <section aria-labelledby="expand-title">
+        <h2 id="expand-title">Возврат к полной форме</h2>
+        <p>Каждый редуцированный собственный вектор расширяется до всех СС модели:</p>
+        <pre><code>modeShapes = zeros(numberOfDOFs, numberOfModes);
+modeShapes(freeDOFs, :) = reducedModeShapes;</code></pre>
+        <p>Поэтому строки закреплённых СС равны точно нулю, а номер строки снова совпадает с глобальным номером СС. Это важно для последующей визуализации и сравнения форм в узлах.</p>
+      </section>
+
+      <section aria-labelledby="scale-title">
+        <h2 id="scale-title">Масштаб и знак формы</h2>
+        <p>Если <strong>φ</strong> — собственный вектор, то <em>c</em><strong>φ</strong> при любом ненулевом <em>c</em> описывает ту же форму. Абсолютная амплитуда и знак результата <code>eig</code> не являются физическим перемещением.</p>
+        <p>Два полезных способа нормирования:</p>
+        <ul>
+          <li><strong>по массе:</strong> выбрать масштаб так, чтобы φ<sup>T</sup>Mφ = 1;</li>
+          <li><strong>для изображения:</strong> разделить компоненты на max|φ<sub>i</sub>| и при необходимости зафиксировать знак самой большой компоненты.</li>
+        </ul>
+        <p>Разные собственные формы симметричной системы ортогональны по массе и жёсткости:</p>
+        <p class="equation">φ<sub>i</sub><sup>T</sup>Mφ<sub>j</sub> = 0, &nbsp; φ<sub>i</sub><sup>T</sup>Kφ<sub>j</sub> = 0, &nbsp; i ≠ j</p>
+      </section>
+
+      <section aria-labelledby="viewer-title">
+        <h2 id="viewer-title">Анимация формы в постпроцессоре</h2>
+        <p>Модель и модальный результат можно сохранить в JSON и открыть в <a href="../../postprocessor/index.html">автономном постпроцессоре MKE-F</a> без локального сервера и подключения к интернету.</p>
+
+        <h3>1. Выполните расчёт и экспорт</h3>
+        <p>Откройте терминал в корневом каталоге проекта, запустите GNU Octave и выполните:</p>
+        <pre><code>addpath(pwd);
+setup;
+
+problem = StructFEProblem(fullfile( ...
+    'examples', 'cases', 'CaseBeam.txt'));
+model = problem.GetAnalysisModel();
+result = problem.RunModal();
+
+exportPostprocessorData(model, result, ...
+    fullfile('output', 'modal-frame.json'), ...
+    struct('title', 'Формы колебаний', ...
+           'lengthUnit', 'm', 'prettyPrint', true));</code></pre>
+        <div class="callout callout--inspect">
+          <span class="callout__title">Тот же расчёт через GUI</span>
+          <p>Из корня репозитория выполните <code>docker compose up --build</code> (либо <code>docker-compose up --build</code>) и откройте <a href="http://127.0.0.1:8080/preprocessor/">препроцессор</a>. Загрузите через <strong>Open TXT</strong> файл <code>examples/cases/CasePreprocessorModal.txt</code> и нажмите <strong>Run analysis</strong>. Рассчитанные формы автоматически откроются в постпроцессоре, где их можно анимировать и скачать как JSON.</p>
+        </div>
+        <p>После выполнения файл <code>modal-frame.json</code> появится в каталоге <code>output</code>. В терминале также можно проверить найденные частоты командой <code>result.frequenciesHz</code>.</p>
+
+        <h3>2. Откройте результат</h3>
+        <ol>
+          <li>Откройте <a href="../../postprocessor/index.html"><code>postprocessor/index.html</code></a> в Chrome, Edge или Firefox.</li>
+          <li>Нажмите <strong>Open JSON</strong> и выберите созданный файл <code>output/modal-frame.json</code>. Его также можно перетащить в пунктирную область окна. Готовый пример находится в <a href="../../examples/results/modal-frame.json"><code>examples/results/modal-frame.json</code></a>.</li>
+          <li>В списке <strong>Mode</strong> выберите форму. Рядом будут показаны её частота <em>f</em> в Гц и круговая частота <em>ω</em> в рад/с.</li>
+          <li>Нажмите <strong>Play</strong>, чтобы запустить анимацию. Кнопки <strong>−1</strong> и <strong>+1</strong> переходят к соседним формам, <strong>Visualization speed</strong> меняет скорость показа.</li>
+          <li>Перемещайте <strong>Phase factor</strong> от −1 до +1 для ручного просмотра отрицательного пика, недеформированной геометрии и положительного пика. Поле <strong>Display multiplier</strong> изменяет только видимый масштаб формы.</li>
+          <li>Щёлкните узел или элемент: в панели <strong>Selection</strong> появятся нормированные компоненты выбранной формы и их значения в текущей фазе.</li>
+          <li>Нажмите <strong>Export SVG</strong> или <strong>Export PNG</strong>, чтобы сохранить именно текущий кадр вместе с номером формы, частотой, фазой и масштабом.</li>
+        </ol>
+
+        <p>Просмотрщик согласует произвольный знак каждой формы и нормирует её только для изображения. Множитель изображения изменяет видимую амплитуду, но не численные собственные частоты.</p>
+        <div class="callout callout--warning">
+          <span class="callout__title">Не физическое время и не перемещение</span>
+          <p>Двухсекундный цикл и переключатель скорости выбраны для удобства просмотра и не воспроизводят частоту <em>f</em>. Нормированные компоненты формы имеют произвольную амплитуду, поэтому их нельзя читать как перемещения в метрах. Истинные <em>f</em> и <em>ω</em> всегда показаны отдельно.</p>
+        </div>
+        <p>Экспорт SVG или PNG фиксирует текущую видимую фазу. Под изображением записываются номер формы, <em>f</em>, <em>ω</em>, фазовый множитель и масштабы, поэтому сохранённый кадр остаётся однозначным вне приложения.</p>
+      </section>
+
+      <section aria-labelledby="residual-title">
+        <h2 id="residual-title">Невязка формы</h2>
+        <p>Частота сама по себе не проверяет соответствующий вектор. Для каждой пары вычисляют:</p>
+        <p class="equation">r<sub>i</sub> = K<sub>ff</sub>φ<sub>i</sub> − λ<sub>i</sub>M<sub>ff</sub>φ<sub>i</sub></p>
+        <p>Удобна относительная норма, делённая на характерный размер двух слагаемых. Она не зависит от произвольного масштаба формы. Проверять полную строку закреплённой СС этой формулой нельзя: там возникают силы связей, аналогичные статическим реакциям.</p>
+      </section>
+
+      <section aria-labelledby="practice-title">
+        <h2 id="practice-title">Лабораторная 05. Частоты и формы колебаний балки с промежуточной опорой</h2>
+        <p>Цель — связать свободные СС с компонентами собственных форм и проверить частоты через модальную жёсткость и массу.</p>
+        <figure class="model-figure lab-figure">
+          <img src="assets/lab-modal-beam.svg" alt="Балка длиной 2 м, заделка слева, шарнирная неподвижная опора в середине, свободный конец справа.">
+          <figcaption>Два рамных элемента 113 из CaseBeam.txt. Балка непрерывна в узле 2: опора допускает поворот, внутренний шарнир в балку не вводится.</figcaption>
+        </figure>
+        <h3>Исходные данные и обозначения</h3>
+        <p>Каждый пролёт имеет длину 1 м. <em>A = 4·10⁻⁴ м²</em>, <em>E = 200 ГПа</em>, <em>ρ = 7800 кг/м³</em>, <em>I = 5,33·10⁻⁸ м⁴</em>. Порядок полных компонент: <code>[u₁x; u₁y; θ₁; u₂x; u₂y; θ₂; u₃x; u₃y; θ₃]</code>. В модальном расчёте внешняя сила из входного файла не используется.</p>
+        <h3>До запуска: расчёт на бумаге</h3>
+        <ol>
+          <li>По опорам на схеме выпишите закреплённые и свободные СС. Определите число искомых частот.</li>
+          <li>Из <em>Kφ = ω²Mφ</em> выведите, как изменятся частоты при удвоении всей массы с прежней жёсткостью.</li>
+        </ol>
+        <h3>Запуск в Octave</h3>
+        <p>Выполните из корня проекта. Готовая функция печатает результаты; для этой работы изменять её код не требуется.</p>
+        <pre><code>addpath(pwd);
+setup;
+addpath(fullfile(pwd, "reference", "examples"));
+r = example_05_modal_frame();</code></pre>
+        <h3>Работа с результатами</h3>
+        <ol>
+          <li>Сверьте <code>Fixed DOFs</code> и <code>Free DOFs</code> со своей нумерацией. В <code>Full modes scaled to max(abs(component)) = 1</code> каждый столбец — отдельная форма; подпишите четыре незакреплённые строки физическими компонентами.</li>
+          <li>Для каждой частоты из <code>Natural frequencies [Hz]</code> вычислите <em>(2πf)²</em>. Сравните с соответствующим диагональным числом <code>Phi' * Kff * Phi after mass normalization</code>.</li>
+          <li>Проверьте, что <code>Phi' * Mff * Phi after mass normalization</code> близка к единичной матрице. Объясните смысл единиц на диагонали и малых внедиагональных значений.</li>
+          <li>По строкам 6–9 напечатанных форм определите, какая форма соответствует продольному движению, а какие — изгибу. Для одной изгибной формы набросайте направление перемещения свободного конца и поворотов. Масштаб и общий знак формы произвольны; её числа не задают амплитуду вынужденного движения.</li>
+        </ol>
+
+        <div class="callout">
+          <span class="callout__title">Контрольные значения</span>
+          <p>Закреплены СС 1–5; свободны <code>[6 7 8 9] = [θ₂ u₃x u₃y θ₃]</code>, поэтому частот четыре: примерно 23,019; 173,115; 438,199; 1395,881 Гц. Первые три формы изгибные, четвёртая — продольная. Модальная масса — единичная, модальная жёсткость — диагональная с числами <em>(2πf)²</em>. Напечатанная максимальная относительная невязка меньше 10⁻¹⁰. При удвоении массы все частоты делятся на √2.</p>
+        </div>
+        <h3>Что включить в отчёт</h3>
+        <p>Схему и список СС, таблицу «номер формы — f — (2πf)² — модальная жёсткость — характер движения», эскиз одной формы и прогноз влияния массы.</p>
+      </section>
+
+      <section class="source-list" aria-labelledby="sources-title">
+        <h2 id="sources-title">Исходный код главы</h2>
+        <ul>
+          <li><a href="../../src/analysis/modal/solveModal.m"><code>solveModal.m</code></a> — редуцированная собственная задача и расширение форм;</li>
+          <li><a href="../../postprocessor/js/modal-view.js"><code>postprocessor/js/modal-view.js</code></a> — нормирование, знак, масштаб и фаза изображения;</li>
+          <li><a href="../../src/analysis/common/validateReducedSystem.m"><code>validateReducedSystem.m</code></a> — проверка жёсткости и массы;</li>
+          <li><a href="../examples/example_05_modal_frame.m"><code>example_05_modal_frame.m</code></a> — невязки, нормирование и ортогональность.</li>
+        </ul>
+        <h3>Теория</h3>
+        <ul>
+          <li>Henri P. Gavin, <a href="https://people.duke.edu/~hpgavin/StructuralDynamics/RealModes.pdf"><cite>Real Modes of Vibration of Building Structures</cite></a>, Duke University, редакция 16 сентября 2025 года: раздел 2, формулы (2)–(5).</li>
+        </ul>
+      </section>
+    </main>
+  </div>
+
+  <nav class="page-nav" aria-label="Навигация между главами">
+    <a href="05-static-analysis.html"><span class="page-nav__label">Назад</span>← 5. Статический расчёт</a>
+    <a href="07-newmark-transient.html"><span class="page-nav__label">Далее</span>7. Переходный анализ Ньюмарка →</a>
+  </nav>
+
+  <footer class="site-footer">
+    <div class="site-footer__inner"><p>МКЭ-Ф · автономный учебный справочник · глава 6 из 15</p></div>
+  </footer>
+</body>
+</html>

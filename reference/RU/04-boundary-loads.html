@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Граничные условия и узловые нагрузки в МКЭ-Ф: свободные и закреплённые СС, статические и временные нагрузки.">
+  <title>4. Граничные условия и нагрузки — МКЭ-Ф</title>
+  <link rel="stylesheet" href="../assets/reference.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">К содержанию</a>
+  <header class="site-header">
+    <div class="site-header__inner">
+      <nav class="language-switch" aria-label="Язык справочника"><a href="../RU/04-boundary-loads.html" lang="ru" hreflang="ru" aria-current="true">RU</a> <a href="../EN/04-boundary-loads.html" lang="en" hreflang="en">EN</a></nav>
+      <p class="eyebrow">Student FEM Reference · Глава 4</p>
+      <p class="site-title">Опоры и узловые нагрузки</p>
+      <p class="site-subtitle">Какие компоненты исключаются из системы и как заданная нагрузка превращается в вектор или историю по времени.</p>
+    </div>
+  </header>
+
+  <div class="layout">
+    <nav class="contents" aria-label="Оглавление справочника">
+      <h2>Оглавление</h2>
+      <ol>
+        <li><a href="01-model-dofs.html">Модель, узлы, элементы и СС</a></li>
+        <li><a href="02-element-matrices.html">Матрицы элементов</a></li>
+        <li><a href="03-transformation-assembly.html">Преобразование и сборка</a></li>
+        <li><a aria-current="page" href="04-boundary-loads.html">Граничные условия и нагрузки</a></li>
+        <li><a href="05-static-analysis.html">Статический расчёт</a></li>
+        <li><a href="06-modal-analysis.html">Модальный анализ</a></li>
+        <li><a href="07-newmark-transient.html">Переходный анализ Ньюмарка</a></li>
+        <li><a href="08-result-recovery.html">Результаты в элементах</a></li>
+        <li><a href="09-architecture-verification.html">Архитектура и проверка</a></li>
+        <li><a href="10-input-format.html">Формат входного файла</a></li>
+        <li><a href="11-mario-paz-modal-example.html">Модальный пример Mario Paz</a></li>
+        <li><a href="12-local-octave-workflow.html">Локальный запуск в GNU Octave</a></li>
+        <li><a href="13-fem-assembly-visualizer.html">Интерактивная сборка МКЭ</a></li>
+        <li><a href="14-mario-paz-matrices-visualizer.html">Интерактивные матрицы рамы</a></li>
+        <li><a href="15-sparse-matrix-assembly.html">Разреженная сборка матриц</a></li>
+      </ol>
+    </nav>
+
+    <main class="chapter" id="main">
+      <span class="chapter-number">Глава 4</span>
+      <h1>Граничные условия и узловые нагрузки</h1>
+      <p class="lead">Опора задаёт, какие узловые движения запрещены, а нагрузка — какие обобщённые силы приложены к разрешённым компонентам. В МКЭ‑Ф эти данные не изменяют исходные матрицы: для каждого расчёта заново строятся индексы СС и вектор нагрузки.</p>
+
+      <section aria-labelledby="partition-title">
+        <h2 id="partition-title">Свободные и закреплённые СС</h2>
+        <p>Функция <a href="../../src/analysis/common/partitionDOFs.m"><code>partitionDOFs</code></a> преобразует записи опор в два непересекающихся списка:</p>
+        <ul>
+          <li><code>fixedDOFs</code> — СС с заданным нулевым перемещением;</li>
+          <li><code>freeDOFs</code> — неизвестные, которые войдут в редуцированную систему.</li>
+        </ul>
+        <p class="equation">fixedDOFs ∪ freeDOFs = {1, …, n}, &nbsp; fixedDOFs ∩ freeDOFs = ∅</p>
+        <p>Матрицы <strong>K</strong> и <strong>M</strong> при этом остаются полными и неизменными. Такое разделение сохраняет физический смысл исходной модели и позволяет корректно вычислить реакции.</p>
+      </section>
+
+      <section aria-labelledby="supports-title">
+        <h2 id="supports-title">Типы опор</h2>
+        <p>Запись имеет вид <code>type,node,0,0,0</code>. Ненулевые заданные перемещения пока не поддерживаются.</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Тип</th><th>Свободно</th><th>Закреплено</th><th>Физическая интерпретация</th></tr></thead>
+            <tbody>
+              <tr><td><code>1</code></td><td>ничего</td><td>все СС узла</td><td>полное закрепление узла</td></tr>
+              <tr><td><code>2</code></td><td>только <em>u<sub>x</sub></em></td><td><em>u<sub>y</sub></em> и рамный <em>θ<sub>z</sub></em></td><td>свободно только горизонтальное перемещение; поворот запрещён</td></tr>
+              <tr><td><code>3</code></td><td>только <em>u<sub>y</sub></em></td><td><em>u<sub>x</sub></em> и рамный <em>θ<sub>z</sub></em></td><td>свободно только вертикальное перемещение; поворот запрещён</td></tr>
+              <tr><td><code>4</code></td><td><em>θ<sub>z</sub></em> у рамы</td><td><em>u<sub>x</sub>, u<sub>y</sub></em></td><td>шарнирное закрепление рамного узла</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>У ферменного узла нет <em>θ<sub>z</sub></em>, поэтому тип 4 совпадает с полным закреплением. Повторное закрепление одной СС считается ошибкой: оно обычно указывает на дублирующую или неверно составленную запись, а не на «более жёсткую» опору.</p>
+      </section>
+
+      <section aria-labelledby="conjugate-title">
+        <h2 id="conjugate-title">Сопряжённые перемещения и силы</h2>
+        <p>Каждой узловой СС соответствует обобщённая сила, совершающая на ней работу:</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Модель</th><th>Степени свободы</th><th>Компоненты нагрузки</th></tr></thead>
+            <tbody>
+              <tr><td>ферма 112</td><td>[u<sub>x</sub>, u<sub>y</sub>]</td><td>[F<sub>x</sub>, F<sub>y</sub>]</td></tr>
+              <tr><td>рама 113</td><td>[u<sub>x</sub>, u<sub>y</sub>, θ<sub>z</sub>]</td><td>[F<sub>x</sub>, F<sub>y</sub>, M<sub>z</sub>]</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p><strong>M<sub>z</sub></strong> — момент вокруг оси Z, сопряжённый повороту <em>θ<sub>z</sub></em>. Это не сила <strong>F<sub>z</sub></strong>: пространственного перемещения <em>u<sub>z</sub></em> в плоской модели нет. Поэтому ненулевой <strong>M<sub>z</sub></strong> у ферменного узла отклоняется, а не игнорируется.</p>
+      </section>
+
+      <section aria-labelledby="loads-title">
+        <h2 id="loads-title">Четыре истории нагрузки</h2>
+        <p>Столбцы временной истории соответствуют <em>t = 0, Δt, …, NΔt</em>. Если несколько записей действуют на одну СС, их значения суммируются.</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Секция / тип</th><th>Значение</th><th>Допустимый расчёт</th></tr></thead>
+            <tbody>
+              <tr><td><code>bcforce_stat</code> / 10</td><td>постоянный вектор в статике; в динамике — совместимый одношаговый импульс при <em>t = Δt</em></td><td>статический и переходный</td></tr>
+              <tr><td><code>bcforce_harm</code> / 11</td><td><strong>F</strong>(t) = <strong>F</strong><sub>0</sub> sin(2πft)</td><td>переходный</td></tr>
+              <tr><td><code>bcforce_pulse</code> / 12</td><td><strong>F</strong><sub>0</sub> только при <em>t = Δt</em></td><td>переходный</td></tr>
+              <tr><td><code>bcforce_step</code> / 13</td><td><strong>F</strong><sub>0</sub> во всех столбцах, включая <em>t = 0</em></td><td>переходный</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Для одношагового прямоугольного импульса дискретный импульс равен <strong>F</strong><sub>0</sub>Δt. Поэтому изменение шага времени при неизменной амплитуде меняет переданный импульс.</p>
+        <pre><code>% Пять столбцов: t = [0, dt, 2dt, 3dt, 4dt]
+pulse = [0, F0, 0,  0, 0];
+step  = [F0, F0, F0, F0, F0];</code></pre>
+      </section>
+
+      <section aria-labelledby="practice-title">
+        <h2 id="practice-title">Лабораторная 04. Узловые нагрузки: сумма сил и история во времени</h2>
+        <p>Цель — восстановить по таблице, какая сила действует в каждый момент времени, и различить статическую нагрузку, одношаговый импульс и ступень.</p>
+        <figure class="model-figure lab-figure">
+          <img src="assets/lab-nodal-loads.svg" alt="Нагрузка на узел 2: 10 Н вправо, 20 Н вниз и момент 3 Н·м против часовой стрелки.">
+          <figcaption>На схеме показаны амплитуды временных нагрузок. Здесь формируются векторы нагрузок; перемещения не вычисляются, опоры не заданы.</figcaption>
+        </figure>
+        <h3>Исходные данные и обозначения</h3>
+        <p>Порядок СС: <code>[u₁x; u₁y; θ₁; u₂x; u₂y; θ₂]</code>. Временные амплитуды узла 2: <code>[10; −20; 3]</code> (Н, Н, Н·м); частота гармоники 1 Гц. Сетка: <em>t = [0; 0,25; 0,5; 0,75; 1] с</em>. В отдельном статическом случае складываются нагрузки <code>[10; −20; 3]</code> и <code>[5; 2; −1]</code>.</p>
+        <h3>До запуска: расчёт на бумаге</h3>
+        <ol>
+          <li>Найдите три компоненты суммарной статической нагрузки узла 2.</li>
+          <li>Составьте таблицу <em>Fₓ(t)</em> для трёх случаев: импульс действует только при <em>t = Δt</em>, ступень — с <em>t = 0</em>, гармоника задаётся как <em>10·sin(2πt)</em>.</li>
+          <li>Найдите дискретный импульс каждой компоненты <em>F₀Δt</em>; единица для момента — Н·м·с.</li>
+        </ol>
+        <h3>Запуск в Octave</h3>
+        <p>Выполните из корня проекта. Готовая функция печатает результаты; для этой работы изменять её код не требуется.</p>
+        <pre><code>addpath(pwd);
+setup;
+addpath(fullfile(pwd, "reference", "examples"));
+r = example_04_load_histories();</code></pre>
+        <h3>Работа с результатами</h3>
+        <ol>
+          <li>Сверьте статическую сумму с последними тремя строками <code>Summed static load vector</code>. Первые три строки относятся к ненагруженному узлу 1.</li>
+          <li>Подпишите пять столбцов трёх напечатанных временных таблиц значениями из <code>Time grid [s]</code>. В этих таблицах показаны только СС 4–6: первая строка — Fₓ, вторая — Fᵧ, третья — M_z.</li>
+          <li>Сверьте первую строку каждой таблицы со своим прогнозом. Восстановите две остальные строки умножением той же временной функции на −20 и 3. Малые числа около нуля у гармоники объясняются округлением.</li>
+          <li>Сверьте <code>Discrete pulse impulse components F0*dt</code> со своим расчётом. Предскажите импульс при уменьшении Δt вдвое с той же амплитудой; определите, как изменить амплитуду, чтобы сохранить импульс.</li>
+        </ol>
+
+        <div class="callout">
+          <span class="callout__title">Контрольные значения</span>
+          <p>Статическая сумма: <code>[15; −18; 2]</code>. Для Fₓ строки равны <code>[0 10 0 0 0]</code>, <code>[10 10 10 10 10]</code> и <code>[0 10 0 −10 0]</code>. Импульс: <code>[2,5; −5; 0,75]</code> (Н·с, Н·с, Н·м·с). При половинном шаге с той же амплитудой он уменьшается вдвое; для сохранения нужна двойная амплитуда.</p>
+        </div>
+        <h3>Что включить в отчёт</h3>
+        <p>Сумму статических нагрузок, таблицу или эскиз трёх историй Fₓ(t), единицы импульса и объяснение влияния шага времени.</p>
+      </section>
+
+      <section class="source-list" aria-labelledby="sources-title">
+        <h2 id="sources-title">Исходный код главы</h2>
+        <ul>
+          <li><a href="../../src/analysis/common/partitionDOFs.m"><code>partitionDOFs.m</code></a> — проверка опор и разбиение СС;</li>
+          <li><a href="../../src/analysis/common/getNodalLoadComponents.m"><code>getNodalLoadComponents.m</code></a> — соответствие нагрузок узловым СС;</li>
+          <li><a href="../../src/analysis/static/buildStaticLoad.m"><code>buildStaticLoad.m</code></a> — свежий статический вектор;</li>
+          <li><a href="../../src/analysis/transient/buildTransientLoad.m"><code>buildTransientLoad.m</code></a> — временные истории;</li>
+          <li><a href="../examples/example_04_load_histories.m"><code>example_04_load_histories.m</code></a> — исполняемая лабораторная.</li>
+        </ul>
+      </section>
+      <section><h2>Статические равномерные нагрузки</h2><p>Секция <code>eload_uniform</code> задаёт погонные qx/qy в локальной или глобальной системе только для рам 113. Полный вектор F складывается из узловых и согласованных элементных вкладов. Для локальной нагрузки fe=[qxL/2, qyL/2, qyL²/12, qxL/2, qyL/2, −qyL²/12]ᵀ, а глобальный вклад равен Tᵀfe. Подробности и правила редактора — в <a href="10-input-format.html#element-loads-title">формате входных данных</a>.</p></section>
+    </main>
+  </div>
+
+  <nav class="page-nav" aria-label="Навигация между главами">
+    <a href="03-transformation-assembly.html"><span class="page-nav__label">Назад</span>← 3. Преобразование и сборка</a>
+    <a href="05-static-analysis.html"><span class="page-nav__label">Далее</span>5. Статический расчёт →</a>
+  </nav>
+
+  <footer class="site-footer">
+    <div class="site-footer__inner"><p>МКЭ-Ф · автономный учебный справочник · глава 4 из 15</p></div>
+  </footer>
+</body>
+</html>

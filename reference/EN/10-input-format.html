@@ -1,0 +1,394 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Complete MKE-F input format: nodes, elements, supports and loads.">
+  <title>10. Input file format — MKE-F</title>
+  <link rel="stylesheet" href="../assets/reference.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="site-header__inner">
+      <nav class="language-switch" aria-label="Reference language"><a href="../RU/10-input-format.html" lang="ru" hreflang="ru">RU</a> <a href="../EN/10-input-format.html" lang="en" hreflang="en" aria-current="true">EN</a></nav>
+      <p class="eyebrow">Student FEM Reference · Chapter 10</p>
+      <p class="site-title">Input file format</p>
+      <p class="site-subtitle">A precise reference for sections, units, element types, supports, loads and parser messages.</p>
+    </div>
+  </header>
+
+  <div class="layout">
+    <nav class="contents" aria-label="Reference contents">
+      <h2>Contents</h2>
+      <ol>
+        <li><a href="01-model-dofs.html">Model, nodes, elements and DOFs</a></li>
+        <li><a href="02-element-matrices.html">Element matrices</a></li>
+        <li><a href="03-transformation-assembly.html">Transformation and assembly</a></li>
+        <li><a href="04-boundary-loads.html">Boundary conditions and loads</a></li>
+        <li><a href="05-static-analysis.html">Static analysis</a></li>
+        <li><a href="06-modal-analysis.html">Modal analysis</a></li>
+        <li><a href="07-newmark-transient.html">Newmark transient analysis</a></li>
+        <li><a href="08-result-recovery.html">Element results</a></li>
+        <li><a href="09-architecture-verification.html">Architecture and verification</a></li>
+        <li><a aria-current="page" href="10-input-format.html">Input file format</a></li>
+        <li><a href="11-mario-paz-modal-example.html">Mario Paz modal example</a></li>
+        <li><a href="12-local-octave-workflow.html">Local GNU Octave workflow</a></li>
+        <li><a href="13-fem-assembly-visualizer.html">Interactive FEM assembly</a></li>
+        <li><a href="14-mario-paz-matrices-visualizer.html">Interactive frame matrices</a></li>
+        <li><a href="15-sparse-matrix-assembly.html">Sparse matrix assembly</a></li>
+      </ol>
+    </nav>
+
+    <main class="chapter" id="main">
+      <span class="chapter-number">Chapter 10</span>
+      <h1>MKE-F input file</h1>
+      <p class="lead">The file is a sequence of named text sections. This chapter fully replaces the former root-level guide and matches the current parser <a href="../../src/model/FEMesh.m"><code>FEMesh</code></a>.</p>
+
+      <section aria-labelledby="scope-title">
+        <h2 id="scope-title">1. Applicability</h2>
+        <p>The program solves linear small-displacement problems in the global plane <em>X–Y</em>:</p>
+        <ul>
+          <li>plane trusses made of type 112 members;</li>
+          <li>plane Euler–Bernoulli frames made of type 113 elements;</li>
+          <li>static, modal and undamped transient analyses.</li>
+        </ul>
+        <div class="callout callout--warning">
+          <span class="callout__title">Model limitations</span>
+          <p>Types 112 and 113 cannot be mixed in one file because their nodes have different DOF counts. Static uniform loads on type 113 frames are supported. Other element loads, nonzero prescribed displacements, plasticity, geometric nonlinearity, damping and frame shear deformation are not implemented.</p>
+        </div>
+      </section>
+
+      <section aria-labelledby="units-title">
+        <h2 id="units-title">2. Units</h2>
+        <p>The solver does not convert units. All quantities must form one consistent system; SI is recommended.</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Quantity</th><th>Field</th><th>Recommended unit</th></tr></thead>
+            <tbody>
+              <tr><td>Coordinates and translational displacements</td><td><code>X, Y, Z</code>, <code>ux, uy</code></td><td>m</td></tr>
+              <tr><td>Area</td><td><code>A</code></td><td>m²</td></tr>
+              <tr><td>Young’s modulus and stress</td><td><code>E</code>, <code>axialStress</code></td><td>Pa</td></tr>
+              <tr><td>Density</td><td><code>rho</code></td><td>kg/m³</td></tr>
+              <tr><td>Second moment of area</td><td><code>I</code></td><td>m⁴</td></tr>
+              <tr><td>Forces</td><td><code>Fx, Fy</code></td><td>N</td></tr>
+              <tr><td>Moment</td><td><code>Mz</code></td><td>N·m</td></tr>
+              <tr><td>Time and frequency</td><td><code>time</code>, <code>frequencyHz</code></td><td>s, Hz</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Coordinate <code>Z</code> is read for format compatibility, but analysis remains two-dimensional. Components <code>uz</code> and <code>Fz</code> do not exist; the third frame-node DOF is rotation <code>thetaZ</code>, with work-conjugate load moment <code>Mz</code>.</p>
+      </section>
+
+      <section aria-labelledby="syntax-title">
+        <h2 id="syntax-title">3. General syntax rules</h2>
+        <p>The parser reads to EOF. Blank lines and lines whose first non-whitespace character is <code>#</code> are skipped. A normal section marker is followed by an integer record count and exactly that many nonempty data lines. The optional section <code>analysis</code> is an exception and contains a single configuration record.</p>
+        <pre><code>section_marker
+record_count
+comma,separated,record
+...</code></pre>
+        <p>Recommended order: <code>analysis</code>, <code>nodes</code>, then <code>elems_112</code> or <code>elems_113</code>, then <code>bcfix</code> and load sections. Nodes must precede elements; elements must precede supports and loads.</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Section</th><th>Repeatable</th><th>Rule</th></tr></thead>
+            <tbody>
+              <tr><td><code>analysis</code></td><td>No</td><td>Optional configuration for <code>RunSelected</code>.</td></tr>
+              <tr><td><code>nodes</code></td><td>No</td><td>Exactly one nonempty section.</td></tr>
+              <tr><td><code>elems_112</code> or <code>elems_113</code></td><td>Yes</td><td>Records are appended; the type must be identical across all sections.</td></tr>
+              <tr><td><code>bcfix</code></td><td>Yes</td><td>Records are appended; zero records are allowed.</td></tr>
+              <tr><td>Any <code>bcforce_*</code></td><td>Yes</td><td>Records from all sections are appended and summed when constructing the load.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Fields within a record are comma-separated; surrounding spaces are allowed. Field counts are checked strictly. Numbers must be finite, and IDs and counts must be integers where required.</p>
+      </section>
+
+      <section aria-labelledby="analysis-title">
+        <h2 id="analysis-title">3.1. Analysis configuration</h2>
+        <pre><code>analysis
+static</code></pre>
+        <pre><code>analysis
+modal</code></pre>
+        <pre><code>analysis
+transient,timeStep,duration,monitorNode,monitorDOF</code></pre>
+        <p>This section is optional for backward compatibility and may appear only once. For transient analysis, the step must be positive, duration must span at least one step, and the monitoring node and local DOF must be within model bounds. <code>RunSelected</code> runs the specified analysis; without the section, use the original explicit methods.</p>
+        <p>Static analysis allows type 10 nodal loads and type 20 uniform element loads; modal analysis allows no loads; transient analysis allows types 10–13. Type 10 retains its historical single-step pulse meaning in transient analysis.</p>
+      </section>
+
+      <section aria-labelledby="nodes-title">
+        <h2 id="nodes-title">4. Nodes</h2>
+        <pre><code>nodes
+&lt;node count&gt;
+X,Y,Z
+...</code></pre>
+        <p>Numbers are assigned by row order: the first record is node 1, the second is node 2. Each row contains exactly three finite numbers. Node numbers are not supplied separately.</p>
+      </section>
+
+      <section aria-labelledby="elements-title">
+        <h2 id="elements-title">5. Elements</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Type</th><th>Section and record</th><th>Nodal DOFs</th><th>Model</th></tr></thead>
+            <tbody>
+              <tr><td>112</td><td><code>elems_112</code><br><code>112,node1,node2,A,E,rho</code></td><td><code>[ux,uy]</code></td><td>Plane truss member, axial force only.</td></tr>
+              <tr><td>113</td><td><code>elems_113</code><br><code>113,node1,node2,A,E,rho,I</code></td><td><code>[ux,uy,thetaZ]</code></td><td>Plane Euler–Bernoulli frame, consistent mass.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p><code>node1</code> and <code>node2</code> are distinct integer IDs of existing nodes. <code>A</code>, <code>E</code>, <code>rho</code>, and for type 113 also <code>I</code> must be positive finite numbers. Coincident end coordinates are also rejected as zero length.</p>
+        <div class="callout callout--warning">
+          <span class="callout__title">Mixed mesh</span>
+          <p>The first element type determines the DOF count per node. Encountering a different type stops parsing with error <code>MKEF:UnsupportedMixedMesh</code>; truss and frame nodes are not automatically reconciled.</p>
+        </div>
+      </section>
+
+      <section aria-labelledby="supports-title">
+        <h2 id="supports-title">6. Supports</h2>
+        <pre><code>bcfix
+&lt;record count&gt;
+type,node,0,0,0</code></pre>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th><code>type</code></th><th>Free</th><th>Constrained</th></tr></thead>
+            <tbody>
+              <tr><td>1</td><td>—</td><td>All nodal DOFs</td></tr>
+              <tr><td>2</td><td>Only <code>ux</code></td><td><code>uy</code> and <code>thetaZ</code> for a frame</td></tr>
+              <tr><td>3</td><td>Only <code>uy</code></td><td><code>ux</code> and <code>thetaZ</code> for a frame</td></tr>
+              <tr><td>4</td><td><code>thetaZ</code> for a frame</td><td><code>ux, uy</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>For a truss node, type 4 equals full restraint because there is no rotational DOF. The last three fields are reserved and must be zero: nonzero prescribed displacements are unsupported. If two records constrain the same global DOF, <code>partitionDOFs</code> reports <code>MKEF:DuplicateConstraint</code>.</p>
+      </section>
+
+      <section aria-labelledby="loads-title">
+        <h2 id="loads-title">7. Nodal loads</h2>
+        <p>A truss uses <code>[Fx,Fy]</code>, while a frame uses <code>[Fx,Fy,Mz]</code>. The field <code>Mz</code> is still present in a truss record and must be zero.</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Section / type</th><th>Record</th><th><code>RunStatic</code></th><th><code>RunTransient</code></th></tr></thead>
+            <tbody>
+              <tr><td><code>bcforce_stat</code> / 10</td><td><code>10,node,Fx,Fy,Mz</code></td><td>Constant static load.</td><td>Backward-compatible rectangular pulse only at <em>t=dt</em>; discrete impulse <em>F0·dt</em>.</td></tr>
+              <tr><td><code>bcforce_harm</code> / 11</td><td><code>11,node,Fx,Fy,Mz,frequencyHz</code></td><td>Not supported.</td><td><em>F(t)=F0·sin(2πft)</em>; <em>f</em> must be strictly positive.</td></tr>
+              <tr><td><code>bcforce_pulse</code> / 12</td><td><code>12,node,Fx,Fy,Mz</code></td><td>Not supported.</td><td>Explicit single-step pulse at <em>t=dt</em>.</td></tr>
+              <tr><td><code>bcforce_step</code> / 13</td><td><code>13,node,Fx,Fy,Mz</code></td><td>Not supported.</td><td>Constant step in every column, including <em>t=0</em>.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Repeated sections, loads at one node and loads mapped to one global DOF are summed. A model may contain different time-dependent types, but the selected solver must support them: <code>RunStatic</code> accepts only type 10 and otherwise reports <code>MKEF:TimeDependentLoadInStaticAnalysis</code>.</p>
+      </section>
+
+      <section aria-labelledby="example-title">
+        <h2 id="example-title">8. Complete frame example</h2>
+        <pre><code># A 0.5 m cantilever with a +100 N force along Y
+nodes
+2
+0,0,0
+0.5,0,0
+
+elems_113
+1
+113,1,2,0.0001,2e11,7800,0.33e-8
+
+bcfix
+1
+1,1,0,0,0
+
+bcforce_stat
+1
+10,2,0,100,0</code></pre>
+        <p>The equivalent file is supplied as <a href="../../examples/cases/Case1ElementBeam.txt"><code>examples/cases/Case1ElementBeam.txt</code></a>. Run:</p>
+        <pre><code>problem = StructFEProblem(fullfile( ...
+    "examples", "cases", "Case1ElementBeam.txt"));
+result = problem.RunStatic();
+result.displacements
+result.reactions
+result.elementResults(1).localEndForces</code></pre>
+        <p>Graphics and diagnostic printing are off by default. Enable them explicitly if needed:</p>
+        <pre><code>options = struct("verbose", true, "plotting", true);
+problem = StructFEProblem(fullfile( ...
+    "examples", "cases", "Case1ElementBeam.txt"), options);</code></pre>
+      </section>
+
+      <section aria-labelledby="annotated-example-title">
+        <h2 id="annotated-example-title">9. Annotated transient example</h2>
+        <p>The most informative compact example file is <a href="../../examples/cases/CasePreprocessorTransient.txt"><code>CasePreprocessorTransient.txt</code></a>. It illustrates analysis configuration, nodes, frame elements, two support types and a harmonic load. The comments below belong to the file and are safe for the parser:</p>
+        <pre><code># The input file specifies the analysis used by RunSelected().
+analysis
+# transient,timeStep,duration,monitorNode,monitorDOF
+# Step 0.0001 s, duration 0.001 s; monitor uy (local DOF 2) at node 3.
+transient,0.0001,0.001,3,2
+
+# Nodes are numbered by row order. Each record: X,Y,Z.
+nodes
+3
+# Node 1: left end of the beam.
+0,0,0
+# Node 2: middle of the beam.
+1,0,0
+# Node 3: right end of the beam.
+2,0,0
+
+# Two type 113 Euler–Bernoulli frame elements.
+# Format: 113,node1,node2,A,E,rho,I.
+elems_113
+2
+# Element 1 connects nodes 1 and 2.
+113,1,2,0.0004,2e11,7800,5.33e-8
+# Element 2 connects nodes 2 and 3; properties match element 1.
+113,2,3,0.0004,2e11,7800,5.33e-8
+
+# Boundary conditions. Format: type,node,0,0,0.
+bcfix
+2
+# Type 1: ux, uy and thetaZ are constrained at node 1.
+1,1,0,0,0
+# Type 4: ux and uy are constrained at node 2; thetaZ remains free.
+4,2,0,0,0
+
+# Type 11 harmonic nodal load.
+# Format: 11,node,Fx,Fy,Mz,frequencyHz.
+bcforce_harm
+1
+# Node 3 has Fy(t) = -1000*sin(2*pi*135*t) N.
+11,3,0,-1000,0,135</code></pre>
+
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Fragment</th><th>How the program interprets it</th></tr></thead>
+            <tbody>
+              <tr><td><code>transient,0.0001,0.001,3,2</code></td><td>Newmark integration takes 10 steps of 0.0001 s and produces 11 states including <em>t=0</em>. The chart and spectrum use <code>uy</code> of node 3.</td></tr>
+              <tr><td>Three rows after <code>nodes</code></td><td>Create nodes 1–3 on the <em>X</em> axis. There are no separate IDs: the number is the row position.</td></tr>
+              <tr><td><code>113,1,2,…</code> and <code>113,2,3,…</code></td><td>Create two frame elements with area 0.0004 m², Young’s modulus 2·10¹¹ Pa, density 7800 kg/m³ and second moment of area 5.33·10⁻⁸ m⁴.</td></tr>
+              <tr><td><code>1,1,0,0,0</code></td><td>Fully fix node 1: constrain <code>ux</code>, <code>uy</code> and <code>thetaZ</code>.</td></tr>
+              <tr><td><code>4,2,0,0,0</code></td><td>At node 2, constrain both translational DOFs but leave rotation free: <code>thetaZ</code>.</td></tr>
+              <tr><td><code>11,3,0,-1000,0,135</code></td><td>Apply a harmonic force at node 3 in the negative direction of <em>Y</em> with amplitude 1000 N and frequency 135 Hz.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="callout callout--inspect">
+          <span class="callout__title">Comments do not count toward the declared total</span>
+          <p>The parser skips blank lines and lines whose first non-whitespace character is <code>#</code>. Thus, after <code>nodes</code> the number <code>3</code> means three coordinate rows even if explanatory comments appear between them. Comments must occupy separate lines: trailing comments after numeric records are unsupported.</p>
+        </div>
+
+        <p>Run the file without supplying analysis parameters from code:</p>
+        <pre><code>addpath(pwd);
+setup;
+
+problem = StructFEProblem(fullfile( ...
+    "examples", "cases", "CasePreprocessorTransient.txt"));
+result = problem.RunSelected();
+
+result.time
+result.displacements
+result.spectrumFrequencyHz
+result.displacementAmplitudeSpectrum</code></pre>
+      </section>
+
+      <section aria-labelledby="dynamic-title">
+        <h2 id="dynamic-title">10. Modal and transient analyses</h2>
+        <pre><code>problem = StructFEProblem(fullfile( ...
+    "examples", "cases", "CaseBeam.txt"));
+modalResult = problem.RunModal();
+modalResult.frequenciesHz
+
+problem = StructFEProblem(fullfile( ...
+    "examples", "cases", "CaseBeamDyn.txt"));
+dynamicResult = problem.RunTransient(1e-4, 1e-2, 3, 2);</code></pre>
+        <p>The last two arguments are node 3 and local DOF 2 (<code>uy</code>) for the optional chart. Their integer values and ranges are validated even with <code>plotting=false</code>. When graphics are enabled, displacement and the selected DOF’s single-sided amplitude spectrum are plotted.</p>
+        <p>All histories use the grid <em>t = 0, dt, …, N·dt</em>, where <code>N=fix(duration/dt)</code>. The first column corresponds to <em>t=0</em>, the last to the actual <em>N·dt</em>; the column count is <code>N+1</code>.</p>
+        <pre><code>initial = struct( ...
+    "initialDisplacement", u0, ...
+    "initialVelocity", v0);
+dynamicResult = problem.RunTransient(1e-4, 1e-2, 3, 2, initial);</code></pre>
+        <p>Vectors <code>u0</code> and <code>v0</code> have full model size and zeros on constrained DOFs. Initial acceleration is computed from equilibrium. Integration uses Newmark average acceleration with β=1/4 and γ=1/2.</p>
+        <p>If the file contains section <code>analysis</code>, run the same analysis as <code>result = problem.RunSelected()</code>. A configured transient run uses zero initial displacements and velocities.</p>
+        <div class="callout callout--inspect">
+          <span class="callout__title">Running a file through the GUI</span>
+          <p>From the repository root, run <code>docker compose up --build</code> (or <code>docker-compose up --build</code>), open <a href="http://127.0.0.1:8080/preprocessor/">http://127.0.0.1:8080/preprocessor/</a> and load the TXT file with <strong>Open TXT</strong>. For an old file without section <code>analysis</code> first select the analysis type and, if needed, transient parameters. The button <strong>Run analysis</strong> serializes the validated model, calls <code>RunSelected()</code> in the Octave container and opens the result without manual file transfer.</p>
+        </div>
+      </section>
+
+      <section aria-labelledby="results-title">
+        <h2 id="results-title">11. Results and checks</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Analysis</th><th>Key result fields</th></tr></thead>
+            <tbody>
+              <tr><td><code>RunStatic</code></td><td><code>displacements</code>, <code>reactions</code>, <code>equilibriumResidual</code>, <code>elementResults</code>, full load and DOF lists.</td></tr>
+              <tr><td><code>RunModal</code></td><td><code>frequenciesHz</code>, full <code>modeShapes</code> with zeros at supports, and reduced matrices.</td></tr>
+              <tr><td><code>RunTransient</code></td><td><code>time</code>, <code>loadHistory</code>, <code>displacements</code>, <code>velocities</code>, <code>accelerations</code>, <code>reactions</code>, <code>spectrum</code>.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>In truss results, positive <code>axialStrain</code>, <code>axialStress</code> and <code>axialForce</code> mean tension. For a frame, <code>localEndForces</code> is ordered as <code>[N1,V1,M1,N2,V2,M2]</code>.</p>
+        <pre><code>octave --no-gui --quiet --eval "addpath(pwd); setup; run_octave_tests;"</code></pre>
+      </section>
+
+      <section aria-labelledby="diagnostics-title">
+        <h2 id="diagnostics-title">12. Input diagnostics</h2>
+        <p>A read error has the form <code>identifier: filename:line: detail</code>. Main identifiers:</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Identifier</th><th>Cause</th></tr></thead>
+            <tbody>
+              <tr><td><code>MKEF:InputFileOpenFailed</code></td><td>File missing, inaccessible or cannot be opened.</td></tr>
+              <tr><td><code>MKEF:UnknownInputMarker</code></td><td>Unknown section name or typo.</td></tr>
+              <tr><td><code>MKEF:InputSectionOrder</code></td><td>An element precedes nodes, or a support/load precedes elements.</td></tr>
+              <tr><td><code>MKEF:DuplicateInputSection</code></td><td>Repeated section <code>nodes</code> or <code>analysis</code>.</td></tr>
+              <tr><td><code>MKEF:MalformedInput</code></td><td>Invalid field count, nonnumeric/infinite value, record type, node, frequency or properties.</td></tr>
+              <tr><td><code>MKEF:UnexpectedEndOfFile</code></td><td>Declared record count exceeds the actual count.</td></tr>
+              <tr><td><code>MKEF:IncompleteInput</code></td><td>No nodes or elements.</td></tr>
+              <tr><td><code>MKEF:UnsupportedMixedMesh</code></td><td>Types 112 and 113 occur in one file.</td></tr>
+              <tr><td><code>MKEF:UnsupportedConstraintValue</code></td><td>The final three fields of <code>bcfix</code> contain a nonzero prescribed displacement.</td></tr>
+              <tr><td><code>MKEF:UnsupportedLoadComponent</code></td><td>A truss node specifies nonzero <code>Mz</code>.</td></tr>
+              <tr><td><code>MKEF:AnalysisLoadMismatch</code></td><td>Load type is incompatible with the configured analysis.</td></tr>
+              <tr><td><code>MKEF:MissingAnalysisConfiguration</code></td><td><code>RunSelected</code> was called for an old file without section <code>analysis</code>.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="callout callout--inspect">
+          <span class="callout__title">Finding an error</span>
+          <p>First open the reported line, then check its marker, record count and exact field count. If parsing succeeds but the solver reports singularity, check connectivity and adequate supports rather than syntax.</p>
+        </div>
+      </section>
+
+      <section aria-labelledby="sources-title" class="source-list">
+        <h2 id="sources-title">13. Code, tests and sources</h2>
+        <ul>
+          <li><a href="../../src/model/FEMesh.m"><code>FEMesh.m</code></a> — the single current parsing contract;</li>
+          <li><a href="../../preprocessor/index.html"><code>preprocessor/index.html</code></a> — offline editor with a coordinate grid, exact node entry and canonical export in this format;</li>
+          <li><a href="../../tests/test_input_validation.m"><code>tests/test_input_validation.m</code></a> — repeated sections, invalid records, mixed meshes, unknown markers, opening and chart selection;</li>
+          <li><a href="../../tests/fixtures/CaseRepeatedSections.txt"><code>CaseRepeatedSections.txt</code></a> — executable example of repeated sections;</li>
+          <li>Henri P. Gavin, <a href="https://people.duke.edu/~hpgavin/StructuralDynamics/NumericalIntegration.pdf"><cite>Numerical Integration in Structural Dynamics</cite></a> — external Newmark formulation material;</li>
+          <li>Mario Paz, William Leigh, <cite>Structural Dynamics: Theory and Computation</cite>, 5th ed., 2004, DOI 10.1007/978-1-4615-0481-8 — source of geometry, matrices, frequencies and modes of <code>CaseFig11.7p363 MarioPaz.txt</code>, checked in <a href="../../tests/test_mario_paz_modal.m"><code>tests/test_mario_paz_modal.m</code></a>.</li>
+        </ul>
+      </section>
+
+      <section aria-labelledby="element-loads-title">
+        <h2 id="element-loads-title">Uniform element loads</h2>
+        <p>For static analysis of type 113 frames, add section <code>eload_uniform</code> after the elements. After the record count, each line has the form <code>20,elementId,coordinateSystem,qx,qy</code>. Coordinate system 1 is local, 2 is global XY; intensity is per unit of actual element length. Local x points from the first node to the second; local y is rotated +90° from x.</p>
+        <pre><code>eload_uniform
+1
+20,1,2,0,-1000</code></pre>
+        <p>Sections may repeat; loads on the same element are summed. All values must be finite; two zero components, a missing element, a type 112 element, and modal/transient analysis are rejected. A nodal force or moment may also be specified using the normal section <code>bcforce_stat</code>.</p>
+        <p>Example: <a href="../../examples/cases/CaseUniformFrame.txt">a 2 m cantilever under qY = −1000 N/m</a>. Reactions: Fy = 2000 N, Mz = 2000 N·m; free-end deflection −0.001 m, rotation −0.000666667 rad.</p>
+        <h3>Editing and deletion in the preprocessor</h3>
+        <p>Select a frame element and click Add element load. The Element loads table contains the coordinate system and components. Switching Local/Global converts components while preserving load direction.</p>
+        <p>Any actual change to element ends, A, E, rho or I removes its distributed loads. Changing node coordinates removes distributed loads from all incident elements, preserving nodal loads and supports. Re-entering the same value removes nothing.</p>
+        <p>Deleting a node also deletes its elements, their distributed loads and the node’s own conditions. Other nodes remain and references are renumbered. Deleting an element does not delete its nodes. One Undo restores the whole operation. A deleted transient monitoring node must be selected again.</p>
+      </section>
+    </main>
+  </div>
+
+  <nav class="page-nav" aria-label="Chapter navigation">
+    <a href="09-architecture-verification.html"><span class="page-nav__label">Previous</span>← 9. Architecture and verification</a>
+    <a href="11-mario-paz-modal-example.html"><span class="page-nav__label">Next</span>11. Mario Paz modal example →</a>
+  </nav>
+
+  <footer class="site-footer">
+    <div class="site-footer__inner"><p>MKE-F · offline learning reference · chapter 10 of 15</p></div>
+  </footer>
+</body>
+</html>

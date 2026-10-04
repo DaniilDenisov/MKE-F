@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Complete numerical walkthrough of the Mario Paz modal example: local and global stiffness and mass matrices, assembly, frequencies and modes.">
+  <title>11. Mario Paz modal example — MKE-F</title>
+  <link rel="stylesheet" href="../assets/reference.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="site-header__inner">
+      <nav class="language-switch" aria-label="Reference language"><a href="../RU/11-mario-paz-modal-example.html" lang="ru" hreflang="ru">RU</a> <a href="../EN/11-mario-paz-modal-example.html" lang="en" hreflang="en" aria-current="true">EN</a></nav>
+      <p class="eyebrow">Student FEM Reference · Chapter 11</p>
+      <p class="site-title">Mario Paz frame</p>
+      <p class="site-subtitle">From two frame elements to three frequencies and mass-normalized modes, with numerical matrices at every stage.</p>
+    </div>
+  </header>
+
+  <div class="layout">
+    <nav class="contents" aria-label="Reference contents">
+      <h2>Contents</h2>
+      <ol>
+        <li><a href="01-model-dofs.html">Model, nodes, elements and DOFs</a></li>
+        <li><a href="02-element-matrices.html">Element matrices</a></li>
+        <li><a href="03-transformation-assembly.html">Transformation and assembly</a></li>
+        <li><a href="04-boundary-loads.html">Boundary conditions and loads</a></li>
+        <li><a href="05-static-analysis.html">Static analysis</a></li>
+        <li><a href="06-modal-analysis.html">Modal analysis</a></li>
+        <li><a href="07-newmark-transient.html">Newmark transient analysis</a></li>
+        <li><a href="08-result-recovery.html">Element results</a></li>
+        <li><a href="09-architecture-verification.html">Architecture and verification</a></li>
+        <li><a href="10-input-format.html">Input file format</a></li>
+        <li><a aria-current="page" href="11-mario-paz-modal-example.html">Mario Paz modal example</a></li>
+        <li><a href="12-local-octave-workflow.html">Local GNU Octave workflow</a></li>
+        <li><a href="13-fem-assembly-visualizer.html">Interactive FEM assembly</a></li>
+        <li><a href="14-mario-paz-matrices-visualizer.html">Interactive frame matrices</a></li>
+        <li><a href="15-sparse-matrix-assembly.html">Sparse matrix assembly</a></li>
+      </ol>
+    </nav>
+
+    <main class="chapter" id="main">
+      <span class="chapter-number">Chapter 11</span>
+      <h1>Two elements, both matrices, three modes</h1>
+      <p class="lead">Illustrative Example 11.1 from Mario Paz and William Leigh is especially useful because one small model checks frame rotation, consistent mass, direct assembly and the generalized eigenvalue problem. No stage is hidden inside a large mesh.</p>
+
+      <section aria-labelledby="model-title">
+        <h2 id="model-title">1. Structural model</h2>
+        <p>Two prismatic frame elements meet at node 2. Nodes 1 and 3 are fully fixed, leaving only the three middle-node components out of nine global DOFs: <em>u<sub>x2</sub></em>, <em>u<sub>y2</sub></em> and <em>θ<sub>2</sub></em>.</p>
+
+        <figure class="model-figure">
+          <svg viewBox="0 0 820 330" role="img" aria-labelledby="frame-title frame-desc">
+            <title id="frame-title">Mario Paz two-element plane frame</title>
+            <desc id="frame-desc">An inclined 45-degree element of length 100 inches connects fixed node 1 to node 2. A horizontal 100-inch element connects node 2 to fixed node 3.</desc>
+            <defs>
+              <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+                <path d="M0,0 L8,4 L0,8 Z" fill="#285b89"></path>
+              </marker>
+            </defs>
+            <rect x="1" y="1" width="818" height="328" rx="14" fill="#fbfaf5" stroke="#d9ddd4"></rect>
+            <line x1="155" y1="245" x2="350" y2="50" stroke="#165c45" stroke-width="10" stroke-linecap="round"></line>
+            <line x1="350" y1="50" x2="665" y2="50" stroke="#165c45" stroke-width="10" stroke-linecap="round"></line>
+            <circle cx="155" cy="245" r="10" fill="#fff" stroke="#0c3d2d" stroke-width="4"></circle>
+            <circle cx="350" cy="50" r="10" fill="#fff" stroke="#0c3d2d" stroke-width="4"></circle>
+            <circle cx="665" cy="50" r="10" fill="#fff" stroke="#0c3d2d" stroke-width="4"></circle>
+            <path d="M120 280 L190 280 M126 280 L112 296 M145 280 L131 296 M164 280 L150 296 M183 280 L169 296" fill="none" stroke="#17211b" stroke-width="4"></path>
+            <path d="M700 15 L700 88 M700 20 L716 8 M700 40 L716 28 M700 60 L716 48 M700 80 L716 68" fill="none" stroke="#17211b" stroke-width="4"></path>
+            <line x1="350" y1="50" x2="350" y2="135" stroke="#285b89" stroke-width="3" marker-end="url(#arrow)"></line>
+            <text x="363" y="122" fill="#285b89" font-size="21" font-family="Segoe UI, Arial">F(t)</text>
+            <text x="132" y="235" fill="#17211b" font-size="22" font-weight="700">1</text>
+            <text x="332" y="35" fill="#17211b" font-size="22" font-weight="700">2</text>
+            <text x="648" y="35" fill="#17211b" font-size="22" font-weight="700">3</text>
+            <text x="220" y="125" fill="#5d685f" font-size="20" transform="rotate(-45 220 125)">element 1 · L = 100 in</text>
+            <text x="440" y="37" fill="#5d685f" font-size="20">element 2 · L = 100 in</text>
+            <path d="M195 245 A40 40 0 0 0 183 217" fill="none" stroke="#a24d16" stroke-width="3"></path>
+            <text x="198" y="224" fill="#a24d16" font-size="19">45°</text>
+            <text x="92" y="320" fill="#5d685f" font-size="18">fully fixed</text>
+            <text x="630" y="112" fill="#5d685f" font-size="18">fully fixed</text>
+          </svg>
+          <figcaption>The eigenvalue problem does not use the shown force <em>F(t)</em>: frequencies depend only on matrices <strong>K</strong>, <strong>M</strong> and supports.</figcaption>
+        </figure>
+
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Parameter</th><th>Value</th><th>Role in the matrices</th></tr></thead>
+            <tbody>
+              <tr><td><em>A</em></td><td>6 in²</td><td>Axial <em>EA/L</em> and mass <em>ρAL</em></td></tr>
+              <tr><td><em>I</em></td><td>100 in⁴</td><td>Bending coefficients <em>EI/L³</em>, <em>EI/L²</em>, <em>EI/L</em></td></tr>
+              <tr><td><em>E</em></td><td>10<sup>7</sup> lb/in²</td><td>Stiffness</td></tr>
+              <tr><td><em>ρ</em></td><td>0.7 lb·s²/in⁴</td><td>The file stores volumetric mass density; <em>ρA=4.20</em></td></tr>
+              <tr><td><em>L</em></td><td>100 in</td><td>Both elements</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p>Exact inclined-element coordinates are <em>(100/√2, 100/√2)</em>. The input file therefore uses <code>70.7106781186548</code>, rather than the rounded <code>70.7</code>: the latter would change the first element length by 0.0151%.</p>
+      </section>
+
+      <section aria-labelledby="input-title">
+        <h2 id="input-title">2. Executable model</h2>
+        <p>The whole model fits into a short input file. The load is retained from the original example, but the method <code>RunModal</code> does not use it.</p>
+        <pre><code>nodes
+3
+0,0,0
+70.7106781186548,70.7106781186548,0
+170.710678118655,70.7106781186548,0
+elems_113
+2
+113,1,2,6,10000000,0.7,100
+113,2,3,6,10000000,0.7,100
+bcfix
+2
+1,1,0,0,0
+1,3,0,0,0
+bcforce_stat
+1
+10,2,0,-10,0</code></pre>
+        <p>For a frame node, the DOF map is <code>[ux, uy, thetaZ]</code>. The free DOFs of node 2 therefore have global numbers <code>[4 5 6]</code>, and the constrained DOFs are <code>[1 2 3 7 8 9]</code>.</p>
+      </section>
+
+      <section aria-labelledby="local-title">
+        <h2 id="local-title">3. Local element matrices</h2>
+        <p>Both elements have identical properties and length, hence identical local matrices. Numerical stiffness coefficients:</p>
+        <div class="card-grid">
+          <article class="card"><h3>Axial extension</h3><p class="equation">EA/L = 600 000</p></article>
+          <article class="card"><h3>Transverse stiffness</h3><p class="equation">12EI/L³ = 12 000</p></article>
+          <article class="card"><h3>Rotation coupling</h3><p class="equation">6EI/L² = 600 000</p></article>
+          <article class="card"><h3>Rotational coefficients</h3><p class="equation">4EI/L = 40 000 000<br>2EI/L = 20 000 000</p></article>
+        </div>
+
+        <p>The local stiffness matrix, ordered as <code>[u1 v1 θ1 u2 v2 θ2]</code>:</p>
+        <pre><code>k(local) = 10^6 ×
+[ 0.600   0       0      -0.600   0       0
+  0       0.012   0.600   0      -0.012   0.600
+  0       0.600  40.000   0      -0.600  20.000
+ -0.600   0       0       0.600   0       0
+  0      -0.012  -0.600   0       0.012  -0.600
+  0       0.600  20.000   0      -0.600  40.000 ]</code></pre>
+
+        <p>For consistent mass, the factor preceding the dimensionless template is particularly convenient:</p>
+        <p class="equation">ρAL/420 = 0.7·6·100/420 = 1</p>
+        <pre><code>m(local) =
+[ 140      0       0      70      0       0
+    0    156    2200       0     54   -1300
+    0   2200   40000       0   1300  -30000
+   70      0       0     140      0       0
+    0     54    1300       0    156   -2200
+    0  -1300  -30000       0  -2200   40000 ]</code></pre>
+
+        <div class="callout callout--inspect">
+          <span class="callout__title">Why M is needed</span>
+          <p>A static problem would use only <strong>K</strong>. Here eigenvalues depend on the ratio of stiffness to inertia, so a sign or coefficient error in consistent mass directly changes frequencies and mode shapes.</p>
+        </div>
+      </section>
+
+      <section aria-labelledby="transform-title">
+        <h2 id="transform-title">4. Rotation into global axes</h2>
+        <p>For the first element, <em>c=s=1/√2</em>. The book factors out <em>1/√2</em>; the implementation writes the same direction cosines directly:</p>
+        <pre><code>T1 = 1/sqrt(2) ×
+[ 1   1   0   0   0   0
+ -1   1   0   0   0   0
+  0   0  sqrt(2)  0   0   0
+  0   0   0   1   1   0
+  0   0   0  -1   1   0
+  0   0   0   0   0  sqrt(2) ]
+
+T2 = I</code></pre>
+        <p>The same transformation applies to stiffness and mass:</p>
+        <p class="equation">k(global) = T<sup>T</sup> k(local) T<br>m(global) = T<sup>T</sup> m(local) T</p>
+        <p>This is where the inclined element couples global components <em>x</em>, <em>y</em> and rotation. The horizontal element needs no transformation.</p>
+      </section>
+
+      <section aria-labelledby="assembly-title">
+        <h2 id="assembly-title">5. Assembly in three free coordinates</h2>
+        <p>Once the outer nodes are fixed, summing the free–free blocks of the two elements is sufficient. This is the same direct method that sums contributions by global DOF map in a larger model.</p>
+
+        <h3>Element 1 contributions, 45° inclination</h3>
+        <pre><code>K1(ff) =
+[ 306000   294000    424264.0687
+  294000   306000   -424264.0687
+  424264.0687 -424264.0687 40000000 ]
+
+M1(ff) =
+[ 148    -8     1555.6349
+   -8   148    -1555.6349
+ 1555.6349 -1555.6349 40000 ]</code></pre>
+
+        <h3>Element 2 contributions, horizontal</h3>
+        <pre><code>K2(ff) =
+[ 600000       0         0
+       0   12000    600000
+       0  600000  40000000 ]
+
+M2(ff) =
+[ 140    0      0
+    0  156   2200
+    0 2200  40000 ]</code></pre>
+
+        <h3>Reduced system matrices</h3>
+        <pre><code>Kff = K1(ff) + K2(ff)
+    = 10^6 ×
+[ 0.906000  0.294000  0.424264
+  0.294000  0.318000  0.175736
+  0.424264  0.175736 80.000000 ]
+
+Mff = M1(ff) + M2(ff)
+    =
+[ 288        -8      1555.635
+   -8       304       644.365
+ 1555.635   644.365 80000 ]</code></pre>
+
+        <p>Rounding <code>0.424264 → 0.424</code>, <code>0.175736 → 0.176</code>, <code>1555.635 → 1556</code> and <code>644.365 → 644</code> gives exactly the matrices printed in the book.</p>
+      </section>
+
+      <section aria-labelledby="eigen-title">
+        <h2 id="eigen-title">6. Eigenvalues and frequencies</h2>
+        <p>A nonzero solution exists when:</p>
+        <p class="equation">det(K<sub>ff</sub> − ω²M<sub>ff</sub>) = 0</p>
+        <p>Numerically, the generalized problem is solved: <code>eig(Kff, Mff)</code>. Its eigenvalues equal <em>λ=ω²</em>, after which we calculate <em>ω=√λ</em> and <em>f=ω/(2π)</em>.</p>
+
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Mode</th><th>λ = ω², full-precision calculation</th><th>λ in the book</th><th>ω, rad/s</th><th>f, Hz</th></tr></thead>
+            <tbody>
+              <tr><td>1</td><td>638.5045874482</td><td>638.5</td><td>25.26864831</td><td>4.021630284</td></tr>
+              <tr><td>2</td><td>976.5825465395</td><td>976.6</td><td>31.25032074</td><td>4.973643019</td></tr>
+              <tr><td>3</td><td>4211.5971088025</td><td>4211.6</td><td>64.89681894</td><td>10.328649526</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="callout callout--warning">
+          <span class="callout__title">Rounding in the printed source</span>
+          <p>The book gives 25.26 and 31.24 rad/s, although normal rounding of square roots of the printed λ values gives 25.27 and 31.25. Frequencies in hertz and full calculations agree; this is a small rounding peculiarity in the source, not a solver discrepancy.</p>
+        </div>
+      </section>
+
+      <section aria-labelledby="modes-title">
+        <h2 id="modes-title">7. Mass-normalized modes</h2>
+        <p>Each mode is scaled so that <em>φ<sub>i</sub><sup>T</sup>Mφ<sub>i</sub>=1</em>. Columns of the modal matrix:</p>
+        <pre><code>Phi =
+[  0.02182975   0.00497889   0.05830737
+  -0.05270167   0.00206232   0.02415170
+   0            0.00340929  -0.00162915 ]</code></pre>
+        <p>The printed book values <code>[0.0218, -0.0527, 0]</code>, <code>[0.00498, 0.00206, 0.00341]</code> and <code>[0.0583, 0.0241, -0.0016]</code> are rounded versions of these columns.</p>
+        <p>Two required numerical checks:</p>
+        <p class="equation">Φ<sup>T</sup>M<sub>ff</sub>Φ = I</p>
+        <p class="equation">r<sub>i</sub> = K<sub>ff</sub>φ<sub>i</sub> − λ<sub>i</sub>M<sub>ff</sub>φ<sub>i</sub> ≈ 0</p>
+        <p>The eigenvector sign is arbitrary: <em>φ</em> and <em>−φ</em> describe the same mode. The test therefore first mass-normalizes each column, then aligns its sign with the reference before comparing components.</p>
+      </section>
+
+      <section aria-labelledby="run-title">
+        <h2 id="run-title">8. Reproducing in GNU Octave</h2>
+        <pre><code>addpath(pwd);
+setup;
+
+problem = StructFEProblem( ...
+    fullfile('examples', 'cases', ...
+        'CaseFig11.7p363 MarioPaz.txt'), ...
+    struct('verbose', false, 'plotting', false));
+
+model = problem.GetAnalysisModel();
+result = problem.RunModal();
+
+Kff = full(model.stiffness(result.freeDOFs, result.freeDOFs))
+Mff = full(model.mass(result.freeDOFs, result.freeDOFs))
+lambda = result.eigenvalues
+omega = result.angularFrequenciesRadPerSec
+frequencyHz = result.frequenciesHz
+Phi = result.modeShapes(result.freeDOFs, :)</code></pre>
+
+        <p>The automated check is in <a href="../../tests/test_mario_paz_modal.m"><code>tests/test_mario_paz_modal.m</code></a> and runs with the complete suite:</p>
+        <pre><code>addpath(pwd); setup; run_octave_tests;</code></pre>
+
+        <div class="callout">
+          <span class="callout__title">How the test handles floating-point values</span>
+          <p>Exact reconstructed values are compared with combined relative and absolute tolerances. Rounded book values receive tolerances matching their printed precision. Modes are normalized and sign-aligned separately; orthogonality and eigenpair residuals are also checked.</p>
+        </div>
+      </section>
+
+      <section aria-labelledby="practice-title">
+        <h2 id="practice-title">9. Practical experiments</h2>
+        <div class="card-grid">
+          <article class="card"><h3>Double E</h3><p>The matrix <strong>K</strong> doubles, <strong>M</strong> is unchanged, so all frequencies should multiply by √2.</p></article>
+          <article class="card"><h3>Double ρ</h3><p>The matrix <strong>M</strong> doubles, <strong>K</strong> is unchanged, so all frequencies should divide by √2.</p></article>
+          <article class="card"><h3>Restore coordinate 70.7</h3><p>Observe how a small geometric error changes both matrices and turns the first mode’s zero rotational component into a small nonzero value.</p></article>
+          <article class="card"><h3>Remove rotational mass</h3><p>Explore a copy of the matrix without changing the main file. Explain why arbitrarily zeroing rows and columns destroys positive definiteness and the physical meaning of the problem.</p></article>
+        </div>
+      </section>
+
+      <section class="source-list" aria-labelledby="sources-title">
+        <h2 id="sources-title">Code and source</h2>
+        <ul>
+          <li><a href="../../examples/cases/CaseFig11.7p363 MarioPaz.txt"><code>CaseFig11.7p363 MarioPaz.txt</code></a> — exact geometry, properties and supports;</li>
+          <li><a href="../../src/model/createStructuralElement.m"><code>createStructuralElement.m</code></a> — local matrices and transformation;</li>
+          <li><a href="../../src/model/assembleGlobalMatrices.m"><code>assembleGlobalMatrices.m</code></a> — direct sparse assembly;</li>
+          <li><a href="../../src/analysis/modal/solveModal.m"><code>solveModal.m</code></a> — reduction and generalized eigenvalue problem;</li>
+          <li><a href="../../tests/test_mario_paz_modal.m"><code>tests/test_mario_paz_modal.m</code></a> — numerical reference and robust comparisons;</li>
+          <li>Mario Paz, William Leigh, <cite>Structural Dynamics: Theory and Computation</cite>, 5th ed., Illustrative Example 11.1, Fig. 11.7, pp. 363–366.</li>
+        </ul>
+      </section>
+    </main>
+  </div>
+
+  <nav class="page-nav" aria-label="Chapter navigation">
+    <a href="10-input-format.html"><span class="page-nav__label">Previous</span>← 10. Input file format</a>
+    <a href="12-local-octave-workflow.html"><span class="page-nav__label">Next</span>12. Local GNU Octave workflow →</a>
+  </nav>
+
+  <footer class="site-footer">
+    <div class="site-footer__inner"><p>MKE-F · offline learning reference · chapter 11 of 15</p></div>
+  </footer>
+</body>
+</html>

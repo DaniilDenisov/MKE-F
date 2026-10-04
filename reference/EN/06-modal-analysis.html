@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Modal analysis in MKE-F: generalized eigenvalue problem, mode shapes, scaling and residuals.">
+  <title>6. Modal analysis — MKE-F</title>
+  <link rel="stylesheet" href="../assets/reference.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="site-header__inner">
+      <nav class="language-switch" aria-label="Reference language"><a href="../RU/06-modal-analysis.html" lang="ru" hreflang="ru">RU</a> <a href="../EN/06-modal-analysis.html" lang="en" hreflang="en" aria-current="true">EN</a></nav>
+      <p class="eyebrow">Student FEM Reference · Chapter 6</p>
+      <p class="site-title">Modal analysis</p>
+      <p class="site-subtitle">From free degrees of freedom to natural frequencies, full mode shapes and verifiable residuals.</p>
+    </div>
+  </header>
+
+  <div class="layout">
+    <nav class="contents" aria-label="Reference contents">
+      <h2>Contents</h2>
+      <ol>
+        <li><a href="01-model-dofs.html">Model, nodes, elements and DOFs</a></li>
+        <li><a href="02-element-matrices.html">Element matrices</a></li>
+        <li><a href="03-transformation-assembly.html">Transformation and assembly</a></li>
+        <li><a href="04-boundary-loads.html">Boundary conditions and loads</a></li>
+        <li><a href="05-static-analysis.html">Static analysis</a></li>
+        <li><a aria-current="page" href="06-modal-analysis.html">Modal analysis</a></li>
+        <li><a href="07-newmark-transient.html">Newmark transient analysis</a></li>
+        <li><a href="08-result-recovery.html">Element results</a></li>
+        <li><a href="09-architecture-verification.html">Architecture and verification</a></li>
+        <li><a href="10-input-format.html">Input file format</a></li>
+        <li><a href="11-mario-paz-modal-example.html">Mario Paz modal example</a></li>
+        <li><a href="12-local-octave-workflow.html">Local GNU Octave workflow</a></li>
+        <li><a href="13-fem-assembly-visualizer.html">Interactive FEM assembly</a></li>
+        <li><a href="14-mario-paz-matrices-visualizer.html">Interactive frame matrices</a></li>
+        <li><a href="15-sparse-matrix-assembly.html">Sparse matrix assembly</a></li>
+      </ol>
+    </nav>
+
+    <main class="chapter" id="main">
+      <span class="chapter-number">Chapter 6</span>
+      <h1>Natural frequencies and mode shapes</h1>
+      <p class="lead">Free vibration of a linear undamped system is determined by stiffness, mass and supports. Modal analysis does not use specified nodal loads: it finds motions the system can sustain after an initial disturbance.</p>
+
+      <section aria-labelledby="problem-title">
+        <h2 id="problem-title">Generalized eigenvalue problem</h2>
+        <p>For free motion without external force:</p>
+        <p class="equation">M ü(t) + K u(t) = 0</p>
+        <p>Substituting the harmonic form <strong>u</strong>(t) = <strong>φ</strong> sin(ωt) gives:</p>
+        <p class="equation">K φ = λ M φ, &nbsp; λ = ω<sup>2</sup></p>
+        <p>The natural angular frequency is <em>ω = √λ</em>, and the frequency in hertz is:</p>
+        <p class="equation">f = ω/(2π)</p>
+        <p>In <a href="../../src/analysis/modal/solveModal.m"><code>solveModal</code></a> pairs are computed using <code>eig(Kff, Mff)</code>, then sorted in ascending λ order.</p>
+      </section>
+
+      <section aria-labelledby="reduction-title">
+        <h2 id="reduction-title">Why solve only on free DOFs?</h2>
+        <p>As in statics, first construct <code>fixedDOFs</code> and <code>freeDOFs</code>. The eigenvalue problem uses the reduced matrices:</p>
+        <p class="equation">K<sub>ff</sub> φ<sub>f</sub> = λ M<sub>ff</sub> φ<sub>f</sub></p>
+        <p>Keeping constrained components in the full problem by artificially modifying rows makes the spectrum depend on the numerical constraint method. Reduction preserves the physical matrices of the free subsystem.</p>
+        <p><a href="../../src/analysis/common/validateReducedSystem.m"><code>validateReducedSystem</code></a> checks positive definiteness of <strong>K<sub>ff</sub></strong> and <strong>M<sub>ff</sub></strong>. A mechanism or massless free DOF stops the analysis before calling <code>eig</code>.</p>
+      </section>
+
+      <section aria-labelledby="expand-title">
+        <h2 id="expand-title">Returning to the full mode shape</h2>
+        <p>Each reduced eigenvector is expanded to all model DOFs:</p>
+        <pre><code>modeShapes = zeros(numberOfDOFs, numberOfModes);
+modeShapes(freeDOFs, :) = reducedModeShapes;</code></pre>
+        <p>Constrained DOF rows are therefore exactly zero, and row numbers again match global DOF numbers. This matters for subsequent visualization and comparison of nodal mode shapes.</p>
+      </section>
+
+      <section aria-labelledby="scale-title">
+        <h2 id="scale-title">Mode shape scale and sign</h2>
+        <p>If <strong>φ</strong> is an eigenvector, then <em>c</em><strong>φ</strong> for any nonzero <em>c</em> describes the same mode. The absolute amplitude and sign returned by <code>eig</code> are not physical displacements.</p>
+        <p>Two useful normalizations:</p>
+        <ul>
+          <li><strong>mass normalization:</strong> choose the scale so that φ<sup>T</sup>Mφ = 1;</li>
+          <li><strong>for display:</strong> divide components by max|φ<sub>i</sub>| and, if needed, fix the sign of the largest component.</li>
+        </ul>
+        <p>Distinct modes of a symmetric system are orthogonal with respect to mass and stiffness:</p>
+        <p class="equation">φ<sub>i</sub><sup>T</sup>Mφ<sub>j</sub> = 0, &nbsp; φ<sub>i</sub><sup>T</sup>Kφ<sub>j</sub> = 0, &nbsp; i ≠ j</p>
+      </section>
+
+      <section aria-labelledby="viewer-title">
+        <h2 id="viewer-title">Animating a mode in the postprocessor</h2>
+        <p>Save the model and modal result to JSON and open it in the <a href="../../postprocessor/index.html">MKE-F offline postprocessor</a> without a local server or internet connection.</p>
+
+        <h3>1. Run and export</h3>
+        <p>Open a terminal in the project root, start GNU Octave, and run:</p>
+        <pre><code>addpath(pwd);
+setup;
+
+problem = StructFEProblem(fullfile( ...
+    'examples', 'cases', 'CaseBeam.txt'));
+model = problem.GetAnalysisModel();
+result = problem.RunModal();
+
+exportPostprocessorData(model, result, ...
+    fullfile('output', 'modal-frame.json'), ...
+    struct('title', 'Mode shapes', ...
+           'lengthUnit', 'm', 'prettyPrint', true));</code></pre>
+        <div class="callout callout--inspect">
+          <span class="callout__title">The same analysis through the GUI</span>
+          <p>From the repository root, run <code>docker compose up --build</code> (or <code>docker-compose up --build</code>) and open the <a href="http://127.0.0.1:8080/preprocessor/">preprocessor</a>. Use <strong>Open TXT</strong> to load the file <code>examples/cases/CasePreprocessorModal.txt</code> and click <strong>Run analysis</strong>. Computed modes open automatically in the postprocessor, where you can animate them and download the JSON.</p>
+        </div>
+        <p>After execution, the file <code>modal-frame.json</code> appears in the directory <code>output</code>. You can also check computed frequencies in the terminal with <code>result.frequenciesHz</code>.</p>
+
+        <h3>2. Open the result</h3>
+        <ol>
+          <li>Open <a href="../../postprocessor/index.html"><code>postprocessor/index.html</code></a> in Chrome, Edge or Firefox.</li>
+          <li>Click <strong>Open JSON</strong> and select the generated file <code>output/modal-frame.json</code>. You can also drag it into the dashed area. A supplied example is in <a href="../../examples/results/modal-frame.json"><code>examples/results/modal-frame.json</code></a>.</li>
+          <li>In the <strong>Mode</strong> list, select a mode. Its frequency <em>f</em> in Hz and angular frequency <em>ω</em> in rad/s are displayed alongside.</li>
+          <li>Click <strong>Play</strong> to start the animation. The buttons <strong>−1</strong> and <strong>+1</strong> move to adjacent modes; <strong>Visualization speed</strong> changes playback speed.</li>
+          <li>Move <strong>Phase factor</strong> from −1 to +1 to inspect the negative peak, undeformed geometry and positive peak manually. The field <strong>Display multiplier</strong> changes only the displayed mode scale.</li>
+          <li>Click a node or element: the <strong>Selection</strong> panel shows normalized components of the selected mode and their values at the current phase.</li>
+          <li>Click <strong>Export SVG</strong> or <strong>Export PNG</strong> to save the current frame with the mode number, frequency, phase and scale.</li>
+        </ol>
+
+        <p>The viewer standardizes the arbitrary sign of each mode and normalizes it for display only. The display factor changes the visible amplitude but not the computed natural frequencies.</p>
+        <div class="callout callout--warning">
+          <span class="callout__title">Neither physical time nor displacement</span>
+          <p>The two-second cycle and speed selector are viewing aids and do not reproduce the frequency <em>f</em>. Normalized mode components have arbitrary amplitude and cannot be read as displacements in meters. The actual values of <em>f</em> and <em>ω</em> are always shown separately.</p>
+        </div>
+        <p>SVG or PNG export captures the current visible phase. The caption records the mode number, <em>f</em>, <em>ω</em>, phase factor and scales so the saved frame remains unambiguous outside the application.</p>
+      </section>
+
+      <section aria-labelledby="residual-title">
+        <h2 id="residual-title">Mode residual</h2>
+        <p>A frequency alone does not verify its vector. For each eigenpair, calculate:</p>
+        <p class="equation">r<sub>i</sub> = K<sub>ff</sub>φ<sub>i</sub> − λ<sub>i</sub>M<sub>ff</sub>φ<sub>i</sub></p>
+        <p>A relative norm scaled by the sizes of the two terms is useful because it is independent of arbitrary mode scaling. Do not apply this check to full constrained rows: these contain constraint forces analogous to static reactions.</p>
+      </section>
+
+      <section aria-labelledby="practice-title">
+        <h2 id="practice-title">Laboratory 05. Frequencies and modes of a beam with an intermediate support</h2>
+        <p>The aim is to connect free DOFs to mode-shape components and verify frequencies through modal stiffness and mass.</p>
+        <figure class="model-figure lab-figure">
+          <img src="assets/lab-modal-beam.svg" alt="A 2 m beam, fixed at the left, with a pin support at the middle and a free right end.">
+          <figcaption>Two type 113 frame elements from CaseBeam.txt. The beam is continuous at node 2: the support allows rotation but does not introduce an internal hinge.</figcaption>
+        </figure>
+        <h3>Input data and notation</h3>
+        <p>Each span is 1 m long. <em>A = 4·10⁻⁴ m²</em>, <em>E = 200 GPa</em>, <em>ρ = 7800 kg/m³</em>, <em>I = 5.33·10⁻⁸ m⁴</em>. Full component order: <code>[u₁x; u₁y; θ₁; u₂x; u₂y; θ₂; u₃x; u₃y; θ₃]</code>. Modal analysis does not use the external force in the input file.</p>
+        <h3>Before running: hand calculations</h3>
+        <ol>
+          <li>List constrained and free DOFs from the supports in the diagram. Determine how many frequencies will be found.</li>
+          <li>From <em>Kφ = ω²Mφ</em> derive how frequencies change if all mass doubles at unchanged stiffness.</li>
+        </ol>
+        <h3>Run in Octave</h3>
+        <p>Run from the project root. The supplied function prints the results; you do not need to edit its code for this exercise.</p>
+        <pre><code>addpath(pwd);
+setup;
+addpath(fullfile(pwd, "reference", "examples"));
+r = example_05_modal_frame();</code></pre>
+        <h3>Working with the results</h3>
+        <ol>
+          <li>Compare <code>Fixed DOFs</code> and <code>Free DOFs</code> with your numbering. In <code>Full modes scaled to max(abs(component)) = 1</code> each column is a separate mode; label the four unconstrained rows by physical component.</li>
+          <li>For each frequency in <code>Natural frequencies [Hz]</code> calculate <em>(2πf)²</em>. Compare with the corresponding diagonal entry of <code>Phi' * Kff * Phi after mass normalization</code>.</li>
+          <li>Check that <code>Phi' * Mff * Phi after mass normalization</code> is close to the identity matrix. Explain the unit diagonal and small off-diagonal entries.</li>
+          <li>Use rows 6–9 of the printed modes to identify the axial mode and the bending modes. Sketch free-end displacement and rotations for one bending mode. The scale and overall sign are arbitrary; the values do not give forced-motion amplitudes.</li>
+        </ol>
+
+        <div class="callout">
+          <span class="callout__title">Reference values</span>
+          <p>DOFs 1–5 are constrained; the free DOFs are <code>[6 7 8 9] = [θ₂ u₃x u₃y θ₃]</code>, giving four frequencies: approximately 23.019, 173.115, 438.199 and 1395.881 Hz. The first three modes are bending modes and the fourth is axial. Modal mass is the identity; modal stiffness is diagonal with entries <em>(2πf)²</em>. The printed maximum relative residual is below 10⁻¹⁰. Doubling the mass divides every frequency by √2.</p>
+        </div>
+        <h3>What to include in the report</h3>
+        <p>The diagram and DOF list, a mode number/f/(2πf)²/modal stiffness/motion type table, a sketch of one mode, and the predicted mass effect.</p>
+      </section>
+
+      <section class="source-list" aria-labelledby="sources-title">
+        <h2 id="sources-title">Chapter source code</h2>
+        <ul>
+          <li><a href="../../src/analysis/modal/solveModal.m"><code>solveModal.m</code></a> — reduced eigenvalue problem and mode expansion;</li>
+          <li><a href="../../postprocessor/js/modal-view.js"><code>postprocessor/js/modal-view.js</code></a> — normalization, sign, scale and display phase;</li>
+          <li><a href="../../src/analysis/common/validateReducedSystem.m"><code>validateReducedSystem.m</code></a> — stiffness and mass checks;</li>
+          <li><a href="../examples/example_05_modal_frame.m"><code>example_05_modal_frame.m</code></a> — residuals, normalization and orthogonality.</li>
+        </ul>
+        <h3>Theory</h3>
+        <ul>
+          <li>Henri P. Gavin, <a href="https://people.duke.edu/~hpgavin/StructuralDynamics/RealModes.pdf"><cite>Real Modes of Vibration of Building Structures</cite></a>, Duke University, revision of September 16, 2025: section 2, equations (2)–(5).</li>
+        </ul>
+      </section>
+    </main>
+  </div>
+
+  <nav class="page-nav" aria-label="Chapter navigation">
+    <a href="05-static-analysis.html"><span class="page-nav__label">Previous</span>← 5. Static analysis</a>
+    <a href="07-newmark-transient.html"><span class="page-nav__label">Next</span>7. Newmark transient analysis →</a>
+  </nav>
+
+  <footer class="site-footer">
+    <div class="site-footer__inner"><p>MKE-F · offline learning reference · chapter 6 of 15</p></div>
+  </footer>
+</body>
+</html>

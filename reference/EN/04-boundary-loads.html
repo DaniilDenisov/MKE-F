@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Boundary conditions and nodal loads in MKE-F: free and constrained DOFs, static and time-dependent loads.">
+  <title>4. Boundary conditions and loads — MKE-F</title>
+  <link rel="stylesheet" href="../assets/reference.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="site-header__inner">
+      <nav class="language-switch" aria-label="Reference language"><a href="../RU/04-boundary-loads.html" lang="ru" hreflang="ru">RU</a> <a href="../EN/04-boundary-loads.html" lang="en" hreflang="en" aria-current="true">EN</a></nav>
+      <p class="eyebrow">Student FEM Reference · Chapter 4</p>
+      <p class="site-title">Supports and nodal loads</p>
+      <p class="site-subtitle">Which components are removed from the system and how a specified load becomes a vector or time history.</p>
+    </div>
+  </header>
+
+  <div class="layout">
+    <nav class="contents" aria-label="Reference contents">
+      <h2>Contents</h2>
+      <ol>
+        <li><a href="01-model-dofs.html">Model, nodes, elements and DOFs</a></li>
+        <li><a href="02-element-matrices.html">Element matrices</a></li>
+        <li><a href="03-transformation-assembly.html">Transformation and assembly</a></li>
+        <li><a aria-current="page" href="04-boundary-loads.html">Boundary conditions and loads</a></li>
+        <li><a href="05-static-analysis.html">Static analysis</a></li>
+        <li><a href="06-modal-analysis.html">Modal analysis</a></li>
+        <li><a href="07-newmark-transient.html">Newmark transient analysis</a></li>
+        <li><a href="08-result-recovery.html">Element results</a></li>
+        <li><a href="09-architecture-verification.html">Architecture and verification</a></li>
+        <li><a href="10-input-format.html">Input file format</a></li>
+        <li><a href="11-mario-paz-modal-example.html">Mario Paz modal example</a></li>
+        <li><a href="12-local-octave-workflow.html">Local GNU Octave workflow</a></li>
+        <li><a href="13-fem-assembly-visualizer.html">Interactive FEM assembly</a></li>
+        <li><a href="14-mario-paz-matrices-visualizer.html">Interactive frame matrices</a></li>
+        <li><a href="15-sparse-matrix-assembly.html">Sparse matrix assembly</a></li>
+      </ol>
+    </nav>
+
+    <main class="chapter" id="main">
+      <span class="chapter-number">Chapter 4</span>
+      <h1>Boundary conditions and nodal loads</h1>
+      <p class="lead">A support specifies prohibited nodal motions; a load specifies generalized forces applied to the relevant components. In MKE-F these data do not change the original matrices: DOF indices and the load vector are rebuilt for each analysis.</p>
+
+      <section aria-labelledby="partition-title">
+        <h2 id="partition-title">Free and constrained DOFs</h2>
+        <p>The function <a href="../../src/analysis/common/partitionDOFs.m"><code>partitionDOFs</code></a> converts support records into two disjoint lists:</p>
+        <ul>
+          <li><code>fixedDOFs</code> — DOFs with prescribed zero displacement;</li>
+          <li><code>freeDOFs</code> — unknowns included in the reduced system.</li>
+        </ul>
+        <p class="equation">fixedDOFs ∪ freeDOFs = {1, …, n}, &nbsp; fixedDOFs ∩ freeDOFs = ∅</p>
+        <p>Matrices <strong>K</strong> and <strong>M</strong> remain full and unchanged. This separation preserves the physical meaning of the original model and allows correct reaction recovery.</p>
+      </section>
+
+      <section aria-labelledby="supports-title">
+        <h2 id="supports-title">Support types</h2>
+        <p>A record has the form <code>type,node,0,0,0</code>. Nonzero prescribed displacements are not yet supported.</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Type</th><th>Free</th><th>Constrained</th><th>Physical interpretation</th></tr></thead>
+            <tbody>
+              <tr><td><code>1</code></td><td>none</td><td>all nodal DOFs</td><td>fully fixed node</td></tr>
+              <tr><td><code>2</code></td><td>only <em>u<sub>x</sub></em></td><td><em>u<sub>y</sub></em> and frame <em>θ<sub>z</sub></em></td><td>only horizontal translation is free; rotation is restrained</td></tr>
+              <tr><td><code>3</code></td><td>only <em>u<sub>y</sub></em></td><td><em>u<sub>x</sub></em> and frame <em>θ<sub>z</sub></em></td><td>only vertical translation is free; rotation is restrained</td></tr>
+              <tr><td><code>4</code></td><td><em>θ<sub>z</sub></em> for a frame</td><td><em>u<sub>x</sub>, u<sub>y</sub></em></td><td>pinned frame node</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>A truss node has no <em>θ<sub>z</sub></em>, so type 4 is equivalent to full restraint. Constraining the same DOF twice is an error: it usually indicates a duplicate or incorrect record, not a stiffer support.</p>
+      </section>
+
+      <section aria-labelledby="conjugate-title">
+        <h2 id="conjugate-title">Work-conjugate displacements and forces</h2>
+        <p>Each nodal DOF has a corresponding generalized force that does work on it:</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Model</th><th>Degrees of freedom</th><th>Load components</th></tr></thead>
+            <tbody>
+              <tr><td>truss 112</td><td>[u<sub>x</sub>, u<sub>y</sub>]</td><td>[F<sub>x</sub>, F<sub>y</sub>]</td></tr>
+              <tr><td>frame 113</td><td>[u<sub>x</sub>, u<sub>y</sub>, θ<sub>z</sub>]</td><td>[F<sub>x</sub>, F<sub>y</sub>, M<sub>z</sub>]</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p><strong>M<sub>z</sub></strong> is the moment about Z, work-conjugate to rotation <em>θ<sub>z</sub></em>. It is not a force <strong>F<sub>z</sub></strong>: out-of-plane displacement <em>u<sub>z</sub></em> does not exist in a planar model. A nonzero <strong>M<sub>z</sub></strong> at a truss node is therefore rejected rather than ignored.</p>
+      </section>
+
+      <section aria-labelledby="loads-title">
+        <h2 id="loads-title">Four load histories</h2>
+        <p>Time-history columns correspond to <em>t = 0, Δt, …, NΔt</em>. If several records act on the same DOF, their values are added.</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Section / type</th><th>Value</th><th>Supported analysis</th></tr></thead>
+            <tbody>
+              <tr><td><code>bcforce_stat</code> / 10</td><td>constant vector in statics; in dynamics, a compatible single-step pulse at <em>t = Δt</em></td><td>static and transient</td></tr>
+              <tr><td><code>bcforce_harm</code> / 11</td><td><strong>F</strong>(t) = <strong>F</strong><sub>0</sub> sin(2πft)</td><td>transient</td></tr>
+              <tr><td><code>bcforce_pulse</code> / 12</td><td><strong>F</strong><sub>0</sub> only at <em>t = Δt</em></td><td>transient</td></tr>
+              <tr><td><code>bcforce_step</code> / 13</td><td><strong>F</strong><sub>0</sub> in every column, including <em>t = 0</em></td><td>transient</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>For a single-step rectangular pulse, the discrete impulse is <strong>F</strong><sub>0</sub>Δt. Changing the time step while keeping the amplitude fixed therefore changes the applied impulse.</p>
+        <pre><code>% Five columns: t = [0, dt, 2dt, 3dt, 4dt]
+pulse = [0, F0, 0,  0, 0];
+step  = [F0, F0, F0, F0, F0];</code></pre>
+      </section>
+
+      <section aria-labelledby="practice-title">
+        <h2 id="practice-title">Laboratory 04. Nodal loads: force sums and time histories</h2>
+        <p>The aim is to reconstruct the force at each instant from a table and distinguish static loads, single-step pulses and step loads.</p>
+        <figure class="model-figure lab-figure">
+          <img src="assets/lab-nodal-loads.svg" alt="Load at node 2: 10 N rightward, 20 N downward, and a 3 N·m counterclockwise moment.">
+          <figcaption>The diagram shows time-dependent load amplitudes. This exercise constructs load vectors; displacements are not calculated and no supports are specified.</figcaption>
+        </figure>
+        <h3>Input data and notation</h3>
+        <p>DOF order: <code>[u₁x; u₁y; θ₁; u₂x; u₂y; θ₂]</code>. Time-dependent amplitudes at node 2: <code>[10; −20; 3]</code> (N, N, N·m); harmonic frequency 1 Hz. Time grid: <em>t = [0, 0.25, 0.5, 0.75, 1] s</em>. In a separate static case, the loads are added: <code>[10; −20; 3]</code> and <code>[5; 2; −1]</code>.</p>
+        <h3>Before running: hand calculations</h3>
+        <ol>
+          <li>Find the three components of the total static load at node 2.</li>
+          <li>Construct a table <em>Fₓ(t)</em> for three cases: the pulse acts only at <em>t = Δt</em>, the step starts at <em>t = 0</em>, and the harmonic load is <em>10·sin(2πt)</em>.</li>
+          <li>Find the discrete impulse of each component <em>F₀Δt</em>; the moment impulse unit is N·m·s.</li>
+        </ol>
+        <h3>Run in Octave</h3>
+        <p>Run from the project root. The supplied function prints the results; you do not need to edit its code for this exercise.</p>
+        <pre><code>addpath(pwd);
+setup;
+addpath(fullfile(pwd, "reference", "examples"));
+r = example_04_load_histories();</code></pre>
+        <h3>Working with the results</h3>
+        <ol>
+          <li>Compare the static sum with the last three rows of <code>Summed static load vector</code>. The first three rows belong to unloaded node 1.</li>
+          <li>Label the five columns of the three printed time tables using values from <code>Time grid [s]</code>. These tables show only DOFs 4–6: row one is Fₓ, row two is Fᵧ, and row three is M_z.</li>
+          <li>Compare the first row of each table with your prediction. Reconstruct the other two rows by multiplying the same time function by −20 and 3. Small near-zero harmonic values arise from rounding.</li>
+          <li>Compare <code>Discrete pulse impulse components F0*dt</code> with your calculation. Predict the impulse when Δt is halved at the same amplitude; determine the amplitude change needed to preserve the impulse.</li>
+        </ol>
+
+        <div class="callout">
+          <span class="callout__title">Reference values</span>
+          <p>Static sum: <code>[15; −18; 2]</code>. For Fₓ, the rows are <code>[0 10 0 0 0]</code>, <code>[10 10 10 10 10]</code> and <code>[0 10 0 −10 0]</code>. Impulse: <code>[2,5; −5; 0,75]</code> (N·s, N·s, N·m·s). Halving the step at fixed amplitude halves the impulse; double the amplitude to preserve it.</p>
+        </div>
+        <h3>What to include in the report</h3>
+        <p>The static load sum, a table or sketch of the three Fₓ(t) histories, impulse units, and an explanation of the time-step effect.</p>
+      </section>
+
+      <section class="source-list" aria-labelledby="sources-title">
+        <h2 id="sources-title">Chapter source code</h2>
+        <ul>
+          <li><a href="../../src/analysis/common/partitionDOFs.m"><code>partitionDOFs.m</code></a> — support validation and DOF partitioning;</li>
+          <li><a href="../../src/analysis/common/getNodalLoadComponents.m"><code>getNodalLoadComponents.m</code></a> — mapping loads to nodal DOFs;</li>
+          <li><a href="../../src/analysis/static/buildStaticLoad.m"><code>buildStaticLoad.m</code></a> — fresh static vector;</li>
+          <li><a href="../../src/analysis/transient/buildTransientLoad.m"><code>buildTransientLoad.m</code></a> — time histories;</li>
+          <li><a href="../examples/example_04_load_histories.m"><code>example_04_load_histories.m</code></a> — executable laboratory.</li>
+        </ul>
+      </section>
+      <section><h2>Static uniform loads</h2><p>Section <code>eload_uniform</code> specifies distributed qx/qy in local or global coordinates for type 113 frames only. The full vector F combines nodal and consistent element contributions. For a local load, fe=[qxL/2, qyL/2, qyL²/12, qxL/2, qyL/2, −qyL²/12]ᵀ, and the global contribution is Tᵀfe. Details and editor rules are in the <a href="10-input-format.html#element-loads-title">input format</a>.</p></section>
+    </main>
+  </div>
+
+  <nav class="page-nav" aria-label="Chapter navigation">
+    <a href="03-transformation-assembly.html"><span class="page-nav__label">Previous</span>← 3. Transformation and assembly</a>
+    <a href="05-static-analysis.html"><span class="page-nav__label">Next</span>5. Static analysis →</a>
+  </nav>
+
+  <footer class="site-footer">
+    <div class="site-footer__inner"><p>MKE-F · offline learning reference · chapter 4 of 15</p></div>
+  </footer>
+</body>
+</html>

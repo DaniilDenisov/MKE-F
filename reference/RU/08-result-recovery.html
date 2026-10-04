@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Восстановление результатов элементов в МКЭ-Ф: локальные перемещения, напряжения и осевые силы стержня, концевые усилия рамы и их связь с реакциями.">
+  <title>8. Восстановление результатов элементов — МКЭ-Ф</title>
+  <link rel="stylesheet" href="../assets/reference.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">К содержанию</a>
+  <header class="site-header">
+    <div class="site-header__inner">
+      <nav class="language-switch" aria-label="Язык справочника"><a href="../RU/08-result-recovery.html" lang="ru" hreflang="ru" aria-current="true">RU</a> <a href="../EN/08-result-recovery.html" lang="en" hreflang="en">EN</a></nav>
+      <p class="eyebrow">Student FEM Reference · Глава 8</p>
+      <p class="site-title">Результаты в элементах</p>
+      <p class="site-subtitle">Как полное узловое решение превращается в локальные перемещения, деформации, напряжения и концевые усилия.</p>
+    </div>
+  </header>
+
+  <div class="layout">
+    <nav class="contents" aria-label="Оглавление справочника">
+      <h2>Оглавление</h2>
+      <ol>
+        <li><a href="01-model-dofs.html">Модель, узлы, элементы и СС</a></li>
+        <li><a href="02-element-matrices.html">Матрицы элементов</a></li>
+        <li><a href="03-transformation-assembly.html">Преобразование и сборка</a></li>
+        <li><a href="04-boundary-loads.html">Граничные условия и нагрузки</a></li>
+        <li><a href="05-static-analysis.html">Статический расчёт</a></li>
+        <li><a href="06-modal-analysis.html">Модальный анализ</a></li>
+        <li><a href="07-newmark-transient.html">Переходный анализ Ньюмарка</a></li>
+        <li><a aria-current="page" href="08-result-recovery.html">Результаты в элементах</a></li>
+        <li><a href="09-architecture-verification.html">Архитектура и проверка</a></li>
+        <li><a href="10-input-format.html">Формат входного файла</a></li>
+        <li><a href="11-mario-paz-modal-example.html">Модальный пример Mario Paz</a></li>
+        <li><a href="12-local-octave-workflow.html">Локальный запуск в GNU Octave</a></li>
+        <li><a href="13-fem-assembly-visualizer.html">Интерактивная сборка МКЭ</a></li>
+        <li><a href="14-mario-paz-matrices-visualizer.html">Интерактивные матрицы рамы</a></li>
+        <li><a href="15-sparse-matrix-assembly.html">Разреженная сборка матриц</a></li>
+      </ol>
+    </nav>
+
+    <main class="chapter" id="main">
+      <span class="chapter-number">Глава 8</span>
+      <h1>От узловых перемещений к усилиям</h1>
+      <p class="lead">Решатель сначала находит глобальный вектор перемещений <strong>u</strong>. Чтобы интерпретировать состояние отдельного элемента, нужно выбрать принадлежащие ему компоненты, перейти в локальные оси и применить ту же локальную матрицу жёсткости, которая участвовала в сборке.</p>
+
+      <section aria-labelledby="pipeline-title">
+        <h2 id="pipeline-title">Три шага восстановления</h2>
+        <p>Для элемента <em>e</em> функция <a href="../../src/results/recoverElementResults.m"><code>recoverElementResults</code></a> выполняет:</p>
+        <p class="equation">u<sub>e</sub> = u(dofs<sub>e</sub>)</p>
+        <p class="equation">u<sub>local</sub> = T<sub>e</sub> u<sub>e</sub></p>
+        <p class="equation">q<sub>local</sub> = k<sub>local</sub> u<sub>local</sub></p>
+        <p>Первое выражение собирает компоненты по <code>element.dofs</code>, а не по номерам узлов. Второе переводит глобальные перемещения в собственные оси элемента. Третье даёт обобщённые узловые силы, действующие на элемент и сопряжённые его локальным СС.</p>
+        <pre><code>elementDisplacements = u(element.dofs);
+localDisplacements = element.transformation * elementDisplacements;
+localEndForces = element.localStiffness * localDisplacements - feLocal;</code></pre>
+      </section>
+
+      <section aria-labelledby="fields-title">
+        <h2 id="fields-title">Что возвращает статический расчёт</h2>
+        <p><a href="../../src/analysis/static/solveStatic.m"><code>solveStatic</code></a> помещает массив <code>elementResults</code> в структуру результата. Запись каждого элемента содержит:</p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Поле</th><th>Содержание</th><th>Система координат</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><code>globalDOFs</code></td><td>адреса компонентов элемента в полном векторе</td><td>глобальная</td></tr>
+              <tr><td><code>localDisplacements</code></td><td>перемещения и повороты концов</td><td>локальная</td></tr>
+              <tr><td><code>localEndForces</code></td><td>обобщённые силы и моменты на концах</td><td>локальная</td></tr>
+              <tr><td><code>axialStrain</code></td><td>постоянная осевая деформация</td><td>вдоль локальной оси <em>x</em></td></tr>
+              <tr><td><code>axialStress</code></td><td>осевое напряжение <em>Eε</em></td><td>вдоль локальной оси <em>x</em></td></tr>
+              <tr><td><code>axialForce</code></td><td>осевая сила <em>Aσ</em></td><td>растяжение положительно</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section aria-labelledby="truss-title">
+        <h2 id="truss-title">Стержень типа 112</h2>
+        <p>Локальный порядок перемещений стержня равен <strong>[u<sub>1</sub>; v<sub>1</sub>; u<sub>2</sub>; v<sub>2</sub>]</strong>. Осевая деформация, напряжение и сила вычисляются по формулам:</p>
+        <p class="equation">ε = (u<sub>2</sub> − u<sub>1</sub>)/L, &nbsp; σ = Eε, &nbsp; N = Aσ</p>
+        <p>Положительные <em>ε</em>, <em>σ</em> и <em>N</em> означают растяжение, отрицательные — сжатие. При растяжении локальные концевые усилия имеют противоположные знаки:</p>
+        <p class="equation">q<sub>local</sub> = [−N; 0; N; 0]</p>
+        <p>Это не противоречие: скаляр <em>N</em> описывает состояние стержня, а компоненты <strong>q</strong> показывают направления сил на его двух концах.</p>
+      </section>
+
+      <section aria-labelledby="frame-title">
+        <h2 id="frame-title">Рама типа 113</h2>
+        <p>Для рамного элемента локальные векторы имеют согласованный порядок:</p>
+        <p class="equation">u<sub>local</sub> = [u<sub>1</sub>; v<sub>1</sub>; θ<sub>1</sub>; u<sub>2</sub>; v<sub>2</sub>; θ<sub>2</sub>]</p>
+        <p class="equation">q<sub>local</sub> = [N<sub>1</sub>; V<sub>1</sub>; M<sub>1</sub>; N<sub>2</sub>; V<sub>2</sub>; M<sub>2</sub>]</p>
+        <p>Знак каждой силы или момента совпадает с положительным направлением сопряжённой локальной СС. Например, для горизонтальной консоли длиной <em>L</em> и силы <em>P</em> в положительном направлении локальной оси <em>y</em> на свободном конце:</p>
+        <p class="equation">q<sub>local</sub> = [0; −P; −PL; 0; P; 0]</p>
+        <div class="callout callout--warning">
+          <span class="callout__title">Граница текущей модели</span>
+          <p><code>localEndForces</code> содержит результат <strong>k<sub>local</sub>u<sub>local</sub> − feLocal</strong>. Для элементной нагрузки из этого произведения вычитается суммарный согласованный вектор feLocal; он доступен как equivalentLocalLoadVector. Поля <code>axialStress</code> и <code>axialForce</code> описывают только осевое состояние; эпюры изгибающих напряжений функция не строит.</p>
+        </div>
+      </section>
+
+      <section aria-labelledby="reaction-title">
+        <h2 id="reaction-title">Усилия элемента и реакции — не одно и то же</h2>
+        <p>Реакции вычисляются в глобальных координатах для всей модели:</p>
+        <p class="equation">R = K u − F</p>
+        <p>Концевые усилия относятся к одному элементу и записаны в его локальных осях. В общем узле вклады нескольких элементов сначала поворачиваются обратно (транспонированная T) и суммируются:</p>
+        <p class="equation">K u = Σ T<sub>e</sub><sup>T</sup> q<sub>local,e</sub></p>
+        <p>Затем из внутренних узловых сил вычитается внешняя нагрузка. Поэтому <code>localEndForces</code> нельзя без преобразования и сборки называть реакциями. Они совпадают напрямую только в специальных случаях — например, у единственного горизонтального элемента на закреплённом конце, если там нет приложенной узловой нагрузки.</p>
+      </section>
+
+      <section aria-labelledby="practice-title">
+        <h2 id="practice-title">Лабораторная 07. От перемещений к напряжениям и концевым усилиям</h2>
+        <p>Цель — независимо проверить результаты двух задач через растяжение стержня и равновесие консоли.</p>
+        <figure class="model-figure lab-figure">
+          <img src="assets/lab-static-bar.svg" alt="Горизонтальный стержень с силой вправо, неподвижным левым узлом и правой опорой, допускающей перемещение по X.">
+          <figcaption>Ферменный элемент 112. Правая опора запрещает только поперечное перемещение.</figcaption>
+        </figure>
+        <figure class="model-figure lab-figure">
+          <img src="assets/lab-cantilever.svg" alt="Консоль длиной полметра с силой 100 Н вверх на правом конце и заделкой слева.">
+          <figcaption>Вторая задача — рамный элемент 113. Положительный момент направлен против часовой стрелки.</figcaption>
+        </figure>
+        <h3>Исходные данные и обозначения</h3>
+        <p>Для стержня используются данные схемы лабораторной 03: <em>L = 2 м</em>, <em>A = 0,01 м²</em>, <em>E = 200 ГПа</em>, <em>F = 1000 Н</em>. Для консоли <em>L = 0,5 м</em>, <em>A = 10⁻⁴ м²</em>, <em>E = 200 ГПа</em>, <em>I = 0,33·10⁻⁸ м⁴</em>, <em>P = 100 Н</em> вверх. Обе модели горизонтальны, их локальные оси совпадают с глобальными.</p>
+        <h3>До запуска: расчёт на бумаге</h3>
+        <ol>
+          <li>Для стержня найдите <em>σ = F/A</em>, <em>ε = σ/E</em>, <em>ΔL = εL</em> и <em>N = σA</em>.</li>
+          <li>Для консоли запишите равновесие по Y и по моменту относительно узла 1. Найдите <em>R₁y</em> и <em>M₁</em> с учётом направления силы на схеме.</li>
+        </ol>
+        <h3>Запуск в Octave</h3>
+        <p>Выполните из корня проекта. Готовая функция печатает результаты; для этой работы изменять её код не требуется.</p>
+        <pre><code>addpath(pwd);
+setup;
+addpath(fullfile(pwd, "reference", "examples"));
+r = example_07_result_recovery();</code></pre>
+        <h3>Работа с результатами</h3>
+        <ol>
+          <li>Из <code>Truss local displacements [u1; v1; u2; v2]</code> найдите <em>u₂ − u₁</em> и разделите на длину. Сверьте деформацию, напряжение и продольную силу с напечатанными <code>Truss strain</code>, <code>stress</code> и <code>axial force</code>.</li>
+          <li>В <code>Truss local end forces</code> найдите две осевые компоненты. Объясните, почему их знаки противоположны, хотя продольная сила N положительна и стержень растянут.</li>
+          <li>Подпишите шесть компонент <code>Frame local end forces [N1; V1; M1; N2; V2; M2]</code> с единицами Н или Н·м. Сверьте первые три с <code>Frame support reactions</code>, последние три — с нагрузкой свободного конца.</li>
+          <li>Проверьте равновесие: <em>V₁ + V₂ = 0</em> и <em>M₁ + M₂ + V₂L = 0</em>. По линейности предскажите знаки деформации, напряжения, усилий и реакций при обращении нагрузки.</li>
+        </ol>
+
+        <div class="callout">
+          <span class="callout__title">Контрольные значения</span>
+          <p>Стержень: <em>ΔL = 10⁻⁶ м</em>, <em>ε = 5·10⁻⁷</em>, <em>σ = 100 кПа</em>, <em>N = 1000 Н</em>; концевые силы <code>[−1000; 0; 1000; 0]</code> Н. Консоль: <code>[0; −100; −50; 0; 100; 0]</code>, где третья и шестая компоненты измеряются в Н·м. Это компоненты узловых концевых сил в положительных локальных осях, а не готовые знаки эпюр в сечениях.</p>
+        </div>
+        <h3>Что включить в отчёт</h3>
+        <p>Обе схемы, ручные расчёты, таблицу «аналитически — Octave — единицы» и два уравнения равновесия консоли; объяснение знаков концевых усилий.</p>
+      </section>
+
+      <section aria-labelledby="runner-title">
+        <h2 id="runner-title">Все лабораторные одной командой</h2>
+        <p><a href="../examples/run_reference_examples.m"><code>run_reference_examples</code></a> последовательно запускает семь примеров и возвращает их результаты в полях с именами функций:</p>
+        <pre><code>addpath(pwd);
+setup;
+addpath(fullfile(pwd, "reference", "examples"));
+results = run_reference_examples();</code></pre>
+        <p>Для тихой проверки используйте <code>run_reference_examples(false)</code>. Функция запуска определяет корень репозитория по собственному файлу, поэтому после добавления каталога примеров в путь не зависит от текущего рабочего каталога. Исключения не перехватываются: первая нарушенная проверка немедленно останавливает запуск.</p>
+      </section>
+
+      <section class="source-list" aria-labelledby="sources-title">
+        <h2 id="sources-title">Исходный код главы</h2>
+        <ul>
+          <li><a href="../../src/results/recoverElementResults.m"><code>recoverElementResults.m</code></a> — выбор СС, переход в локальные оси и вычисление усилий;</li>
+          <li><a href="../../src/analysis/static/solveStatic.m"><code>solveStatic.m</code></a> — реакции и включение результатов элементов в ответ;</li>
+          <li><a href="../../tests/test_result_recovery.m"><code>tests/test_result_recovery.m</code></a> — регрессионные проверки стержня, поворота и консоли;</li>
+          <li><a href="../examples/example_07_result_recovery.m"><code>example_07_result_recovery.m</code></a> — исполняемая лабораторная;</li>
+          <li><a href="../examples/run_reference_examples.m"><code>run_reference_examples.m</code></a> — единая точка запуска лабораторных.</li>
+        </ul>
+        <h3>Теория</h3>
+        <ul>
+          <li>Young W. Kwon, Hyochoong Bang, <cite>The Finite Element Method Using MATLAB</cite>, с. 201 для стержня и с. 261 для балочного элемента.</li>
+          <li>R. D. Cook, D. S. Malkus, M. E. Plesha, <cite>Concepts and Applications of Finite Element Analysis</cite>, 3-е изд., с. 113.</li>
+        </ul>
+      </section>
+      <section><h2>Эпюры загруженных элементов</h2><p>При суммарных локальных интенсивностях qx, qy и концевом векторе f: N(x)=−f₁−qx·x, V(x)=−f₂−qy·x, M(x)=−f₃+f₂·x+qy·x²/2. Постпроцессор учитывает внутренний экстремум M. Скалярные axialStrain, axialStress, axialForce и возвращаемое StressCalc напряжение обозначают средние осевые значения, а не изгибные напряжения. Геометрия перемещений сохраняет интерполяцию конечного элемента.</p><p>Результаты с элементными нагрузками экспортируются в <a href="../../postprocessor/schema-v2.md">JSON v2</a>; старые результаты v1 поддерживаются.</p></section>
+    </main>
+  </div>
+
+  <nav class="page-nav" aria-label="Навигация между главами">
+    <a href="07-newmark-transient.html"><span class="page-nav__label">Назад</span>← 7. Переходный анализ Ньюмарка</a>
+    <a href="09-architecture-verification.html"><span class="page-nav__label">Далее</span>9. Архитектура и проверка →</a>
+  </nav>
+
+  <footer class="site-footer">
+    <div class="site-footer__inner"><p>МКЭ-Ф · автономный учебный справочник · глава 8 из 15</p></div>
+  </footer>
+</body>
+</html>

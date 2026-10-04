@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 260" role="img" aria-labelledby="title">
+<title id="title">Two free horizontal 1 m members sharing node 2</title>
+<defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8" fill="#285b89"/></marker></defs>
+<style>text{font:16px 'Segoe UI',Arial,sans-serif;fill:#17211b} .bar{stroke:#165c45;stroke-width:7;fill:none} .thin{stroke:#5d685f;stroke-width:2;fill:none} .arrow{stroke:#285b89;stroke-width:2;fill:none;marker-end:url(#arrow)} .node{fill:#fff;stroke:#165c45;stroke-width:3}</style>
+<rect width="640" height="260" fill="#fbfaf5"/>
+<path class="arrow" d="M35 85 V30"/><path class="arrow" d="M35 85 H90"/><text x="15" y="25">Y</text><text x="95" y="90">X</text>
+<path class="bar" d="M130 120 H540"/>
+<circle class="node" cx="130" cy="120" r="6"/><circle class="node" cx="335" cy="120" r="6"/><circle class="node" cx="540" cy="120" r="6"/>
+<text x="125" y="100">1</text><text x="330" y="100">2</text><text x="535" y="100">3</text>
+<text x="190" y="150">Element 1</text><text x="400" y="150">Element 2</text>
+<text x="215" y="185">1 m</text><text x="420" y="185">1 m</text>
+<text x="105" y="225">DOFs: 1, 2</text><text x="300" y="225">DOFs: 3, 4</text><text x="505" y="225">DOFs: 5, 6</text>
+</svg>

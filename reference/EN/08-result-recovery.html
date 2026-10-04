@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Element result recovery in MKE-F: local displacements, truss stresses and axial forces, frame end forces and their relationship to reactions.">
+  <title>8. Element result recovery — MKE-F</title>
+  <link rel="stylesheet" href="../assets/reference.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="site-header__inner">
+      <nav class="language-switch" aria-label="Reference language"><a href="../RU/08-result-recovery.html" lang="ru" hreflang="ru">RU</a> <a href="../EN/08-result-recovery.html" lang="en" hreflang="en" aria-current="true">EN</a></nav>
+      <p class="eyebrow">Student FEM Reference · Chapter 8</p>
+      <p class="site-title">Element results</p>
+      <p class="site-subtitle">How the full nodal solution becomes local displacements, strains, stresses and end forces.</p>
+    </div>
+  </header>
+
+  <div class="layout">
+    <nav class="contents" aria-label="Reference contents">
+      <h2>Contents</h2>
+      <ol>
+        <li><a href="01-model-dofs.html">Model, nodes, elements and DOFs</a></li>
+        <li><a href="02-element-matrices.html">Element matrices</a></li>
+        <li><a href="03-transformation-assembly.html">Transformation and assembly</a></li>
+        <li><a href="04-boundary-loads.html">Boundary conditions and loads</a></li>
+        <li><a href="05-static-analysis.html">Static analysis</a></li>
+        <li><a href="06-modal-analysis.html">Modal analysis</a></li>
+        <li><a href="07-newmark-transient.html">Newmark transient analysis</a></li>
+        <li><a aria-current="page" href="08-result-recovery.html">Element results</a></li>
+        <li><a href="09-architecture-verification.html">Architecture and verification</a></li>
+        <li><a href="10-input-format.html">Input file format</a></li>
+        <li><a href="11-mario-paz-modal-example.html">Mario Paz modal example</a></li>
+        <li><a href="12-local-octave-workflow.html">Local GNU Octave workflow</a></li>
+        <li><a href="13-fem-assembly-visualizer.html">Interactive FEM assembly</a></li>
+        <li><a href="14-mario-paz-matrices-visualizer.html">Interactive frame matrices</a></li>
+        <li><a href="15-sparse-matrix-assembly.html">Sparse matrix assembly</a></li>
+      </ol>
+    </nav>
+
+    <main class="chapter" id="main">
+      <span class="chapter-number">Chapter 8</span>
+      <h1>From nodal displacements to forces</h1>
+      <p class="lead">The solver first finds the global displacement vector <strong>u</strong>. To interpret an individual element, select its components, transform to local axes and apply the same local stiffness matrix used in assembly.</p>
+
+      <section aria-labelledby="pipeline-title">
+        <h2 id="pipeline-title">Three recovery steps</h2>
+        <p>For element <em>e</em> the function <a href="../../src/results/recoverElementResults.m"><code>recoverElementResults</code></a> performs:</p>
+        <p class="equation">u<sub>e</sub> = u(dofs<sub>e</sub>)</p>
+        <p class="equation">u<sub>local</sub> = T<sub>e</sub> u<sub>e</sub></p>
+        <p class="equation">q<sub>local</sub> = k<sub>local</sub> u<sub>local</sub></p>
+        <p>The first expression selects components using <code>element.dofs</code>, rather than node numbers. The second transforms global displacements into element axes. The third gives generalized nodal forces acting on the element and work-conjugate to its local DOFs.</p>
+        <pre><code>elementDisplacements = u(element.dofs);
+localDisplacements = element.transformation * elementDisplacements;
+localEndForces = element.localStiffness * localDisplacements - feLocal;</code></pre>
+      </section>
+
+      <section aria-labelledby="fields-title">
+        <h2 id="fields-title">What static analysis returns</h2>
+        <p><a href="../../src/analysis/static/solveStatic.m"><code>solveStatic</code></a> places the array <code>elementResults</code> in the result structure. Each element record contains:</p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Field</th><th>Contents</th><th>Coordinate system</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><code>globalDOFs</code></td><td>addresses of element components in the full vector</td><td>global</td></tr>
+              <tr><td><code>localDisplacements</code></td><td>end displacements and rotations</td><td>local</td></tr>
+              <tr><td><code>localEndForces</code></td><td>generalized end forces and moments</td><td>local</td></tr>
+              <tr><td><code>axialStrain</code></td><td>constant axial strain</td><td>along the local axis <em>x</em></td></tr>
+              <tr><td><code>axialStress</code></td><td>axial stress <em>Eε</em></td><td>along the local axis <em>x</em></td></tr>
+              <tr><td><code>axialForce</code></td><td>axial force <em>Aσ</em></td><td>tension is positive</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section aria-labelledby="truss-title">
+        <h2 id="truss-title">Type 112 member</h2>
+        <p>The local displacement order is <strong>[u<sub>1</sub>; v<sub>1</sub>; u<sub>2</sub>; v<sub>2</sub>]</strong>. Axial strain, stress and force are calculated as:</p>
+        <p class="equation">ε = (u<sub>2</sub> − u<sub>1</sub>)/L, &nbsp; σ = Eε, &nbsp; N = Aσ</p>
+        <p>Positive <em>ε</em>, <em>σ</em> and <em>N</em> mean tension; negative values mean compression. In tension, local end forces have opposite signs:</p>
+        <p class="equation">q<sub>local</sub> = [−N; 0; N; 0]</p>
+        <p>There is no contradiction: the scalar <em>N</em> describes the member state, while components of <strong>q</strong> give the force directions at its two ends.</p>
+      </section>
+
+      <section aria-labelledby="frame-title">
+        <h2 id="frame-title">Type 113 frame</h2>
+        <p>Frame local vectors use a consistent order:</p>
+        <p class="equation">u<sub>local</sub> = [u<sub>1</sub>; v<sub>1</sub>; θ<sub>1</sub>; u<sub>2</sub>; v<sub>2</sub>; θ<sub>2</sub>]</p>
+        <p class="equation">q<sub>local</sub> = [N<sub>1</sub>; V<sub>1</sub>; M<sub>1</sub>; N<sub>2</sub>; V<sub>2</sub>; M<sub>2</sub>]</p>
+        <p>Each force or moment is positive along its work-conjugate local DOF direction. For example, for a horizontal cantilever of length <em>L</em> and force <em>P</em> in the positive direction of the local axis <em>y</em> at the free end:</p>
+        <p class="equation">q<sub>local</sub> = [0; −P; −PL; 0; P; 0]</p>
+        <div class="callout callout--warning">
+          <span class="callout__title">Limits of the current model</span>
+          <p><code>localEndForces</code> contains the result <strong>k<sub>local</sub>u<sub>local</sub> − feLocal</strong>. For an element load, the total consistent vector feLocal is subtracted from this product; it is available as equivalentLocalLoadVector. Fields <code>axialStress</code> and <code>axialForce</code> describe only the axial state; the function does not generate bending stress distributions.</p>
+        </div>
+      </section>
+
+      <section aria-labelledby="reaction-title">
+        <h2 id="reaction-title">Element forces and reactions are different quantities</h2>
+        <p>Reactions are calculated in global coordinates for the entire model:</p>
+        <p class="equation">R = K u − F</p>
+        <p>End forces belong to one element and use its local axes. At a shared node, contributions from several elements are first rotated back using transposed T and summed:</p>
+        <p class="equation">K u = Σ T<sub>e</sub><sup>T</sup> q<sub>local,e</sub></p>
+        <p>The external load is then subtracted from the internal nodal forces. Thus <code>localEndForces</code> cannot be called reactions without transformation and assembly. They coincide directly only in special cases, such as the fixed end of a single horizontal element with no applied nodal load at that end.</p>
+      </section>
+
+      <section aria-labelledby="practice-title">
+        <h2 id="practice-title">Laboratory 07. From displacements to stresses and end forces</h2>
+        <p>The aim is to independently verify two results using member extension and cantilever equilibrium.</p>
+        <figure class="model-figure lab-figure">
+          <img src="assets/lab-static-bar.svg" alt="Horizontal member loaded rightward, with a fixed left node and a right support allowing X translation.">
+          <figcaption>Type 112 truss member. The right support restrains only transverse displacement.</figcaption>
+        </figure>
+        <figure class="model-figure lab-figure">
+          <img src="assets/lab-cantilever.svg" alt="A half-meter cantilever, fixed at the left and loaded upward by 100 N at the right end.">
+          <figcaption>The second problem uses a type 113 frame element. A positive moment is counterclockwise.</figcaption>
+        </figure>
+        <h3>Input data and notation</h3>
+        <p>For the member, use the laboratory 03 data: <em>L = 2 m</em>, <em>A = 0.01 m²</em>, <em>E = 200 GPa</em>, <em>F = 1000 N</em>. For the cantilever, <em>L = 0.5 m</em>, <em>A = 10⁻⁴ m²</em>, <em>E = 200 GPa</em>, <em>I = 0.33·10⁻⁸ m⁴</em>, <em>P = 100 N</em> upward. Both models are horizontal, with local axes aligned with global axes.</p>
+        <h3>Before running: hand calculations</h3>
+        <ol>
+          <li>For the member, find <em>σ = F/A</em>, <em>ε = σ/E</em>, <em>ΔL = εL</em> and <em>N = σA</em>.</li>
+          <li>For the cantilever, write Y-force equilibrium and moment equilibrium about node 1. Find <em>R₁y</em> and <em>M₁</em> with the force direction shown.</li>
+        </ol>
+        <h3>Run in Octave</h3>
+        <p>Run from the project root. The supplied function prints the results; you do not need to edit its code for this exercise.</p>
+        <pre><code>addpath(pwd);
+setup;
+addpath(fullfile(pwd, "reference", "examples"));
+r = example_07_result_recovery();</code></pre>
+        <h3>Working with the results</h3>
+        <ol>
+          <li>From <code>Truss local displacements [u1; v1; u2; v2]</code> find <em>u₂ − u₁</em> and divide by the length. Compare strain, stress and axial force with the printed <code>Truss strain</code>, <code>stress</code> and <code>axial force</code>.</li>
+          <li>In <code>Truss local end forces</code> find the two axial components. Explain their opposite signs although axial force N is positive and the member is in tension.</li>
+          <li>Label the six components of <code>Frame local end forces [N1; V1; M1; N2; V2; M2]</code> with units N or N·m. Compare the first three with <code>Frame support reactions</code>, and the last three with the free-end load.</li>
+          <li>Check equilibrium: <em>V₁ + V₂ = 0</em> and <em>M₁ + M₂ + V₂L = 0</em>. Use linearity to predict the signs of strain, stress, forces and reactions if the load reverses.</li>
+        </ol>
+
+        <div class="callout">
+          <span class="callout__title">Reference values</span>
+          <p>Member: <em>ΔL = 10⁻⁶ m</em>, <em>ε = 5·10⁻⁷</em>, <em>σ = 100 kPa</em>, <em>N = 1000 N</em>; end forces <code>[−1000; 0; 1000; 0]</code> N. Cantilever: <code>[0; −100; −50; 0; 100; 0]</code>, where the third and sixth components are measured in N·m. These are nodal end-force components along positive local axes, not section-diagram sign conventions.</p>
+        </div>
+        <h3>What to include in the report</h3>
+        <p>Both diagrams, hand calculations, an analytical/Octave/units table, the two cantilever equilibrium equations, and an explanation of end-force signs.</p>
+      </section>
+
+      <section aria-labelledby="runner-title">
+        <h2 id="runner-title">All laboratories with one command</h2>
+        <p><a href="../examples/run_reference_examples.m"><code>run_reference_examples</code></a> runs seven examples in sequence and returns results in fields named after the functions:</p>
+        <pre><code>addpath(pwd);
+setup;
+addpath(fullfile(pwd, "reference", "examples"));
+results = run_reference_examples();</code></pre>
+        <p>For a quiet check, use <code>run_reference_examples(false)</code>. The runner finds the repository root from its own file, so once the examples directory is on the path it does not depend on the current working directory. Exceptions are not caught: the first failed check immediately stops execution.</p>
+      </section>
+
+      <section class="source-list" aria-labelledby="sources-title">
+        <h2 id="sources-title">Chapter source code</h2>
+        <ul>
+          <li><a href="../../src/results/recoverElementResults.m"><code>recoverElementResults.m</code></a> — DOF selection, local transformation and force recovery;</li>
+          <li><a href="../../src/analysis/static/solveStatic.m"><code>solveStatic.m</code></a> — reactions and element results included in the response;</li>
+          <li><a href="../../tests/test_result_recovery.m"><code>tests/test_result_recovery.m</code></a> — regression checks for a member, rotation and cantilever;</li>
+          <li><a href="../examples/example_07_result_recovery.m"><code>example_07_result_recovery.m</code></a> — executable laboratory;</li>
+          <li><a href="../examples/run_reference_examples.m"><code>run_reference_examples.m</code></a> — single entry point for the laboratories.</li>
+        </ul>
+        <h3>Theory</h3>
+        <ul>
+          <li>Young W. Kwon, Hyochoong Bang, <cite>The Finite Element Method Using MATLAB</cite>, p. 201 for the truss member and p. 261 for the beam element.</li>
+          <li>R. D. Cook, D. S. Malkus, M. E. Plesha, <cite>Concepts and Applications of Finite Element Analysis</cite>, 3rd ed., p. 113.</li>
+        </ul>
+      </section>
+      <section><h2>Diagrams for loaded elements</h2><p>For total local intensities qx, qy and end vector f: N(x)=−f₁−qx·x, V(x)=−f₂−qy·x, M(x)=−f₃+f₂·x+qy·x²/2. The postprocessor includes the interior extremum of M. Scalars axialStrain, axialStress, axialForce and the stress returned by StressCalc are average axial quantities, not bending stresses. Displacement geometry retains finite element interpolation.</p><p>Results with element loads are exported as <a href="../../postprocessor/schema-v2.md">JSON v2</a>; legacy v1 results remain supported.</p></section>
+    </main>
+  </div>
+
+  <nav class="page-nav" aria-label="Chapter navigation">
+    <a href="07-newmark-transient.html"><span class="page-nav__label">Previous</span>← 7. Newmark transient analysis</a>
+    <a href="09-architecture-verification.html"><span class="page-nav__label">Next</span>9. Architecture and verification →</a>
+  </nav>
+
+  <footer class="site-footer">
+    <div class="site-footer__inner"><p>MKE-F · offline learning reference · chapter 8 of 15</p></div>
+  </footer>
+</body>
+</html>

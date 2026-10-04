@@ -1,0 +1,1035 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Интерактивная визуализация расчёта элементных матриц, сборки глобальной системы МКЭ и наложения граничных условий.">
+  <title>13. Сборка системы МКЭ — интерактивная визуализация</title>
+  <link rel="stylesheet" href="../assets/reference.css">
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #17211b;
+      --muted: #627067;
+      --paper: #f7f5ee;
+      --panel: #ffffff;
+      --panel-soft: #f5f8f5;
+      --line: #d7ddd6;
+      --green: #165c45;
+      --green-dark: #0c3d2d;
+      --green-soft: #e4f1e9;
+      --amber: #a75317;
+      --amber-soft: #fff0da;
+      --blue: #26608e;
+      --blue-soft: #e8f2fa;
+      --red: #a33935;
+      --red-soft: #f9e8e6;
+      --violet: #6753a3;
+      --shadow: 0 18px 55px rgba(27, 48, 36, 0.10);
+      --radius: 18px;
+    }
+
+    * { box-sizing: border-box; }
+
+    [hidden] { display: none !important; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      min-width: 320px;
+      color: var(--ink);
+      background:
+        linear-gradient(90deg, rgba(22, 92, 69, 0.035) 1px, transparent 1px),
+        linear-gradient(rgba(22, 92, 69, 0.035) 1px, transparent 1px),
+        var(--paper);
+      background-size: 32px 32px;
+      font-family: Inter, "Segoe UI", Arial, sans-serif;
+      line-height: 1.45;
+    }
+
+    button,
+    input { font: inherit; }
+
+    button { cursor: pointer; }
+
+    button:focus-visible,
+    input:focus-visible,
+    [tabindex="0"]:focus-visible {
+      outline: 3px solid rgba(38, 96, 142, 0.42);
+      outline-offset: 3px;
+    }
+
+    .page-header {
+      color: #fff;
+      background:
+        radial-gradient(circle at 88% 18%, rgba(255, 255, 255, 0.16), transparent 28%),
+        linear-gradient(135deg, var(--green-dark), var(--green));
+      border-bottom: 5px solid #d8a648;
+    }
+
+    .page-header__inner,
+    main,
+    footer {
+      width: min(1420px, calc(100% - 32px));
+      margin-inline: auto;
+    }
+
+    .page-header__inner { padding: 28px 0 25px; }
+
+    .eyebrow {
+      margin: 0 0 6px;
+      color: #cfe6d9;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.13em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 0;
+      max-width: 22ch;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: clamp(32px, 5vw, 58px);
+      font-weight: 500;
+      line-height: 1.04;
+      letter-spacing: -0.025em;
+    }
+
+    .subtitle {
+      max-width: 78ch;
+      margin: 10px 0 0;
+      color: #e3f0e8;
+      font-size: 16px;
+    }
+
+    main { padding: 24px 0 36px; }
+
+    .app {
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--panel);
+      box-shadow: var(--shadow);
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px 18px;
+      align-items: center;
+      justify-content: space-between;
+      padding: 15px 18px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.96);
+    }
+
+    .toolbar__group,
+    .segmented,
+    .playback {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .button,
+    .segment,
+    .stage-button,
+    .element-button {
+      min-height: 40px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      color: var(--ink);
+      background: #fff;
+      font-weight: 700;
+      transition: transform 140ms ease, border-color 140ms ease, background 140ms ease;
+    }
+
+    .button { padding: 8px 13px; }
+    .button:hover:not(:disabled),
+    .segment:hover,
+    .stage-button:hover,
+    .element-button:hover { border-color: #8fa398; }
+    .button:active:not(:disabled) { transform: translateY(1px); }
+    .button:disabled { cursor: not-allowed; opacity: 0.42; }
+
+    .button--primary {
+      border-color: var(--green);
+      color: #fff;
+      background: var(--green);
+    }
+
+    .button--icon {
+      min-width: 42px;
+      padding-inline: 10px;
+      font-size: 18px;
+    }
+
+    .segment { padding: 8px 12px; }
+    .segment[aria-pressed="true"] {
+      border-color: var(--green-dark);
+      color: #fff;
+      background: var(--green-dark);
+    }
+
+    .speed-label {
+      display: grid;
+      grid-template-columns: auto 100px;
+      gap: 8px;
+      align-items: center;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    input[type="range"] { accent-color: var(--green); }
+
+    .stage-strip {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(110px, 1fr));
+      gap: 1px;
+      overflow-x: auto;
+      border-bottom: 1px solid var(--line);
+      background: var(--line);
+    }
+
+    .stage-button {
+      min-width: 120px;
+      min-height: 64px;
+      padding: 10px 12px;
+      border: 0;
+      border-radius: 0;
+      text-align: left;
+      background: #fff;
+    }
+
+    .stage-button span {
+      display: block;
+      margin-bottom: 2px;
+      color: var(--muted);
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .stage-button[aria-current="step"] {
+      color: var(--green-dark);
+      background: var(--green-soft);
+      box-shadow: inset 0 -4px 0 var(--green);
+    }
+
+    .stage-button.is-complete span { color: var(--green); }
+
+    .status-band {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 18px;
+      align-items: center;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--line);
+      background: var(--panel-soft);
+    }
+
+    .status-band h2 {
+      margin: 0 0 3px;
+      color: var(--green-dark);
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 23px;
+      font-weight: 500;
+    }
+
+    .status-band p { margin: 0; color: var(--muted); }
+
+    .status-badge {
+      padding: 7px 11px;
+      border-radius: 999px;
+      color: var(--green-dark);
+      background: var(--green-soft);
+      font-size: 12px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .workspace {
+      display: grid;
+      grid-template-columns: minmax(360px, 0.95fr) minmax(480px, 1.35fr);
+      min-height: 690px;
+    }
+
+    .left-column,
+    .right-column { min-width: 0; }
+
+    .left-column {
+      padding: 20px;
+      border-right: 1px solid var(--line);
+      background: #fcfdfb;
+    }
+
+    .right-column { padding: 20px; }
+
+    .section-heading {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 14px;
+      align-items: baseline;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+
+    .section-heading h3 {
+      margin: 0;
+      color: var(--green-dark);
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 20px;
+      font-weight: 500;
+    }
+
+    .section-heading p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .model-canvas {
+      position: relative;
+      overflow: hidden;
+      min-height: 230px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background:
+        linear-gradient(90deg, rgba(22, 92, 69, 0.045) 1px, transparent 1px),
+        linear-gradient(rgba(22, 92, 69, 0.045) 1px, transparent 1px),
+        #fff;
+      background-size: 24px 24px;
+    }
+
+    .model-canvas svg {
+      display: block;
+      width: 100%;
+      height: auto;
+      min-height: 230px;
+    }
+
+    .member-base {
+      stroke: #7e8b82;
+      stroke-width: 12;
+      stroke-linecap: round;
+    }
+
+    .member-hit {
+      stroke: transparent;
+      stroke-width: 38;
+      fill: none;
+      cursor: pointer;
+    }
+
+    .member-active {
+      stroke: var(--green);
+      filter: drop-shadow(0 3px 5px rgba(22, 92, 69, 0.25));
+    }
+
+    .member-assembled { stroke: var(--blue); }
+
+    .member-current {
+      stroke: var(--amber);
+      animation: member-pulse 900ms ease-in-out infinite alternate;
+    }
+
+    .node { fill: #fff; stroke: var(--green-dark); stroke-width: 5; }
+    .node-fixed { fill: var(--green-soft); }
+    .svg-label { fill: var(--ink); font: 700 18px "Segoe UI", Arial, sans-serif; }
+    .svg-small { fill: var(--muted); font: 600 14px "Segoe UI", Arial, sans-serif; }
+    .svg-force { stroke: var(--red); stroke-width: 5; fill: none; }
+    .svg-reaction { stroke: var(--violet); stroke-width: 5; fill: none; }
+    .deformed-member { stroke: var(--amber); stroke-width: 6; stroke-dasharray: 10 7; fill: none; }
+    .deformed-node { fill: var(--amber-soft); stroke: var(--amber); stroke-width: 4; }
+
+    @keyframes member-pulse {
+      from { stroke-width: 12; }
+      to { stroke-width: 17; }
+    }
+
+    .element-picker {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+      margin: 12px 0 18px;
+    }
+
+    .element-button {
+      padding: 8px;
+      text-align: center;
+    }
+
+    .element-button[aria-pressed="true"] {
+      border-color: var(--green);
+      color: var(--green-dark);
+      background: var(--green-soft);
+    }
+
+    .parameter-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+
+    .parameter {
+      padding: 11px 12px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #fff;
+    }
+
+    .parameter__top {
+      display: flex;
+      gap: 8px;
+      justify-content: space-between;
+      margin-bottom: 7px;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .parameter__value {
+      color: var(--green-dark);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .parameter input { width: 100%; }
+
+    .local-panel {
+      padding: 15px;
+      border: 1px solid #bed4c8;
+      border-radius: 14px;
+      background: var(--green-soft);
+    }
+
+    .local-map {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 10px;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .map-chip {
+      padding: 4px 8px;
+      border-radius: 999px;
+      color: var(--blue);
+      background: var(--blue-soft);
+      font-family: "Cascadia Mono", Consolas, monospace;
+    }
+
+    .matrix-wrap {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .matrix-symbol {
+      color: var(--green-dark);
+      font-family: Georgia, serif;
+      font-size: 20px;
+      font-style: italic;
+      white-space: nowrap;
+    }
+
+    .mini-matrix,
+    .global-matrix {
+      border-collapse: separate;
+      border-spacing: 4px;
+      font-family: "Cascadia Mono", Consolas, monospace;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .mini-matrix td {
+      min-width: 58px;
+      padding: 9px;
+      border-radius: 8px;
+      text-align: center;
+      background: rgba(255, 255, 255, 0.82);
+    }
+
+    .formula-line {
+      margin: 10px 0 0;
+      color: var(--green-dark);
+      font-family: "Cascadia Mono", Consolas, monospace;
+      font-size: 13px;
+      text-align: center;
+    }
+
+    .matrix-header {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 16px;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+
+    .matrix-header h3 {
+      margin: 0;
+      color: var(--green-dark);
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 22px;
+      font-weight: 500;
+    }
+
+    .equation-chip {
+      padding: 7px 10px;
+      border-radius: 9px;
+      color: var(--green-dark);
+      background: var(--green-soft);
+      font-family: "Cascadia Mono", Consolas, monospace;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .matrix-stage {
+      min-height: 402px;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: var(--panel-soft);
+    }
+
+    .dense-view {
+      display: grid;
+      place-items: center;
+      min-height: 300px;
+      overflow-x: auto;
+    }
+
+    .global-matrix th {
+      min-width: 52px;
+      height: 32px;
+      color: var(--muted);
+      font: 700 12px "Segoe UI", Arial, sans-serif;
+      text-align: center;
+    }
+
+    .global-matrix td {
+      position: relative;
+      min-width: 66px;
+      height: 58px;
+      padding: 5px;
+      border: 1px solid #dfe4df;
+      border-radius: 9px;
+      color: var(--muted);
+      text-align: center;
+      background: #fff;
+      transition: background 220ms ease, color 220ms ease, transform 220ms ease;
+    }
+
+    .global-matrix td.nonzero {
+      color: var(--ink);
+      border-color: #b9cbbf;
+      background: var(--green-soft);
+      font-weight: 800;
+    }
+
+    .global-matrix td.zero { opacity: 0.62; }
+
+    .global-matrix td.current-cell {
+      z-index: 1;
+      color: #733508;
+      border-color: #d39a62;
+      background: var(--amber-soft);
+      animation: cell-pulse 780ms ease-out;
+    }
+
+    .global-matrix td.constrained-cell {
+      color: var(--red);
+      border-color: #dcaaa7;
+      background: var(--red-soft);
+      text-decoration: line-through;
+    }
+
+    .global-matrix td .cell-note {
+      display: block;
+      margin-top: 2px;
+      color: var(--muted);
+      font: 600 10px "Segoe UI", Arial, sans-serif;
+    }
+
+    @keyframes cell-pulse {
+      0% { transform: scale(0.88); box-shadow: 0 0 0 0 rgba(167, 83, 23, 0.32); }
+      70% { transform: scale(1.04); box-shadow: 0 0 0 10px rgba(167, 83, 23, 0); }
+      100% { transform: scale(1); }
+    }
+
+    .operation-line {
+      min-height: 49px;
+      margin-top: 12px;
+      padding: 10px 12px;
+      border-left: 4px solid var(--blue);
+      border-radius: 8px;
+      color: #194d77;
+      background: var(--blue-soft);
+      font-family: "Cascadia Mono", Consolas, monospace;
+      font-size: 13px;
+    }
+
+    .sparse-view[hidden],
+    .dense-view[hidden] { display: none; }
+
+    .sparse-view {
+      display: grid;
+      gap: 14px;
+    }
+
+    .sparse-block {
+      min-width: 0;
+      padding: 12px;
+      border-radius: 11px;
+      background: #fff;
+    }
+
+    .sparse-block h4 {
+      margin: 0 0 7px;
+      color: var(--green-dark);
+      font-size: 13px;
+    }
+
+    .array-line {
+      overflow-x: auto;
+      margin: 5px 0;
+      color: var(--ink);
+      font-family: "Cascadia Mono", Consolas, monospace;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .array-name {
+      display: inline-block;
+      min-width: 70px;
+      color: var(--blue);
+      font-weight: 800;
+    }
+
+    .triplet-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(94px, 1fr));
+      gap: 6px;
+      max-height: 180px;
+      overflow: auto;
+    }
+
+    .triplet {
+      padding: 5px 7px;
+      border-radius: 7px;
+      color: var(--muted);
+      background: var(--panel-soft);
+      font-family: "Cascadia Mono", Consolas, monospace;
+      font-size: 11px;
+      text-align: center;
+    }
+
+    .triplet.is-new {
+      color: #733508;
+      background: var(--amber-soft);
+      font-weight: 800;
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 11px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .legend span { display: inline-flex; gap: 6px; align-items: center; }
+    .swatch { width: 13px; height: 13px; border-radius: 4px; background: var(--green-soft); border: 1px solid #b9cbbf; }
+    .swatch--current { background: var(--amber-soft); border-color: #d39a62; }
+    .swatch--constraint { background: var(--red-soft); border-color: #dcaaa7; }
+
+    .result-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .result-card {
+      min-width: 0;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #fff;
+    }
+
+    .result-card__label {
+      display: block;
+      margin-bottom: 4px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .result-card__value {
+      display: block;
+      overflow-x: auto;
+      color: var(--green-dark);
+      font-family: "Cascadia Mono", Consolas, monospace;
+      font-size: 14px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .footnote {
+      margin: 14px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    footer {
+      padding: 0 0 30px;
+      color: var(--muted);
+      font-size: 12px;
+      text-align: center;
+    }
+
+    .reference-toc {
+      width: min(1420px, calc(100% - 32px));
+      margin: 16px auto 0;
+    }
+
+    .reference-toc > summary {
+      width: fit-content;
+      padding: 8px 13px;
+      color: var(--green-dark);
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      box-shadow: 0 5px 18px rgba(27, 48, 36, 0.07);
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .reference-toc .contents {
+      position: static;
+      margin-top: 9px;
+      padding: 16px 20px;
+      background: var(--panel);
+    }
+
+    .reference-toc .contents ol {
+      columns: 2;
+      column-gap: 38px;
+    }
+
+    .page-nav {
+      width: min(1180px, calc(100% - 32px));
+      margin: 22px auto 0;
+      padding-bottom: 24px;
+    }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    @media (max-width: 1000px) {
+      .workspace { grid-template-columns: 1fr; }
+      .left-column { border-right: 0; border-bottom: 1px solid var(--line); }
+      .workspace { min-height: 0; }
+    }
+
+    @media (max-width: 700px) {
+      .page-header__inner,
+      main,
+      footer,
+      .reference-toc,
+      .page-nav { width: min(100% - 16px, 1420px); }
+      .reference-toc .contents ol { columns: 1; }
+      .toolbar { align-items: stretch; }
+      .toolbar__group { width: 100%; justify-content: space-between; }
+      .speed-label { grid-template-columns: auto minmax(80px, 1fr); flex: 1 1 180px; }
+      .status-band { grid-template-columns: 1fr; }
+      .status-badge { justify-self: start; }
+      .left-column,
+      .right-column { padding: 13px; }
+      .parameter-grid,
+      .result-grid { grid-template-columns: 1fr; }
+      .global-matrix td { min-width: 57px; height: 52px; }
+      .matrix-stage { padding: 8px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        scroll-behavior: auto !important;
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="page-header">
+    <div class="page-header__inner">
+      <nav class="language-switch" aria-label="Язык справочника"><a href="../RU/13-fem-assembly-visualizer.html" lang="ru" hreflang="ru" aria-current="true">RU</a> <a href="../EN/13-fem-assembly-visualizer.html" lang="en" hreflang="en">EN</a></nav>
+      <p class="eyebrow">Дополнительная глава 13 · интерактивный разбор</p>
+      <h1>От элемента к глобальной системе</h1>
+      <p class="subtitle">Три осевых стержня, четыре степени свободы и полный путь: элементные матрицы → сборка → разреженное хранение → заделка → решение и реакции.</p>
+    </div>
+  </header>
+
+  <details class="reference-toc">
+    <summary>Оглавление справочника</summary>
+    <nav class="contents" aria-label="Оглавление справочника">
+      <h2>Пятнадцать глав</h2>
+      <ol>
+        <li><a href="01-model-dofs.html">Модель, узлы, элементы и СС</a></li>
+        <li><a href="02-element-matrices.html">Матрицы элементов</a></li>
+        <li><a href="03-transformation-assembly.html">Преобразование и сборка</a></li>
+        <li><a href="04-boundary-loads.html">Граничные условия и нагрузки</a></li>
+        <li><a href="05-static-analysis.html">Статический расчёт</a></li>
+        <li><a href="06-modal-analysis.html">Модальный анализ</a></li>
+        <li><a href="07-newmark-transient.html">Переходный анализ Ньюмарка</a></li>
+        <li><a href="08-result-recovery.html">Результаты в элементах</a></li>
+        <li><a href="09-architecture-verification.html">Архитектура и проверка</a></li>
+        <li><a href="10-input-format.html">Формат входного файла</a></li>
+        <li><a href="11-mario-paz-modal-example.html">Модальный пример Mario Paz</a></li>
+        <li><a href="12-local-octave-workflow.html">Локальный запуск в GNU Octave</a></li>
+        <li><a aria-current="page" href="13-fem-assembly-visualizer.html">Интерактивная сборка МКЭ</a></li>
+        <li><a href="14-mario-paz-matrices-visualizer.html">Интерактивные матрицы рамы</a></li>
+        <li><a href="15-sparse-matrix-assembly.html">Разреженная сборка матриц</a></li>
+      </ol>
+    </nav>
+  </details>
+
+  <main>
+    <section class="app" aria-label="Интерактивная визуализация сборки системы МКЭ">
+      <div class="toolbar">
+        <div class="toolbar__group playback" aria-label="Управление анимацией">
+          <button class="button button--icon" id="prevButton" type="button" aria-label="Предыдущий шаг">←</button>
+          <button class="button button--primary" id="playButton" type="button">▶ Запустить</button>
+          <button class="button button--icon" id="nextButton" type="button" aria-label="Следующий шаг">→</button>
+          <button class="button" id="resetButton" type="button">Сначала</button>
+        </div>
+        <div class="toolbar__group">
+          <label class="speed-label" for="speedRange">
+            Скорость
+            <input id="speedRange" type="range" min="1" max="3" step="1" value="2">
+          </label>
+          <div class="segmented" aria-label="Представление матрицы">
+            <button class="segment" type="button" data-view="dense" aria-pressed="true">Полная матрица</button>
+            <button class="segment" type="button" data-view="sparse" aria-pressed="false">Триплеты → sparse()</button>
+          </div>
+        </div>
+      </div>
+
+      <nav class="stage-strip" aria-label="Этапы расчёта" id="stageStrip"></nav>
+
+      <div class="status-band" aria-live="polite">
+        <div>
+          <h2 id="stageTitle">Модель и степени свободы</h2>
+          <p id="stageDescription">У каждого узла одна осевая степень свободы. Нумерация определяет адреса коэффициентов в глобальной матрице.</p>
+        </div>
+        <span class="status-badge" id="stageBadge">Шаг 1 из 7</span>
+      </div>
+
+      <div class="workspace">
+        <div class="left-column">
+          <div class="section-heading">
+            <h3>Расчётная схема</h3>
+            <p>Нажмите на элемент, чтобы исследовать его матрицу</p>
+          </div>
+
+          <div class="model-canvas">
+            <svg id="modelSvg" viewBox="0 0 820 260" role="img" aria-labelledby="modelTitle modelDesc">
+              <title id="modelTitle">Цепочка из трёх осевых стержневых элементов</title>
+              <desc id="modelDesc">Четыре узла, первый узел закреплён, к четвёртому приложена осевая сила вправо.</desc>
+              <defs>
+                <marker id="arrow-red" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+                  <path d="M0,0 L0,6 L9,3 z" fill="#a33935"></path>
+                </marker>
+                <marker id="arrow-violet" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+                  <path d="M0,0 L0,6 L9,3 z" fill="#6753a3"></path>
+                </marker>
+                <pattern id="supportHatch" width="10" height="10" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+                  <line x1="0" y1="0" x2="0" y2="10" stroke="#165c45" stroke-width="3"></line>
+                </pattern>
+              </defs>
+
+              <g aria-hidden="true">
+                <rect x="54" y="78" width="15" height="104" fill="#165c45"></rect>
+                <rect x="28" y="78" width="26" height="104" fill="url(#supportHatch)"></rect>
+              </g>
+
+              <g id="memberGroup1" data-element="0" role="button" tabindex="0" aria-label="Выбрать элемент 1">
+                <line class="member-base" x1="100" y1="130" x2="300" y2="130"></line>
+                <line class="member-hit" x1="100" y1="130" x2="300" y2="130"></line>
+              </g>
+              <g id="memberGroup2" data-element="1" role="button" tabindex="0" aria-label="Выбрать элемент 2">
+                <line class="member-base" x1="300" y1="130" x2="500" y2="130"></line>
+                <line class="member-hit" x1="300" y1="130" x2="500" y2="130"></line>
+              </g>
+              <g id="memberGroup3" data-element="2" role="button" tabindex="0" aria-label="Выбрать элемент 3">
+                <line class="member-base" x1="500" y1="130" x2="700" y2="130"></line>
+                <line class="member-hit" x1="500" y1="130" x2="700" y2="130"></line>
+              </g>
+
+              <g id="deformedShape" hidden aria-hidden="true">
+                <polyline class="deformed-member" points="100,105 330,105 545,105 770,105"></polyline>
+                <circle class="deformed-node" cx="100" cy="105" r="9"></circle>
+                <circle class="deformed-node" cx="330" cy="105" r="9"></circle>
+                <circle class="deformed-node" cx="545" cy="105" r="9"></circle>
+                <circle class="deformed-node" cx="770" cy="105" r="9"></circle>
+                <text class="svg-small" x="420" y="82" text-anchor="middle">деформированная форма × масштаб</text>
+              </g>
+
+              <circle class="node node-fixed" cx="100" cy="130" r="11"></circle>
+              <circle class="node" cx="300" cy="130" r="11"></circle>
+              <circle class="node" cx="500" cy="130" r="11"></circle>
+              <circle class="node" cx="700" cy="130" r="11"></circle>
+
+              <text class="svg-label" x="100" y="210" text-anchor="middle">1</text>
+              <text class="svg-label" x="300" y="210" text-anchor="middle">2</text>
+              <text class="svg-label" x="500" y="210" text-anchor="middle">3</text>
+              <text class="svg-label" x="700" y="210" text-anchor="middle">4</text>
+              <text class="svg-small" x="100" y="232" text-anchor="middle">u₁ = 0</text>
+              <text class="svg-small" x="300" y="232" text-anchor="middle">u₂</text>
+              <text class="svg-small" x="500" y="232" text-anchor="middle">u₃</text>
+              <text class="svg-small" x="700" y="232" text-anchor="middle">u₄</text>
+
+              <text class="svg-small" x="200" y="155" text-anchor="middle">e₁</text>
+              <text class="svg-small" x="400" y="155" text-anchor="middle">e₂</text>
+              <text class="svg-small" x="600" y="155" text-anchor="middle">e₃</text>
+
+              <line class="svg-force" x1="710" y1="130" x2="790" y2="130" marker-end="url(#arrow-red)"></line>
+              <text class="svg-label" id="loadLabel" x="755" y="112" text-anchor="middle">P = 30 кН</text>
+
+              <g id="reactionArrow" hidden>
+                <line class="svg-reaction" x1="96" y1="172" x2="20" y2="172" marker-end="url(#arrow-violet)"></line>
+                <text class="svg-small" id="reactionLabel" x="26" y="198">R₁ = −30 кН</text>
+              </g>
+            </svg>
+          </div>
+
+          <div class="element-picker" aria-label="Выбор элемента" id="elementPicker"></div>
+
+          <div class="parameter-grid">
+            <label class="parameter" for="stiffnessRange1">
+              <span class="parameter__top"><span>Жёсткость k₁</span><span class="parameter__value" id="stiffnessValue1">10 кН/мм</span></span>
+              <input id="stiffnessRange1" data-stiffness="0" type="range" min="5" max="40" step="5" value="10">
+            </label>
+            <label class="parameter" for="stiffnessRange2">
+              <span class="parameter__top"><span>Жёсткость k₂</span><span class="parameter__value" id="stiffnessValue2">20 кН/мм</span></span>
+              <input id="stiffnessRange2" data-stiffness="1" type="range" min="5" max="40" step="5" value="20">
+            </label>
+            <label class="parameter" for="stiffnessRange3">
+              <span class="parameter__top"><span>Жёсткость k₃</span><span class="parameter__value" id="stiffnessValue3">15 кН/мм</span></span>
+              <input id="stiffnessRange3" data-stiffness="2" type="range" min="5" max="40" step="5" value="15">
+            </label>
+            <label class="parameter" for="loadRange">
+              <span class="parameter__top"><span>Нагрузка P</span><span class="parameter__value" id="loadValue">30 кН</span></span>
+              <input id="loadRange" type="range" min="5" max="60" step="5" value="30">
+            </label>
+          </div>
+
+          <div class="local-panel">
+            <div class="section-heading">
+              <h3 id="localTitle">Элемент e₁</h3>
+              <p id="localStiffness">k₁ = E₁A₁/L₁ = 10 кН/мм</p>
+            </div>
+            <div class="local-map">
+              <span>Локальные СС [1, 2]</span>
+              <span aria-hidden="true">→</span>
+              <span class="map-chip" id="dofMapChip">глобальные [u₁, u₂]</span>
+            </div>
+            <div class="matrix-wrap">
+              <span class="matrix-symbol">k<sup>(e)</sup> =</span>
+              <table class="mini-matrix" aria-label="Элементная матрица жёсткости">
+                <tbody id="localMatrixBody"></tbody>
+              </table>
+              <span class="matrix-symbol">кН/мм</span>
+            </div>
+            <p class="formula-line">k<sup>(e)</sup> = (EA/L) · [[1, −1], [−1, 1]]</p>
+          </div>
+        </div>
+
+        <div class="right-column">
+          <div class="matrix-header">
+            <h3 id="matrixTitle">Глобальная матрица жёсткости K</h3>
+            <span class="equation-chip" id="equationChip">K = 0</span>
+          </div>
+
+          <div class="matrix-stage">
+            <div class="dense-view" id="denseView">
+              <table class="global-matrix" id="globalMatrix" aria-label="Глобальная матрица жёсткости"></table>
+            </div>
+
+            <div class="sparse-view" id="sparseView" hidden>
+              <div class="sparse-block">
+                <h4>Триплеты до суммирования повторяющихся адресов</h4>
+                <div class="triplet-list" id="tripletList"></div>
+              </div>
+              <div class="sparse-block">
+                <h4 id="csrTitle">После sparse() · учебное чтение по строкам</h4>
+                <div class="array-line"><span class="array-name">values</span><span id="csrValues">[]</span></div>
+                <div class="array-line"><span class="array-name">columns</span><span id="csrColumns">[]</span></div>
+                <div class="array-line"><span class="array-name">rowPtr</span><span id="csrRowPtr">[1, 1, 1, 1, 1]</span></div>
+              </div>
+              <div class="sparse-block">
+                <h4>Память в этом учебном примере</h4>
+                <div class="array-line" id="storageComparison">Плотно: 16 чисел · разреженно: ненулевые значения и служебные индексы</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="operation-line" id="operationLine" aria-live="polite">Пока K заполнена нулями. Карта элемента определит, в какие четыре ячейки попадёт его вклад.</div>
+
+          <div class="legend" aria-label="Условные обозначения">
+            <span><i class="swatch"></i> ненулевой коэффициент</span>
+            <span><i class="swatch swatch--current"></i> текущий вклад</span>
+            <span><i class="swatch swatch--constraint"></i> исключённая СС</span>
+          </div>
+
+          <div class="result-grid" id="resultGrid">
+            <div class="result-card">
+              <span class="result-card__label">Собрано элементов</span>
+              <span class="result-card__value">0 / 3</span>
+            </div>
+            <div class="result-card">
+              <span class="result-card__label">Размер решаемой системы</span>
+              <span class="result-card__value">4 × 4</span>
+            </div>
+            <div class="result-card">
+              <span class="result-card__label">Состояние</span>
+              <span class="result-card__value">K не собрана</span>
+            </div>
+          </div>
+
+          <p class="footnote" id="footnote">Полная матрица сохраняется неизменной до этапа задания ограничений.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <nav class="page-nav" aria-label="Навигация между главами">
+    <a href="12-local-octave-workflow.html"><span class="page-nav__label">Назад</span>← 12. Локальный запуск в GNU Octave</a>
+    <a href="14-mario-paz-matrices-visualizer.html"><span class="page-nav__label">Далее</span>14. Интерактивные матрицы рамы →</a>
+  </nav>
+
+  <footer>МКЭ-Ф · автономный учебный справочник · глава 13 из 15 · вычисления выполняются локально в браузере</footer>
+
+  <script src="assets/13-fem-assembly-visualizer.js" defer></script>
+</body>
+</html>

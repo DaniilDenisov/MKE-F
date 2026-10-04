@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Model, nodes, elements and global degree-of-freedom numbering in MKE-F.">
+  <title>1. Model, nodes, elements and DOFs — MKE-F</title>
+  <link rel="stylesheet" href="../assets/reference.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="site-header__inner">
+      <nav class="language-switch" aria-label="Reference language"><a href="../RU/01-model-dofs.html" lang="ru" hreflang="ru">RU</a> <a href="../EN/01-model-dofs.html" lang="en" hreflang="en" aria-current="true">EN</a></nav>
+      <p class="eyebrow">Student FEM Reference · Chapter 1</p>
+      <p class="site-title">Model and degrees of freedom</p>
+      <p class="site-subtitle">How geometry and physical properties become a vector of unknowns.</p>
+    </div>
+  </header>
+
+  <div class="layout">
+    <nav class="contents" aria-label="Reference contents">
+      <h2>Contents</h2>
+      <ol>
+        <li><a aria-current="page" href="01-model-dofs.html">Model, nodes, elements and DOFs</a></li>
+        <li><a href="02-element-matrices.html">Element matrices</a></li>
+        <li><a href="03-transformation-assembly.html">Transformation and assembly</a></li>
+        <li><a href="04-boundary-loads.html">Boundary conditions and loads</a></li>
+        <li><a href="05-static-analysis.html">Static analysis</a></li>
+        <li><a href="06-modal-analysis.html">Modal analysis</a></li>
+        <li><a href="07-newmark-transient.html">Newmark transient analysis</a></li>
+        <li><a href="08-result-recovery.html">Element results</a></li>
+        <li><a href="09-architecture-verification.html">Architecture and verification</a></li>
+        <li><a href="10-input-format.html">Input file format</a></li>
+        <li><a href="11-mario-paz-modal-example.html">Mario Paz modal example</a></li>
+        <li><a href="12-local-octave-workflow.html">Local GNU Octave workflow</a></li>
+        <li><a href="13-fem-assembly-visualizer.html">Interactive FEM assembly</a></li>
+        <li><a href="14-mario-paz-matrices-visualizer.html">Interactive frame matrices</a></li>
+        <li><a href="15-sparse-matrix-assembly.html">Sparse matrix assembly</a></li>
+      </ol>
+    </nav>
+
+    <main class="chapter" id="main">
+      <span class="chapter-number">Chapter 1</span>
+      <h1>Model, nodes, elements and degrees of freedom</h1>
+      <p class="lead">A finite element model is a discrete representation of a continuous structure containing infinitely many points. In the line-element models implemented here, each finite element is defined by two nodes: nodal displacements and, for a frame, rotations form a finite set of unknowns, while shape functions interpolate the field between nodes. Coordinates, connectivity, material and section properties determine how individual element equations combine into a global system.</p>
+
+      <section aria-labelledby="levels-title">
+        <h2 id="levels-title">Three levels of description</h2>
+        <div class="card-grid">
+          <article class="card">
+            <h3>Node</h3>
+            <p>Stores the position <em>(X, Y)</em>. The available displacement components are determined by the element type used throughout the model, rather than by the node itself.</p>
+          </article>
+          <article class="card">
+            <h3>Element</h3>
+            <p>Connects two nodes and contains material and section properties, local matrices, a transformation, and a vector of global DOFs.</p>
+          </article>
+          <article class="card">
+            <h3>System</h3>
+            <p>Combines elements into global <strong>K</strong> and <strong>M</strong>, and stores supports and loads for a particular analysis.</p>
+          </article>
+          <article class="card">
+            <h3>Result</h3>
+            <p>Returned separately from the model: displacements, reactions, frequencies and time histories do not overwrite the original matrices.</p>
+          </article>
+        </div>
+      </section>
+
+      <section aria-labelledby="types-title">
+        <h2 id="types-title">Two supported element types</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Type</th><th>Nodal components</th><th>Element vector</th><th>Deformation modes</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>112, plane truss member</td>
+                <td><em>u<sub>x</sub>, u<sub>y</sub></em></td>
+                <td>[u<sub>1x</sub>, u<sub>1y</sub>, u<sub>2x</sub>, u<sub>2y</sub>]<sup>T</sup></td>
+                <td>axial tension/compression only</td>
+              </tr>
+              <tr>
+                <td>113, plane Euler–Bernoulli frame</td>
+                <td><em>u<sub>x</sub>, u<sub>y</sub>, θ<sub>z</sub></em></td>
+                <td>[u<sub>1x</sub>, u<sub>1y</sub>, θ<sub>1</sub>, u<sub>2x</sub>, u<sub>2y</sub>, θ<sub>2</sub>]<sup>T</sup></td>
+                <td>axial and bending deformation</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Mixed 112/113 meshes are not supported because their nodes have different numbers of DOFs. The parser explicitly rejects such models rather than guessing missing components.</p>
+      </section>
+
+      <section aria-labelledby="numbering-title">
+        <h2 id="numbering-title">Global numbering</h2>
+        <p>The project numbers DOFs node by node. For node <em>n</em> and <em>d</em> components per node, the global number of component <em>j</em> is:</p>
+        <p class="equation">globalDOF(n, j) = (n − 1) · d + j</p>
+        <p>Consider the two frame elements in the case <a href="../../examples/cases/CaseFig11.7p363 MarioPaz.txt"><code>CaseFig11.7p363 MarioPaz</code></a>. For three nodes, the mapping matrix <code>iMnod</code> is:</p>
+        <pre><code>% columns: ux  uy  thetaZ
+iMnod = [ 1   2    3;
+          4   5    6;
+          7   8    9 ];</code></pre>
+
+        <figure class="model-figure">
+          <svg viewBox="0 0 820 660" role="img" aria-labelledby="global-numbering-figure-title global-numbering-figure-desc">
+            <title id="global-numbering-figure-title">Global degree-of-freedom numbering for a two-element frame</title>
+            <desc id="global-numbering-figure-desc">Inclined element one connects fixed node one to free node two; horizontal element two connects node two to fixed node three. The nodes map to global degrees of freedom one through nine. Numbers four, five and six remain free.</desc>
+            <defs>
+              <marker id="global-numbering-arrow" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto" markerUnits="strokeWidth">
+                <path d="M0,0 L0,6 L8,3 Z" fill="#285b89"></path>
+              </marker>
+              <marker id="global-numbering-rotation" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto" markerUnits="strokeWidth">
+                <path d="M0,0 L0,6 L8,3 Z" fill="#a24d16"></path>
+              </marker>
+            </defs>
+
+            <text x="410" y="31" text-anchor="middle" fill="#0c3d2d" font-size="22" font-weight="700" font-family="Segoe UI, Arial">Structural model and row/column numbers</text>
+
+            <line x1="140" y1="245" x2="365" y2="90" stroke="#165c45" stroke-width="10" stroke-linecap="round"></line>
+            <line x1="365" y1="90" x2="690" y2="90" stroke="#165c45" stroke-width="10" stroke-linecap="round"></line>
+            <circle cx="140" cy="245" r="11" fill="#fff" stroke="#0c3d2d" stroke-width="4"></circle>
+            <circle cx="365" cy="90" r="12" fill="#fff1df" stroke="#a24d16" stroke-width="5"></circle>
+            <circle cx="690" cy="90" r="11" fill="#fff" stroke="#0c3d2d" stroke-width="4"></circle>
+
+            <path d="M105 278 L175 278 M111 278 L97 294 M130 278 L116 294 M149 278 L135 294 M168 278 L154 294" fill="none" stroke="#17211b" stroke-width="4"></path>
+            <path d="M724 55 L724 126 M724 60 L740 48 M724 80 L740 68 M724 100 L740 88 M724 120 L740 108" fill="none" stroke="#17211b" stroke-width="4"></path>
+
+            <text x="116" y="235" fill="#17211b" font-size="19" font-weight="700" font-family="Segoe UI, Arial">node 1</text>
+            <text x="337" y="72" fill="#7d370e" font-size="19" font-weight="700" font-family="Segoe UI, Arial">node 2</text>
+            <text x="666" y="72" fill="#17211b" font-size="19" font-weight="700" font-family="Segoe UI, Arial">node 3</text>
+            <text x="205" y="150" transform="rotate(-34 205 150)" fill="#0c6047" font-size="17" font-weight="700" font-family="Segoe UI, Arial">element 1</text>
+            <text x="505" y="80" fill="#0c6047" font-size="17" font-weight="700" font-family="Segoe UI, Arial">element 2</text>
+
+            <line x1="400" y1="175" x2="520" y2="175" stroke="#285b89" stroke-width="3" marker-end="url(#global-numbering-arrow)"></line>
+            <line x1="400" y1="175" x2="400" y2="115" stroke="#285b89" stroke-width="3" marker-end="url(#global-numbering-arrow)"></line>
+            <line x1="376" y1="111" x2="395" y2="168" stroke="#8eb2d0" stroke-width="2" stroke-dasharray="5 4"></line>
+            <text x="528" y="181" fill="#194d77" font-size="17" font-weight="700" font-family="Segoe UI, Arial">[4]: uₓ₂</text>
+            <text x="409" y="132" fill="#194d77" font-size="17" font-weight="700" font-family="Segoe UI, Arial">[5]: uᵧ₂</text>
+            <path d="M590 204 A31 31 0 1 0 566 175" fill="none" stroke="#a24d16" stroke-width="3" marker-end="url(#global-numbering-rotation)"></path>
+            <text x="598" y="204" fill="#7d370e" font-size="17" font-weight="700" font-family="Segoe UI, Arial">[6]: θ₂</text>
+
+            <g font-family="Segoe UI, Arial">
+              <rect x="35" y="315" width="225" height="68" rx="11" fill="#eef0ed" stroke="#b9c0ba"></rect>
+              <text x="147" y="339" text-anchor="middle" fill="#17211b" font-size="16" font-weight="700">node 1 · fixed</text>
+              <text x="147" y="366" text-anchor="middle" fill="#5d685f" font-size="17">1: uₓ₁ · 2: uᵧ₁ · 3: θ₁</text>
+
+              <rect x="297" y="315" width="225" height="68" rx="11" fill="#fff1df" stroke="#d7a56b" stroke-width="2"></rect>
+              <text x="409" y="339" text-anchor="middle" fill="#7d370e" font-size="16" font-weight="700">node 2 · free</text>
+              <text x="409" y="366" text-anchor="middle" fill="#7d370e" font-size="17">4: uₓ₂ · 5: uᵧ₂ · 6: θ₂</text>
+
+              <rect x="559" y="315" width="225" height="68" rx="11" fill="#eef0ed" stroke="#b9c0ba"></rect>
+              <text x="671" y="339" text-anchor="middle" fill="#17211b" font-size="16" font-weight="700">node 3 · fixed</text>
+              <text x="671" y="366" text-anchor="middle" fill="#5d685f" font-size="17">7: uₓ₃ · 8: uᵧ₃ · 9: θ₃</text>
+            </g>
+
+            <text x="35" y="418" fill="#5d685f" font-size="16" font-weight="700" font-family="Segoe UI, Arial">Row and column order in global K and M</text>
+            <g font-family="Segoe UI, Arial" text-anchor="middle">
+              <rect x="36" y="432" width="80" height="58" rx="8" fill="#eef0ed" stroke="#b9c0ba"></rect><text x="76" y="455" fill="#17211b" font-size="18" font-weight="700">1</text><text x="76" y="479" fill="#5d685f" font-size="15">uₓ₁</text>
+              <rect x="119" y="432" width="80" height="58" rx="8" fill="#eef0ed" stroke="#b9c0ba"></rect><text x="159" y="455" fill="#17211b" font-size="18" font-weight="700">2</text><text x="159" y="479" fill="#5d685f" font-size="15">uᵧ₁</text>
+              <rect x="202" y="432" width="80" height="58" rx="8" fill="#eef0ed" stroke="#b9c0ba"></rect><text x="242" y="455" fill="#17211b" font-size="18" font-weight="700">3</text><text x="242" y="479" fill="#5d685f" font-size="15">θ₁</text>
+              <rect x="285" y="432" width="80" height="58" rx="8" fill="#fff1df" stroke="#d7a56b" stroke-width="2"></rect><text x="325" y="455" fill="#7d370e" font-size="18" font-weight="700">4</text><text x="325" y="479" fill="#7d370e" font-size="15">uₓ₂</text>
+              <rect x="368" y="432" width="80" height="58" rx="8" fill="#fff1df" stroke="#d7a56b" stroke-width="2"></rect><text x="408" y="455" fill="#7d370e" font-size="18" font-weight="700">5</text><text x="408" y="479" fill="#7d370e" font-size="15">uᵧ₂</text>
+              <rect x="451" y="432" width="80" height="58" rx="8" fill="#fff1df" stroke="#d7a56b" stroke-width="2"></rect><text x="491" y="455" fill="#7d370e" font-size="18" font-weight="700">6</text><text x="491" y="479" fill="#7d370e" font-size="15">θ₂</text>
+              <rect x="534" y="432" width="80" height="58" rx="8" fill="#eef0ed" stroke="#b9c0ba"></rect><text x="574" y="455" fill="#17211b" font-size="18" font-weight="700">7</text><text x="574" y="479" fill="#5d685f" font-size="15">uₓ₃</text>
+              <rect x="617" y="432" width="80" height="58" rx="8" fill="#eef0ed" stroke="#b9c0ba"></rect><text x="657" y="455" fill="#17211b" font-size="18" font-weight="700">8</text><text x="657" y="479" fill="#5d685f" font-size="15">uᵧ₃</text>
+              <rect x="700" y="432" width="80" height="58" rx="8" fill="#eef0ed" stroke="#b9c0ba"></rect><text x="740" y="455" fill="#17211b" font-size="18" font-weight="700">9</text><text x="740" y="479" fill="#5d685f" font-size="15">θ₃</text>
+            </g>
+
+            <rect x="36" y="518" width="352" height="48" rx="11" fill="#e8f2ed" stroke="#9bbdac"></rect>
+            <text x="212" y="548" text-anchor="middle" fill="#0c3d2d" font-size="17" font-weight="700" font-family="Cascadia Mono, Consolas, monospace">e₁.dofs = [1, 2, 3, 4, 5, 6]</text>
+            <rect x="432" y="518" width="352" height="48" rx="11" fill="#e9f2fa" stroke="#8eb2d0"></rect>
+            <text x="608" y="548" text-anchor="middle" fill="#194d77" font-size="17" font-weight="700" font-family="Cascadia Mono, Consolas, monospace">e₂.dofs = [4, 5, 6, 7, 8, 9]</text>
+
+            <rect x="105" y="589" width="610" height="54" rx="14" fill="#fff1df" stroke="#d7a56b" stroke-width="2"></rect>
+            <text x="410" y="612" text-anchor="middle" fill="#7d370e" font-size="17" font-weight="700" font-family="Cascadia Mono, Consolas, monospace">Kff = K([4 5 6], [4 5 6]) · Mff = M([4 5 6], [4 5 6])</text>
+            <text x="410" y="634" text-anchor="middle" fill="#7d370e" font-size="15" font-family="Segoe UI, Arial">reduced matrix rows and columns: uₓ₂, uᵧ₂, θ₂</text>
+          </svg>
+          <figcaption>Gray DOFs 1–3 and 7–9 belong to fixed supports. Orange DOFs 4–6 at the middle node remain unknown, so they correspond to the three rows and columns of matrices <strong>K<sub>ff</sub></strong> and <strong>M<sub>ff</sub></strong>, shown in the <a href="11-mario-paz-modal-example.html#assembly-title">numerical example</a>.</figcaption>
+        </figure>
+
+        <pre><code>element(1).dofs = [1; 2; 3; 4; 5; 6];
+element(2).dofs = [4; 5; 6; 7; 8; 9];
+
+fixedDOFs = [1 2 3 7 8 9];
+freeDOFs  = [4 5 6];</code></pre>
+        <p>Order matters: all components of the first node come first, followed by those of the second. Element matrix rows and columns use the same order. During assembly, both elements add their coefficients to the shared global rows and columns 4, 5 and 6 belonging to node 2.</p>
+      </section>
+
+      <section aria-labelledby="structures-title">
+        <h2 id="structures-title">Model data and result data</h2>
+        <p><a href="../../src/model/createStructuralElement.m"><code>createStructuralElement</code></a> returns an element structure that is conceptually immutable. Key fields:</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Field</th><th>Purpose</th></tr></thead>
+            <tbody>
+              <tr><td><code>type</code>, <code>nodeNumbers</code></td><td>element type and topology</td></tr>
+              <tr><td><code>nodeCoordinates</code>, <code>length</code></td><td>geometry in global axes</td></tr>
+              <tr><td><code>properties</code></td><td><em>[A, E, ρ]</em> or <em>[A, E, ρ, I]</em></td></tr>
+              <tr><td><code>dofs</code></td><td>row and column mapping into global matrices</td></tr>
+              <tr><td><code>transformation</code></td><td>transformation from global to local components</td></tr>
+              <tr><td><code>localStiffness</code></td><td>stiffness in the local element coordinate system</td></tr>
+              <tr><td><code>stiffness</code>, <code>mass</code></td><td>element matrices in global axes</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p><a href="../../src/model/createAnalysisModel.m"><code>createAnalysisModel</code></a> copies the assembled matrices and mesh description into a plain structure for the pure solvers. Solvers return new result structures, so repeated calculations do not depend on the order of previous runs.</p>
+      </section>
+
+      <section aria-labelledby="practice-title">
+        <h2 id="practice-title">Mini exercise. From node number to matrix row</h2>
+        <p>Use the <a href="02-element-matrices.html#practice-title">diagram and instructions for laboratory 01</a>. Before running it, make a component table for two nodes: two displacements each for a truss element, and two displacements plus a rotation each for a frame element.</p>
+        <ol>
+          <li>Compare your table with the output lines <code>Truss DOFs</code> and <code>Frame DOFs</code>. Label each row of the corresponding matrix.</li>
+          <li>Identify the physical quantity represented by the third DOF in each model and its work-conjugate load.</li>
+          <li>Number the DOFs of four frame nodes on paper. List the DOFs of an element connecting nodes 2 and 4.</li>
+        </ol>
+        <div class="callout"><span class="callout__title">Checks and report</span><p>The matrices are 4×4 and 6×6. The third DOF is u₂x in a truss element (load F₂x) and θ₁ in a frame element (moment M₁). For an element between frame nodes 2 and 4, the mapping is <code>[4 5 6 10 11 12]</code>. Include the numbering tables in your report and explain why the same global number means different things in the two models.</p></div>
+      </section>
+
+      <section class="source-list" aria-labelledby="sources-title">
+        <h2 id="sources-title">Chapter source code</h2>
+        <ul>
+          <li><a href="../../src/model/FEMesh.m"><code>FEMesh.m</code></a> — reading nodes, selecting the DOF count and constructing <code>iMnod</code>;</li>
+          <li><a href="../../src/model/createStructuralElement.m"><code>createStructuralElement.m</code></a> — unified element data interface;</li>
+          <li><a href="../../src/model/createAnalysisModel.m"><code>createAnalysisModel.m</code></a> — model structure for solvers;</li>
+          <li><a href="../examples/example_01_element_matrices.m"><code>example_01_element_matrices.m</code></a> — executable laboratory.</li>
+        </ul>
+      </section>
+    </main>
+  </div>
+
+  <nav class="page-nav" aria-label="Chapter navigation">
+    <a href="index.html"><span class="page-nav__label">Previous</span>← Home</a>
+    <a href="02-element-matrices.html"><span class="page-nav__label">Next</span>2. Element matrices →</a>
+  </nav>
+
+  <footer class="site-footer">
+    <div class="site-footer__inner"><p>MKE-F · offline learning reference · chapter 1 of 15</p></div>
+  </footer>
+</body>
+</html>

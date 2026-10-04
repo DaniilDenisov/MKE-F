@@ -1,0 +1,394 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Полный формат входного файла МКЭ-Ф: узлы, элементы, опоры и нагрузки.">
+  <title>10. Формат входного файла — МКЭ-Ф</title>
+  <link rel="stylesheet" href="../assets/reference.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">К содержанию</a>
+  <header class="site-header">
+    <div class="site-header__inner">
+      <nav class="language-switch" aria-label="Язык справочника"><a href="../RU/10-input-format.html" lang="ru" hreflang="ru" aria-current="true">RU</a> <a href="../EN/10-input-format.html" lang="en" hreflang="en">EN</a></nav>
+      <p class="eyebrow">Student FEM Reference · Глава 10</p>
+      <p class="site-title">Формат входного файла</p>
+      <p class="site-subtitle">Точный справочник по секциям, единицам, типам элементов, опорам, нагрузкам и сообщениям парсера.</p>
+    </div>
+  </header>
+
+  <div class="layout">
+    <nav class="contents" aria-label="Оглавление справочника">
+      <h2>Оглавление</h2>
+      <ol>
+        <li><a href="01-model-dofs.html">Модель, узлы, элементы и СС</a></li>
+        <li><a href="02-element-matrices.html">Матрицы элементов</a></li>
+        <li><a href="03-transformation-assembly.html">Преобразование и сборка</a></li>
+        <li><a href="04-boundary-loads.html">Граничные условия и нагрузки</a></li>
+        <li><a href="05-static-analysis.html">Статический расчёт</a></li>
+        <li><a href="06-modal-analysis.html">Модальный анализ</a></li>
+        <li><a href="07-newmark-transient.html">Переходный анализ Ньюмарка</a></li>
+        <li><a href="08-result-recovery.html">Результаты в элементах</a></li>
+        <li><a href="09-architecture-verification.html">Архитектура и проверка</a></li>
+        <li><a aria-current="page" href="10-input-format.html">Формат входного файла</a></li>
+        <li><a href="11-mario-paz-modal-example.html">Модальный пример Mario Paz</a></li>
+        <li><a href="12-local-octave-workflow.html">Локальный запуск в GNU Octave</a></li>
+        <li><a href="13-fem-assembly-visualizer.html">Интерактивная сборка МКЭ</a></li>
+        <li><a href="14-mario-paz-matrices-visualizer.html">Интерактивные матрицы рамы</a></li>
+        <li><a href="15-sparse-matrix-assembly.html">Разреженная сборка матриц</a></li>
+      </ol>
+    </nav>
+
+    <main class="chapter" id="main">
+      <span class="chapter-number">Глава 10</span>
+      <h1>Входной файл МКЭ‑Ф</h1>
+      <p class="lead">Файл — последовательность именованных текстовых секций. Этот раздел полностью заменяет прежнее корневое руководство и соответствует текущему парсеру <a href="../../src/model/FEMesh.m"><code>FEMesh</code></a>.</p>
+
+      <section aria-labelledby="scope-title">
+        <h2 id="scope-title">1. Область применения</h2>
+        <p>Программа решает линейные задачи малых перемещений в глобальной плоскости <em>X–Y</em>:</p>
+        <ul>
+          <li>плоские фермы из стержней типа 112;</li>
+          <li>плоские рамы Эйлера–Бернулли из элементов типа 113;</li>
+          <li>статический, модальный и недемпфированный переходный расчёты.</li>
+        </ul>
+        <div class="callout callout--warning">
+          <span class="callout__title">Границы модели</span>
+          <p>В одном файле нельзя смешивать типы 112 и 113: у их узлов разное число СС. Поддерживаются статические равномерные нагрузки на рамы 113. Не реализованы другие элементные нагрузки, ненулевые заданные перемещения, пластичность, геометрическая нелинейность, демпфирование и деформация сдвига рамного элемента.</p>
+        </div>
+      </section>
+
+      <section aria-labelledby="units-title">
+        <h2 id="units-title">2. Единицы</h2>
+        <p>Решатель не преобразует единицы. Все величины должны образовывать одну согласованную систему; рекомендуется СИ.</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Величина</th><th>Поле</th><th>Рекомендуемая единица</th></tr></thead>
+            <tbody>
+              <tr><td>Координаты и поступательные перемещения</td><td><code>X, Y, Z</code>, <code>ux, uy</code></td><td>м</td></tr>
+              <tr><td>Площадь</td><td><code>A</code></td><td>м²</td></tr>
+              <tr><td>Модуль Юнга и напряжение</td><td><code>E</code>, <code>axialStress</code></td><td>Па</td></tr>
+              <tr><td>Плотность</td><td><code>rho</code></td><td>кг/м³</td></tr>
+              <tr><td>Момент инерции площади</td><td><code>I</code></td><td>м⁴</td></tr>
+              <tr><td>Силы</td><td><code>Fx, Fy</code></td><td>Н</td></tr>
+              <tr><td>Момент</td><td><code>Mz</code></td><td>Н·м</td></tr>
+              <tr><td>Время и частота</td><td><code>time</code>, <code>frequencyHz</code></td><td>с, Гц</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Координата <code>Z</code> читается для совместимости формата, но расчёт остаётся двумерным. Компонент <code>uz</code> и <code>Fz</code> нет; третья СС рамного узла — поворот <code>thetaZ</code>, а сопряжённая нагрузка — момент <code>Mz</code>.</p>
+      </section>
+
+      <section aria-labelledby="syntax-title">
+        <h2 id="syntax-title">3. Общие правила синтаксиса</h2>
+        <p>Парсер читает файл до конца. Пустые строки и строки, первый непробельный символ которых <code>#</code>, пропускаются. После обычного маркера секции идёт целое число записей, затем ровно столько непустых строк данных. Необязательная секция <code>analysis</code> является исключением и содержит одну конфигурационную запись.</p>
+        <pre><code>section_marker
+record_count
+comma,separated,record
+...</code></pre>
+        <p>Рекомендуемый порядок: <code>analysis</code>, <code>nodes</code>, затем <code>elems_112</code> или <code>elems_113</code>, затем <code>bcfix</code> и секции нагрузок. Узлы обязаны предшествовать элементам, элементы — опорам и нагрузкам.</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Секция</th><th>Можно повторять</th><th>Правило</th></tr></thead>
+            <tbody>
+              <tr><td><code>analysis</code></td><td>Нет</td><td>Необязательная конфигурация для <code>RunSelected</code>.</td></tr>
+              <tr><td><code>nodes</code></td><td>Нет</td><td>Ровно одна непустая секция.</td></tr>
+              <tr><td><code>elems_112</code> или <code>elems_113</code></td><td>Да</td><td>Записи добавляются; тип во всех секциях должен совпадать.</td></tr>
+              <tr><td><code>bcfix</code></td><td>Да</td><td>Записи добавляются; допустимо ноль записей.</td></tr>
+              <tr><td>Любая <code>bcforce_*</code></td><td>Да</td><td>Записи всех секций добавляются и при построении нагрузки суммируются.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Поля внутри записи разделяются запятыми; пробелы около значения допустимы. Количество полей проверяется строго. Числа должны быть конечными, а идентификаторы и количества — целыми там, где это требуется.</p>
+      </section>
+
+      <section aria-labelledby="analysis-title">
+        <h2 id="analysis-title">3.1. Конфигурация расчёта</h2>
+        <pre><code>analysis
+static</code></pre>
+        <pre><code>analysis
+modal</code></pre>
+        <pre><code>analysis
+transient,timeStep,duration,monitorNode,monitorDOF</code></pre>
+        <p>Секция необязательна для обратной совместимости и может появиться только один раз. Для переходного расчёта шаг времени положителен, длительность покрывает хотя бы один шаг, а контрольный узел и локальная СС находятся в диапазоне модели. <code>RunSelected</code> запускает указанный расчёт; без секции следует использовать прежние явные методы.</p>
+        <p>Статика допускает узловые нагрузки типа 10 и равномерные элементные нагрузки типа 20, модальный расчёт — ни одной нагрузки, переходный расчёт — типы 10–13. Тип 10 в переходной задаче сохраняет историческую семантику одношагового импульса.</p>
+      </section>
+
+      <section aria-labelledby="nodes-title">
+        <h2 id="nodes-title">4. Узлы</h2>
+        <pre><code>nodes
+&lt;количество узлов&gt;
+X,Y,Z
+...</code></pre>
+        <p>Номера назначаются порядком строк: первая запись — узел 1, вторая — узел 2. Каждая строка содержит ровно три конечных числа. Номер узла в файле отдельно не задаётся.</p>
+      </section>
+
+      <section aria-labelledby="elements-title">
+        <h2 id="elements-title">5. Элементы</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Тип</th><th>Секция и запись</th><th>Узловые СС</th><th>Модель</th></tr></thead>
+            <tbody>
+              <tr><td>112</td><td><code>elems_112</code><br><code>112,node1,node2,A,E,rho</code></td><td><code>[ux,uy]</code></td><td>Плоский ферменный стержень, только осевая сила.</td></tr>
+              <tr><td>113</td><td><code>elems_113</code><br><code>113,node1,node2,A,E,rho,I</code></td><td><code>[ux,uy,thetaZ]</code></td><td>Плоская рама Эйлера–Бернулли, согласованная масса.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p><code>node1</code> и <code>node2</code> — различные целые номера существующих узлов. <code>A</code>, <code>E</code>, <code>rho</code>, а для типа 113 и <code>I</code> должны быть положительными конечными числами. Совпадающие координаты концов также отклоняются как нулевая длина.</p>
+        <div class="callout callout--warning">
+          <span class="callout__title">Смешанная сетка</span>
+          <p>После первого типа элемента число СС на узел уже определено. Встреча другого типа завершает чтение ошибкой <code>MKEF:UnsupportedMixedMesh</code>; автоматического согласования ферменного и рамного узла нет.</p>
+        </div>
+      </section>
+
+      <section aria-labelledby="supports-title">
+        <h2 id="supports-title">6. Опоры</h2>
+        <pre><code>bcfix
+&lt;количество записей&gt;
+type,node,0,0,0</code></pre>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th><code>type</code></th><th>Свободно</th><th>Закреплено</th></tr></thead>
+            <tbody>
+              <tr><td>1</td><td>—</td><td>Все СС узла</td></tr>
+              <tr><td>2</td><td>Только <code>ux</code></td><td><code>uy</code> и <code>thetaZ</code> у рамы</td></tr>
+              <tr><td>3</td><td>Только <code>uy</code></td><td><code>ux</code> и <code>thetaZ</code> у рамы</td></tr>
+              <tr><td>4</td><td><code>thetaZ</code> у рамы</td><td><code>ux, uy</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>У ферменного узла тип 4 совпадает с полным закреплением, поскольку поворотной СС нет. Последние три поля зарезервированы и обязаны равняться нулю: ненулевые заданные перемещения не поддерживаются. Если две записи закрепляют одну глобальную СС повторно, <code>partitionDOFs</code> сообщает <code>MKEF:DuplicateConstraint</code>.</p>
+      </section>
+
+      <section aria-labelledby="loads-title">
+        <h2 id="loads-title">7. Узловые нагрузки</h2>
+        <p>У фермы используются <code>[Fx,Fy]</code>, у рамы — <code>[Fx,Fy,Mz]</code>. Поле <code>Mz</code> в ферменной записи всё равно присутствует и должно быть нулём.</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Секция / тип</th><th>Запись</th><th><code>RunStatic</code></th><th><code>RunTransient</code></th></tr></thead>
+            <tbody>
+              <tr><td><code>bcforce_stat</code> / 10</td><td><code>10,node,Fx,Fy,Mz</code></td><td>Постоянная статическая нагрузка.</td><td>Исторически совместимый прямоугольный импульс только при <em>t=dt</em>; дискретный импульс <em>F0·dt</em>.</td></tr>
+              <tr><td><code>bcforce_harm</code> / 11</td><td><code>11,node,Fx,Fy,Mz,frequencyHz</code></td><td>Не поддерживается.</td><td><em>F(t)=F0·sin(2πft)</em>; <em>f</em> строго положительна.</td></tr>
+              <tr><td><code>bcforce_pulse</code> / 12</td><td><code>12,node,Fx,Fy,Mz</code></td><td>Не поддерживается.</td><td>Явный одношаговый импульс при <em>t=dt</em>.</td></tr>
+              <tr><td><code>bcforce_step</code> / 13</td><td><code>13,node,Fx,Fy,Mz</code></td><td>Не поддерживается.</td><td>Постоянная ступень во всех столбцах, включая <em>t=0</em>.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Повторные секции, нагрузки в одном узле и нагрузки, попавшие в одну глобальную СС, суммируются. В одной модели можно прочитать разные временные типы, но выбранный решатель обязан их поддерживать: <code>RunStatic</code> принимает только тип 10 и иначе выдаёт <code>MKEF:TimeDependentLoadInStaticAnalysis</code>.</p>
+      </section>
+
+      <section aria-labelledby="example-title">
+        <h2 id="example-title">8. Полный пример рамы</h2>
+        <pre><code># Консоль длиной 0,5 м с силой +100 Н по Y
+nodes
+2
+0,0,0
+0.5,0,0
+
+elems_113
+1
+113,1,2,0.0001,2e11,7800,0.33e-8
+
+bcfix
+1
+1,1,0,0,0
+
+bcforce_stat
+1
+10,2,0,100,0</code></pre>
+        <p>Эквивалентный файл находится в каталоге примеров как <a href="../../examples/cases/Case1ElementBeam.txt"><code>examples/cases/Case1ElementBeam.txt</code></a>. Запуск:</p>
+        <pre><code>problem = StructFEProblem(fullfile( ...
+    "examples", "cases", "Case1ElementBeam.txt"));
+result = problem.RunStatic();
+result.displacements
+result.reactions
+result.elementResults(1).localEndForces</code></pre>
+        <p>По умолчанию графика и диагностическая печать выключены. Их можно включить явно:</p>
+        <pre><code>options = struct("verbose", true, "plotting", true);
+problem = StructFEProblem(fullfile( ...
+    "examples", "cases", "Case1ElementBeam.txt"), options);</code></pre>
+      </section>
+
+      <section aria-labelledby="annotated-example-title">
+        <h2 id="annotated-example-title">9. Аннотированный переходный пример</h2>
+        <p>Наиболее содержательный компактный файл в каталоге примеров — <a href="../../examples/cases/CasePreprocessorTransient.txt"><code>CasePreprocessorTransient.txt</code></a>. Он показывает конфигурацию расчёта, узлы, рамные элементы, два типа закрепления и гармоническую нагрузку. Комментарии ниже входят в сам файл и безопасны для парсера:</p>
+        <pre><code># Вид расчёта задаётся во входном файле и используется методом RunSelected().
+analysis
+# transient,timeStep,duration,monitorNode,monitorDOF
+# Шаг 0.0001 с, длительность 0.001 с; контролируется uy (локальная СС 2) узла 3.
+transient,0.0001,0.001,3,2
+
+# Узлы нумеруются порядком строк. Формат каждой записи: X,Y,Z.
+nodes
+3
+# Узел 1: левый конец балки.
+0,0,0
+# Узел 2: середина балки.
+1,0,0
+# Узел 3: правый конец балки.
+2,0,0
+
+# Два рамных элемента Эйлера–Бернулли типа 113.
+# Формат: 113,node1,node2,A,E,rho,I.
+elems_113
+2
+# Элемент 1 соединяет узлы 1 и 2.
+113,1,2,0.0004,2e11,7800,5.33e-8
+# Элемент 2 соединяет узлы 2 и 3; свойства совпадают с элементом 1.
+113,2,3,0.0004,2e11,7800,5.33e-8
+
+# Граничные условия. Формат: type,node,0,0,0.
+bcfix
+2
+# Тип 1: в узле 1 закреплены ux, uy и thetaZ.
+1,1,0,0,0
+# Тип 4: в узле 2 закреплены ux и uy, а thetaZ остаётся свободной.
+4,2,0,0,0
+
+# Гармоническая узловая нагрузка типа 11.
+# Формат: 11,node,Fx,Fy,Mz,frequencyHz.
+bcforce_harm
+1
+# В узле 3 действует Fy(t) = -1000*sin(2*pi*135*t) Н.
+11,3,0,-1000,0,135</code></pre>
+
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Фрагмент</th><th>Как его интерпретирует программа</th></tr></thead>
+            <tbody>
+              <tr><td><code>transient,0.0001,0.001,3,2</code></td><td>Метод Ньюмарка делает 10 шагов по 0,0001 с и формирует 11 состояний вместе с <em>t=0</em>. Для графика и спектра выбирается <code>uy</code> узла 3.</td></tr>
+              <tr><td>Три строки после <code>nodes</code></td><td>Создают узлы 1–3 на оси <em>X</em>. Отдельных идентификаторов в записи нет: номер равен позиции строки.</td></tr>
+              <tr><td><code>113,1,2,…</code> и <code>113,2,3,…</code></td><td>Создают два рамных элемента с площадью 0,0004 м², модулем Юнга 2·10¹¹ Па, плотностью 7800 кг/м³ и моментом инерции 5,33·10⁻⁸ м⁴.</td></tr>
+              <tr><td><code>1,1,0,0,0</code></td><td>Полная заделка узла 1: закреплены <code>ux</code>, <code>uy</code> и <code>thetaZ</code>.</td></tr>
+              <tr><td><code>4,2,0,0,0</code></td><td>В узле 2 закреплены обе поступательные СС, но оставлен свободным поворот <code>thetaZ</code>.</td></tr>
+              <tr><td><code>11,3,0,-1000,0,135</code></td><td>К узлу 3 приложена гармоническая сила по отрицательному направлению <em>Y</em> с амплитудой 1000 Н и частотой 135 Гц.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="callout callout--inspect">
+          <span class="callout__title">Комментарии не входят в объявленное количество</span>
+          <p>Парсер пропускает пустые строки и строки, у которых первый непробельный символ — <code>#</code>. Поэтому после <code>nodes</code> число <code>3</code> означает три строки координат, хотя между ними находятся пояснения. Комментарий должен занимать отдельную строку: комментарии в конце числовой записи форматом не предусмотрены.</p>
+        </div>
+
+        <p>Файл можно выполнить без передачи параметров анализа из кода:</p>
+        <pre><code>addpath(pwd);
+setup;
+
+problem = StructFEProblem(fullfile( ...
+    "examples", "cases", "CasePreprocessorTransient.txt"));
+result = problem.RunSelected();
+
+result.time
+result.displacements
+result.spectrumFrequencyHz
+result.displacementAmplitudeSpectrum</code></pre>
+      </section>
+
+      <section aria-labelledby="dynamic-title">
+        <h2 id="dynamic-title">10. Модальный и переходный расчёты</h2>
+        <pre><code>problem = StructFEProblem(fullfile( ...
+    "examples", "cases", "CaseBeam.txt"));
+modalResult = problem.RunModal();
+modalResult.frequenciesHz
+
+problem = StructFEProblem(fullfile( ...
+    "examples", "cases", "CaseBeamDyn.txt"));
+dynamicResult = problem.RunTransient(1e-4, 1e-2, 3, 2);</code></pre>
+        <p>Последние два аргумента — узел 3 и локальная СС 2 (<code>uy</code>) для необязательного графика. Их целочисленность и диапазон проверяются даже при <code>plotting=false</code>. При включённой графике строятся перемещение и односторонний амплитудный спектр выбранной СС.</p>
+        <p>Все истории используют сетку <em>t = 0, dt, …, N·dt</em>, где <code>N=fix(duration/dt)</code>. Первый столбец соответствует <em>t=0</em>, последний — фактическому <em>N·dt</em>; число столбцов равно <code>N+1</code>.</p>
+        <pre><code>initial = struct( ...
+    "initialDisplacement", u0, ...
+    "initialVelocity", v0);
+dynamicResult = problem.RunTransient(1e-4, 1e-2, 3, 2, initial);</code></pre>
+        <p>Векторы <code>u0</code> и <code>v0</code> имеют полный размер модели и нули на закреплённых СС. Начальное ускорение вычисляется из равновесия. Интегрирование использует метод средних ускорений Ньюмарка с β=1/4 и γ=1/2.</p>
+        <p>Если файл содержит секцию <code>analysis</code>, тот же расчёт запускается как <code>result = problem.RunSelected()</code>. Настроенный переходный запуск использует нулевые начальные перемещения и скорости.</p>
+        <div class="callout callout--inspect">
+          <span class="callout__title">Запуск файла через GUI</span>
+          <p>Выполните из корня репозитория <code>docker compose up --build</code> (или <code>docker-compose up --build</code>), откройте <a href="http://127.0.0.1:8080/preprocessor/">http://127.0.0.1:8080/preprocessor/</a> и загрузите TXT-файл кнопкой <strong>Open TXT</strong>. Для старого файла без секции <code>analysis</code> сначала выберите вид расчёта и, при необходимости, параметры переходного процесса. Кнопка <strong>Run analysis</strong> сериализует проверенную модель, вызывает <code>RunSelected()</code> в контейнере Octave и открывает результат без ручного переноса файлов.</p>
+        </div>
+      </section>
+
+      <section aria-labelledby="results-title">
+        <h2 id="results-title">11. Результаты и проверки</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Расчёт</th><th>Ключевые поля ответа</th></tr></thead>
+            <tbody>
+              <tr><td><code>RunStatic</code></td><td><code>displacements</code>, <code>reactions</code>, <code>equilibriumResidual</code>, <code>elementResults</code>, полная нагрузка и списки СС.</td></tr>
+              <tr><td><code>RunModal</code></td><td><code>frequenciesHz</code>, полные <code>modeShapes</code> с нулями на опорах и редуцированные матрицы.</td></tr>
+              <tr><td><code>RunTransient</code></td><td><code>time</code>, <code>loadHistory</code>, <code>displacements</code>, <code>velocities</code>, <code>accelerations</code>, <code>reactions</code>, <code>spectrum</code>.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>В результатах стержня положительные <code>axialStrain</code>, <code>axialStress</code> и <code>axialForce</code> означают растяжение. У рамы <code>localEndForces</code> упорядочен как <code>[N1,V1,M1,N2,V2,M2]</code>.</p>
+        <pre><code>octave --no-gui --quiet --eval "addpath(pwd); setup; run_octave_tests;"</code></pre>
+      </section>
+
+      <section aria-labelledby="diagnostics-title">
+        <h2 id="diagnostics-title">12. Диагностика входа</h2>
+        <p>Ошибка чтения имеет вид <code>identifier: filename:line: detail</code>. Основные идентификаторы:</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Идентификатор</th><th>Причина</th></tr></thead>
+            <tbody>
+              <tr><td><code>MKEF:InputFileOpenFailed</code></td><td>Файл не найден, недоступен или не может быть открыт.</td></tr>
+              <tr><td><code>MKEF:UnknownInputMarker</code></td><td>Неизвестное имя секции или опечатка.</td></tr>
+              <tr><td><code>MKEF:InputSectionOrder</code></td><td>Элемент встретился до узлов либо опора/нагрузка — до элементов.</td></tr>
+              <tr><td><code>MKEF:DuplicateInputSection</code></td><td>Повторена секция <code>nodes</code> или <code>analysis</code>.</td></tr>
+              <tr><td><code>MKEF:MalformedInput</code></td><td>Неверное число полей, нечисловое/бесконечное значение, тип записи, узел, частота или свойства.</td></tr>
+              <tr><td><code>MKEF:UnexpectedEndOfFile</code></td><td>Объявленное число записей больше фактического.</td></tr>
+              <tr><td><code>MKEF:IncompleteInput</code></td><td>Нет узлов или элементов.</td></tr>
+              <tr><td><code>MKEF:UnsupportedMixedMesh</code></td><td>В одном файле встретились типы 112 и 113.</td></tr>
+              <tr><td><code>MKEF:UnsupportedConstraintValue</code></td><td>В последних трёх полях <code>bcfix</code> есть ненулевое заданное перемещение.</td></tr>
+              <tr><td><code>MKEF:UnsupportedLoadComponent</code></td><td>Для ферменного узла задан ненулевой <code>Mz</code>.</td></tr>
+              <tr><td><code>MKEF:AnalysisLoadMismatch</code></td><td>Тип нагрузки несовместим с настроенным видом расчёта.</td></tr>
+              <tr><td><code>MKEF:MissingAnalysisConfiguration</code></td><td><code>RunSelected</code> вызван для старого файла без секции <code>analysis</code>.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="callout callout--inspect">
+          <span class="callout__title">Как искать ошибку</span>
+          <p>Сначала откройте указанную строку файла, затем проверьте маркер, число записей и точное количество полей. Если парсер прошёл, но решатель сообщил сингулярность, проверяйте уже не синтаксис, а связность и достаточность опор.</p>
+        </div>
+      </section>
+
+      <section aria-labelledby="sources-title" class="source-list">
+        <h2 id="sources-title">13. Код, тесты и источники</h2>
+        <ul>
+          <li><a href="../../src/model/FEMesh.m"><code>FEMesh.m</code></a> — единственный действующий контракт синтаксического разбора;</li>
+          <li><a href="../../preprocessor/index.html"><code>preprocessor/index.html</code></a> — автономный редактор с координатной сеткой, точным вводом узлов и каноническим экспортом файлов этого формата;</li>
+          <li><a href="../../tests/test_input_validation.m"><code>tests/test_input_validation.m</code></a> — повторные секции, неверные записи, смешанная сетка, неизвестный маркер, открытие и выбор графика;</li>
+          <li><a href="../../tests/fixtures/CaseRepeatedSections.txt"><code>CaseRepeatedSections.txt</code></a> — исполняемый пример повторных секций;</li>
+          <li>Henri P. Gavin, <a href="https://people.duke.edu/~hpgavin/StructuralDynamics/NumericalIntegration.pdf"><cite>Numerical Integration in Structural Dynamics</cite></a> — внешний материал по схеме Ньюмарка;</li>
+          <li>Mario Paz, William Leigh, <cite>Structural Dynamics: Theory and Computation</cite>, 5-е изд., 2004, DOI 10.1007/978-1-4615-0481-8 — источник геометрии, матриц, частот и форм <code>CaseFig11.7p363 MarioPaz.txt</code>, проверяемых в <a href="../../tests/test_mario_paz_modal.m"><code>tests/test_mario_paz_modal.m</code></a>.</li>
+        </ul>
+      </section>
+
+      <section aria-labelledby="element-loads-title">
+        <h2 id="element-loads-title">Равномерные элементные нагрузки</h2>
+        <p>Для статического расчёта рам 113 добавьте после элементов секцию <code>eload_uniform</code>. После количества записей каждая строка имеет вид <code>20,elementId,coordinateSystem,qx,qy</code>. Система 1 — локальная, 2 — глобальная XY; интенсивность задаётся на единицу фактической длины элемента. Локальная ось x направлена от первого узла ко второму, y повёрнута от неё на +90°.</p>
+        <pre><code>eload_uniform
+1
+20,1,2,0,-1000</code></pre>
+        <p>Секции можно повторять; нагрузки на один элемент суммируются. Все числа должны быть конечными; обе нулевые компоненты, отсутствующий элемент, элемент 112 и анализ modal/transient отклоняются. Задать одновременно узловую силу или момент можно обычной секцией <code>bcforce_stat</code>.</p>
+        <p>Пример: <a href="../../examples/cases/CaseUniformFrame.txt">консоль длиной 2 м под qY = −1000 Н/м</a>. Реакции: Fy = 2000 Н, Mz = 2000 Н·м; прогиб свободного конца −0,001 м, поворот −0,000666667 рад.</p>
+        <h3>Редактирование и удаление в препроцессоре</h3>
+        <p>Выберите рамный элемент и нажмите Add element load. Таблица Element loads содержит систему координат и компоненты. Переключение Local/Global пересчитывает компоненты, сохраняя направление нагрузки.</p>
+        <p>Любая фактическая правка концов, A, E, rho или I элемента удаляет его распределённые нагрузки. Изменение координат узла снимает распределённые нагрузки всех примыкающих элементов, сохраняя узловые нагрузки и закрепления. Повторный ввод прежнего значения ничего не удаляет.</p>
+        <p>Удаление узла каскадно удаляет его элементы, их распределённые нагрузки и условия самого узла. Остальные узлы остаются, номера ссылок обновляются. Удаление элемента не удаляет его узлы. Одно Undo восстанавливает всю операцию. Удалённый узел наблюдения transient необходимо выбрать заново.</p>
+      </section>
+    </main>
+  </div>
+
+  <nav class="page-nav" aria-label="Навигация между главами">
+    <a href="09-architecture-verification.html"><span class="page-nav__label">Назад</span>← 9. Архитектура и проверка</a>
+    <a href="11-mario-paz-modal-example.html"><span class="page-nav__label">Далее</span>11. Модальный пример Mario Paz →</a>
+  </nav>
+
+  <footer class="site-footer">
+    <div class="site-footer__inner"><p>МКЭ-Ф · автономный учебный справочник · глава 10 из 15</p></div>
+  </footer>
+</body>
+</html>

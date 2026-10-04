@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Architecture, verification and diagnostics of the current MKE-F implementation.">
+  <title>9. Architecture and verification — MKE-F</title>
+  <link rel="stylesheet" href="../assets/reference.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="site-header__inner">
+      <nav class="language-switch" aria-label="Reference language"><a href="../RU/09-architecture-verification.html" lang="ru" hreflang="ru">RU</a> <a href="../EN/09-architecture-verification.html" lang="en" hreflang="en" aria-current="true">EN</a></nav>
+      <p class="eyebrow">Student FEM Reference · Chapter 9</p>
+      <p class="site-title">Architecture and verification</p>
+      <p class="site-subtitle">How the parser, model, sparse assembly and pure solvers divide responsibilities—and which tests enforce that design.</p>
+    </div>
+  </header>
+
+  <div class="layout">
+    <nav class="contents" aria-label="Reference contents">
+      <h2>Contents</h2>
+      <ol>
+        <li><a href="01-model-dofs.html">Model, nodes, elements and DOFs</a></li>
+        <li><a href="02-element-matrices.html">Element matrices</a></li>
+        <li><a href="03-transformation-assembly.html">Transformation and assembly</a></li>
+        <li><a href="04-boundary-loads.html">Boundary conditions and loads</a></li>
+        <li><a href="05-static-analysis.html">Static analysis</a></li>
+        <li><a href="06-modal-analysis.html">Modal analysis</a></li>
+        <li><a href="07-newmark-transient.html">Newmark transient analysis</a></li>
+        <li><a href="08-result-recovery.html">Element results</a></li>
+        <li><a aria-current="page" href="09-architecture-verification.html">Architecture and verification</a></li>
+        <li><a href="10-input-format.html">Input file format</a></li>
+        <li><a href="11-mario-paz-modal-example.html">Mario Paz modal example</a></li>
+        <li><a href="12-local-octave-workflow.html">Local GNU Octave workflow</a></li>
+        <li><a href="13-fem-assembly-visualizer.html">Interactive FEM assembly</a></li>
+        <li><a href="14-mario-paz-matrices-visualizer.html">Interactive frame matrices</a></li>
+        <li><a href="15-sparse-matrix-assembly.html">Sparse matrix assembly</a></li>
+      </ol>
+    </nav>
+
+    <main class="chapter" id="main">
+      <span class="chapter-number">Chapter 9</span>
+      <h1>From input file to verifiable result</h1>
+      <p class="lead">Current MKE-F is a GNU Octave program with a functional numerical core. Model data are created once, solvers return new result structures, and plotting and printing are separate from computation.</p>
+
+      <section aria-labelledby="pipeline-title">
+        <h2 id="pipeline-title">Responsibilities</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Layer</th><th>Task</th><th>Main code</th></tr></thead>
+            <tbody>
+              <tr><td>Input</td><td>Read sections to EOF, validate records and create elements.</td><td><a href="../../src/model/FEMesh.m"><code>FEMesh.m</code></a>, <a href="../../src/model/createStructuralElement.m"><code>createStructuralElement.m</code></a></td></tr>
+              <tr><td>Assembly</td><td>Accumulate element contributions into sparse global <strong>K</strong> and <strong>M</strong>.</td><td><a href="../../src/model/assembleGlobalMatrices.m"><code>assembleGlobalMatrices.m</code></a></td></tr>
+              <tr><td>Model</td><td>Snapshot of matrices, DOF mapping, supports, loads and element data.</td><td><a href="../../src/model/createAnalysisModel.m"><code>createAnalysisModel.m</code></a></td></tr>
+              <tr><td>Numerical core</td><td>Reduce DOFs, solve and create a new result structure.</td><td><a href="../../src/analysis/static/solveStatic.m"><code>solveStatic.m</code></a>, <a href="../../src/analysis/modal/solveModal.m"><code>solveModal.m</code></a>, <a href="../../src/analysis/transient/solveTransient.m"><code>solveTransient.m</code></a></td></tr>
+              <tr><td>Results</td><td>Reactions, equilibrium, local forces and spectrum.</td><td><a href="../../src/analysis/static/calculateStaticEquilibrium.m"><code>calculateStaticEquilibrium.m</code></a>, <a href="../../src/results/recoverElementResults.m"><code>recoverElementResults.m</code></a>, <a href="../../src/analysis/transient/computeSingleSidedSpectrum.m"><code>computeSingleSidedSpectrum.m</code></a></td></tr>
+              <tr><td>Compatibility and presentation</td><td>Familiar commands <code>RunStatic</code>, <code>RunModal</code>, <code>RunTransient</code>, optional printing and plotting.</td><td><a href="../../src/model/StructFEProblem.m"><code>StructFEProblem.m</code></a>, <a href="../../src/results/plotTransientResult.m"><code>plotTransientResult.m</code></a></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>The root function <code>setup</code> explicitly adds directories <code>src/model</code>,
+          <code>src/analysis</code>, <code>src/results</code> and <code>scripts</code> to the Octave path.
+          Supplied models are in <code>examples/cases</code>, ready-to-use
+          postprocessor data are in <code>examples/results</code>, and new results are written
+          to the ignored directory <code>output</code>.</p>
+        <pre><code>addpath(pwd);
+setup;
+
+problem = StructFEProblem(fullfile( ...
+    "examples", "cases", "CaseBeam.txt"));
+model = problem.GetAnalysisModel();
+
+staticResult = solveStatic(model);
+modalResult = solveModal(model);</code></pre>
+        <div class="callout callout--inspect">
+          <span class="callout__title">Running an analysis through the GUI</span>
+          <p>Start the container interface from the project root with <code>docker compose up --build</code> or <code>docker-compose up --build</code>. In the <a href="http://127.0.0.1:8080/preprocessor/">preprocessor</a> create a model or open a TXT file containing section <code>analysis</code> and click <strong>Run analysis</strong>. The backend always calls the fixed <code>RunSelected()</code>; the browser never supplies script names, paths or Octave expressions.</p>
+        </div>
+        <p>Calling a solver does not change <code>model</code>, <code>problem.K</code> or <code>problem.M</code>. Loads are rebuilt for every run, so repeated analysis and changes in analysis order should not change the result.</p>
+      </section>
+
+      <section aria-labelledby="elements-title">
+        <h2 id="elements-title">Elements and sparse assembly</h2>
+        <p>An element is a plain value structure, not a mutable subclass instance. <code>createStructuralElement</code> creates a common contract for types 112 and 113: <code>type</code>, <code>nodeNumbers</code>, <code>properties</code>, a unified vector <code>dofs</code>, matrices and stored <code>length</code> and <code>transformation</code>. The same DOF map is used for assembly and force recovery.</p>
+        <p><code>assembleGlobalMatrices</code> first builds row–column–value triplets, then a single call to <code>sparse</code> creates the global matrices. Octave sums contributions at repeated addresses. Memory depends on the number of element coefficients, not the square of the total DOF count.</p>
+        <div class="callout">
+          <span class="callout__title">Architectural invariant</span>
+          <p>Element mathematics is concentrated in one structure constructor; solvers do not know individual element formulas, and result recovery uses the stored matrices and transformation.</p>
+        </div>
+      </section>
+
+      <section aria-labelledby="headless-title">
+        <h2 id="headless-title">Validation and headless operation</h2>
+        <p><code>FEMesh</code> checks file opening, section order, field count, finite values, node numbers, element properties, load types and the prohibition on mixed meshes. <code>onCleanup</code> closes the file even on error. Parser messages contain the filename and line; the complete contract is in <a href="10-input-format.html">chapter 10</a>.</p>
+        <p>By default, <code>verbose=false</code> and <code>plotting=false</code>. Task creation and all three analyses therefore work locally in a terminal without a graphical display. Mesh and history plotting are separate actions; <code>axis equal</code> does not distort mesh geometry.</p>
+        <pre><code>octave --no-gui --quiet --eval "addpath(pwd); setup; run_octave_tests;"</code></pre>
+      </section>
+
+      <section aria-labelledby="verification-title">
+        <h2 id="verification-title">Verification sequence</h2>
+        <ol>
+          <li><a href="../../scripts/run_octave_smoke_tests.m"><code>run_octave_smoke_tests</code></a> reads supplied cases, checks sparse assembly and runs available analysis types.</li>
+          <li><a href="../../tests/run_verification_tests.m"><code>run_verification_tests</code></a> checks element and global invariants, independent formulas, reactions, loads and call order.</li>
+          <li>Specialized files check <a href="../../tests/test_element_matrices.m">element matrices</a>, <a href="../../tests/test_sparse_assembly.m">assembly</a>, <a href="../../tests/test_mario_paz_modal.m">the Mario Paz modal example</a>, <a href="../../tests/test_newmark_transient.m">Newmark integration</a>, <a href="../../tests/test_result_recovery.m">forces</a> and <a href="../../tests/test_input_validation.m">input</a>.</li>
+          <li>Reference laboratories add educational, executable checks of actual production code.</li>
+        </ol>
+        <div class="callout callout--warning">
+          <span class="callout__title">What is not a reference oracle</span>
+          <p>The matrices, frequencies and modes of Illustrative Example 11.1 from Mario Paz and William Leigh have been reconstructed and are checked by a dedicated test. Old output snapshots and discrepancies with ANSYS are still not treated as oracles: references are the published example, analytical solutions and explicit invariants.</p>
+        </div>
+      </section>
+
+      <section aria-labelledby="history-title">
+        <h2 id="history-title">The 2017 versions and the current program</h2>
+        <p>The author’s articles document project origins but describe the MATLAB architecture of their time. Their class names, breakpoints, matrix mutation order and numerical discrepancies must not be copied into current instructions.</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Historical material</th><th>What it records</th><th>Current equivalent</th></tr></thead>
+            <tbody>
+              <tr><td><a href="https://xn--h1acbaaqgcqcheicn.xn--p1ai/2017/11/25/%D0%BC%D0%BA%D1%8D-%D1%84-%D0%BC%D0%B5%D1%82%D0%BE%D0%B4-%D0%BD%D1%8C%D1%8E%D0%BC%D0%B0%D1%80%D0%BA%D0%B0/">“MKE-F — Newmark method”</a>, v0.4</td><td>Adoption of Newmark integration and the old MATLAB transient-analysis call.</td><td><code>solveTransient</code>, initial conditions, full histories and the verifiable β=1/4, γ=1/2 scheme.</td></tr>
+              <tr><td><a href="https://xn--h1acbaaqgcqcheicn.xn--p1ai/2017/12/20/%D0%BC%D0%B0%D1%82%D1%80%D0%B8%D1%86%D0%B0-%D0%BC%D0%B0%D1%81%D1%81-%D0%B8-%D0%BC%D0%B0%D1%82%D1%80%D0%B8%D1%86%D0%B0-%D0%B6%D0%B5%D1%81%D1%82%D0%BA%D0%BE%D1%81%D1%82%D0%B8/">“Mass matrix and stiffness matrix”</a>, v0.6.0</td><td>Types 112/113, consistent mass and the former hierarchy <code>FiniteElementStructural</code>/<code>Beam2DElement</code>/<code>Truss2DElement</code>.</td><td><code>createStructuralElement</code> returns a structure; unified triplet assembly replaces mutable classes and methods <code>Assembler</code>.</td></tr>
+              <tr><td><a href="https://xn--h1acbaaqgcqcheicn.xn--p1ai/2017/12/19/%D1%80%D0%B0%D1%81%D1%87%D0%B5%D1%82-%D1%80%D0%B0%D0%BC%D1%8B-%D0%B2-%D0%BC%D0%BA%D1%8D-%D1%84/">“Frame analysis in MKE-F”</a>, v0.6.0 era</td><td>Origin of the case <code>ANSYSBeamStatic01.txt</code> and the historical comparison with Beam188.</td><td>The file remains a regression input, but the old article’s 5% discrepancy is not a required result.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>The “v0.6.0 era” label is chronological: the following day the author explicitly identified the current version as v0.6.0. The frame article itself does not print a version number.</p>
+      </section>
+
+      <section aria-labelledby="map-title">
+        <h2 id="map-title">Completed improvement plan map</h2>
+        <p>The following preserves every completed item of the former <code>ToDo.md</code>. Each item names current code and a check; where an intermediate solution was later replaced, its present equivalent is listed.</p>
+
+        <h3>1. GNU Octave compatibility and local verification</h3>
+        <ol>
+          <li>The minimum GNU Octave version 8.4 and local verification on 11.3 are documented in the <a href="12-local-octave-workflow.html">local workflow chapter</a>; the verification entry point is <a href="../../scripts/run_octave_tests.m"><code>run_octave_tests.m</code></a>.</li>
+          <li>The headless command is implemented in <a href="../../scripts/run_octave_smoke_tests.m"><code>run_octave_smoke_tests.m</code></a> and run locally by the developer.</li>
+          <li>All supplied cases assemble, and static, modal, pulse and harmonic analyses run in <code>run_octave_smoke_tests.m</code>; matrix invariants are repeated in <a href="../../tests/run_verification_tests.m"><code>tests/run_verification_tests.m</code></a>.</li>
+          <li>The intermediate concrete fallback methods of the old abstract class were later replaced by structures in <a href="../../src/model/createStructuralElement.m"><code>createStructuralElement.m</code></a>; the interface is checked by <a href="../../tests/test_element_matrices.m"><code>tests/test_element_matrices.m</code></a>.</li>
+          <li>Testing arrays of homogeneous handle-class elements became irrelevant after migration to structures; their array is created by <a href="../../src/model/FEMesh.m"><code>FEMesh.m</code></a> and checked by the smoke test.</li>
+          <li>Optional printing and plotting are implemented in <a href="../../src/model/StructFEProblem.m"><code>StructFEProblem.m</code></a>; defaults are checked by <a href="../../tests/test_input_validation.m"><code>tests/test_input_validation.m</code></a>.</li>
+          <li>UTF-8 is specified in <a href="../../.editorconfig"><code>.editorconfig</code></a>; reading Russian files is exercised by all smoke tests.</li>
+          <li>Octave-supported operations and repeated solves are concentrated in <a href="../../src/analysis/transient/solveTransient.m"><code>solveTransient.m</code></a> and <a href="../../src/analysis/common/validateReducedSystem.m"><code>validateReducedSystem.m</code></a>; these are checked by <a href="../../tests/test_newmark_transient.m"><code>tests/test_newmark_transient.m</code></a>.</li>
+          <li>The small local runner is <code>run_octave_smoke_tests.m</code>; successful completion is the check itself.</li>
+          <li>The single-argument constructor is preserved in <code>StructFEProblem.m</code>, and headless settings are checked in <code>tests/test_input_validation.m</code>.</li>
+        </ol>
+
+        <h3>2. Self-contained verification suite</h3>
+        <ol>
+          <li>The Octave-only checks are in <a href="../../tests/run_verification_tests.m"><code>tests/run_verification_tests.m</code></a> and included through <code>run_octave_tests.m</code>.</li>
+          <li>Dimensions, finiteness and symmetry of <strong>K</strong>/<strong>M</strong> are checked by <code>testMatrixInvariants</code> in the same file and <code>tests/test_element_matrices.m</code>.</li>
+          <li>Formulas <em>FL/(EA)</em> and <em>PL³/(3EI)</em> are checked by <code>testSingleAxialTruss</code> and <code>testCantileverBeam</code>.</li>
+          <li>Reactions, mass, single-step pulse and harmonic samples are checked by <code>tests/run_verification_tests.m</code>.</li>
+          <li>All supplied files serve as no-crash regression checks in <code>run_octave_smoke_tests.m</code>.</li>
+          <li>Explicit absolute and relative tolerances are implemented by helper functions <code>assertClose</code> and <code>assertRelativeSmall</code> in the tests.</li>
+          <li>The complete local suite runs through <code>run_octave_tests.m</code>.</li>
+          <li>The Mario Paz example is checked against published matrices, frequencies and modes in <a href="../../tests/test_mario_paz_modal.m"><code>tests/test_mario_paz_modal.m</code></a>; the ANSYS example remains historical context only.</li>
+        </ol>
+
+        <h3>3. Element matrices</h3>
+        <ol>
+          <li>The symmetric coefficient <code>-22*L</code> of the frame consistent mass matrix is in <code>createStructuralElement.m</code>; symmetry is checked by <code>tests/test_element_matrices.m</code>.</li>
+          <li>Coefficients <em>EA/L</em>, <em>12EI/L³</em>, <em>6EI/L²</em> are written explicitly there and compared with an independent matrix in the same test.</li>
+          <li>Zero length and nonpositive <em>A, E, ρ, I</em> are rejected in <code>createStructuralElement.m</code>; <code>testInvalidElementData</code> checks the errors.</li>
+          <li>Horizontal, vertical and inclined orientations are checked by functions <code>testTrussOrientations</code> and <code>testBeamOrientations</code>.</li>
+          <li>Symmetry, rank, rigid-body modes, rotational invariance and mass are checked in <code>tests/test_element_matrices.m</code>.</li>
+        </ol>
+
+        <h3>4. Functional core</h3>
+        <ol>
+          <li>The model separates data from results in <a href="../../src/model/createAnalysisModel.m"><code>createAnalysisModel.m</code></a>; <code>testFunctionalAnalysisCore</code> checks immutability.</li>
+          <li>Pure entry points are <code>solveStatic.m</code>, <code>solveModal.m</code>, <code>solveTransient.m</code>; the facade delegates to them in <code>StructFEProblem.m</code>.</li>
+          <li><strong>K</strong> and <strong>M</strong> are not modified: this is explicitly checked by <code>testFunctionalAnalysisCore</code>.</li>
+          <li>Fresh loads for each run are created by <a href="../../src/analysis/static/buildStaticLoad.m"><code>buildStaticLoad.m</code></a> and <a href="../../src/analysis/transient/buildTransientLoad.m"><code>buildTransientLoad.m</code></a>; the same test compares repeated calls.</li>
+          <li>Two identical runs are compared in <code>testFunctionalAnalysisCore</code>.</li>
+          <li>Independence from static, modal and dynamic call order is checked there as well.</li>
+          <li>Named fields are populated by the three <code>solve*.m</code>; the same test checks key fields.</li>
+          <li>Plotting is separated into <code>plotTransientResult.m</code>, while printing stays in the facade; headless operation is checked by the smoke test and <code>tests/test_input_validation.m</code>.</li>
+        </ol>
+
+        <h3>5. Free-DOF reduction</h3>
+        <ol>
+          <li><code>fixedDOFs</code> and <code>freeDOFs</code> constructs <a href="../../src/analysis/common/partitionDOFs.m"><code>partitionDOFs.m</code></a>; the mapping is checked by <code>testFreeDOFReduction</code>.</li>
+          <li>Reduced <strong>K</strong> and <strong>M</strong> are used by all three solvers; corresponding slices are checked in <code>tests/run_verification_tests.m</code>.</li>
+          <li>Spurious zero modes are eliminated in <code>solveModal.m</code>; positive frequencies are checked by <code>testFreeDOFReduction</code>.</li>
+          <li>A load on a constrained DOF is retained in <code>solveStatic.m</code>; its reaction is checked by the same test.</li>
+          <li>Global equilibrium is calculated by <code>calculateStaticEquilibrium.m</code>; bar/cantilever tests check zero residuals.</li>
+          <li>Repeated, invalid and insufficient constraints are rejected by <code>partitionDOFs.m</code> and <code>validateReducedSystem.m</code>; errors are checked by <code>testConstraintValidation</code>.</li>
+        </ol>
+
+        <h3>6. Nodal load semantics</h3>
+        <ol>
+          <li>Indexed DOF assembly is performed by <a href="../../src/analysis/common/getNodalLoadComponents.m"><code>getNodalLoadComponents.m</code></a> together with the load builders; multiple records are checked by <code>testNodalLoadSemantics</code>.</li>
+          <li>The third frame component is treated as <em>Mz</em>, and rejected for a truss; the code and test are the same.</li>
+          <li>Historical type 10 produces one rectangular step in <code>buildTransientLoad.m</code>; the exact sample is checked by <code>testNodalLoadSemantics</code>.</li>
+          <li>Explicit <code>bcforce_pulse</code>/type 12 is read by <code>FEMesh.m</code>; input file <a href="../../tests/fixtures/CaseExplicitPulseBeam.txt"><code>CaseExplicitPulseBeam.txt</code></a> is checked in the load test.</li>
+          <li><code>bcforce_step</code>/type 13 is implemented by the same files; input file <a href="../../tests/fixtures/CaseStepBeam.txt"><code>CaseStepBeam.txt</code></a> checks a constant history.</li>
+          <li>Summation of multiple loads at the same and different nodes is checked by <code>testNodalLoadSemantics</code>.</li>
+        </ol>
+
+        <h3>7. Newmark transient analysis</h3>
+        <ol>
+          <li>Average acceleration with β=1/4, γ=1/2 is implemented in <code>solveTransient.m</code>; parameters are checked by <code>tests/test_newmark_transient.m</code>.</li>
+          <li>The grid with first column <em>t=0</em> is implemented there and checked in <code>testFreeVibrationAndInitialState</code>.</li>
+          <li>Initial <strong>u</strong>, <strong>v</strong> and equilibrium-based acceleration are implemented there; the same test and invalid-input scenarios check them.</li>
+          <li>Histories of size <code>stepCount+1</code> are preallocated in <code>solveTransient.m</code>; the transient-analysis test checks their size.</li>
+          <li>The constant effective matrix is factorized once there; the full transient test suite checks solution consistency.</li>
+          <li>FFT and single-sided normalization are performed by <a href="../../src/analysis/transient/computeSingleSidedSpectrum.m"><code>computeSingleSidedSpectrum.m</code></a>; the peak is checked by <code>testSingleSidedSpectrum</code>.</li>
+          <li>Histories and spectra are returned independently of graphics; transient tests check the fields, and plotting is separated into <code>plotTransientResult.m</code>.</li>
+          <li>Analytical SDOF response, energy and convergence are checked in <code>testFreeVibrationAndInitialState</code>, <code>testImpulseResponseAndConvergence</code> and <code>testBeamImpulseRefinement</code>.</li>
+        </ol>
+
+        <h3>8. Result recovery</h3>
+        <ol>
+          <li>The compatibility name <a href="../../src/results/StressCalc.m"><code>StressCalc.m</code></a> delegates to the new implementation <a href="../../src/results/recoverElementResults.m"><code>recoverElementResults.m</code></a>; the interface is checked by <a href="../../tests/test_result_recovery.m"><code>tests/test_result_recovery.m</code></a>.</li>
+          <li>Truss strain, stress and axial force are calculated by <code>recoverElementResults.m</code>; straight and rotated members are checked there.</li>
+          <li>The same function returns local frame end forces; diagrams were initially deferred until distributed loads were available, and the cantilever is checked by <code>testCantileverEndForces</code>.</li>
+          <li>Single-member and cantilever references are in <code>tests/test_result_recovery.m</code>.</li>
+        </ol>
+
+        <h3>9. Simpler, faster assembly</h3>
+        <ol>
+          <li>Structures and pure functions are implemented in <code>createStructuralElement.m</code>; matrix and result-recovery tests check the interface.</li>
+          <li>The class value-semantics item was resolved by removing the mutable hierarchy; the absence of handle-class elements follows from the structures <code>FEMesh.allMeshElems</code> and is checked by the smoke test.</li>
+          <li>The unified field interface is used by <code>assembleGlobalMatrices.m</code> and <code>recoverElementResults.m</code>; both paths have dedicated tests.</li>
+          <li>A single <code>element.dofs</code> creates <code>createStructuralElement.m</code>; mapping and summation are checked by <a href="../../tests/test_sparse_assembly.m"><code>tests/test_sparse_assembly.m</code></a>.</li>
+          <li>Triplet sparse matrices are created by <code>assembleGlobalMatrices.m</code>; <code>testSuppliedCasesAreSparse</code> and <code>testLargeTrussChain</code> check the result.</li>
+          <li>Length and transformation are cached in the element structure; matrix and recovery tests use and verify these data.</li>
+          <li>The full verification suite and smoke tests ensure baseline results are preserved.</li>
+        </ol>
+
+        <h3>10. Input, documentation and presentation</h3>
+        <ol>
+          <li>The read-to-EOF loop is in <code>FEMesh.m</code>; repeated sections and unknown markers are checked by <code>tests/test_input_validation.m</code>.</li>
+          <li><code>fopen</code>, <code>onCleanup</code> and line numbers are implemented there; the same test checks opening errors and invalid records.</li>
+          <li>Repeated supports and loads are appended in <code>FEMesh.m</code>; <a href="../../tests/fixtures/CaseRepeatedSections.txt"><code>CaseRepeatedSections.txt</code></a> checks the count and sum.</li>
+          <li>Node numbers, connectivity, property counts and plotted DOF selection are checked by <code>FEMesh.m</code>/<code>StructFEProblem.m</code>; test input files and <code>testPlotSelectionAndDefaults</code> check the errors.</li>
+          <li>Mixed types are rejected as <code>MKEF:UnsupportedMixedMesh</code>; <a href="../../tests/fixtures/CaseMixedElements.txt"><code>CaseMixedElements.txt</code></a> checks the error line.</li>
+          <li>Optional graphics and printing are in <code>StructFEProblem.m</code>, and <code>axis equal</code> in <code>FEMesh.m</code>; the input test checks default values.</li>
+          <li>Units, DOFs, loads, limitations, sources and commands are preserved in this reference, especially in <a href="10-input-format.html">chapter 10</a>; laboratories and the full test suite provide executable confirmation.</li>
+        </ol>
+      </section>
+
+      <section aria-labelledby="troubleshooting-title">
+        <h2 id="troubleshooting-title">Analysis diagnostics</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Symptom</th><th>Likely cause</th><th>What to check</th></tr></thead>
+            <tbody>
+              <tr><td><code>MKEF:SingularStiffness</code></td><td>A mechanism, disconnected node or insufficient supports.</td><td>Connectivity, element lengths, <code>fixedDOFs</code>; do not “fix” a mechanism by adding ones to <strong>K</strong>.</td></tr>
+              <tr><td><code>MKEF:SingularMass</code> or an invalid modal problem</td><td>Nonpositive or singular reduced mass.</td><td><em>ρ</em>, <em>A</em>, <em>I</em>, free DOFs and connectivity.</td></tr>
+              <tr><td>Unexpected reaction or force sign</td><td>Global and local systems, or forces on the structure and on an element, have been confused.</td><td><code>element.transformation</code>, the order of <code>localEndForces</code> and chapter 8.</td></tr>
+              <tr><td>Unexpected dynamic impulse</td><td>Type 10 was mistaken for a constant step.</td><td>Use type 12 for an explicit pulse and type 13 for a step; see chapter 4.</td></tr>
+              <tr><td>Error with filename and line number</td><td>A section format rule was violated.</td><td>Compare the record with chapter 10; retain the line number in any error report.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="source-list" aria-labelledby="sources-title">
+        <h2 id="sources-title">Chapter source code</h2>
+        <ul>
+          <li><a href="../../src/model/FEMesh.m"><code>FEMesh.m</code></a> — parser, validation and mesh data;</li>
+          <li><a href="../../src/model/createAnalysisModel.m"><code>createAnalysisModel.m</code></a> and <a href="../../src/model/StructFEProblem.m"><code>StructFEProblem.m</code></a> — model boundary and compatibility facade;</li>
+          <li><a href="../../src/model/assembleGlobalMatrices.m"><code>assembleGlobalMatrices.m</code></a> — sparse assembly;</li>
+          <li><a href="../../scripts/run_octave_tests.m"><code>run_octave_tests.m</code></a> and <a href="../../tests/run_verification_tests.m"><code>tests/run_verification_tests.m</code></a> — common verification entry points.</li>
+        </ul>
+        <h3>Project history</h3>
+        <ul>
+          <li>Daniil Denisov, “MKE-F — Newmark method,” November 25, 2017, version 0.4.</li>
+          <li>Daniil Denisov, “Mass matrix and stiffness matrix,” December 20, 2017, version 0.6.0.</li>
+          <li>Daniil Denisov, “Frame analysis in MKE-F,” December 19, 2017, v0.6.0 era.</li>
+        </ul>
+      </section>
+    </main>
+  </div>
+
+  <nav class="page-nav" aria-label="Chapter navigation">
+    <a href="08-result-recovery.html"><span class="page-nav__label">Previous</span>← 8. Element results</a>
+    <a href="10-input-format.html"><span class="page-nav__label">Next</span>10. Input file format →</a>
+  </nav>
+
+  <footer class="site-footer">
+    <div class="site-footer__inner"><p>MKE-F · offline learning reference · chapter 9 of 15</p></div>
+  </footer>
+</body>
+</html>
