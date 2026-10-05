@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Element types, analyses, loads and supports: comparison of truss 112 and frame 113 capabilities.">
+  <title>MKE-F capabilities</title>
+  <link rel="stylesheet" href="../assets/reference.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="site-header__inner">
+      <nav class="language-switch" aria-label="Reference language"><a href="../RU/capabilities.html" lang="ru" hreflang="ru">RU</a> <a href="../EN/capabilities.html" lang="en" hreflang="en" aria-current="true">EN</a></nav>
+      <p class="eyebrow">Student FEM Reference · Appendix</p>
+      <p class="site-title">MKE-F capabilities</p>
+      <p class="site-subtitle">Element types, analyses, loads and supports: comparison of truss 112 and frame 113 capabilities.</p>
+    </div>
+  </header>
+
+  <div class="layout">
+    <nav class="contents" aria-label="Reference contents">
+      <h2>Contents</h2>
+      <ol>
+        <li><a href="01-model-dofs.html">Model, nodes, elements and DOFs</a></li>
+        <li><a href="02-element-matrices.html">Element matrices</a></li>
+        <li><a href="03-transformation-assembly.html">Transformation and assembly</a></li>
+        <li><a href="04-boundary-loads.html">Boundary conditions and loads</a></li>
+        <li><a href="05-static-analysis.html">Static analysis</a></li>
+        <li><a href="06-modal-analysis.html">Modal analysis</a></li>
+        <li><a href="07-newmark-transient.html">Newmark transient analysis</a></li>
+        <li><a href="08-result-recovery.html">Element results</a></li>
+        <li><a href="09-architecture-verification.html">Architecture and verification</a></li>
+        <li><a href="10-input-format.html">Input file format</a></li>
+        <li><a href="11-mario-paz-modal-example.html">Mario Paz modal example</a></li>
+        <li><a href="12-local-octave-workflow.html">Local GNU Octave workflow</a></li>
+        <li><a href="13-fem-assembly-visualizer.html">Interactive FEM assembly</a></li>
+        <li><a href="14-mario-paz-matrices-visualizer.html">Interactive frame matrices</a></li>
+        <li><a href="15-sparse-matrix-assembly.html">Sparse matrix assembly</a></li>
+      </ol>
+      <h2>Appendix</h2>
+      <p><a href="capabilities.html">MKE-F capabilities</a></p>
+      <p><a href="project-operations.html">Running, configuring and verifying the project</a></p>
+    </nav>
+
+    <main class="chapter" id="main">
+      <span class="chapter-number">Appendix</span>
+      <h1>MKE-F capabilities</h1>
+<p class="lead">MKE-F is an educational program for linear finite element analysis of planar trusses and frames.</p>
+<section aria-labelledby="capabilities-title">
+<h2 id="capabilities-title">Elements, analyses, loads and supports</h2>
+<div class="table-wrap">
+<table>
+<thead><tr><th scope="col">Category</th><th scope="col">Capability</th><th scope="col">Truss element 112</th><th scope="col">Frame element 113</th></tr></thead>
+<tbody>
+<tr><td>Elements</td><th scope="row">Structural model</th><td>Planar member: axial tension and compression.</td><td>Planar Euler–Bernoulli member: axial tension, compression and bending.</td></tr>
+<tr><td>Elements</td><th scope="row">Nodal degrees of freedom</th><td>Two: translations u<sub>x</sub>, u<sub>y</sub>.</td><td>Three: translations u<sub>x</sub>, u<sub>y</sub> and rotation θ<sub>z</sub>.</td></tr>
+<tr><td>Elements</td><th scope="row">Element properties</th><td>Area A, Young’s modulus E, density ρ.</td><td>Area A, Young’s modulus E, density ρ, second moment of area I.</td></tr>
+<tr><td>Analyses</td><th scope="row">Linear statics</th><td>Displacements, support reactions, axial forces, axial strains and stresses.</td><td>Displacements, rotations, support reactions, member end forces and N, V, M diagrams.</td></tr>
+<tr><td>Analyses</td><th scope="row">Modal analysis</th><td>Undamped natural frequencies and mode shapes.</td><td>Undamped natural frequencies and mode shapes.</td></tr>
+<tr><td>Analyses</td><th scope="row">Transient dynamics</th><td>Newmark method: displacement, velocity, acceleration and reaction histories; spectrum of a selected displacement.</td><td>Newmark method: displacement, velocity, acceleration and reaction histories; spectrum of a selected displacement.</td></tr>
+<tr><td>Loads</td><th scope="row">Concentrated nodal forces</th><td>Global components F<sub>x</sub>, F<sub>y</sub>.</td><td>Global components F<sub>x</sub>, F<sub>y</sub>.</td></tr>
+<tr><td>Loads</td><th scope="row">Concentrated nodal moment</th><td>Not supported: the node has no rotational degree of freedom.</td><td>Moment M<sub>z</sub> about the axis perpendicular to the model plane.</td></tr>
+<tr><td>Loads</td><th scope="row">Constant static load, type 10</th><td>Nodal forces.</td><td>Nodal forces and moments.</td></tr>
+<tr><td>Loads</td><th scope="row">Uniform distributed load, type 20</th><td>Not supported.</td><td>Statics only: local or global components q<sub>x</sub>, q<sub>y</sub>; intensity per unit element length.</td></tr>
+<tr><td>Loads</td><th scope="row">Harmonic load, type 11</th><td>In dynamics: nodal forces following F(t) = F₀ sin(2πft).</td><td>In dynamics: sinusoidal nodal forces and moments.</td></tr>
+<tr><td>Loads</td><th scope="row">One-step pulse, type 12</th><td>In dynamics: nodal forces at the first time step t = Δt only.</td><td>In dynamics: nodal forces and moments at the first time step t = Δt only.</td></tr>
+<tr><td>Loads</td><th scope="row">Step load, type 13</th><td>In dynamics: constant nodal forces from t = 0.</td><td>In dynamics: constant nodal forces and moments from t = 0.</td></tr>
+<tr><td>Loads</td><th scope="row">Combined loading</th><td>Loads are added if their types are supported by the selected analysis.</td><td>Loads are added; static analysis can combine nodal and distributed loads.</td></tr>
+<tr><td>Supports</td><th scope="row">Type 1 — fully restrained node</th><td>u<sub>x</sub> = u<sub>y</sub> = 0.</td><td>Fixed support: u<sub>x</sub> = u<sub>y</sub> = θ<sub>z</sub> = 0.</td></tr>
+<tr><td>Supports</td><th scope="row">Type 2 — X translation allowed</th><td>u<sub>y</sub> = 0; u<sub>x</sub> is free.</td><td>u<sub>y</sub> = θ<sub>z</sub> = 0; u<sub>x</sub> is free.</td></tr>
+<tr><td>Supports</td><th scope="row">Type 3 — Y translation allowed</th><td>u<sub>x</sub> = 0; u<sub>y</sub> is free.</td><td>u<sub>x</sub> = θ<sub>z</sub> = 0; u<sub>y</sub> is free.</td></tr>
+<tr><td>Supports</td><th scope="row">Type 4 — both translations restrained</th><td>u<sub>x</sub> = u<sub>y</sub> = 0; equivalent to type 1.</td><td>Pinned support: u<sub>x</sub> = u<sub>y</sub> = 0; rotation θ<sub>z</sub> is free.</td></tr>
+<tr><td>Supports</td><th scope="row">Nonzero prescribed translations and rotations</th><td>Not supported.</td><td>Not supported.</td></tr>
+</tbody>
+</table>
+</div>
+</section>
+<section aria-labelledby="notes-title">
+<h2 id="notes-title">Notation and limitations</h2>
+<p><strong>Notation:</strong> X and Y are the global in-plane axes; θ<sub>z</sub> is nodal rotation; N is axial force; V is shear force; M is bending moment. A free degree of freedom means that the translation or rotation is not prescribed by a support and is determined by analysis; it does not imply motion without elastic resistance.</p>
+<p><strong>Load conventions:</strong> no loads are specified in modal analysis. In transient analysis, type 10 is also interpreted as a one-step pulse, not a constant load; use type 13 for a constant action. Self-weight is not added automatically.</p>
+<p><strong>Scope:</strong> types 112 and 113 cannot be mixed in one model. Analysis is linear, with small displacements and a linear elastic material. Plasticity, geometric nonlinearity and damping are not included; the frame element neglects shear deformation. Distributed loads must be uniform and are supported only on frame elements in static analysis. Frame supports of types 2 and 3 restrain rotation: they are not conventional roller supports.</p>
+<p>See <a href="10-input-format.html">Input file format</a> for input records and <a href="04-boundary-loads.html">Boundary conditions and loads</a> for sign and load conventions.</p>
+</section>
+
+    </main>
+  </div>
+  <nav class="page-nav" aria-label="Reference contents">
+    <a href="index.html">← Reference contents</a>
+    <a href="10-input-format.html">Input file format →</a>
+  </nav>
+  <footer class="site-footer"><div class="site-footer__inner"><p>MKE-F · MKE-F capabilities</p></div></footer>
+</body>
+</html>
