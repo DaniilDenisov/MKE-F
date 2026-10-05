@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 390" role="img" aria-labelledby="title desc">
+  <title id="title">A–B–C–D: q, l, h, I1, I2</title>
+  <desc id="desc">Three members AB, BC and DC; pinned bases A and D, rigid corners B and C, uniform downward load on BC.</desc>
+  <defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10Z" fill="#2563eb"/></marker></defs>
+  <rect width="720" height="390" rx="16" fill="#f8fafc"/>
+  <g fill="none" stroke="#0f172a" stroke-width="6"><path d="M145 295V110H565V295"/></g>
+  <g fill="white" stroke="#0f172a" stroke-width="2">
+    <path d="M145 299L125 327H165Z M565 299L545 327H585Z"/>
+    <circle cx="145" cy="295" r="5"/><circle cx="565" cy="295" r="5"/>
+    <path d="M120 332H170 M540 332H590"/>
+  </g>
+  <g stroke="#2563eb" stroke-width="2" marker-end="url(#arrow)">
+    <path d="M145 60V101 M180 60V101 M215 60V101 M250 60V101 M285 60V101 M320 60V101 M355 60V101 M390 60V101 M425 60V101 M460 60V101 M495 60V101 M530 60V101 M565 60V101"/>
+  </g>
+  <path d="M145 60H565" stroke="#2563eb" stroke-width="2"/>
+  <g stroke="#64748b" stroke-width="1.5" fill="none"><path d="M145 352H565 M145 343V361 M565 343V361 M610 110V295 M601 110H619 M601 295H619"/></g>
+  <g font-family="Arial,sans-serif" font-size="19" fill="#0f172a">
+    <text x="100" y="293">A (1)</text><text x="85" y="103">B (2)</text><text x="580" y="103">C (3)</text><text x="582" y="293">D (4)</text>
+    <text x="290" y="40" fill="#2563eb">q = 10 kN/m</text>
+    <text x="313" y="378">l = 6 m</text><text x="625" y="210">h = 3 m</text>
+    <text x="190" y="220">1: I₁</text><text x="480" y="220">3: I₁</text><text x="325" y="143">2: I₂</text>
+  </g>
+</svg>

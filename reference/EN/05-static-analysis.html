@@ -50,6 +50,7 @@
         <p>Original equation:</p>
         <p class="equation">K u = F + R</p>
         <p>Here <strong>R</strong> denotes support reactions. Partition rows and columns into free <em>f</em> and constrained <em>c</em>:</p>
+        <p>In FEM, a <strong>free degree of freedom</strong> is a nodal translation or rotation whose value is not prescribed by boundary conditions and must be determined by analysis. The term refers to an individual displacement component, not to the entire node. It does not imply motion without resistance: elements connected to the node may deform and develop elastic forces. For example, the unsupported end of a cantilever frame has free X and Y translations and a free rotation, but the cantilever stiffness resists these motions.</p>
         <pre><code>[ Kff  Kfc ] [ uf ] = [ Ff ] + [  0 ]
 [ Kcf  Kcc ] [ uc ]   [ Fc ]   [ Rc ]</code></pre>
         <p>For the implemented homogeneous supports, <strong>u<sub>c</sub> = 0</strong>. The first block row becomes a system for the unknown free displacements:</p>
@@ -62,9 +63,9 @@
         <p><a href="../../src/analysis/common/validateReducedSystem.m"><code>validateReducedSystem</code></a> checks coefficient finiteness and positive definiteness of the symmetrized <strong>K<sub>ff</sub></strong> using Cholesky factorization. Failure usually means one of two things:</p>
         <ul>
           <li>insufficient supports allow rigid-body motion;</li>
-          <li>an internal mechanism remains, for example a nodal motion is transverse to every connected truss member.</li>
+          <li>an internal mechanism remains, for example a node can move transversely to every connected truss member without extending them in the linear approximation.</li>
         </ul>
-        <p>A fully constrained model is valid in statics: there are no free DOFs, all displacements are zero, and reactions carry all applied loads.</p>
+        <p>For a unique solution to the linear static problem considered here, the supports and element stiffness must exclude rigid-body motions and internal mechanisms — possible motions without elastic resistance. Free DOFs are allowed: the corresponding unknown displacements are determined from the equilibrium equations <strong>K<sub>ff</sub>u<sub>f</sub> = F<sub>f</sub></strong>, and reactions are calculated after solving. A fully constrained model is a valid special case: with zero prescribed displacements, there are no free DOFs, all displacements are zero, and reactions balance the applied loads.</p>
       </section>
 
       <section aria-labelledby="expand-title">
@@ -139,7 +140,7 @@ exportPostprocessorData(model, result, fullfile('output', 'static-frame.json'), 
         <h3>3. Select a static result</h3>
         <ul>
           <li>For type 112 truss elements, the <strong>Overlay</strong> list displays axial force or stress. Red indicates tension; blue indicates compression.</li>
-          <li>For type 113 frame elements, the <strong>Overlay</strong> list draws diagrams of <em>N</em>, <em>V</em> or <em>M</em>. The convention is <em>N = −q<sub>1</sub></em> with positive tension, <em>V = −q<sub>2</sub></em>, while the moment varies linearly from <em>−q<sub>3</sub></em> to <em>q<sub>6</sub></em>. Positive values are plotted toward the local +Y axis.</li>
+          <li>For type 113 frame elements, the <strong>Overlay</strong> list draws diagrams of <em>N</em>, <em>V</em> or <em>M</em>. Without distributed loads, <em>N = −f₁</em> is positive in tension, <em>V = −f₂</em>, and the moment varies linearly from <em>−f₃</em> to <em>f₆</em>, where f denotes local end forces. Under a uniform transverse load, version-2 JSON produces a parabolic moment diagram. Positive values are plotted toward the local +Y axis.</li>
           <li>Deformation, arrow and diagram scales are independent and shown in the legend. An empty or unsupported diagram is replaced with a clear error message.</li>
         </ul>
 
@@ -150,6 +151,43 @@ exportPostprocessorData(model, result, fullfile('output', 'static-frame.json'), 
           <span class="callout__title">If the file does not open</span>
           <p>Check that the supplied result is <code>RunStatic</code>, all values are finite, and the JSON was created by the current export function. The viewer message identifies the invalid field path, for example <code>$.analysis.displacements</code>. A failed load does not replace the previous valid view.</p>
         </div>
+      </section>
+
+      <section aria-labelledby="portal-title">
+        <h2 id="portal-title">Verification: three-member portal under a uniform load</h2>
+        <p>M. F. Astakhov, A. V. Karavaltsev, S. Ya. Makarov — Handbook of Aircraft Strength Calculations, p. 327, Table III.35. Identical columns AB and DC, beam BC, and rigid corners B and C. Both translations are restrained at bases A and D, with free rotations (support type 4). There are exactly three type-113 elements and four nodes. The model uses linear Euler–Bernoulli theory without shear deformation or geometric nonlinearity.</p>
+        <figure class="model-figure lab-figure">
+          <img src="../assets/lab-pinned-portal.svg" alt="Three-member portal with pinned bases A and D, rigid corners B and C, and a uniform downward load on BC.">
+          <figcaption>Nodes in metres: A(0, 0), B(0, 3), C(6, 3), D(6, 0). Members: 1 — A→B, 2 — B→C, 3 — D→C.</figcaption>
+        </figure>
+        <p>Selected data: <em>l = 6 m, h = 3 m, q = 10 kN/m, E = 200 GPa, A₁ = A₂ = 0.02 m², J₁ = 8·10⁻⁵ m⁴, J₂ = 1.6·10⁻⁴ m⁴</em>. The program denotes second moments of area by <em>I</em>. Density 7800 kg/m³ is required input but does not affect statics; self-weight is not added automatically. Global X points right and Y up. Only member 2 is loaded: <code>20,2,2,0,-10000</code>.</p>
+        <h3>Drawing reference and axial deformation</h3>
+        <p>With positive downward load intensity <em>q</em> and sagging-positive beam moments:</p>
+        <p class="equation">k = (J₂/J₁)(h/l) = 1; &nbsp; V<sub>A</sub> = V<sub>D</sub> = ql/2<br>H₀ = ql² / [4h(2k + 3)]; &nbsp; H<sub>A</sub> = +H₀, H<sub>D</sub> = −H₀<br>M<sub>B</sub> = M<sub>C</sub> = −H₀h; &nbsp; M(l/2) = ql²/8 − H₀h</p>
+        <p>The drawing formulas neglect axial deformation. Element 113 includes finite EA. An independent force-method solution, releasing the horizontal restraint at D, gives:</p>
+        <p class="equation">H [2h³/(3EJ₁) + h²l/(EJ₂) + l/(EA₂)] = ql³h/(12EJ₂)<br>H = ql² / {4h[2k + 3 + 3J₂/(A₂h²)]}</p>
+        <p>Substituting this H in the moment expressions gives the exact reference for the finite-EA model. Equal column shortening does not affect horizontal thrust but is included in the vertical displacements at B and C. The horizontal reaction differs from the drawing by approximately 0.0533%.</p>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Quantity</th><th>Drawing (EA → ∞)</th><th>Finite EA, FEM reference</th></tr></thead>
+          <tbody>
+            <tr><td>V<sub>A</sub> = V<sub>D</sub>, kN</td><td>30</td><td>30</td></tr>
+            <tr><td>H<sub>A</sub> = −H<sub>D</sub>, kN</td><td>6</td><td>5.996802</td></tr>
+            <tr><td>M<sub>B</sub> = M<sub>C</sub>, kN·m</td><td>−18</td><td>−17.990405</td></tr>
+            <tr><td>M(l/2), kN·m</td><td>+27</td><td>+27.009595</td></tr>
+            <tr><td>M<sub>A</sub> = M<sub>D</sub>, kN·m</td><td>0</td><td>0</td></tr>
+          </tbody>
+        </table></div>
+        <h3>Running the example and checking results</h3>
+        <p>Load <a href="../../examples/cases/CasePinnedPortalUniform.txt" download>CasePinnedPortalUniform.txt</a> with <strong>Open TXT</strong> in the preprocessor and select <strong>Run analysis</strong>. Automated verification is in <a href="../examples/example_08_pinned_portal_uniform.m">example_08_pinned_portal_uniform.m</a>:</p>
+        <pre><code>addpath(pwd);
+setup;
+addpath(fullfile(pwd, 'reference', 'examples'));
+r = example_08_pinned_portal_uniform();
+exportPostprocessorData(r.model, r.analysis, 'output/pinned-portal-uniform.json');</code></pre>
+        <p>The example checks all reactions, 18 member end forces, 12 nodal displacements, axial forces, beam section moments, equilibrium, and convergence toward the drawing formula when the beam area increases by a factor of 100. Force tolerance is <em>10⁻⁷ + 10⁻⁹|reference|</em> in N or N·m; displacement tolerance is <em>10⁻¹² + 10⁻⁹|reference|</em> in m or rad. It runs as part of <code>test_reference_examples</code>.</p>
+        <p>Moments in <code>localEndForces</code> act on the element, so for BC: <code>M_B = -f(3)</code> and <code>M_C = f(6)</code>. Include the load when recovering the beam diagram: <em>M(x) = −Hh + qx(l−x)/2</em>. Linear interpolation between end moments would miss the positive maximum. Three elements suffice for these forces and nodal displacements; deflection inside the loaded beam additionally requires the particular solution for q or mesh refinement.</p>
+        <p>Open the supplied <a href="../../examples/results/pinned-portal-uniform.json" download>JSON result</a> in the postprocessor with <strong>Open JSON</strong>, then select <strong>Overlay → M</strong> for the moment diagram.</p>
+        <p>The original formulas come from the user-supplied fragment titled “Rectangular frame with equal-section columns and pinned bases”. No bibliographic details appear in the fragment. Dimensions and section properties were selected for this example.</p>
       </section>
 
       <section aria-labelledby="practice-title">
