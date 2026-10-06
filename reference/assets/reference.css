@@ -597,3 +597,4 @@ tr:last-child td {
 .contents .mpc-chapter::marker { content: "4a. "; }
 
 .contents .release-chapter::marker { content: "4b. "; }
+.contents .nafems-chapter::marker { content: "6a. "; }

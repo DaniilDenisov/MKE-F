@@ -85,3 +85,15 @@ docker compose up --build
 Для каждого конца рамы 113 доступны независимые освобождения Mz во всех трёх анализах. Секция `releases` сохраняет прежний формат элементов. Внутренние повороты учитываются с исходной согласованной массой и доступны в карточках и временных графиках. Закрепление отсутствующего узлового поворота игнорируется с предупреждением; нагрузка Mz и ссылки MPC на него отклоняются.
 
 См. [JSON v4](postprocessor/schema-v4.md) и примеры `CaseReleaseStatic`, `CaseReleaseModal`, `CaseReleaseTransient`. Проверка: `setup; addpath(fullfile(pwd, 'tests')); test_releases`, затем `node scripts/test_releases_browser.cjs` с Playwright.
+
+### NAFEMS Challenge Problem 5
+
+Сохранённые входы: `examples/cases/nafems-challenge-5/manifest.csv`.
+Короткая инструкция: [RU](reference/RU/06a-nafems-challenge-5.html) ·
+[EN](reference/EN/06a-nafems-challenge-5.html).
+Из корня проекта в Octave: `setup; run_nafems_challenge5('quick');`
+или `run_nafems_challenge5('full');`. Результаты — в
+`output/nafems-challenge-5/`. После quick браузерная проверка:
+`node scripts/test_nafems_browser.cjs` (Playwright).
+Исследование использует текущие рамные элементы и матрицы массы; расхождение
+с опубликованными 22 формами указано в инструкции, параметры не подгоняются.

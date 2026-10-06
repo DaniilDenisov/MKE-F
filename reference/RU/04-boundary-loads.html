@@ -30,6 +30,7 @@
         <li value="4" class="release-chapter"><a href="04b-end-releases.html">Концевые освобождения Mz</a></li>
         <li><a href="05-static-analysis.html">Статический расчёт</a></li>
         <li><a href="06-modal-analysis.html">Модальный анализ</a></li>
+        <li value="6" class="nafems-chapter"><a href="06a-nafems-challenge-5.html">NAFEMS Challenge Problem 5</a></li>
         <li><a href="07-newmark-transient.html">Переходный анализ Ньюмарка</a></li>
         <li><a href="08-result-recovery.html">Результаты в элементах</a></li>
         <li><a href="09-architecture-verification.html">Архитектура и проверка</a></li>
@@ -116,7 +117,7 @@ step  = [F0, F0, F0, F0, F0];</code></pre>
 
       <section aria-labelledby="element-loads-title">
         <h2 id="element-loads-title">Равномерная нагрузка на элемент</h2>
-        <p><code>eload_uniform</code> поддерживается только в статике для рамы 113. Строка <code>20,elementId,coordinateSystem,qx,qy</code> задаёт силу на единицу фактической длины члена. Код системы 1 означает локальные оси (x — от первого узла ко второму, y — поворот x на +90°), 2 — глобальные X, Y. Повторные записи складываются; обе компоненты одновременно нулевыми быть не могут.</p>
+        <p><code>eload_uniform</code> поддерживается только в статике для рамы 113. Строка <code>20,elementId,coordinateSystem,qx,qy</code> задаёт силу на единицу фактической длины конечного элемента. Код системы 1 означает локальные оси (x — от первого узла ко второму, y — поворот x на +90°), 2 — глобальные X, Y. Повторные записи складываются; обе компоненты одновременно нулевыми быть не могут.</p>
         <p>После перевода q в локальные оси согласованный вектор равен:</p>
         <p class="equation">f<sub>e</sub> = [qₓL/2, qᵧL/2, qᵧL²/12, qₓL/2, qᵧL/2, −qᵧL²/12]ᵀ</p>
         <p>При u<sub>local</sub> = R u<sub>global</sub> глобальный вклад равен Rᵀf<sub>e</sub>. Он добавляется к узловым нагрузкам. Не вводите его вручную второй раз. В редакторе изменение элемента или координат его концов удаляет связанные распределённые нагрузки; Undo восстанавливает их. Переключение Local/Global сохраняет физическое направление нагрузки.</p>

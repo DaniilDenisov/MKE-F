@@ -30,6 +30,7 @@
         <li value="4" class="release-chapter"><a href="04b-end-releases.html">Концевые освобождения Mz</a></li>
         <li><a href="05-static-analysis.html">Статический расчёт</a></li>
         <li><a aria-current="page" href="06-modal-analysis.html">Модальный анализ</a></li>
+        <li value="6" class="nafems-chapter"><a href="06a-nafems-challenge-5.html">NAFEMS Challenge Problem 5</a></li>
         <li><a href="07-newmark-transient.html">Переходный анализ Ньюмарка</a></li>
         <li><a href="08-result-recovery.html">Результаты в элементах</a></li>
         <li><a href="09-architecture-verification.html">Архитектура и проверка</a></li>
@@ -185,14 +186,14 @@ r = example_05_modal_frame();</code></pre>
           <li>Henri P. Gavin, <a href="https://people.duke.edu/~hpgavin/StructuralDynamics/RealModes.pdf"><cite>Real Modes of Vibration of Building Structures</cite></a>, Duke University, редакция 16 сентября 2025 года: раздел 2, формулы (2)–(5).</li>
         </ul>
       </section>
-    <section aria-labelledby="mpc-title"><h2 id="mpc-title">MPC</h2><p>При MPC решается Kr φr = ω²Mr φr, затем φ = Tφr. Число форм равно числу независимых СС. Связи поперечных перемещений промежуточных узлов устраняют паразитные механизмы измельчённого ферменного члена. Ненулевой rhs запрещён.</p><p><a href="04a-mpc.html">Подробное описание MPC</a> · <a href="../../postprocessor/schema-v3.md">JSON v3</a> · <a href="../../examples/cases/CaseMPCFrame.txt">CaseMPCFrame.txt</a> · <a href="../../examples/cases/CaseMPCTruss.txt">CaseMPCTruss.txt</a></p></section>
+    <section aria-labelledby="mpc-title"><h2 id="mpc-title">MPC</h2><p>При MPC решается Kr φr = ω²Mr φr, затем φ = Tφr. Число форм равно числу независимых СС. Связи поперечных перемещений промежуточных узлов устраняют паразитные механизмы ферменного стержня, разбитого на несколько конечных элементов. Ненулевой rhs запрещён.</p><p><a href="04a-mpc.html">Подробное описание MPC</a> · <a href="../../postprocessor/schema-v3.md">JSON v3</a> · <a href="../../examples/cases/CaseMPCFrame.txt">CaseMPCFrame.txt</a> · <a href="../../examples/cases/CaseMPCTruss.txt">CaseMPCTruss.txt</a></p></section>
 <section aria-labelledby="end-releases-title"><h2 id="end-releases-title">Концевые освобождения Mz</h2><p><a href="04b-end-releases.html">Подробное описание: глава 4b</a></p><p>Внутренние повороты сохраняют исходную согласованную массу. Условие освобождения в модальном анализе проверяется по K*phi − omega²*M*phi, а в переходном — M*a + K*u − F. Упругий момент K*u отдельно может быть ненулевым. Формы строятся по концевым поворотам, включая формы с неподвижными узлами.</p><p><a href="../../postprocessor/schema-v4.md">JSON v4</a> · <a href="../../examples/cases/CaseReleaseStatic.txt">CaseReleaseStatic</a> · <a href="../../examples/cases/CaseReleaseModal.txt">CaseReleaseModal</a> · <a href="../../examples/cases/CaseReleaseTransient.txt">CaseReleaseTransient</a></p></section>
 </main>
   </div>
 
   <nav class="page-nav" aria-label="Навигация между главами">
     <a href="05-static-analysis.html"><span class="page-nav__label">Назад</span>← 5. Статический расчёт</a>
-    <a href="07-newmark-transient.html"><span class="page-nav__label">Далее</span>7. Переходный анализ Ньюмарка →</a>
+    <a href="06a-nafems-challenge-5.html"><span class="page-nav__label">Далее</span>6a. NAFEMS Challenge Problem 5 →</a>
   </nav>
 
   <footer class="site-footer">

@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="NAFEMS Challenge Problem 5">
+  <title>6a. NAFEMS Challenge Problem 5 — MKE-F</title>
+  <link rel="stylesheet" href="../assets/reference.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="site-header__inner">
+      <nav class="language-switch" aria-label="Reference language"><a href="../RU/06a-nafems-challenge-5.html" lang="ru" hreflang="ru">RU</a> <a href="../EN/06a-nafems-challenge-5.html" lang="en" hreflang="en" aria-current="true">EN</a></nav>
+      <p class="eyebrow">Student FEM Reference · Chapter 6a</p>
+      <p class="site-title">NAFEMS Challenge Problem 5</p>
+      <p class="site-subtitle">Saved inputs, execution and verification of the frame model.</p>
+    </div>
+  </header>
+
+  <div class="layout">
+    <nav class="contents" aria-label="Reference contents">
+      <h2>Contents</h2>
+      <ol>
+        <li><a href="01-model-dofs.html">Model, nodes, elements and DOFs</a></li>
+        <li><a href="02-element-matrices.html">Element matrices</a></li>
+        <li><a href="03-transformation-assembly.html">Transformation and assembly</a></li>
+        <li><a href="04-boundary-loads.html">Boundary conditions and loads</a></li>
+        <li value="4" class="mpc-chapter"><a href="04a-mpc.html">Linear multipoint constraints (MPC)</a></li>
+        <li value="4" class="release-chapter"><a href="04b-end-releases.html">Mz end releases</a></li>
+        <li><a href="05-static-analysis.html">Static analysis</a></li>
+        <li><a href="06-modal-analysis.html">Modal analysis</a></li>
+        <li value="6" class="nafems-chapter"><a aria-current="page" href="06a-nafems-challenge-5.html">NAFEMS Challenge Problem 5</a></li>
+        <li><a href="07-newmark-transient.html">Newmark transient analysis</a></li>
+        <li><a href="08-result-recovery.html">Element results</a></li>
+        <li><a href="09-architecture-verification.html">Architecture and verification</a></li>
+        <li><a href="10-input-format.html">Input file format</a></li>
+        <li><a href="11-mario-paz-modal-example.html">Mario Paz modal example</a></li>
+        <li><a href="12-local-octave-workflow.html">Local GNU Octave workflow</a></li>
+        <li><a href="13-fem-assembly-visualizer.html">Interactive FEM assembly</a></li>
+        <li><a href="14-mario-paz-matrices-visualizer.html">Interactive frame matrices</a></li>
+        <li><a href="15-sparse-matrix-assembly.html">Sparse matrix assembly</a></li>
+      </ol>
+    </nav>
+
+    <main class="chapter" id="main"><span class="chapter-number">Chapter 6a</span><h1>NAFEMS Challenge Problem 5</h1>
+<p class="lead">This guide reproduces the frame formulation of “Dynamic Characteristics of a Truss Structure” using the existing MKE-F element 113. The study checks natural frequencies, physical end hinges and mesh convergence. It reads saved input files: neither generating geometry nor obtaining the original article is necessary to run the supplied cases.</p>
+<section aria-labelledby="model-title"><h2 id="model-title">1. Model</h2>
+<figure class="model-figure"><svg viewBox="0 0 600 290" role="img" aria-labelledby="scheme-title"><title id="scheme-title">NAFEMS 5</title><g stroke="#165c45" stroke-width="4" fill="none"><path d="M120 40H320L120 240"/></g><g fill="white" stroke="#a24d16" stroke-width="3"><circle cx="120" cy="40" r="7"/><circle cx="120" cy="240" r="7"/><circle cx="320" cy="40" r="7"/></g><g font-family="sans-serif" font-size="18"><text x="30" y="30">2 (0,1)</text><text x="25" y="268">1 (0,0)</text><text x="330" y="35">3 (1,1)</text><text x="195" y="28">L = 1 m</text><text x="250" y="170">L = √2 m</text><text x="30" y="120">ux = uy = 0</text></g></svg></figure>
+<p>Members connect nodes 2–3 and 1–3; there is no vertical member between the supports. Nodes 1 and 2 restrain ux and uy. Joint 3 is free. Four physical member ends release Mz: both supported ends and each member end at the shared joint. Interior rotations remain continuous, and no MPC equations are needed. The value n always denotes elements per member, not the total element count.</p>
+<p>Use metres, kilograms, seconds, newtons and pascals. Material properties are E = 210·10⁹ Pa and ρ = 7800 kg/m³. The solid circular section has radius 0.01 m, area A = πr² and second moment I = πr⁴/4. Total mass is 5.91589096156 kg. Shear deformation, damping, prestress and added masses are absent. Material and section properties remain unchanged throughout refinement.</p></section>
+<section aria-labelledby="files-title"><h2 id="files-title">2. Saved inputs</h2>
+<div class="table-wrap"><table><thead><tr><th>Case</th><th>n / TXT</th></tr></thead><tbody><tr><td><code>axial</code></td><td><a href="../../examples/cases/nafems-challenge-5/axial_n001.txt">1</a>, <a href="../../examples/cases/nafems-challenge-5/axial_n002.txt">2</a>, <a href="../../examples/cases/nafems-challenge-5/axial_n004.txt">4</a>, <a href="../../examples/cases/nafems-challenge-5/axial_n008.txt">8</a>, <a href="../../examples/cases/nafems-challenge-5/axial_n016.txt">16</a></td></tr><tr><td><code>bending</code></td><td><a href="../../examples/cases/nafems-challenge-5/bending_n002.txt">2</a>, <a href="../../examples/cases/nafems-challenge-5/bending_n004.txt">4</a>, <a href="../../examples/cases/nafems-challenge-5/bending_n008.txt">8</a>, <a href="../../examples/cases/nafems-challenge-5/bending_n016.txt">16</a></td></tr><tr><td><code>frame</code></td><td><a href="../../examples/cases/nafems-challenge-5/frame_n001.txt">1</a>, <a href="../../examples/cases/nafems-challenge-5/frame_n002.txt">2</a>, <a href="../../examples/cases/nafems-challenge-5/frame_n004.txt">4</a>, <a href="../../examples/cases/nafems-challenge-5/frame_n008.txt">8</a>, <a href="../../examples/cases/nafems-challenge-5/frame_n016.txt">16</a>, <a href="../../examples/cases/nafems-challenge-5/frame_n025.txt">25</a>, <a href="../../examples/cases/nafems-challenge-5/frame_n050.txt">50</a>, <a href="../../examples/cases/nafems-challenge-5/frame_n100.txt">100</a>, <a href="../../examples/cases/nafems-challenge-5/frame_n200.txt">200</a>, <a href="../../examples/cases/nafems-challenge-5/frame_n400.txt">400</a></td></tr><tr><td><code>frame_static</code></td><td><a href="../../examples/cases/nafems-challenge-5/frame_static_n002.txt">2</a></td></tr></tbody></table></div>
+<p>The <a href="../../examples/cases/nafems-challenge-5/manifest.csv">manifest.csv catalogue</a> lists every file and execution profile. The axial cases isolate longitudinal motion of a straight frame member by restraining transverse displacement and rotation. The bending cases test a simply supported beam. The frame cases represent NAFEMS geometry. The frame_static case checks released moments under a downward force of 1 N at joint 3.</p>
+<p>All twenty files are versioned standard TXT inputs with consistent precision and numbering. The runner never overwrites them. The deterministic generator is a maintenance utility; regenerate into a separate directory when checking reproducibility. The 400-element mesh is supplied in advance but used only if the 200-element comparison has not converged.</p></section>
+<section aria-labelledby="run-title"><h2 id="run-title">3. Run with Octave</h2>
+<p>Start GNU Octave in the repository root. See the <a href="12-local-octave-workflow.html">local workflow</a> for installation and path setup. Run the quick profile first, then the full study. SVG generation requires an available Octave graphics toolkit, such as gnuplot. Batch execution creates invisible figures and does not require interactive plot windows.</p>
+<pre><code>setup;
+run_nafems_challenge5('quick');
+run_nafems_challenge5('full');</code></pre>
+<p>The quick profile covers analytical controls, frame meshes up to 16 and the static check. Full adds 25, 50, 100 and 200 elements per member, extending to 400 when necessary. The existing solver computes the complete spectrum; larger cases require more time and memory. Quick success does not certify convergence throughout the frequency band.</p>
+<p>Outputs are separated into <code>output/nafems-challenge-5/quick/</code> and <code>output/nafems-challenge-5/full/</code>. They contain frequencies.csv, checks.csv, mesh comparisons, SVG plots, sampled shapes, standard JSON and run.log. The log records Octave version, Git revision, working tree changes and final status. A failed run ends with INCOMPLETE and retains inspectable results. Old artifacts can remain after a failed rerun: trust only the completed cases listed in the current log. Successful execution ends with PASS.</p></section>
+<section aria-labelledby="gui-title"><h2 id="gui-title">4. Inspect in the interface</h2>
+<p>Open the <a href="../../preprocessor/index.html">preprocessor</a> and load frame_n016.txt from the table. Check two supports and four released-end markers, select modal analysis, then run. This requires a running backend; setup is described in <a href="project-operations.html">project operations</a>. Open the resulting dataset and switch between several modes.</p>
+<p>After an Octave run, open the <a href="../../postprocessor/index.html">postprocessor</a> and select frame_n016.json from the corresponding output directory. No new calculation is necessary. Inspect the fundamental shape and modes surrounding 451 and 1027 Hz. Display amplitude is arbitrary, and eigenvector sign has no physical significance. The study plots reconstruct bending with cubic interpolation and the independent released-end rotations.</p></section>
+<section aria-labelledby="comparison-title"><h2 id="comparison-title">5. NAFEMS versus our results</h2><p>Rerun on 6 October 2026 with Octave 11.3.0. Current-code results belong to <strong>MKE-F 0.8.2</strong>, being prepared for release; the solver core is <code>46971d2</code>. Published release 0.8.1 (core <code>e9356d3</code>), which lacks end-release support, is retained for comparison.</p><div class="table-wrap"><table><thead><tr><th>Quantity</th><th>NAFEMS</th><th>Release 0.8.1</th><th>MKE-F 0.8.2</th></tr></thead><tbody><tr><td>Axial bar, 1 m: f₁, n=16</td><td>≈1297 Hz</td><td>1297.70731 Hz</td><td>1297.70731 Hz</td></tr><tr><td>Axial bar, 1 m: f₂, n=16</td><td>≈3892 Hz</td><td>3905.63923 Hz</td><td>3905.63923 Hz</td></tr><tr><td>Beam model: modes below 1600 Hz</td><td>22</td><td>—</td><td>16</td></tr><tr><td>Beam frequency below 451 Hz</td><td>366 Hz</td><td>—</td><td>363.17069 Hz</td></tr><tr><td>Beam frequency above 451 Hz</td><td>496 Hz</td><td>—</td><td>504.01439 Hz</td></tr><tr><td>Beam frequency below 1027 Hz</td><td>1021 Hz</td><td>—</td><td>995.95985 Hz</td></tr><tr><td>Beam frequency above 1027 Hz</td><td>1183 Hz</td><td>—</td><td>1043.80130 Hz</td></tr></tbody></table></div><p>The first two NAFEMS entries are rounded analytical frequencies from figure 2, whereas our values use mesh 16. Beam results use 200 elements per member. Figure 6 comparisons select frequencies on either side of a reference value; they do not establish identical mode shapes.</p><p>A dash means the saved frame case cannot run in release 0.8.1: <code>frame_n016.txt:74</code>, <code>MKEF:UnknownInputMarker</code>, <code>Unknown section marker "releases"</code>. Current code 0.8.2 runs this case using general end-release support. Release preparation and publication are handled separately.</p></section>
+<section aria-labelledby="checks-title"><h2 id="checks-title">6. Acceptance and interpretation</h2>
+<p>At mesh 16, the first two axial errors must be below 0.05% and 0.4%; the first two bending errors below 0.1%. Frame checks cover mass, 6n independent coordinates, absence of mechanisms and normalized eigenpair residuals no larger than 10⁻⁸. Released static moments vanish within numerical tolerance. Modal checks use the complete elastic–inertial balance, rather than requiring the elastic end moment alone to vanish.</p>
+<p>Between final meshes, changes must be below 0.1% for the first two frequencies and 1% for the remaining modes up to 1600 Hz. Shapes are matched on a common physical grid and mode counts must stabilize. Additional low bending modes explain why a truss model cannot describe the complete dynamic response.</p>
+<p>The largest frequency change below 1600 Hz from mesh 100 to 200 is approximately 0.00047%. The current formulation has converged; agreement with the published spectrum has not been achieved.</p>
+<p>Source: NAFEMS, “Challenge Problem 5 — The Solution”, figures 1–7. Its 22 modes and labels 366, 496, 1021 and 1183 Hz are diagnostic references. Current element 113 mass omits a separate ρI contribution; figure 7 and lumped mass are outside scope. This formulation difference does not prove the cause of every discrepancy; comparison.txt records actual results. Do not fit section properties to published labels. If further reproduction requires software changes, stop the affected stage and report the problem before applying any correction.</p></section></main>
+  </div>
+
+  <nav class="page-nav" aria-label="Navigation"><a href="06-modal-analysis.html"><span class="page-nav__label">Previous</span>← 6. Modal analysis</a><a href="07-newmark-transient.html"><span class="page-nav__label">Next</span>7. Newmark transient analysis →</a></nav>
+
+  <footer class="site-footer">
+    <div class="site-footer__inner"><p>MKE-F · offline learning reference · chapter 6a</p></div>
+  </footer>
+</body>
+</html>

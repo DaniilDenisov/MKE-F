@@ -30,6 +30,7 @@ runNamedTest('constraint validation', @testConstraintValidation);
 runNamedTest('support masks', @test_support_masks);
 runNamedTest('homogeneous MPC', @test_mpc);
 runNamedTest('frame end releases', @test_releases);
+runNamedTest('NAFEMS Challenge 5', @test_nafems_challenge5);
 runNamedTest('Newmark transient analysis', @test_newmark_transient);
 runNamedTest('element result recovery', @test_result_recovery);
 runNamedTest('uniform element loads', @test_element_loads);

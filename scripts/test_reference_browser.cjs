@@ -7,7 +7,7 @@ const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 const root = path.resolve(__dirname, '..');
 const reference = path.join(root, 'reference');
-const pages = fs.readdirSync(path.join(reference, 'RU')).filter(name => name.endsWith('.html'));
+const pages = fs.readdirSync(path.join(reference, 'RU')).filter(name => name.endsWith('.html') && name !== '04c-nafems-challenge-5.html');
 const visualizers = pages.filter(name => /^(13|14|15)-/.test(name));
 const output = path.join(root, 'output', 'reference-browser');
 fs.mkdirSync(output, { recursive: true });
@@ -114,6 +114,12 @@ async function exercise(page, chapter, english) {
         await page.goto(base + `reference/${name}?bookmark=1#${anchor}`);
         await page.waitForURL(`**/reference/RU/${name}?bookmark=1#${anchor}`);
         assert.equal(await page.locator(`[id="${anchor}"]`).count(), 1);
+      }
+      for (const locale of ['', 'RU/', 'EN/']) {
+        const target = locale || 'RU/';
+        await page.goto(base + `reference/${locale}04c-nafems-challenge-5.html?bookmark=1#model-title`);
+        await page.waitForURL(`**/reference/${target}06a-nafems-challenge-5.html?bookmark=1#model-title`);
+        assert.equal(await page.locator('#model-title').count(), 1);
       }
       for (const name of visualizers) {
         const results = [];

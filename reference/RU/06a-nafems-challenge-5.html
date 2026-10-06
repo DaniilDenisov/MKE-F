@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="NAFEMS Challenge Problem 5">
+  <title>6a. NAFEMS Challenge Problem 5 — MKE-F</title>
+  <link rel="stylesheet" href="../assets/reference.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">К содержанию</a>
+  <header class="site-header">
+    <div class="site-header__inner">
+      <nav class="language-switch" aria-label="Язык справочника"><a href="../RU/06a-nafems-challenge-5.html" lang="ru" hreflang="ru" aria-current="true">RU</a> <a href="../EN/06a-nafems-challenge-5.html" lang="en" hreflang="en">EN</a></nav>
+      <p class="eyebrow">Student FEM Reference · Глава 6a</p>
+      <p class="site-title">NAFEMS Challenge Problem 5</p>
+      <p class="site-subtitle">Входные файлы, запуск и проверка рамной модели.</p>
+    </div>
+  </header>
+
+  <div class="layout">
+    <nav class="contents" aria-label="Оглавление справочника">
+      <h2>Оглавление</h2>
+      <ol>
+        <li><a href="01-model-dofs.html">Модель, узлы, элементы и СС</a></li>
+        <li><a href="02-element-matrices.html">Матрицы элементов</a></li>
+        <li><a href="03-transformation-assembly.html">Преобразование и сборка</a></li>
+        <li><a href="04-boundary-loads.html">Граничные условия и нагрузки</a></li>
+        <li value="4" class="mpc-chapter"><a href="04a-mpc.html">Линейные многоточечные связи MPC</a></li>
+        <li value="4" class="release-chapter"><a href="04b-end-releases.html">Концевые освобождения Mz</a></li>
+        <li><a href="05-static-analysis.html">Статический расчёт</a></li>
+        <li><a href="06-modal-analysis.html">Модальный анализ</a></li>
+        <li value="6" class="nafems-chapter"><a aria-current="page" href="06a-nafems-challenge-5.html">NAFEMS Challenge Problem 5</a></li>
+        <li><a href="07-newmark-transient.html">Переходный анализ Ньюмарка</a></li>
+        <li><a href="08-result-recovery.html">Результаты в элементах</a></li>
+        <li><a href="09-architecture-verification.html">Архитектура и проверка</a></li>
+        <li><a href="10-input-format.html">Формат входного файла</a></li>
+        <li><a href="11-mario-paz-modal-example.html">Модальный пример Mario Paz</a></li>
+        <li><a href="12-local-octave-workflow.html">Локальный запуск в GNU Octave</a></li>
+        <li><a href="13-fem-assembly-visualizer.html">Интерактивная сборка МКЭ</a></li>
+        <li><a href="14-mario-paz-matrices-visualizer.html">Интерактивные матрицы рамы</a></li>
+        <li><a href="15-sparse-matrix-assembly.html">Разреженная сборка матриц</a></li>
+      </ol>
+    </nav>
+
+    <main class="chapter" id="main"><span class="chapter-number">Глава 6a</span><h1>NAFEMS Challenge Problem 5</h1>
+<p class="lead">Эта инструкция воспроизводит рамную постановку задачи «Dynamic Characteristics of a Truss Structure» на существующих элементах 113 МКЭ-Ф. Цель — проверить собственные частоты, концевые шарниры и сходимость сетки. Расчёт выполняется по сохранённым входным файлам; генерация геометрии, доступ к статье и ручное редактирование моделей для запуска не нужны.</p>
+<section aria-labelledby="model-title"><h2 id="model-title">1. Постановка</h2>
+<figure class="model-figure"><svg viewBox="0 0 600 290" role="img" aria-labelledby="scheme-title"><title id="scheme-title">NAFEMS 5</title><g stroke="#165c45" stroke-width="4" fill="none"><path d="M120 40H320L120 240"/></g><g fill="white" stroke="#a24d16" stroke-width="3"><circle cx="120" cy="40" r="7"/><circle cx="120" cy="240" r="7"/><circle cx="320" cy="40" r="7"/></g><g font-family="sans-serif" font-size="18"><text x="30" y="30">2 (0,1)</text><text x="25" y="268">1 (0,0)</text><text x="330" y="35">3 (1,1)</text><text x="195" y="28">L = 1 m</text><text x="250" y="170">L = √2 m</text><text x="30" y="120">ux = uy = 0</text></g></svg></figure>
+<p>Два стержня соединяют узлы 2–3 и 1–3; вертикального стержня между опорами нет. В узлах 1 и 2 закреплены ux и uy. Общий узел 3 свободен. Освобождение Mz задано на четырёх физических концах: у обеих опор и отдельно у каждого стержня в общем шарнире. Повороты промежуточных сечений непрерывны; MPC не используются. Число n означает количество конечных элементов на каждом стержне, а не общее количество элементов модели.</p>
+<p>Единицы — м, кг, с, Н и Па. Материал: E = 210·10⁹ Па, ρ = 7800 кг/м³. Сечение — сплошной круг радиуса 0.01 м: A = πr², I = πr⁴/4. Общая масса составляет 5.91589096156 кг. Сдвиговая деформация, демпфирование, предварительное натяжение и добавочные массы отсутствуют. Все эти параметры одинаковы для последовательных сеток.</p></section>
+<section aria-labelledby="files-title"><h2 id="files-title">2. Готовые входные данные</h2>
+<div class="table-wrap"><table><thead><tr><th>Задача</th><th>n / TXT</th></tr></thead><tbody><tr><td><code>axial</code></td><td><a href="../../examples/cases/nafems-challenge-5/axial_n001.txt">1</a>, <a href="../../examples/cases/nafems-challenge-5/axial_n002.txt">2</a>, <a href="../../examples/cases/nafems-challenge-5/axial_n004.txt">4</a>, <a href="../../examples/cases/nafems-challenge-5/axial_n008.txt">8</a>, <a href="../../examples/cases/nafems-challenge-5/axial_n016.txt">16</a></td></tr><tr><td><code>bending</code></td><td><a href="../../examples/cases/nafems-challenge-5/bending_n002.txt">2</a>, <a href="../../examples/cases/nafems-challenge-5/bending_n004.txt">4</a>, <a href="../../examples/cases/nafems-challenge-5/bending_n008.txt">8</a>, <a href="../../examples/cases/nafems-challenge-5/bending_n016.txt">16</a></td></tr><tr><td><code>frame</code></td><td><a href="../../examples/cases/nafems-challenge-5/frame_n001.txt">1</a>, <a href="../../examples/cases/nafems-challenge-5/frame_n002.txt">2</a>, <a href="../../examples/cases/nafems-challenge-5/frame_n004.txt">4</a>, <a href="../../examples/cases/nafems-challenge-5/frame_n008.txt">8</a>, <a href="../../examples/cases/nafems-challenge-5/frame_n016.txt">16</a>, <a href="../../examples/cases/nafems-challenge-5/frame_n025.txt">25</a>, <a href="../../examples/cases/nafems-challenge-5/frame_n050.txt">50</a>, <a href="../../examples/cases/nafems-challenge-5/frame_n100.txt">100</a>, <a href="../../examples/cases/nafems-challenge-5/frame_n200.txt">200</a>, <a href="../../examples/cases/nafems-challenge-5/frame_n400.txt">400</a></td></tr><tr><td><code>frame_static</code></td><td><a href="../../examples/cases/nafems-challenge-5/frame_static_n002.txt">2</a></td></tr></tbody></table></div>
+<p><a href="../../examples/cases/nafems-challenge-5/manifest.csv">Каталог manifest.csv</a> перечисляет назначение и профиль каждого файла. axial проверяет продольные колебания прямого стержня, моделируемого рамными конечными элементами: поперечные перемещения и повороты закреплены, осевое движение свободного конца разрешено. bending проверяет изгиб шарнирно опёртой балки. frame — сама конструкция NAFEMS. frame_static — отдельная проверка моментов при вертикальной силе −1 Н в узле 3.</p>
+<p>Все двадцать файлов хранятся в Git в обычном TXT-формате, с единой точностью чисел и нумерацией. Скрипт исследования читает их без перезаписи. Генератор предназначен только для сопровождения комплекта; для независимой проверки его запускают в другой каталог. Сетка 400 также поставляется заранее и используется только при недостаточной сходимости сетки 200.</p></section>
+<section aria-labelledby="run-title"><h2 id="run-title">3. Воспроизведение в Octave</h2>
+<p>Откройте GNU Octave в корне репозитория. Установка и настройка пути описаны в <a href="12-local-octave-workflow.html">инструкции локального запуска</a>. Сначала выполните быстрый профиль, затем полный. Для сохранения графиков требуется доступный графический toolkit Octave, например gnuplot; окна графиков при пакетном запуске не открываются.</p>
+<pre><code>setup;
+run_nafems_challenge5('quick');
+run_nafems_challenge5('full');</code></pre>
+<p>Быстрый профиль включает аналитические проверки, рамные сетки до 16 и статическую задачу. Полный добавляет 25, 50, 100 и 200 конечных элементов на стержень, при необходимости 400. Полный спектр вычисляется штатным решателем; большой прогон занимает больше времени и памяти. Быстрый профиль не подтверждает сходимость всего диапазона частот.</p>
+<p>Выходные каталоги — <code>output/nafems-challenge-5/quick/</code> и <code>output/nafems-challenge-5/full/</code>. В них находятся frequencies.csv, checks.csv, таблица сравнения сеток, SVG-графики, формы в CSV, JSON и run.log. Журнал содержит версию Octave, Git-ревизию, изменённые файлы и итоговый статус. При ошибке статус INCOMPLETE; старые артефакты могут оставаться, поэтому ориентируйтесь на список завершённых задач текущего журнала. Успешное завершение отмечается PASS.</p></section>
+<section aria-labelledby="gui-title"><h2 id="gui-title">4. Просмотр через интерфейс</h2>
+<p>Откройте <a href="../../preprocessor/index.html">препроцессор</a> и загрузите frame_n016.txt по ссылке из таблицы. Проверьте две опоры и четыре маркера освобождений на концах стержней, выберите модальный анализ и выполните расчёт. Для этого нужен работающий backend; порядок запуска приведён в <a href="project-operations.html">руководстве по эксплуатации</a>. После расчёта откройте результаты и переключите несколько мод.</p>
+<p>Если расчёт уже выполнен в Octave, откройте <a href="../../postprocessor/index.html">постпроцессор</a> и выберите frame_n016.json из каталога нужного профиля. Повторно считать модель не требуется. Сравните первую форму и формы около 451 и 1027 Гц; масштаб деформации условный, знак собственной формы произволен. SVG-графики используют кубическую интерполяцию с независимыми поворотами освобождённых концов.</p></section>
+<section aria-labelledby="comparison-title"><h2 id="comparison-title">5. Что в NAFEMS / что получается у нас</h2><p>Повторный запуск 06.10.2026, Octave 11.3.0. Результаты текущего кода относятся к версии <strong>МКЭ-Ф 0.8.2</strong>, подготавливаемой к выпуску; расчётное ядро — <code>46971d2</code>. Для сравнения сохранён опубликованный релиз 0.8.1 (ядро <code>e9356d3</code>), в котором ещё нет поддержки концевых освобождений.</p><div class="table-wrap"><table><thead><tr><th>Показатель</th><th>В NAFEMS</th><th>Релиз 0.8.1</th><th>МКЭ-Ф 0.8.2</th></tr></thead><tbody><tr><td>Осевой стержень 1 м: f₁, n=16</td><td>≈1297 Hz</td><td>1297.70731 Hz</td><td>1297.70731 Hz</td></tr><tr><td>Осевой стержень 1 м: f₂, n=16</td><td>≈3892 Hz</td><td>3905.63923 Hz</td><td>3905.63923 Hz</td></tr><tr><td>Балочная модель: форм до 1600 Гц</td><td>22</td><td>—</td><td>16</td></tr><tr><td>Балочная частота ниже 451 Гц</td><td>366 Hz</td><td>—</td><td>363.17069 Hz</td></tr><tr><td>Балочная частота выше 451 Гц</td><td>496 Hz</td><td>—</td><td>504.01439 Hz</td></tr><tr><td>Балочная частота ниже 1027 Гц</td><td>1021 Hz</td><td>—</td><td>995.95985 Hz</td></tr><tr><td>Балочная частота выше 1027 Гц</td><td>1183 Hz</td><td>—</td><td>1043.80130 Hz</td></tr></tbody></table></div><p>В первых двух строках NAFEMS приводит округлённые аналитические частоты (рисунок 2), а у нас показаны результаты сетки 16: это не одинаковые сеточные эталоны. Для балки использовано 200 КЭ на стержень. Сравниваются частоты по обе стороны заданного ориентира (рисунок 6), а не доказанно одинаковые собственные формы.</p><p>Прочерк означает, что релиз 0.8.1 не рассчитывает сохранённую рамную задачу: <code>frame_n016.txt:74</code>, <code>MKEF:UnknownInputMarker</code>, <code>Unknown section marker "releases"</code>. В текущем коде 0.8.2 эта задача рассчитывается благодаря общей поддержке концевых освобождений. Подготовка и публикация релиза выполняются отдельно.</p></section>
+<section aria-labelledby="checks-title"><h2 id="checks-title">6. Что считать успешным результатом</h2>
+<p>На сетке 16 ошибки двух осевых частот должны быть менее 0.05% и 0.4%, двух изгибных — менее 0.1%. Для конструкции проверяются масса, 6n независимых степеней свободы, отсутствие механизмов и нормированная невязка собственных пар не более 10⁻⁸. Статические моменты на освобождённых концах нулевые в численном допуске; модальный расчёт проверяет полный упруго-инерционный баланс.</p>
+<p>Между последними сетками изменение первых двух частот должно быть менее 0.1%, остальных до 1600 Гц — менее 1%. Сопоставляются формы на общей физической сетке, а также число мод в диапазоне. Наличие более низких изгибных форм объясняет, почему ферменная модель не описывает полный динамический спектр конструкции.</p>
+<p>Между сетками 100 и 200 максимальное изменение частот до 1600 Гц — около 0.00047%. Сходимость текущей постановки подтверждена; совпадение с опубликованным спектром не достигнуто.</p>
+<p>Источник: NAFEMS, «Challenge Problem 5 — The Solution», рисунки 1–7. Указанные авторами 22 формы и частоты 366, 496, 1021, 1183 Гц служат ориентирами. Текущая согласованная масса 113 не содержит отдельного вклада ρI; рисунок 7 и lumped mass не воспроизводятся. Это различие формулировок не доказывает причину каждого расхождения: фактическое сравнение записывается в comparison.txt. Параметры не подгоняются. Если дальнейшее воспроизведение требует изменения ПО, исследование останавливают и сначала сообщают проблему пользователю.</p></section></main>
+  </div>
+
+  <nav class="page-nav" aria-label="Navigation"><a href="06-modal-analysis.html"><span class="page-nav__label">Назад</span>← 6. Модальный анализ</a><a href="07-newmark-transient.html"><span class="page-nav__label">Далее</span>7. Переходный анализ Ньюмарка →</a></nav>
+
+  <footer class="site-footer">
+    <div class="site-footer__inner"><p>МКЭ-Ф · автономный учебный справочник · глава 6a</p></div>
+  </footer>
+</body>
+</html>

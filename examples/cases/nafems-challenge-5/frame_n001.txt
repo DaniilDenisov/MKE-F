@@ -1,0 +1,23 @@
+# NAFEMS Challenge 5; SI: m, kg, s, N, Pa; frame element 113
+# frame; elements per member: 1; no rotary rho*I mass term
+analysis
+modal
+nodes
+3
+0,0,0
+0,1,0
+1,1,0
+elems_113
+2
+113,2,3,0.00031415926535897931,210000000000,7800,7.8539816339744827e-09
+113,1,3,0.00031415926535897931,210000000000,7800,7.8539816339744827e-09
+releases
+4
+1,1,Mz
+1,2,Mz
+2,1,Mz
+2,2,Mz
+bcfix
+2
+4,1,0,0,0
+4,2,0,0,0

@@ -30,6 +30,7 @@
         <li value="4" class="release-chapter"><a href="04b-end-releases.html">Концевые освобождения Mz</a></li>
         <li><a href="05-static-analysis.html">Статический расчёт</a></li>
         <li><a href="06-modal-analysis.html">Модальный анализ</a></li>
+        <li value="6" class="nafems-chapter"><a href="06a-nafems-challenge-5.html">NAFEMS Challenge Problem 5</a></li>
         <li><a href="07-newmark-transient.html">Переходный анализ Ньюмарка</a></li>
         <li><a href="08-result-recovery.html">Результаты в элементах</a></li>
         <li><a href="09-architecture-verification.html">Архитектура и проверка</a></li>
@@ -301,7 +302,7 @@ r = example_02_sparse_assembly();</code></pre>
 disp(tx' * r.mass * tx);</code></pre>
         <div class="callout">
           <span class="callout__title">Контрольные значения</span>
-          <p><em>k = 2·10⁹ Н/м</em>. Продольный блок: <code>k·[1 −1 0; −1 2 −1; 0 −1 1]</code>. <em>K₃₃ = 4·10⁹ Н/м</em>, <em>M₃₃ ≈ 52,3333 кг</em>, общая масса 157 кг. Ненулевые внедиагональные члены массы тоже участвуют в переносном движении.</p>
+          <p><em>k = 2·10⁹ Н/м</em>. Продольный блок: <code>k·[1 −1 0; −1 2 −1; 0 −1 1]</code>. <em>K₃₃ = 4·10⁹ Н/м</em>, <em>M₃₃ ≈ 52,3333 кг</em>, общая масса 157 кг. Ненулевые внедиагональные элементы матрицы масс тоже участвуют в переносном движении.</p>
         </div>
         <h3>Что включить в отчёт</h3>
         <p>Схему, ручной продольный блок, два вклада в K₃₃ и M₃₃, общую массу и объяснение нулевых коэффициентов.</p>
