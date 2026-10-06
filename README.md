@@ -14,7 +14,7 @@
 docker compose -f compose.release.yaml up -d
 ```
 
-Docker Compose автоматически загрузит и запустит образы релиза `0.8.2`:
+Docker Compose автоматически загрузит и запустит образы релиза `0.8.3`:
 
 - [denisovds/mkef-solver](https://hub.docker.com/r/denisovds/mkef-solver)
 - [denisovds/mkef-web](https://hub.docker.com/r/denisovds/mkef-web)
@@ -23,8 +23,8 @@ Docker Compose автоматически загрузит и запустит �
 OCI-метке:
 
 ```sh
-docker image inspect denisovds/mkef-web:0.8.2 --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}'
-docker image inspect denisovds/mkef-solver:0.8.2 --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}'
+docker image inspect denisovds/mkef-web:0.8.3 --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}'
+docker image inspect denisovds/mkef-solver:0.8.3 --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}'
 ```
 
 Новые релизные образы собираются скриптом `scripts/release_images.py`. Он
