@@ -595,3 +595,5 @@ tr:last-child td {
 
 /* Inserted chapter keeps existing chapter and laboratory numbers stable. */
 .contents .mpc-chapter::marker { content: "4a. "; }
+
+.contents .release-chapter::marker { content: "4b. "; }

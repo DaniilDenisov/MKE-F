@@ -27,6 +27,7 @@
         <li><a href="03-transformation-assembly.html">Transformation and assembly</a></li>
         <li><a href="04-boundary-loads.html">Boundary conditions and loads</a></li>
         <li value="4" class="mpc-chapter"><a aria-current="page" href="04a-mpc.html">Linear multipoint constraints (MPC)</a></li>
+        <li value="4" class="release-chapter"><a href="04b-end-releases.html">Mz end releases</a></li>
         <li><a href="05-static-analysis.html">Static analysis</a></li>
         <li><a href="06-modal-analysis.html">Modal analysis</a></li>
         <li><a href="07-newmark-transient.html">Newmark transient analysis</a></li>
@@ -99,7 +100,7 @@ mpc
         <p class="equation">r = supportReactions + Cᵀλ<br>mpcForces = Cᵀλ, &nbsp; mpcMultipliers = λ</p>
         <p>Use <code>r = Ku − F</code> in statics, <code>r = Ma + Ku − F</code> in the undamped transient analysis, and <code>r = Kφ − ω²Mφ</code> for a mode. Positive λ acts positively on the dependent DOF and contributes <code>−c·λ</code> to each master. For the averaging equation and λ = 10 N, the MPC forces are +10 N at node 3 and −5 N at nodes 1 and 2.</p>
         <p>At a fixed master, the support reaction is the residual minus the MPC force. The legacy <code>reactions</code> field stores the full residual and must not be interpreted as support reactions alone. The postprocessor provides separate force layers, an equation selector and a transient λ history. Modal values use the stored eigenvector amplitude, not the visual deformation scale.</p>
-        <p>MPC models export <a href="../../postprocessor/schema-v3.md">JSON v3</a>. Time decimation applies to all histories; selected-DOF export filters nodal forces while retaining every equation multiplier. Models without MPC retain v1/v2.</p>
+        <p>MPC models without releases export <a href="../../postprocessor/schema-v3.md">JSON v3</a>. Time decimation applies to all histories; selected-DOF export filters nodal forces while retaining every equation multiplier. Models without MPCs or releases retain v1/v2. Releases use <a href="04b-end-releases.html">JSON v4 and private end rotations</a>.</p>
       </section>
 
       <section aria-labelledby="examples-title">
@@ -129,11 +130,11 @@ disp(r.supportReactions);</code></pre>
 
   <nav class="page-nav" aria-label="Chapter navigation">
     <a href="04-boundary-loads.html"><span class="page-nav__label">Previous</span>← 4. Boundary conditions and loads</a>
-    <a href="05-static-analysis.html"><span class="page-nav__label">Next</span>5. Static analysis →</a>
+    <a href="04b-end-releases.html"><span class="page-nav__label">Next</span>4b. Mz end releases →</a>
   </nav>
 
   <footer class="site-footer">
-    <div class="site-footer__inner"><p>MKE-F · offline learning reference · chapter 4a of 16</p></div>
+    <div class="site-footer__inner"><p>MKE-F · offline learning reference · chapter 4a of 17</p></div>
   </footer>
 </body>
 </html>

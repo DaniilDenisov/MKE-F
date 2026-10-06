@@ -27,6 +27,7 @@
         <li><a href="03-transformation-assembly.html">Преобразование и сборка</a></li>
         <li><a aria-current="page" href="04-boundary-loads.html">Граничные условия и нагрузки</a></li>
         <li value="4" class="mpc-chapter"><a href="04a-mpc.html">Линейные многоточечные связи MPC</a></li>
+        <li value="4" class="release-chapter"><a href="04b-end-releases.html">Концевые освобождения Mz</a></li>
         <li><a href="05-static-analysis.html">Статический расчёт</a></li>
         <li><a href="06-modal-analysis.html">Модальный анализ</a></li>
         <li><a href="07-newmark-transient.html">Переходный анализ Ньюмарка</a></li>
@@ -171,7 +172,7 @@ r = example_04_load_histories();</code></pre>
         </ul>
       </section>
 <p id="mpc-title" class="callout">Связи между перемещениями нескольких узлов описаны отдельно в <a href="04a-mpc.html">главе 4a: MPC</a>. Там рассматриваются зависимые СС, помощник оси и силы связей.</p>
-<section aria-labelledby="end-releases-title"><h2 id="end-releases-title">Концевые освобождения Mz</h2><p>Освобождение Mz разрывает передачу момента конкретным концом и не закрепляет перемещения узла. SPC отсутствующего thetaZ пропускается с предупреждением. Ненулевой узловой момент, MPC и монитор на отсутствующий поворот запрещены. Эквивалентные распределённые нагрузки действуют и на внутренние вращательные СС.</p><p><a href="../../postprocessor/schema-v4.md">JSON v4</a> · <a href="../../examples/cases/CaseReleaseStatic.txt">CaseReleaseStatic</a> · <a href="../../examples/cases/CaseReleaseModal.txt">CaseReleaseModal</a> · <a href="../../examples/cases/CaseReleaseTransient.txt">CaseReleaseTransient</a></p></section>
+<section aria-labelledby="end-releases-title"><h2 id="end-releases-title">Концевые освобождения Mz</h2><p><a href="04b-end-releases.html">Подробное описание: глава 4b</a></p><p>Освобождение Mz разрывает передачу момента конкретным концом и не закрепляет перемещения узла. SPC отсутствующего thetaZ пропускается с предупреждением. Ненулевой узловой момент, MPC и монитор на отсутствующий поворот запрещены. Эквивалентные распределённые нагрузки действуют и на внутренние вращательные СС.</p><p><a href="../../postprocessor/schema-v4.md">JSON v4</a> · <a href="../../examples/cases/CaseReleaseStatic.txt">CaseReleaseStatic</a> · <a href="../../examples/cases/CaseReleaseModal.txt">CaseReleaseModal</a> · <a href="../../examples/cases/CaseReleaseTransient.txt">CaseReleaseTransient</a></p></section>
 </main>
   </div>
 
@@ -181,7 +182,7 @@ r = example_04_load_histories();</code></pre>
   </nav>
 
   <footer class="site-footer">
-    <div class="site-footer__inner"><p>МКЭ-Ф · автономный учебный справочник · глава 4 из 16</p></div>
+    <div class="site-footer__inner"><p>МКЭ-Ф · автономный учебный справочник · глава 4 из 17</p></div>
   </footer>
 </body>
 </html>

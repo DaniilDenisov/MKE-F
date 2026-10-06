@@ -125,7 +125,7 @@ async function exercise(page, chapter, english) {
       }
       for (const width of [1440, 390]) {
         await page.setViewportSize({ width, height: 1000 });
-        for (const name of ['index.html', 'EN/index.html', 'EN/02-element-matrices.html', 'RU/04-boundary-loads.html', 'EN/04-boundary-loads.html', 'RU/04a-mpc.html', 'EN/04a-mpc.html', ...visualizers.map(name => 'EN/' + name)]) {
+        for (const name of ['index.html', 'EN/index.html', 'EN/02-element-matrices.html', 'RU/04-boundary-loads.html', 'EN/04-boundary-loads.html', 'RU/04a-mpc.html', 'EN/04a-mpc.html', 'RU/04b-end-releases.html', 'EN/04b-end-releases.html', ...visualizers.map(name => 'EN/' + name)]) {
           await page.goto(base + 'reference/' + name);
           const dimensions = await page.evaluate(() => ({ scroll: document.documentElement.scrollWidth, viewport: innerWidth }));
           assert(dimensions.scroll <= dimensions.viewport + 1, `${mode}/${name} overflows at ${width}: ${JSON.stringify(dimensions)}`);

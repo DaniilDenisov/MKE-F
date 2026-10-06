@@ -27,6 +27,7 @@
         <li><a href="03-transformation-assembly.html">Transformation and assembly</a></li>
         <li><a href="04-boundary-loads.html">Boundary conditions and loads</a></li>
         <li value="4" class="mpc-chapter"><a href="04a-mpc.html">Linear multipoint constraints (MPC)</a></li>
+        <li value="4" class="release-chapter"><a href="04b-end-releases.html">Mz end releases</a></li>
         <li><a href="05-static-analysis.html">Static analysis</a></li>
         <li><a href="06-modal-analysis.html">Modal analysis</a></li>
         <li><a href="07-newmark-transient.html">Newmark transient analysis</a></li>
@@ -176,7 +177,7 @@ results = run_reference_examples();</code></pre>
       </section>
       <section><h2>Diagrams for loaded elements</h2><p>For total local intensities qx, qy and end vector f: N(x)=−f₁−qx·x, V(x)=−f₂−qy·x, M(x)=−f₃+f₂·x+qy·x²/2. The postprocessor includes the interior extremum of M. Scalars axialStrain, axialStress, axialForce and the stress returned by StressCalc are average axial quantities, not bending stresses. Displacement geometry retains finite element interpolation.</p><p>Results with element loads are exported as <a href="../../postprocessor/schema-v2.md">JSON v2</a>; legacy v1 results remain supported.</p></section>
     <section aria-labelledby="mpc-title"><h2 id="mpc-title">MPC</h2><p>Each C row has dependent coefficient +1 and master coefficients −c. The residual splits as r = supportReactions + Cᵀλ; mpcForces = Cᵀλ and mpcMultipliers = λ. At a fixed master, the support reaction is r minus the MPC force. For a mode, r = Kφ − ω²Mφ; forces use the stored eigenvector amplitude. The reactions field retains the full residual. JSON v3 labels these quantities separately.</p><p><a href="04a-mpc.html">Complete MPC guide</a> · <a href="../../postprocessor/schema-v3.md">JSON v3</a> · <a href="../../examples/cases/CaseMPCFrame.txt">CaseMPCFrame.txt</a> · <a href="../../examples/cases/CaseMPCTruss.txt">CaseMPCTruss.txt</a></p></section>
-<section aria-labelledby="end-releases-title"><h2 id="end-releases-title">Mz end releases</h2><p>Static localEndForces = Klocal*ulocal − flocal uses actual end rotations; released moments vanish within tolerance without overwriting results. JSON v4 carries DOF ownership and element maps. Cards show both rotations; history charts offer element/end/thetaZ. An absent nodal rotation is not shown as zero.</p><p><a href="../../postprocessor/schema-v4.md">JSON v4</a> · <a href="../../examples/cases/CaseReleaseStatic.txt">CaseReleaseStatic</a> · <a href="../../examples/cases/CaseReleaseModal.txt">CaseReleaseModal</a> · <a href="../../examples/cases/CaseReleaseTransient.txt">CaseReleaseTransient</a></p></section>
+<section aria-labelledby="end-releases-title"><h2 id="end-releases-title">Mz end releases</h2><p><a href="04b-end-releases.html">Complete guide: chapter 4b</a></p><p>Static localEndForces = Klocal*ulocal − flocal uses actual end rotations; released moments vanish within tolerance without overwriting results. JSON v4 carries DOF ownership and element maps. Cards show both rotations; history charts offer element/end/thetaZ. An absent nodal rotation is not shown as zero.</p><p><a href="../../postprocessor/schema-v4.md">JSON v4</a> · <a href="../../examples/cases/CaseReleaseStatic.txt">CaseReleaseStatic</a> · <a href="../../examples/cases/CaseReleaseModal.txt">CaseReleaseModal</a> · <a href="../../examples/cases/CaseReleaseTransient.txt">CaseReleaseTransient</a></p></section>
 </main>
   </div>
 
@@ -186,7 +187,7 @@ results = run_reference_examples();</code></pre>
   </nav>
 
   <footer class="site-footer">
-    <div class="site-footer__inner"><p>MKE-F · offline learning reference · chapter 8 of 16</p></div>
+    <div class="site-footer__inner"><p>MKE-F · offline learning reference · chapter 8 of 17</p></div>
   </footer>
 </body>
 </html>

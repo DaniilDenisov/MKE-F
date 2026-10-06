@@ -27,6 +27,7 @@
         <li><a aria-current="page" href="03-transformation-assembly.html">Transformation and assembly</a></li>
         <li><a href="04-boundary-loads.html">Boundary conditions and loads</a></li>
         <li value="4" class="mpc-chapter"><a href="04a-mpc.html">Linear multipoint constraints (MPC)</a></li>
+        <li value="4" class="release-chapter"><a href="04b-end-releases.html">Mz end releases</a></li>
         <li><a href="05-static-analysis.html">Static analysis</a></li>
         <li><a href="06-modal-analysis.html">Modal analysis</a></li>
         <li><a href="07-newmark-transient.html">Newmark transient analysis</a></li>
@@ -317,7 +318,7 @@ disp(tx' * r.mass * tx);</code></pre>
       </section>
     <section aria-labelledby="support-masks-title"><h2 id="support-masks-title">SPC: ux, uy, thetaZ</h2><p>Supports use fixUx/fixUy/fixThetaZ masks. Types 1–4 retain their meaning; new types are 5: ux only, 6: uy only, 7: thetaZ only. Trusses reject type 7 and export canonical types 1, 3 and 2. Changing element family preserves masks; remove thetaZ restraints before switching to a truss. Duplicate restraints identify the node and DOF.</p><p><a href="../../examples/cases/CaseRollerFrame.txt">CaseRollerFrame.txt</a></p></section>
 <section aria-labelledby="mpc-title"><h2 id="mpc-title">MPC</h2><p>Combined constraints give sparse u = Tq. Fixed masters contribute zero; dependency chains are expanded in topological order. Kr = TᵀKT, Mr = TᵀMT, Fr = TᵀF. Element matrices and consistent mass are unchanged. No penalty stiffness is introduced.</p><p><a href="04a-mpc.html">Complete MPC guide</a> · <a href="../../postprocessor/schema-v3.md">JSON v3</a> · <a href="../../examples/cases/CaseMPCFrame.txt">CaseMPCFrame.txt</a> · <a href="../../examples/cases/CaseMPCTruss.txt">CaseMPCTruss.txt</a></p></section>
-<section aria-labelledby="end-releases-title"><h2 id="end-releases-title">Mz end releases</h2><p>Assembly uses six actual element coordinates: shared translations and shared or private rotations. Original stiffness and consistent mass matrices are retained, without zeroed rows or static condensation.</p><p><a href="../../postprocessor/schema-v4.md">JSON v4</a> · <a href="../../examples/cases/CaseReleaseStatic.txt">CaseReleaseStatic</a> · <a href="../../examples/cases/CaseReleaseModal.txt">CaseReleaseModal</a> · <a href="../../examples/cases/CaseReleaseTransient.txt">CaseReleaseTransient</a></p></section>
+<section aria-labelledby="end-releases-title"><h2 id="end-releases-title">Mz end releases</h2><p><a href="04b-end-releases.html">Complete guide: chapter 4b</a></p><p>Assembly uses six actual element coordinates: shared translations and shared or private rotations. Original stiffness and consistent mass matrices are retained, without zeroed rows or static condensation.</p><p><a href="../../postprocessor/schema-v4.md">JSON v4</a> · <a href="../../examples/cases/CaseReleaseStatic.txt">CaseReleaseStatic</a> · <a href="../../examples/cases/CaseReleaseModal.txt">CaseReleaseModal</a> · <a href="../../examples/cases/CaseReleaseTransient.txt">CaseReleaseTransient</a></p></section>
 </main>
   </div>
 
@@ -327,7 +328,7 @@ disp(tx' * r.mass * tx);</code></pre>
   </nav>
 
   <footer class="site-footer">
-    <div class="site-footer__inner"><p>MKE-F · offline learning reference · chapter 3 of 16</p></div>
+    <div class="site-footer__inner"><p>MKE-F · offline learning reference · chapter 3 of 17</p></div>
   </footer>
 </body>
 </html>

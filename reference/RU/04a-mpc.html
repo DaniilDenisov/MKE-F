@@ -27,6 +27,7 @@
         <li><a href="03-transformation-assembly.html">Преобразование и сборка</a></li>
         <li><a href="04-boundary-loads.html">Граничные условия и нагрузки</a></li>
         <li value="4" class="mpc-chapter"><a aria-current="page" href="04a-mpc.html">Линейные многоточечные связи MPC</a></li>
+        <li value="4" class="release-chapter"><a href="04b-end-releases.html">Концевые освобождения Mz</a></li>
         <li><a href="05-static-analysis.html">Статический расчёт</a></li>
         <li><a href="06-modal-analysis.html">Модальный анализ</a></li>
         <li><a href="07-newmark-transient.html">Переходный анализ Ньюмарка</a></li>
@@ -99,7 +100,7 @@ mpc
         <p class="equation">r = supportReactions + Cᵀλ<br>mpcForces = Cᵀλ, &nbsp; mpcMultipliers = λ</p>
         <p>В статике <code>r = Ku − F</code>, в переходном расчёте без демпфирования <code>r = Ma + Ku − F</code>, для моды <code>r = Kφ − ω²Mφ</code>. Положительное λ действует положительно на зависимую СС и даёт <code>−c·λ</code> на каждой ведущей. Для связи усреднения при λ = 10 Н силы MPC равны +10 Н в узле 3 и −5 Н в узлах 1 и 2.</p>
         <p>На закреплённой ведущей СС опорная реакция равна невязке минус сила MPC. Совместимое поле <code>reactions</code> хранит полную невязку и не означает только опорные реакции. Постпроцессор показывает отдельные слои сил, выбор уравнения и временной график λ. Модальные значения соответствуют амплитуде сохранённого собственного вектора, а не масштабу изображения деформации.</p>
-        <p>Модели с MPC экспортируются в <a href="../../postprocessor/schema-v3.md">JSON v3</a>. Прореживание времени применяется ко всем историям; выбор СС фильтрует узловые силы, но сохраняет множители всех уравнений. Модели без MPC используют v1/v2.</p>
+        <p>Модели с MPC без освобождений экспортируются в <a href="../../postprocessor/schema-v3.md">JSON v3</a>. Прореживание времени применяется ко всем историям; выбор СС фильтрует узловые силы, но сохраняет множители всех уравнений. Модели без MPC и освобождений используют v1/v2. Для освобождений предусмотрены <a href="04b-end-releases.html">JSON v4 и внутренние концевые повороты</a>.</p>
       </section>
 
       <section aria-labelledby="examples-title">
@@ -129,11 +130,11 @@ disp(r.supportReactions);</code></pre>
 
   <nav class="page-nav" aria-label="Навигация между главами">
     <a href="04-boundary-loads.html"><span class="page-nav__label">Назад</span>← 4. Граничные условия и нагрузки</a>
-    <a href="05-static-analysis.html"><span class="page-nav__label">Далее</span>5. Статический расчёт →</a>
+    <a href="04b-end-releases.html"><span class="page-nav__label">Далее</span>4b. Концевые освобождения Mz →</a>
   </nav>
 
   <footer class="site-footer">
-    <div class="site-footer__inner"><p>МКЭ-Ф · автономный учебный справочник · глава 4a из 16</p></div>
+    <div class="site-footer__inner"><p>МКЭ-Ф · автономный учебный справочник · глава 4a из 17</p></div>
   </footer>
 </body>
 </html>

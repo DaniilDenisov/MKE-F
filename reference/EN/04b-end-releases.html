@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Frame-end hinges: physical meaning, private rotations, analysis and results.">
+  <title>4b. Mz end releases — MKE-F</title>
+  <link rel="stylesheet" href="../assets/reference.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="site-header__inner">
+      <nav class="language-switch" aria-label="Reference language"><a href="../RU/04b-end-releases.html" lang="ru" hreflang="ru">RU</a> <a href="../EN/04b-end-releases.html" lang="en" hreflang="en" aria-current="true">EN</a></nav>
+      <p class="eyebrow">Student FEM Reference · Chapter 4b</p>
+      <p class="site-title">Mz end releases</p>
+      <p class="site-subtitle">Frame-end hinges: physical meaning, private rotations, analysis and results.</p>
+    </div>
+  </header>
+
+  <div class="layout">
+    <nav class="contents" aria-label="Reference contents">
+      <h2>Contents</h2>
+      <ol>
+        <li><a href="01-model-dofs.html">Model, nodes, elements and DOFs</a></li>
+        <li><a href="02-element-matrices.html">Element matrices</a></li>
+        <li><a href="03-transformation-assembly.html">Transformation and assembly</a></li>
+        <li><a href="04-boundary-loads.html">Boundary conditions and loads</a></li>
+        <li value="4" class="mpc-chapter"><a href="04a-mpc.html">Linear multipoint constraints (MPC)</a></li>
+        <li value="4" class="release-chapter"><a aria-current="page" href="04b-end-releases.html">Mz end releases</a></li>
+        <li><a href="05-static-analysis.html">Static analysis</a></li>
+        <li><a href="06-modal-analysis.html">Modal analysis</a></li>
+        <li><a href="07-newmark-transient.html">Newmark transient analysis</a></li>
+        <li><a href="08-result-recovery.html">Element results</a></li>
+        <li><a href="09-architecture-verification.html">Architecture and verification</a></li>
+        <li><a href="10-input-format.html">Input file format</a></li>
+        <li><a href="11-mario-paz-modal-example.html">Mario Paz modal example</a></li>
+        <li><a href="12-local-octave-workflow.html">Local GNU Octave workflow</a></li>
+        <li><a href="13-fem-assembly-visualizer.html">Interactive FEM assembly</a></li>
+        <li><a href="14-mario-paz-matrices-visualizer.html">Interactive frame matrices</a></li>
+        <li><a href="15-sparse-matrix-assembly.html">Sparse matrix assembly</a></li>
+      </ol>
+    </nav>
+
+    <main class="chapter" id="main">
+      <span class="chapter-number">Chapter 4b</span>
+      <h1>Mz end releases</h1>
+      <p class="lead">An <code>Mz</code> end release lets a type 113 frame element rotate relative to its shared node while retaining compatible translations. A release belongs to a specific end of a specific element. It is available in static, modal and transient analysis.</p>
+      <section aria-labelledby="meaning-title">
+        <h2 id="meaning-title">What is released</h2>
+        <p>At a conventional frame joint, attached elements use the same nodal <code>thetaZ</code>. A released end receives its own rotation, while its <code>ux</code> and <code>uy</code> remain shared with the node. The node is neither restrained nor duplicated.</p>
+        <figure class="model-figure">
+  <svg viewBox="0 0 780 240" role="img" aria-labelledby="joint-svg-title joint-svg-desc">
+    <title id="joint-svg-title">Three ways to connect two frame elements</title>
+    <desc id="joint-svg-desc">Translations are shared in all three cases. End rotations are shared, separated on one side, or separated on both sides.</desc>
+    <g font-family="sans-serif" font-size="16" fill="#17211b" text-anchor="middle">
+      <text x="130" y="30">Shared rotation</text><text x="390" y="30">Released left end</text><text x="650" y="30">Both ends released</text>
+      <g stroke="#165c45" stroke-width="5"><path d="M30 110H230 M290 110H490 M550 110H750"/></g>
+      <g fill="#165c45"><circle cx="130" cy="110" r="5"/><circle cx="390" cy="110" r="5"/><circle cx="650" cy="110" r="5"/></g>
+      <g fill="white" stroke="#a24d16" stroke-width="3"><circle cx="369" cy="110" r="8"/><circle cx="629" cy="110" r="8"/><circle cx="671" cy="110" r="8"/></g>
+      <text x="130" y="158">θ₁ = θ₂ = θnode</text><text x="390" y="158">θ₁ ≠ θ₂ = θnode</text><text x="650" y="158">θ₁ ≠ θ₂</text>
+      <text x="390" y="196">One node: shared ux and uy</text><text x="390" y="224" font-size="13">Symbolic end offsets; node coordinates do not change.</text>
+    </g>
+  </svg>
+  <figcaption>The subscripts here identify the two ends meeting at the joint. The ≠ sign means independent rotations; a particular load can still make their values equal.</figcaption>
+</figure>
+        <div class="table-wrap"><table><thead><tr><th>Mechanism</th><th>Applies to</th><th>Effect</th></tr></thead><tbody>
+          <tr><td>Type 4 support</td><td>A node</td><td>Restrains ux and uy relative to ground; nodal rotation remains free.</td></tr>
+          <tr><td>MPC</td><td>Several nodal DOFs</td><td>Imposes a linear relationship between their displacements.</td></tr>
+          <tr><td>Mz release</td><td>An element end</td><td>Separates end rotation from shared nodal rotation without restraining translations.</td></tr>
+        </tbody></table></div>
+        <p>Releasing one of two meeting ends is sufficient to disconnect moment transfer between those two elements. Other unreleased ends at the same node still share a rotation and can transmit moments to each other. Replacing a release with a type 4 support would introduce translational restraints.</p>
+      </section>
+      <section aria-labelledby="input-title">
+        <h2 id="input-title">Case-file records</h2>
+        <p>After an element section, add a <code>releases</code> block. Its first line is the record count; each record is <code>elementId,end,Mz</code>:</p>
+        <pre><code>releases
+2
+1,1,Mz
+1,2,Mz</code></pre>
+        <p>This example releases both ends of element 1. <code>end=1</code> refers to the first node in the element record and <code>end=2</code> to the second. These are connectivity positions, not left/right on screen. Element IDs follow the overall input order starting at 1; coordinates and orientation are unrestricted.</p>
+        <p>The block is repeatable. The editor writes one section sorted by element and end. The <code>elems_113</code> record stays unchanged; omitting <code>releases</code> or supplying an empty block retains the previous model. Only the exact component name <code>Mz</code> is supported; N/V releases and numeric component codes are rejected.</p>
+      </section>
+      <section aria-labelledby="editor-title">
+        <h2 id="editor-title">Using the preprocessor</h2>
+        <ol>
+          <li>Select frame 113 and open the <strong>Elements</strong> table.</li>
+          <li>Enable <strong>Release at end 1</strong> or <strong>Release at end 2</strong> on the intended element. Each checkbox releases Mz at its own end.</li>
+          <li>Check the end circle on the diagram and the <code>Mz1 released</code> / <code>Mz2 released</code> label in the element card.</li>
+          <li>Check supports, loads and model messages, then run the analysis.</li>
+        </ol>
+        <p>Releases survive geometry and property edits and remain attached to node1/node2 positions. Deleting an element removes its releases and renumbers the remaining references. Deleting a node removes connected elements and their releases. Undo/Redo restores the entire operation.</p>
+        <div class="callout"><span class="callout__title">Toggling a release preserves distributed loads</span><p>Changing Mz release state does not delete element loads. Editing geometry or element properties removes associated element loads under the existing editor rule; that is a separate action.</p></div>
+      </section>
+      <section aria-labelledby="registry-title">
+        <h2 id="registry-title">How the DOF map changes</h2>
+        <p>A shared nodal <code>thetaZ</code> exists while at least one attached end remains unreleased. If all attached ends release Mz, the shared rotation is removed from the system because it no longer belongs to any element. Every released end has its own private rotational DOF.</p>
+        <p>The <code>dofRegistry</code> distinguishes nodal coordinates from private end coordinates. The actual system size is <code>numberOfDOFs</code>. A <code>dofPerNode</code> value of 3 denotes possible frame components; it no longer implies that system size is always 3N. A zero in the third column of <code>dofMap</code> or <code>iMnod</code> means an absent shared rotation, not a restrained or zero rotation.</p>
+        <p>For one two-node element with both ends released:</p>
+        <pre><code>dofMap = [1 2 0; 3 4 0]
+element.dofs = [1; 2; 5; 3; 4; 6]
+u = [ux1; uy1; ux2; uy2; thetaEnd1; thetaEnd2]</code></pre>
+        <p>Existing nodal coordinates are numbered first in node/component order, followed by private rotations in element/end order. Models without releases retain the previous numbering.</p>
+      </section>
+      <section aria-labelledby="assembly-title">
+        <h2 id="assembly-title">Assembly and static recovery</h2>
+        <p>The original local stiffness and consistent mass matrices are retained in full. Only the global assembly indices change. No rows are zeroed and no static condensation is applied. Equivalent distributed loads use the same map, including moments on private rotational coordinates.</p>
+        <p class="equation">u<sub>e,local</sub> = R<sub>e</sub> u[element.dofs]<br>f<sub>e,end</sub> = K<sub>e,local</sub> u<sub>e,local</sub> − f<sub>e,load</sub></p>
+        <p>Here R<sub>e</sub> transforms global element components into local axes, and f<sub>e,load</sub> is the consistent local element-load vector.</p>
+        <p>In statics, equilibrium of a free private rotation produces zero moment at the released end within numerical tolerance. These are entries 3 and 6 in <code>localEndForces</code>, ordered <code>[N1,V1,Mz1,N2,V2,Mz2]</code>. They are computed, not overwritten with zeros after solving. Axes and signs follow the <a href="08-result-recovery.html">result recovery chapter</a>.</p>
+      </section>
+      <section aria-labelledby="dynamics-title">
+        <h2 id="dynamics-title">Why dynamics requires the complete balance</h2>
+        <p>With consistent mass, a private rotation participates in element inertia. The condition for the released generalized coordinate is checked on the corresponding row:</p>
+        <p class="equation">r<sub>release</sub> = (Ma + Ku − F)<sub>release</sub> ≈ 0<br>r<sub>release,mode</sub> = (Kφ − ω²Mφ)<sub>release</sub> ≈ 0</p>
+        <p>The elastic <code>Ku</code> contribution alone may be nonzero because inertia balances it. The static zero-end-moment test therefore cannot simply be applied to elastic forces from the dynamic model. Removing mass or forcing a reported force to zero would alter the calculation.</p>
+        <p>Private rotations appear in eigenvectors and Newmark histories. Bending modes can have stationary geometric nodes: deformation inside an element is determined by end rotations. Programmatic transient initial conditions use vectors of length <code>numberOfDOFs</code>, including private coordinates, and must satisfy SPC/MPC constraints.</p>
+      </section>
+      <section aria-labelledby="constraints-title">
+        <h2 id="constraints-title">Supports, MPCs and model errors</h2>
+        <div class="table-wrap"><table><thead><tr><th>Situation</th><th>MKE-F behavior</th></tr></thead><tbody>
+          <tr><td>An SPC restrains absent thetaZ</td><td>The rotational restraint is ignored with a warning. Translational restraints still apply; private rotations stay free.</td></tr>
+          <tr><td>A nonzero nodal Mz targets absent thetaZ</td><td>Error. This moment cannot be automatically distributed among independent ends.</td></tr>
+          <tr><td>An MPC or nodal monitor references absent thetaZ</td><td>Error. Existing nodal components may be used; case-file SPC/MPC records cannot address private rotations.</td></tr>
+          <tr><td>Duplicate release, unknown element, end other than 1/2, truss 112 or another component</td><td>Input error with a diagnostic; invalid records are not repaired automatically.</td></tr>
+          <tr><td>Releases create a mechanism</td><td>The analysis is rejected. A moment release does not replace required supports and constraints.</td></tr>
+        </tbody></table></div>
+        <p>If shared rotation is still connected to unreleased ends, nodal Mz, SPCs and MPCs act on that shared coordinate without directly restraining or loading the released end. Selecting a private DOF for a result chart does not make it addressable as a nodal component in the model file.</p>
+      </section>
+      <section aria-labelledby="results-title">
+        <h2 id="results-title">Reading results and JSON v4</h2>
+        <p>The postprocessor builds deformed geometry using each element's six actual DOFs. Circles mark released ends. Element cards show both <code>thetaZ</code> values; absent shared nodal rotation is shown as <strong>not defined</strong>. Modal card values belong to the stored eigenvector, not the illustrative display scale.</p>
+        <p>For a transient chart, select the element under <strong>Node / element</strong>, then the intended end and <code>thetaZ</code>. Available charts still work with partial DOF exports. Geometry playback requires displacement histories for every global coordinate; partial exports disable it with an explanation.</p>
+        <p><a href="../../postprocessor/schema-v4.md">JSON v4</a> contains <code>releases</code>, <code>dofRegistry</code>, <code>numberOfDOFs</code>, <code>elements[].globalDOFs</code> and warnings. MPC and distributed-load fields are included when those features are present. Models without releases continue to use v1/v2/v3.</p>
+      </section>
+      <section aria-labelledby="example-title">
+        <h2 id="example-title">Worked check: a uniformly loaded beam</h2>
+        <p>Open <a href="../../examples/cases/CaseReleaseStatic.txt">CaseReleaseStatic.txt</a>: one element with L = 4 m, E = 2·10¹¹ Pa, I = 8·10⁻⁶ m⁴, q<sub>y</sub> = −1000 N/m. Both ends are released; node 1 is restrained in ux/uy and node 2 in uy.</p>
+        <p class="equation">R<sub>y1</sub> = R<sub>y2</sub> = |q<sub>y</sub>|L/2 = 2000 N<br>θ<sub>1</sub> = −|q<sub>y</sub>|L³/(24EI) = −0.00166667 rad<br>θ<sub>2</sub> = +0.00166667 rad, &nbsp; Mz<sub>1</sub> ≈ Mz<sub>2</sub> ≈ 0</p>
+        <pre><code>addpath(pwd);
+setup;
+problem = StructFEProblem(fullfile(pwd, 'examples', 'cases', 'CaseReleaseStatic.txt'));
+model = problem.GetAnalysisModel();
+result = problem.RunSelected();
+disp(model.dofMap);
+disp(result.displacements(model.elementData(1).dofs([3 6])));
+disp(result.elementResults(1).localEndForces);
+disp(result.equilibriumResidual);</code></pre>
+        <div class="callout"><span class="callout__title">End-result accuracy differs from interior deflection accuracy</span><p>Reactions and end rotations match the analytical solution in this example. However, the viewer interpolates displacements with cubic element functions: the single-element midspan deflection is |q|L⁴/(96EI), whereas the exact beam solution gives 5|q|L⁴/(384EI). Zero end moments do not establish accuracy of the entire field; refine the mesh for deflection accuracy while retaining releases at the physical beam ends.</p></div>
+        <p><a href="../../examples/cases/CaseReleaseModal.txt">CaseReleaseModal.txt</a> demonstrates a bending mode with stationary nodes. <a href="../../examples/cases/CaseReleaseTransient.txt">CaseReleaseTransient.txt</a> has two elements, releases at the outer ends and a midspan step load. Its interior connection remains rigid: mesh refinement does not require releasing every element end.</p>
+      </section>
+      <section class="source-list" aria-labelledby="sources-title">
+        <h2 id="sources-title">Implementation and verification</h2>
+        <ul>
+          <li><a href="../../src/model/buildDOFRegistry.m">buildDOFRegistry.m</a> — shared nodal and private end coordinates;</li>
+          <li><a href="../../src/results/recoverElementResults.m">recoverElementResults.m</a> — displacements and end forces;</li>
+          <li><a href="../../shared/releases.js">shared/releases.js</a> — release semantics, diagnostics and markers;</li>
+          <li><a href="../../tests/test_releases.m">test_releases.m</a> — analytical reactions, inclined geometry, equivalent MPC models, frequencies, energy and errors;</li>
+          <li><a href="../../scripts/test_releases_browser.cjs">test_releases_browser.cjs</a> — editor, warnings, v4, shapes and private DOF histories.</li>
+        </ul>
+        <p>This implementation covers linear planar frame 113 and Mz releases. It does not add N/V releases, elastic or plastic hinges, contact, large rotations or the full NAFEMS investigation.</p>
+      </section>
+    </main>
+  </div>
+
+  <nav class="page-nav" aria-label="Chapter navigation">
+    <a href="04a-mpc.html"><span class="page-nav__label">Previous</span>← 4a. Linear multipoint constraints (MPC)</a>
+    <a href="05-static-analysis.html"><span class="page-nav__label">Next</span>5. Static analysis →</a>
+  </nav>
+
+  <footer class="site-footer">
+    <div class="site-footer__inner"><p>MKE-F · offline learning reference · chapter 4b of 17</p></div>
+  </footer>
+</body>
+</html>

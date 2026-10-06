@@ -27,6 +27,7 @@
         <li><a href="03-transformation-assembly.html">Transformation and assembly</a></li>
         <li><a href="04-boundary-loads.html">Boundary conditions and loads</a></li>
         <li value="4" class="mpc-chapter"><a href="04a-mpc.html">Linear multipoint constraints (MPC)</a></li>
+        <li value="4" class="release-chapter"><a href="04b-end-releases.html">Mz end releases</a></li>
         <li><a href="05-static-analysis.html">Static analysis</a></li>
         <li><a href="06-modal-analysis.html">Modal analysis</a></li>
         <li><a href="07-newmark-transient.html">Newmark transient analysis</a></li>
@@ -384,7 +385,7 @@ dynamicResult = problem.RunTransient(1e-4, 1e-2, 3, 2, initial);</code></pre>
 <section aria-labelledby="mpc-title"><h2 id="mpc-title">MPC</h2><p>A repeatable mpc section contains an equation count and records depNode,depDOF,rhs,masterCount,node,dof,coefficient,... . DOFs: 1=ux, 2=uy, 3=thetaZ. Only rhs=0 is supported. The example imposes uy(3)=0.5uy(1)+0.5uy(2). Equation IDs follow input order across sections. Diagnostics identify the equation and source line.</p><pre><code>mpc
 1
 3,2,0,2,1,2,0.5,2,2,0.5</code></pre><p><a href="04a-mpc.html">Complete MPC guide</a> · <a href="../../postprocessor/schema-v3.md">JSON v3</a> · <a href="../../examples/cases/CaseMPCFrame.txt">CaseMPCFrame.txt</a> · <a href="../../examples/cases/CaseMPCTruss.txt">CaseMPCTruss.txt</a></p></section>
-<section aria-labelledby="end-releases-title"><h2 id="end-releases-title">Mz end releases</h2><p>After elements, a repeatable releases section contains a record count followed by elementId,end,Mz, with end 1 or 2. N/V components, duplicates and truss releases are rejected. The editor writes one section ordered by element/end. Toggling a release preserves element loads; deleting an element removes its releases.</p><p><a href="../../postprocessor/schema-v4.md">JSON v4</a> · <a href="../../examples/cases/CaseReleaseStatic.txt">CaseReleaseStatic</a> · <a href="../../examples/cases/CaseReleaseModal.txt">CaseReleaseModal</a> · <a href="../../examples/cases/CaseReleaseTransient.txt">CaseReleaseTransient</a></p></section>
+<section aria-labelledby="end-releases-title"><h2 id="end-releases-title">Mz end releases</h2><p><a href="04b-end-releases.html">Complete guide: chapter 4b</a></p><p>After elements, a repeatable releases section contains a record count followed by elementId,end,Mz, with end 1 or 2. N/V components, duplicates and truss releases are rejected. The editor writes one section ordered by element/end. Toggling a release preserves element loads; deleting an element removes its releases.</p><p><a href="../../postprocessor/schema-v4.md">JSON v4</a> · <a href="../../examples/cases/CaseReleaseStatic.txt">CaseReleaseStatic</a> · <a href="../../examples/cases/CaseReleaseModal.txt">CaseReleaseModal</a> · <a href="../../examples/cases/CaseReleaseTransient.txt">CaseReleaseTransient</a></p></section>
 </main>
   </div>
 
@@ -394,7 +395,7 @@ dynamicResult = problem.RunTransient(1e-4, 1e-2, 3, 2, initial);</code></pre>
   </nav>
 
   <footer class="site-footer">
-    <div class="site-footer__inner"><p>MKE-F · offline learning reference · chapter 10 of 16</p></div>
+    <div class="site-footer__inner"><p>MKE-F · offline learning reference · chapter 10 of 17</p></div>
   </footer>
 </body>
 </html>
