@@ -18,6 +18,7 @@
     this.previewElement = null;
     this.previewPointerPoint = null;
     this.previewPoint = null;
+    this.drawnSymbolScale = null;
     this.drag = null;
     this.bindNavigation();
     this.bindResize();
@@ -82,7 +83,7 @@
 
   Renderer.prototype.bindResize = function () {
     var self = this;
-    function synchronize() { self.synchronizeAspectRatio(); self.updateLabelSizes(); }
+    function synchronize() { self.synchronizeAspectRatio(); }
     if (typeof ResizeObserver !== 'undefined') {
       this.resizeObserver = new ResizeObserver(synchronize);
       this.resizeObserver.observe(this.svg);
@@ -94,7 +95,7 @@
     if (!(rect.width > 0) || !(rect.height > 0)) return;
     var targetAspect = rect.width / rect.height;
     var currentAspect = this.view.width / this.view.height;
-    if (Math.abs(targetAspect - currentAspect) <= targetAspect * 1e-6) return;
+    if (Math.abs(targetAspect - currentAspect) <= targetAspect * 1e-6) { this.applyView(); return; }
     var centerX = this.view.x + this.view.width / 2;
     var centerY = this.view.y + this.view.height / 2;
     if (currentAspect < targetAspect) this.view.width = this.view.height * targetAspect;
@@ -106,8 +107,22 @@
 
   Renderer.prototype.applyView = function () {
     this.svg.setAttribute('viewBox', [this.view.x, this.view.y, this.view.width, this.view.height].join(' '));
+    var scale = this.symbolScale();
+    // Zoom and resize must use the same symbol geometry as tool/selection
+    // redraws. Panning leaves the scale unchanged and needs no model redraw.
+    if (this.model && Math.abs(scale - this.drawnSymbolScale) > scale * 1e-9) {
+      this.draw();
+      return;
+    }
     this.drawCoordinateSystem();
     this.updateLabelSizes();
+  };
+
+  Renderer.prototype.symbolScale = function () {
+    var matrix = this.svg.getScreenCTM(), pixelsPerUnit = matrix && Math.hypot(matrix.a, matrix.b);
+    // Existing symbol proportions use a common scale: 1000 screen pixels
+    // gives a 12 px node radius and a 35 px support size at any zoom level.
+    return pixelsPerUnit > 0 ? 1000 / pixelsPerUnit : 1;
   };
 
   Renderer.prototype.updateLabelSizes = function () {
@@ -282,7 +297,8 @@
     this.svg.appendChild(this.gridLayer); this.svg.appendChild(this.axisLayer); this.drawCoordinateSystem();
     var elementLayer = M.svgElement('g', { class: 'elements-layer' }), supportLayer = M.svgElement('g', { class: 'supports-layer' }), nodeLayer = M.svgElement('g', { class: 'nodes-layer' }), labelLayer = M.svgElement('g', { class: 'labels-layer' }), loadLayer = M.svgElement('g', { class: 'loads-layer' });
     this.previewLayer = M.svgElement('g', { class: 'node-preview-layer', 'aria-hidden': 'true' });
-    var scale = Math.max(this.view.width, this.view.height, 1);
+    var scale = this.symbolScale();
+    this.drawnSymbolScale = scale;
     var mpcLayer=M.svgElement('g',{'class':'mpcs-layer'}); this.svg.appendChild(mpcLayer); this.drawMPCs(mpcLayer,scale);
     this.svg.appendChild(elementLayer); this.svg.appendChild(supportLayer); this.svg.appendChild(nodeLayer); this.svg.appendChild(labelLayer); this.svg.appendChild(this.previewLayer); this.svg.appendChild(loadLayer);
     this.previewElement = M.svgElement('circle', { r: scale * 0.012, class: 'node-placement-preview', visibility: 'hidden' });

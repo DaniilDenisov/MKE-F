@@ -66,6 +66,42 @@
   test('support types use distinct marker geometry', function () { var svg = document.getElementById('test-svg'), model = MKEFPre.caseFormat.parse(fixture()), renderer = new MKEFPre.Renderer(svg); model.nodes = [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 2, y: 0 }, { x: 3, y: 0 }]; model.supports = [{ type: 1, node: 1 }, { type: 2, node: 2 }, { type: 3, node: 3 }, { type: 4, node: 4 }]; renderer.draw(model); assert(svg.querySelector('.support-type-1 .support-ground') && !svg.querySelector('.support-type-1 path'), 'Type 1 fixed marker is missing.'); assert(svg.querySelectorAll('.support-type-2 circle').length === 1 && svg.querySelector('.support-type-2 path'), 'Type 2 horizontal roller marker is missing.'); assert(svg.querySelectorAll('.support-type-3 circle').length === 1 && svg.querySelector('.support-type-3 path'), 'Type 3 vertical roller marker is missing.'); assert(svg.querySelector('.support-type-4 path') && !svg.querySelector('.support-type-4 circle'), 'Type 4 pinned marker is missing.'); });
   test('loads render above every model layer', function () { var svg = document.getElementById('test-svg'), renderer = new MKEFPre.Renderer(svg); renderer.draw(MKEFPre.caseFormat.parse(fixture())); assert(svg.lastElementChild.classList.contains('loads-layer'), 'Loads layer is not topmost.'); });
 
+  test('symbol sizes stay stable through zoom, tool switches, selection and resize', function () {
+    var svg = MKEFPre.svgElement('svg', { width: 800, height: 400 }); document.body.appendChild(svg);
+    var renderer = new MKEFPre.Renderer(svg), model = MKEFPre.caseFormat.parse(fixture()), original = JSON.stringify(model);
+    function sizes() {
+      return ['.model-node', '.support-marker', '.loads-layer > line', '.moment-symbol', '.node-placement-preview'].map(function (selector) {
+        var element = svg.querySelector(selector), bounds = element.getBBox(), matrix = element.getScreenCTM();
+        return Math.hypot(bounds.width, bounds.height) * Math.hypot(matrix.a, matrix.b);
+      });
+    }
+    function check(stage) {
+      sizes().forEach(function (size, index) { assert(Math.abs(size - baseline[index]) < .01, stage + ': symbol ' + index + ' changed size'); });
+    }
+    try {
+      renderer.draw(model); renderer.fit(); var baseline = sizes();
+      [-100, 100].forEach(function (delta) {
+        for (var i = 0; i < 20; i++) {
+          var rect = svg.getBoundingClientRect();
+          svg.dispatchEvent(new WheelEvent('wheel', { deltaY: delta, clientX: rect.left + rect.width / 2, clientY: rect.top + rect.height / 2, cancelable: true }));
+          check('Zoom');
+        }
+        var view = svg.getAttribute('viewBox');
+        renderer.setTool('node'); renderer.updateNodePreview({ x: .5, y: .5 }); check('Place node');
+        assert(svg.querySelector('.node-placement-preview').getAttribute('visibility') === 'visible');
+        renderer.setTool('select'); check('Select tool');
+        renderer.setSelection({ kind: 'node', index: 0 }); check('Select node');
+        assert(svg.getAttribute('viewBox') === view, 'Tool or selection changed the viewport');
+      });
+      svg.setAttribute('width', 600); svg.setAttribute('height', 300); renderer.synchronizeAspectRatio(); check('Resize with same aspect');
+      svg.setAttribute('height', 500); renderer.synchronizeAspectRatio(); check('Resize with different aspect');
+      renderer.fit(); check('Reset view');
+      var node = svg.querySelector('.model-node'); renderer.view.x += 1; renderer.applyView(); check('Pan');
+      assert(svg.querySelector('.model-node') === node, 'Panning unnecessarily rebuilt the model');
+      assert(JSON.stringify(model) === original, 'Navigation changed the model');
+    } finally { if (renderer.resizeObserver) renderer.resizeObserver.disconnect(); svg.remove(); }
+  });
+
   function uniformFixture() { return MKEFPre.caseFormat.parse(fixture() + 'eload_uniform\n1\n20,1,2,0,-7\n'); }
   test('uniform load sections round trip and accumulate', function () {
     var model = MKEFPre.caseFormat.parse(fixture() + 'eload_uniform\n1\n20,1,1,2,-7\neload_uniform\n1\n20,1,2,0,3\n');
