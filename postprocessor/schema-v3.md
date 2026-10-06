@@ -82,4 +82,4 @@ component selects the dependent DOF (ux on a tie); the other nonzero
 component is tried if necessary. The generated coefficients stay fixed
 after geometry edits. Recreate the equation to follow a new axis.
 
-End releases and nonzero prescribed displacements are not implemented.
+End releases use [version 4](schema-v4.md), which also supports MPCs. Nonzero prescribed displacements are not implemented.

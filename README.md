@@ -79,3 +79,9 @@ docker compose up --build
 затем `node scripts/test_mpc_browser.cjs` с установленным Playwright
 (или заданным `MKEF_PLAYWRIGHT_MODULE`). `node scripts/generate-support-catalog.cjs --check`
 проверяет синхронизацию общего справочника опор.
+
+### Концевые освобождения Mz
+
+Для каждого конца рамы 113 доступны независимые освобождения Mz во всех трёх анализах. Секция `releases` сохраняет прежний формат элементов. Внутренние повороты учитываются с исходной согласованной массой и доступны в карточках и временных графиках. Закрепление отсутствующего узлового поворота игнорируется с предупреждением; нагрузка Mz и ссылки MPC на него отклоняются.
+
+См. [JSON v4](postprocessor/schema-v4.md) и примеры `CaseReleaseStatic`, `CaseReleaseModal`, `CaseReleaseTransient`. Проверка: `setup; addpath(fullfile(pwd, 'tests')); test_releases`, затем `node scripts/test_releases_browser.cjs` с Playwright.

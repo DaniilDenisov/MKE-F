@@ -11,6 +11,7 @@ for i = 1:numel(supports)
     local = find([s.fixUx s.fixUy s.fixThetaZ]);
     for dof = local
         id = model.dofMap(s.node, dof);
+        if id == 0, continue; end
         if restrained(id)
             error('MKEF:DuplicateConstraint', 'Constraint %d repeats node %d DOF %s.', i, s.node, labels{dof});
         end

@@ -34,6 +34,7 @@
       elements: [],
       supports: [],
       mpcs: [],
+      releases: [],
       loads: [],
       elementLoads: []
     };
@@ -126,6 +127,14 @@
           });
         }
         hasElements = true;
+      } else if (marker === 'releases') {
+        requireElements(markerLine);
+        var releaseCount = count('releases',false);
+        for (var ri=0;ri<releaseCount;ri++) {
+          var releaseRecord=nextData('release Mz'), releaseFields=releaseRecord.text.split(',').map(function (s) { return s.trim(); });
+          if (releaseFields.length !== 3) fail(releaseRecord.line,'Expected elementId,end,Mz.');
+          model.releases.push({elementId:Number(releaseFields[0]),end:Number(releaseFields[1]),component:releaseFields[2],sourceLine:releaseRecord.line});
+        }
       } else if (marker === 'mpc') {
         requireElements(markerLine);
         var mpcCount = count('mpc', false);
@@ -202,13 +211,14 @@
       if (!integer(support.node) || support.node < 1 || support.node > nodeCount) add('Support ' + (index + 1) + ' has an invalid node.');
       try {
         global.MKEFSupports.dofs(support, dofPerNode).forEach(function (dof) {
+          if (dof === 3 && global.MKEFReleases.inactive(model,support.node)) return;
           var key = support.node + ':' + dof;
           if (constrained[key]) add('Support ' + (index + 1) + ' duplicates node ' + support.node + ' DOF ' + ['ux','uy','thetaZ'][dof - 1] + '.');
           constrained[key] = true;
         });
       } catch (error) { add(error.message); }
     });
-    errors = errors.concat(global.MKEFMPC.validate(model));
+    errors = errors.concat(global.MKEFMPC.validate(model),global.MKEFReleases.validate(model));
     model.loads.forEach(function (load, index) {
       var label = 'Load ' + (index + 1);
       if ([10, 11, 12, 13].indexOf(load.type) < 0) add(label + ' has an unsupported type.');
@@ -250,6 +260,11 @@
       if (model.elementType === 113) values.push(element.momentOfInertia);
       out.push(values.map(numberText).join(','));
     });
+    if ((model.releases || []).length) {
+      var releases=model.releases.slice().sort(function (a,b) { return a.elementId-b.elementId || a.end-b.end; });
+      out.push('releases',String(releases.length));
+      releases.forEach(function (r) { out.push([r.elementId,r.end,'Mz'].join(',')); });
+    }
     if ((model.mpcs || []).length) {
       out.push('mpc', String(model.mpcs.length));
       model.mpcs.forEach(function (m) {

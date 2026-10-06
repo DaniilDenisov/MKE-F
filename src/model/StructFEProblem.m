@@ -70,16 +70,15 @@ classdef StructFEProblem < handle
             end
             % Создание глобальной матрицы жесткости, вектора F и матрицы
             % масс в зависимости от кол-ва СС на узел.
-            dofPerNode = obj.mesh.dofPerNode;
             % Определение общего числа степеней свободы в системе
             % и сборка разреженных глобальных матриц из элементных триплетов.
-            systemDOF = obj.mesh.numberOfNodes*dofPerNode;
+            systemDOF = obj.mesh.numberOfDOFs;
             [GlobK, GlobM] = assembleGlobalMatrices( ...
                 obj.mesh.allMeshElems, systemDOF);
             obj.K = GlobK;
             obj.M = GlobM;
             % Вектор правой части (сил). Преаллокация без ГУ.
-            obj.F = zeros(obj.mesh.numberOfNodes*dofPerNode,1);
+            obj.F = zeros(systemDOF,1);
 
         end
         % Совместимый метод возвращает разбиение СС, не изменяя МЖ и ММ.
@@ -174,6 +173,9 @@ classdef StructFEProblem < handle
             result = solveTransient(model, options);
             if this.plotting
                 globalDOF = this.mesh.iMnod(node, dofToPlot);
+                if globalDOF == 0
+                    error('MKEF:InactiveRotationMonitor','Node %d has no shared thetaZ.',node);
+                end
                 plotTransientResult(result, globalDOF);
             end
         end

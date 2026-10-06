@@ -80,6 +80,7 @@ if ~isnumeric(dof) || ~isscalar(dof) || ~isfinite(dof) || dof ~= fix(dof) || dof
     fail(m,i,sprintf('Invalid DOF at node %d (thetaZ is unavailable for trusses).',node));
 end
 id = model.dofMap(node,dof);
+if id == 0, fail(m,i,sprintf('Node %d: thetaZ is absent because all connected ends release Mz.',node)); end
 end
 
 function fail(m,i,message)

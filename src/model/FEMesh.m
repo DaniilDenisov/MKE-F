@@ -7,6 +7,10 @@ classdef FEMesh < handle
         numberOfForceBCs = 0;
         numberOfFixBCs = 0;
         dofPerNode;
+        numberOfDOFs;
+        dofRegistry;
+        releases = struct('elementId',{},'end',{},'component',{},'sourceLine',{});
+        warnings = {};
         iMnod;
         allMeshElems;
         allNodes;
@@ -67,6 +71,8 @@ classdef FEMesh < handle
                         obj.readElements(fid, 113, markerLine);
                     case 'mpc'
                         obj.readMPC(fid);
+                    case 'releases'
+                        obj.readReleases(fid);
                     case 'bcfix'
                         obj.readFixedConditions(fid);
                     case 'bcforce_stat'
@@ -86,10 +92,27 @@ classdef FEMesh < handle
             end
 
             obj.validateCompleteModel();
+            [obj.iMnod,obj.dofRegistry,obj.allMeshElems] = buildDOFRegistry( ...
+                obj.numberOfNodes,obj.dofPerNode,obj.allMeshElems,obj.releases);
+            obj.numberOfDOFs = numel(obj.dofRegistry);
+            for i = 1:numel(obj.allFixBCs)
+                s = obj.allFixBCs(i);
+                if obj.dofPerNode == 3 && s.fixThetaZ && obj.iMnod(s.node,3) == 0
+                    message = sprintf('Node %d: thetaZ restraint ignored because all connected ends release Mz.',s.node);
+                    obj.warnings{end+1} = message;
+                    warning('MKEF:InactiveRotationRestraint','%s',message);
+                end
+            end
+            for i = 1:size(obj.allForceBCs,1)
+                node = obj.allForceBCs(i,2);
+                if obj.dofPerNode == 3 && obj.iMnod(node,3) == 0 && obj.allForceBCs(i,5) ~= 0
+                    error('MKEF:InactiveRotationLoad','Node %d: cannot apply Mz to absent thetaZ.',node);
+                end
+            end
             obj.validateAnalysisConfiguration();
             validationModel = struct('fixedBoundaryConditions',obj.allFixBCs, ...
                 'dofPerNode',obj.dofPerNode,'numberOfNodes',obj.numberOfNodes, ...
-                'numberOfDOFs',obj.numberOfNodes*obj.dofPerNode,'dofMap',obj.iMnod, ...
+                'numberOfDOFs',obj.numberOfDOFs,'dofMap',obj.iMnod, ...
                 'multiPointConstraints',obj.multiPointConstraints);
             buildConstraintTransform(validationModel);
             clear fileCleanup;
@@ -273,6 +296,20 @@ classdef FEMesh < handle
                 this.allMeshElems = [this.allMeshElems; appendedElements];
             end
             this.numberOfElems = numel(this.allMeshElems);
+        end
+
+        function readReleases(this, fid)
+            this.requireElements(this.sourceLineNumber);
+            count = this.readBlockCount(fid,'releases',false);
+            for i = 1:count
+                [line,lineNumber] = this.readDataLine(fid,'release Mz');
+                fields = strsplit(line,',');
+                if numel(fields) ~= 3
+                    this.fail('MKEF:InvalidRelease',lineNumber,'Expected elementId,end,Mz.');
+                end
+                this.releases(end+1) = struct('elementId',str2double(strtrim(fields{1})), ...
+                    'end',str2double(strtrim(fields{2})),'component',strtrim(fields{3}),'sourceLine',lineNumber);
+            end
         end
 
         function readMPC(this, fid)
@@ -467,6 +504,10 @@ classdef FEMesh < handle
                         this.analysisSourceLine, ...
                         'Transient monitor DOF %d is outside 1..%d.', ...
                         configuration.monitorDOF, this.dofPerNode);
+                end
+                if this.iMnod(configuration.monitorNode,configuration.monitorDOF) == 0
+                    this.fail('MKEF:InactiveRotationMonitor',this.analysisSourceLine, ...
+                        'Node %d: cannot monitor absent thetaZ.',configuration.monitorNode);
                 end
             end
 

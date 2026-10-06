@@ -44,7 +44,12 @@
     var message = M.modelEdit.describe(before, state); if (message) setNotice(message);
   }
 
-  function setNotice(message) { elements.notice.textContent = message || ''; elements.notice.hidden = !message; }
+  function setNotice(message) {
+    var warnings=[];
+    if (state) { try { warnings=global.MKEFReleases.warnings(state); } catch (_) { /* Incomplete supports are reported by validation. */ } }
+    elements.notice.textContent = [message || ''].concat(warnings).filter(Boolean).join('\n');
+    elements.notice.hidden = !elements.notice.textContent;
+  }
   function setError(message) { elements.error.textContent = message || ''; elements.error.hidden = !message; }
 
   function storedJobId() {
@@ -182,12 +187,18 @@
 
   function renderElements() {
     clear(elements.elementsHead); clear(elements.elementsBody);
-    var header = document.createElement('tr'), headings = ['ID', 'Node 1', 'Node 2', 'A', 'E', 'rho']; if (state.elementType === 113) headings.push('I'); headings.push('');
+    var header = document.createElement('tr'), headings = ['ID', 'Node 1', 'Node 2', 'A', 'E', 'rho']; if (state.elementType === 113) headings.push('I', 'Release at end 1', 'Release at end 2'); headings.push('');
     headings.forEach(function (heading) { var th = document.createElement('th'); th.textContent = heading; header.appendChild(th); }); elements.elementsHead.appendChild(header);
     state.elements.forEach(function (item, index) {
       var row = document.createElement('tr'); if (selection && selection.kind === 'element' && selection.index === index) row.className = 'selected-row'; row.addEventListener('click', function (event) { if (['INPUT', 'SELECT', 'BUTTON'].indexOf(event.target.tagName) < 0) selectItem({ kind: 'element', index: index }); }); idCell(row, index + 1);
       ['node1', 'node2', 'area', 'youngsModulus', 'density'].forEach(function (field) { inputCell(row, item[field], 'number', function (value) { commit(function () { M.modelEdit.updateElement(state, index, field, value); }); }); });
       if (state.elementType === 113) inputCell(row, item.momentOfInertia, 'number', function (value) { commit(function () { M.modelEdit.updateElement(state, index, 'momentOfInertia', value); }); });
+      if (state.elementType === 113) [1,2].forEach(function (end) {
+        var input=document.createElement('input'); input.type='checkbox'; input.checked=global.MKEFReleases.has(state,index+1,end);
+        input.setAttribute('aria-label','Element '+(index+1)+' release Mz'+end);
+        input.addEventListener('change',function () { var checked=input.checked; commit(function () { M.modelEdit.setRelease(state,index,end,checked); }); });
+        cell(row).appendChild(input);
+      });
       deleteCell(row, function () { commit(function () { M.modelEdit.deleteElement(state, index); selection = null; }); }, 'element ' + (index + 1)); elements.elementsBody.appendChild(row);
     });
     elements.elementCount.textContent = '(' + state.elements.length + ')';
@@ -266,6 +277,7 @@
       var node = state.nodes[selection.index]; elements.selectionDetails.textContent = 'Node ' + (selection.index + 1); elements.nodeCoordinateEditor.hidden = false; elements.selectedNodeX.value = node.x; elements.selectedNodeY.value = node.y;
     } else if (selection.kind === 'element' && state.elements[selection.index]) {
       var item = state.elements[selection.index]; elements.selectionDetails.textContent = 'Element ' + (selection.index + 1) + '\nNodes ' + item.node1 + ' — ' + item.node2 + '\nType ' + state.elementType;
+      [1,2].forEach(function (end) { if (global.MKEFReleases.has(state,selection.index+1,end)) elements.selectionDetails.textContent += '\nMz'+end+' released'; });
     } else { selection = null; elements.selectionDetails.textContent = 'Nothing selected'; }
   }
 
@@ -294,6 +306,12 @@
 
   function confirmDiscard() { return !dirty || global.confirm('Discard the current unsaved changes?'); }
 
+  function resetTablePanels() {
+    var tables = document.querySelector('.tables');
+    tables.querySelectorAll('details').forEach(function (panel) { panel.open = false; });
+    tables.scrollTop = 0;
+  }
+
   function loadText(text, filename) {
     try {
       var parsed = F.parse(text); parsed.name = (filename || 'Case').replace(/\.txt$/i, '') || 'Case';
@@ -318,8 +336,8 @@
       selectionDetails: byId('selection-details'), nodeCoordinateEditor: byId('node-coordinate-editor'), selectedNodeX: byId('selected-node-x'), selectedNodeY: byId('selected-node-y'), nodesBody: byId('nodes-body'), elementsHead: byId('elements-head'), elementsBody: byId('elements-body'), supportsBody: byId('supports-body'), loadsBody: byId('loads-body'), elementLoadsBody: byId('element-loads-body'), elementLoadCount: byId('element-load-count'), addElementLoad: byId('add-element-load'), nodeCount: byId('node-count'), elementCount: byId('element-count'), supportCount: byId('support-count'), loadCount: byId('load-count'), preview: byId('case-preview'), validationStatus: byId('validation-status'), addLoad: byId('add-load')
     };
     renderer = new M.Renderer(byId('viewport'), { addNode: addNode, addElement: addElement, select: selectItem, placementPoint: placementPoint, elementPending: function () { setNotice('Element Add mode: select second node for element'); } });
-    state = F.newModel('', 0); render(); renderer.fit(); renderer.draw(state);
-    byId('new-case').addEventListener('click', function () { if (!confirmDiscard()) return; state = F.newModel('', 0); undoStack = []; redoStack = []; dirty = false; selection = null; render(); renderer.fit(); });
+    state = F.newModel('', 0); resetTablePanels(); render(); renderer.fit(); renderer.draw(state);
+    byId('new-case').addEventListener('click', function () { if (!confirmDiscard()) return; state = F.newModel('', 0); undoStack = []; redoStack = []; dirty = false; selection = null; resetTablePanels(); render(); renderer.fit(); });
     elements.fileInput.addEventListener('change', function () { openFile(elements.fileInput.files[0]); elements.fileInput.value = ''; });
     elements.run.addEventListener('click', submitCurrentCase);
     elements.cancelRun.addEventListener('click', cancelActiveJob);

@@ -12,10 +12,16 @@
     var newIds = {}, kept = [];
     model.elements.forEach(function (element, index) { if (!ids.has(index + 1)) { kept.push(element); newIds[index + 1] = kept.length; } });
     model.elements = kept;
+    model.releases = (model.releases || []).filter(function (r) { return !ids.has(r.elementId); });
+    model.releases.forEach(function (r) { r.elementId = newIds[r.elementId]; });
     model.elementLoads = (model.elementLoads || []).filter(function (load) { return !ids.has(load.elementId); });
     model.elementLoads.forEach(function (load) { load.elementId = newIds[load.elementId]; });
   }
   E.deleteElement = function (model, index) { removeElements(model, new Set([index + 1])); };
+  E.setRelease = function (model, index, end, released) {
+    model.releases = (model.releases || []).filter(function (r) { return r.elementId !== index+1 || r.end !== end; });
+    if (released) model.releases.push({elementId:index+1,end:end,component:'Mz'});
+  };
   E.deleteNode = function (model, index) {
     var id = index + 1, ids = new Set();
     model.elements.forEach(function (element, i) { if (element.node1 === id || element.node2 === id) ids.add(i + 1); });

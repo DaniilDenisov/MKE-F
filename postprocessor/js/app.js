@@ -6,7 +6,7 @@
   function byId(id) { return document.getElementById(id); }
   function option(value, label) { var item = document.createElement('option'); item.value = value; item.textContent = label; return item; }
   function replaceOptions(select, values) { while (select.firstChild) select.removeChild(select.firstChild); values.forEach(function (item) { select.appendChild(option(item.value, item.label)); }); }
-  function number(value) { if (value === 0) return '0'; return Math.abs(value) >= 10000 || Math.abs(value) < .001 ? value.toExponential(5) : Number(value.toPrecision(7)).toString(); }
+  function number(value) { if (value === null || value === undefined) return 'not defined'; if (value === 0) return '0'; return Math.abs(value) >= 10000 || Math.abs(value) < .001 ? value.toExponential(5) : Number(value.toPrecision(7)).toString(); }
   function samples() { var value = Number(elements.sampleCount.value); if (!Number.isInteger(value) || value < M.config.minFrameSamples || value > M.config.maxFrameSamples) throw new Error('Frame samples must be an integer from 5 to 201.'); return value; }
   function manualScale() { var value = Number(elements.manualScale.value); if (!Number.isFinite(value) || value <= 0) throw new Error('Manual deformation scale must be a finite positive value.'); return value; }
   function layerSettings() {
@@ -16,7 +16,7 @@
   }
   function showError(error) { elements.error.textContent = error && error.message ? error.message : String(error); elements.error.hidden = false; }
   function clearError() { elements.error.hidden = true; }
-  function notice(message) { elements.notice.textContent = message || ''; elements.notice.hidden = !message; }
+  function notice(message) { var warnings=dataset && dataset.raw.model.warnings || []; elements.notice.textContent = [message || ''].concat(warnings).filter(Boolean).join('\n'); elements.notice.hidden = !elements.notice.textContent; }
   function setLegend(descriptor) {
     while (elements.legend.firstChild) elements.legend.removeChild(elements.legend.firstChild);
     if (typeof descriptor === 'string') descriptor = descriptor ? { kind: 'text', text: descriptor, summary: descriptor } : { kind: 'none', summary: '' };
@@ -145,8 +145,8 @@
 
   function updateHistoryDofOptions(preferredId) {
     if (!dataset || dataset.raw.analysis.type !== 'transient') return;
-    var nodeId = Number(elements.historyNode.value), analysis = dataset.raw.analysis;
-    var ids = analysis.globalDOFIds.filter(function (id) { return dataset.dofById.get(id).nodeId === nodeId; });
+    var key = elements.historyNode.value, analysis = dataset.raw.analysis;
+    var ids = analysis.globalDOFIds.filter(function (id) { var r=dataset.dofById.get(id); return r.elementId ? key === 'element:'+r.elementId : String(r.nodeId) === key; });
     replaceOptions(elements.historyDof, ids.map(function (id) { var location = dataset.dofById.get(id); return { value: String(id), label: location.label + ' · global DOF ' + id }; }));
     if (preferredId && ids.indexOf(Number(preferredId)) >= 0) elements.historyDof.value = String(preferredId);
   }
@@ -154,12 +154,12 @@
   function configureTransient() {
     var analysis = dataset.raw.analysis;
     elements.timeIndex.max = String(analysis.time.length - 1); elements.timeIndex.value = '0';
-    var nodeIds = [];
-    analysis.globalDOFIds.forEach(function (id) { var nodeId = dataset.dofById.get(id).nodeId; if (nodeIds.indexOf(nodeId) < 0) nodeIds.push(nodeId); });
-    replaceOptions(elements.historyNode, nodeIds.map(function (id) { return { value: String(id), label: 'Node ' + id }; }));
+    var owners = new Map();
+    analysis.globalDOFIds.forEach(function (id) { var r=dataset.dofById.get(id), key=r.elementId ? 'element:'+r.elementId : String(r.nodeId); owners.set(key,r.elementId ? 'Element '+r.elementId : 'Node '+r.nodeId); });
+    replaceOptions(elements.historyNode, Array.from(owners,function (entry) { return {value:entry[0],label:entry[1]}; }));
     updateHistoryDofOptions();
     var quantities = M.transientView.availableQuantities(dataset);
-    var quantityLabels = { displacements: 'Displacement', velocities: 'Velocity', accelerations: 'Acceleration', loadHistory: 'Applied load', reactions: 'Dynamic residual / reaction', spectrum: 'Displacement spectrum' };
+    var quantityLabels = { displacements: 'Displacement', velocities: 'Velocity', accelerations: 'Acceleration', loadHistory: 'Applied load', reactions: 'Dynamic residual / reaction', supportReactions: 'Support reaction', mpcForces: 'MPC force', spectrum: 'Displacement spectrum' };
     replaceOptions(elements.historyQuantity, quantities.map(function (name) { return { value: name, label: quantityLabels[name] }; }));
     transientScale = M.transientView.displayScale(dataset);
     var full = M.transientView.hasFullDisplacements(dataset);
@@ -330,7 +330,7 @@
   function valuesAtNode(vector, nodeId) {
     if (!vector) return null;
     var row = dataset.nodeIndexById.get(nodeId), dofs = dataset.raw.model.dofMap[row];
-    return dofs.map(function (id) { return vector[id - 1]; });
+    return dofs.map(function (id) { return id ? vector[id - 1] : null; });
   }
   function labeledVector(label, values) { return label + ': [' + values.map(number).join(', ') + ']'; }
   function labeledModalVector(label, values) {
@@ -341,12 +341,13 @@
     return [
       labeledModalVector('Normalized shape (arbitrary)', normalized),
       'Phase factor q = ' + number(modalPhaseFactor),
-      labeledModalVector('Visible normalized shape', normalized.map(function (value) { return value * modalPhaseFactor; }))
+      labeledModalVector('Visible normalized shape', normalized.map(function (value) { return value === null ? null : value * modalPhaseFactor; }))
     ];
   }
   function transientNodeValues(field, nodeId, timeIndex) {
     var analysis = dataset.raw.analysis, row = dataset.nodeIndexById.get(nodeId), dofs = dataset.raw.model.dofMap[row];
     return dofs.map(function (id, localIndex) {
+      if (!id) return dataset.raw.model.dofLabels[localIndex]+'=not defined';
       var exportedRow = analysis.globalDOFIds.indexOf(id);
       var descriptor = M.transientView.quantityDescriptor(dataset, id, field);
       var value = analysis[field] && exportedRow >= 0 ? number(analysis[field][exportedRow][timeIndex]) + (descriptor.unit ? ' ' + descriptor.unit : '') : 'not exported';
@@ -377,6 +378,14 @@
     } else {
       var element = dataset.elementsById.get(selection.id);
       lines.push('Element ' + element.id, 'Type: ' + element.type, 'Nodes: [' + element.nodeIds.join(', ') + ']');
+      if (element.type === 113) {
+        var vector=analysis.type === 'static' ? analysis.displacements : analysis.type === 'modal' ? M.modalView.displacement(dataset,Number(elements.modeNumber.value)) : M.transientView.vectorAt(dataset,'displacements',Number(elements.timeIndex.value));
+        [1,2].forEach(function (end) {
+          var id=element.globalDOFs ? element.globalDOFs[end*3-1] : dataset.raw.model.dofMap[dataset.nodeIndexById.get(element.nodeIds[end-1])][2];
+          var released=(dataset.raw.model.releases || []).some(function (r) { return r.elementId === element.id && r.end === end; });
+          lines.push('End '+end+' thetaZ = '+(vector && vector[id-1] !== undefined ? number(vector[id-1])+' rad' : 'not exported')+(released ? ' · Mz'+end+' released' : '')+(analysis.type === 'modal' ? ' · stored eigenvector amplitude' : ''));
+        });
+      }
       if (analysis.type === 'static') { var result = dataset.resultsByElementId.get(element.id); lines.push(labeledVector('Local end forces', result.localEndForces), 'Mean axial strain: ' + number(result.axialStrain), 'Mean axial stress: ' + number(result.axialStress), 'Mean axial force: ' + number(result.axialForce)); }
       else if (analysis.type === 'modal') {
         lines = lines.concat(modalNodeDetails(element.nodeIds[0]).map(function (line) { return 'Node ' + element.nodeIds[0] + ' · ' + line; }));
@@ -440,7 +449,7 @@
         'Sampling: ' + sampling.exported + ' of ' + sampling.original + ' samples exported · export stride ' + sampling.stride + (sampling.decimated ? ' · decimated history' : '')
       ];
       if (series) context.captionLines.splice(3, 0, (quantity === 'spectrum' ? 'Selected spectrum sample: f = ' + number(series.x[selectedIndex]) + ' Hz' : 'Current history value') + ' · ' + number(series.y[selectedIndex]) + (descriptor.unit ? ' ' + descriptor.unit : ''));
-      if (quantity === 'reactions') context.captionLines.push(dataset.raw.version === 3 ? 'Dynamic residual is M·a + K·u − F = support reactions + MPC forces.' : 'Dynamic residual is M·a + K·u − F; restrained rows are support reactions.');
+      if (quantity === 'reactions') context.captionLines.push(dataset.raw.model.mpcs ? 'Dynamic residual is M·a + K·u − F = support reactions + MPC forces.' : 'Dynamic residual is M·a + K·u − F; restrained rows are support reactions.');
     }
     return context;
   }

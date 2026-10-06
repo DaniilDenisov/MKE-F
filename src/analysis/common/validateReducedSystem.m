@@ -16,7 +16,17 @@ if any(~isfinite(stiffness(:)))
 end
 
 symStiffness = (stiffness + stiffness.') / 2;
-[~, stiffnessFailure] = chol(symStiffness);
+diagonal = diag(symStiffness);
+stiffnessFailure = any(diagonal <= 0);
+if ~stiffnessFailure
+    % Diagonal scaling avoids comparing translation and rotation units.
+    % Exact mechanisms can leave a tiny positive Cholesky pivot after rounding.
+    scale = spdiags(1./sqrt(diagonal),0,size(stiffness,1),size(stiffness,1));
+    [factor, stiffnessFailure] = chol(scale*symStiffness*scale);
+    if stiffnessFailure == 0
+        stiffnessFailure = any(abs(diag(factor)) <= sqrt(100*eps));
+    end
+end
 if stiffnessFailure ~= 0
     error('MKEF:SingularStiffness', ...
         ['The reduced stiffness matrix is singular or not positive definite. ' ...

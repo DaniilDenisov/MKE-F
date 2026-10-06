@@ -185,6 +185,7 @@ r = example_05_modal_frame();</code></pre>
         </ul>
       </section>
     <section aria-labelledby="mpc-title"><h2 id="mpc-title">MPC</h2><p>MPC analysis solves Kr φr = ω²Mr φr, then φ = Tφr. The mode count equals the number of independent DOFs. Intermediate transverse constraints remove spurious mechanisms in a refined truss member. Nonzero rhs is rejected.</p><p><a href="04a-mpc.html">Complete MPC guide</a> · <a href="../../postprocessor/schema-v3.md">JSON v3</a> · <a href="../../examples/cases/CaseMPCFrame.txt">CaseMPCFrame.txt</a> · <a href="../../examples/cases/CaseMPCTruss.txt">CaseMPCTruss.txt</a></p></section>
+<section aria-labelledby="end-releases-title"><h2 id="end-releases-title">Mz end releases</h2><p>Private rotations retain the original consistent mass. The release condition is checked using K*phi − omega²*M*phi in modal analysis and M*a + K*u − F in transient analysis. The elastic K*u moment alone need not vanish. Shapes use end rotations, including modes with stationary nodes.</p><p><a href="../../postprocessor/schema-v4.md">JSON v4</a> · <a href="../../examples/cases/CaseReleaseStatic.txt">CaseReleaseStatic</a> · <a href="../../examples/cases/CaseReleaseModal.txt">CaseReleaseModal</a> · <a href="../../examples/cases/CaseReleaseTransient.txt">CaseReleaseTransient</a></p></section>
 </main>
   </div>
 

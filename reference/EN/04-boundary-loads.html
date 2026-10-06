@@ -171,6 +171,7 @@ r = example_04_load_histories();</code></pre>
         </ul>
       </section>
 <p id="mpc-title" class="callout">Relationships between displacements at several nodes are covered separately in <a href="04a-mpc.html">Chapter 4a: MPC</a>, including dependent DOFs, the axis helper and constraint forces.</p>
+<section aria-labelledby="end-releases-title"><h2 id="end-releases-title">Mz end releases</h2><p>An Mz release disconnects moment transfer at a particular end without restraining node translations. An SPC on absent thetaZ is ignored with a warning. Nonzero nodal moments, MPC terms and monitors on absent rotations are rejected. Consistent element loads also act on private rotations.</p><p><a href="../../postprocessor/schema-v4.md">JSON v4</a> · <a href="../../examples/cases/CaseReleaseStatic.txt">CaseReleaseStatic</a> · <a href="../../examples/cases/CaseReleaseModal.txt">CaseReleaseModal</a> · <a href="../../examples/cases/CaseReleaseTransient.txt">CaseReleaseTransient</a></p></section>
 </main>
   </div>
 

@@ -12,6 +12,34 @@ REPOSITORY_ROOT = Path("/app")
 RUNNER = REPOSITORY_ROOT / "scripts" / "run_solver_job.m"
 
 
+@pytest.mark.parametrize("case_name", ["CaseReleaseStatic", "CaseReleaseModal", "CaseReleaseTransient"])
+def test_releases_through_real_api(tmp_path, case_name):
+    if not RUNNER.is_file():
+        pytest.skip("container Octave runner is not available")
+    settings = Settings(jobs_root=tmp_path / "jobs", repository_root=REPOSITORY_ROOT,
+                        runner_script=RUNNER, job_timeout_seconds=60)
+    text = (REPOSITORY_ROOT / "examples/cases" / f"{case_name}.txt").read_text()
+    with TestClient(create_app(settings)) as client:
+        response = client.post("/api/v1/jobs", json={"name": case_name, "caseText": text})
+        assert response.status_code == 202, response.text
+        job_id = response.json()["id"]
+        deadline = time.monotonic() + 65
+        while time.monotonic() < deadline:
+            job = client.get(f"/api/v1/jobs/{job_id}").json()
+            if job["status"] in {"succeeded", "failed", "timed_out", "canceled"}:
+                break
+            time.sleep(0.05)
+        assert job["status"] == "succeeded", job
+        result = client.get(f"/api/v1/jobs/{job_id}/result").json()
+        assert result["version"] == 4
+        model = result["model"]
+        assert len(model["dofRegistry"]) == model["numberOfDOFs"]
+        assert len(model["releases"]) == 2
+        assert model["dofMap"][0][2] == 0
+        if case_name == "CaseReleaseStatic":
+            assert result["analysis"]["elementResults"][0]["localEndForces"][2::3] == pytest.approx([0, 0], abs=1e-8)
+
+
 @pytest.mark.parametrize("case_name", ["CaseMPCFrame", "CaseMPCModal", "CaseMPCTransient", "CaseMPCUniform"])
 def test_mpc_through_real_api(tmp_path, case_name):
     if not RUNNER.is_file():

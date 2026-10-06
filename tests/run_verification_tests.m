@@ -29,6 +29,7 @@ runNamedTest('free-DOF reduction', @testFreeDOFReduction);
 runNamedTest('constraint validation', @testConstraintValidation);
 runNamedTest('support masks', @test_support_masks);
 runNamedTest('homogeneous MPC', @test_mpc);
+runNamedTest('frame end releases', @test_releases);
 runNamedTest('Newmark transient analysis', @test_newmark_transient);
 runNamedTest('element result recovery', @test_result_recovery);
 runNamedTest('uniform element loads', @test_element_loads);

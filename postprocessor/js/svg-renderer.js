@@ -107,20 +107,36 @@
 
     dataset.raw.model.supports.forEach(function (support) {
       var point = M.geometry.svgPoint(dataset.nodesById.get(support.nodeId));
-      var supportName = window.MKEFSupportMarkers.label(support.type, dataset.raw.model.dofPerNode);
-      window.MKEFSupportMarkers.append(M.svgElement, this.layers.supports, point.x, point.y, dataset.raw.model.dofPerNode === 2 && support.type !== 1 && support.type !== 4 ? (support.type === 2 || support.type === 6 ? 6 : 5) : support.type, this.size * .035, { 'data-node-id': support.nodeId, 'data-support-node-id': support.nodeId }, 'Support ' + support.type + ' · ' + supportName + ' at node ' + support.nodeId);
+      var dofs=dataset.raw.model.dofPerNode, row=dataset.nodeIndexById.get(support.nodeId);
+      var type=window.MKEFReleases.effectiveSupport(support,dofs===3 && dataset.raw.model.dofMap[row][2]===0,dofs);
+      if (!type) return;
+      var supportName = window.MKEFSupportMarkers.label(type, dofs);
+      window.MKEFSupportMarkers.append(M.svgElement, this.layers.supports, point.x, point.y, dofs === 2 && type !== 1 && type !== 4 ? (type === 2 || type === 6 ? 6 : 5) : type, this.size * .035, { 'data-node-id': support.nodeId, 'data-support-node-id': support.nodeId }, 'Support ' + type + ' · ' + supportName + ' at node ' + support.nodeId);
     }, this);
+    (dataset.raw.model.releases || []).forEach(function (r) {
+      var e=dataset.elementsById.get(r.elementId);
+      window.MKEFReleases.append(M.svgElement,this.layers['original-geometry'],M.geometry.svgPoint(dataset.nodesById.get(e.nodeIds[0])),M.geometry.svgPoint(dataset.nodesById.get(e.nodeIds[1])),r.end,this.size*.035,{'data-release-element':r.elementId,'data-release-end':r.end});
+    },this);
     this.setVisibility({ showOriginal: true, showDeformed: true, showNodes: true, showNodeLabels: false, showElementLabels: false, showSupports: true, showLoads: true, showReactions: true });
     this.fit();
   };
 
   Renderer.prototype.updateDeformation = function (displacement, scale, samples) {
     if (!this.dataset) return;
+    this.layers['deformed-geometry'].querySelectorAll('.end-release').forEach(function (el) { el.remove(); });
     this.dataset.raw.model.elements.forEach(function (element) {
       var points = M.geometry.sampleElement(this.dataset, element, displacement, scale, samples);
       var path = this.deformedByElement.get(element.id);
       path.setAttribute('d', M.geometry.pathData(points));
       path.firstChild.textContent = 'Element ' + element.id + ' · deformation scale ' + Number(scale).toPrecision(5);
+      var self=this;
+      (this.dataset.raw.model.releases || []).filter(function (r) { return r.elementId===element.id; }).forEach(function (r) {
+        var count=points.length, first=points[0], second=points[count-1];
+        var circle=window.MKEFReleases.append(M.svgElement,self.layers['deformed-geometry'],M.geometry.svgPoint(first),M.geometry.svgPoint(second),r.end,self.size*.035,{'data-release-element':r.elementId,'data-release-end':r.end});
+        var a=self.dataset.nodesById.get(element.nodeIds[0]), b=self.dataset.nodesById.get(element.nodeIds[1]), length=Math.hypot(b.x-a.x,b.y-a.y);
+        var fraction=Math.min(self.size*.035*1.1/length,.15), position=(r.end===1?fraction:1-fraction)*(count-1), lower=Math.floor(position), t=position-lower;
+        if (circle) { circle.setAttribute('cx',points[lower].x*(1-t)+points[lower+1].x*t); circle.setAttribute('cy',-(points[lower].y*(1-t)+points[lower+1].y*t)); }
+      });
     }, this);
     this.dataset.raw.model.nodes.forEach(function (node) {
       var value = M.geometry.nodeDisplacement(this.dataset, node.id, displacement);

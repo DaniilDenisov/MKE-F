@@ -384,6 +384,7 @@ dynamicResult = problem.RunTransient(1e-4, 1e-2, 3, 2, initial);</code></pre>
 <section aria-labelledby="mpc-title"><h2 id="mpc-title">MPC</h2><p>Повторяемая секция mpc содержит число уравнений и строки depNode,depDOF,rhs,masterCount,node,dof,coefficient,... . Коды СС: 1=ux, 2=uy, 3=thetaZ. rhs допускается только 0. Пример ниже задаёт uy(3)=0.5uy(1)+0.5uy(2). Номера уравнений следуют порядку записи во всех секциях. Диагностика указывает номер уравнения и исходную строку.</p><pre><code>mpc
 1
 3,2,0,2,1,2,0.5,2,2,0.5</code></pre><p><a href="04a-mpc.html">Подробное описание MPC</a> · <a href="../../postprocessor/schema-v3.md">JSON v3</a> · <a href="../../examples/cases/CaseMPCFrame.txt">CaseMPCFrame.txt</a> · <a href="../../examples/cases/CaseMPCTruss.txt">CaseMPCTruss.txt</a></p></section>
+<section aria-labelledby="end-releases-title"><h2 id="end-releases-title">Концевые освобождения Mz</h2><p>После элементов допускается повторяемая секция releases: число записей и строки elementId,end,Mz, где end равен 1 или 2. Компоненты N/V, дубликаты и освобождения фермы не поддерживаются. Редактор пишет одну секцию в порядке элемент/конец. Смена освобождения сохраняет распределённую нагрузку; удаление элемента удаляет его освобождения.</p><p><a href="../../postprocessor/schema-v4.md">JSON v4</a> · <a href="../../examples/cases/CaseReleaseStatic.txt">CaseReleaseStatic</a> · <a href="../../examples/cases/CaseReleaseModal.txt">CaseReleaseModal</a> · <a href="../../examples/cases/CaseReleaseTransient.txt">CaseReleaseTransient</a></p></section>
 </main>
   </div>
 

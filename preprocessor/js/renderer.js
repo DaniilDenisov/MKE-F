@@ -231,7 +231,8 @@
     var node = this.model.nodes[support.node - 1];
     if (!node) return;
     var dofs = this.model.elementType === 112 ? 2 : 3, type;
-    try { type = global.MKEFSupports.type(support, dofs); } catch (_) { return; }
+    try { type = global.MKEFReleases.effectiveSupport(support,global.MKEFReleases.inactive(this.model,support.node),dofs); } catch (_) { return; }
+    if (!type) return;
     if (dofs === 2 && type !== 1) type = type === 2 ? 6 : 5;
     global.MKEFSupportMarkers.append(M.svgElement, layer, node.x, -node.y, type, scale * 0.035, { 'aria-hidden': 'true' });
   };
@@ -271,6 +272,7 @@
       line.addEventListener('click', function (event) { event.stopPropagation(); if (self.callbacks.select) self.callbacks.select({ kind: 'element', index: index }); });
       line.addEventListener('keydown', function (event) { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); if (self.callbacks.select) self.callbacks.select({ kind: 'element', index: index }); } });
       elementLayer.appendChild(line);
+      [1,2].forEach(function (end) { if (global.MKEFReleases.has(self.model,index+1,end)) global.MKEFReleases.append(M.svgElement,elementLayer,{x:first.x,y:-first.y},{x:second.x,y:-second.y},end,scale*.035,{'data-release-element':index+1,'data-release-end':end}); });
       var text = M.svgElement('text', { x: (first.x + second.x) / 2, y: -(first.y + second.y) / 2, class: 'element-label' }); text.textContent = 'E' + (index + 1); labelLayer.appendChild(text);
     });
     this.model.supports.forEach(function (support) { self.drawSupport(supportLayer, support, scale); });

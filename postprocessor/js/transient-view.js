@@ -3,14 +3,14 @@
   var T = M.transientView = {};
 
   T.hasFullDisplacements = function (dataset) {
-    var analysis = dataset.raw.analysis, count = dataset.raw.model.nodes.length * dataset.raw.model.dofPerNode;
+    var analysis = dataset.raw.analysis, count = dataset.raw.model.numberOfDOFs || dataset.raw.model.nodes.length * dataset.raw.model.dofPerNode;
     if (!analysis.displacements || analysis.globalDOFIds.length !== count) return false;
     var ids = analysis.globalDOFIds.slice().sort(function (a, b) { return a - b; });
     return ids.every(function (id, index) { return id === index + 1; });
   };
 
   T.vectorAt = function (dataset, field, timeIndex) {
-    var analysis = dataset.raw.analysis, count = dataset.raw.model.nodes.length * dataset.raw.model.dofPerNode;
+    var analysis = dataset.raw.analysis, count = dataset.raw.model.numberOfDOFs || dataset.raw.model.nodes.length * dataset.raw.model.dofPerNode;
     if (!analysis[field]) return null;
     var vector = new Array(count);
     analysis.globalDOFIds.forEach(function (id, row) { vector[id - 1] = analysis[field][row][timeIndex]; });
@@ -23,6 +23,15 @@
     var bounds = M.geometry.modelBounds(dataset.raw.model);
     var size = Math.max(Math.hypot(bounds.maxX - bounds.minX, bounds.maxY - bounds.minY), 1e-9);
     var maximum = 0;
+    if (dataset.raw.version === 4 && T.hasFullDisplacements(dataset)) {
+      analysis.time.forEach(function (_,step) {
+        var vector=T.vectorAt(dataset,'displacements',step);
+        dataset.raw.model.elements.forEach(function (element) {
+          M.geometry.sampleElementDisplacements(dataset,element,vector,21).forEach(function (d) { maximum=Math.max(maximum,Math.hypot(d.x,d.y)); });
+        });
+      });
+      return maximum <= 1e-12 * Math.max(size,1) ? 1 : .1*size/maximum;
+    }
     analysis.globalDOFIds.forEach(function (id, row) {
       var location = dataset.dofById.get(id), factor = location && location.localIndex === 2 ? size : 1;
       analysis.displacements[row].forEach(function (value) { maximum = Math.max(maximum, Math.abs(value) * factor); });

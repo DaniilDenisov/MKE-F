@@ -40,7 +40,7 @@
     return value;
   }
 
-  function validateModel(model) {
+  function validateModel(model, version) {
     objectAt(model, '$.model');
     if (model.dimension !== 2) fail('$.model.dimension', 'only two-dimensional models are supported');
     if (model.dofPerNode !== 2 && model.dofPerNode !== 3) fail('$.model.dofPerNode', 'expected 2 or 3');
@@ -59,19 +59,20 @@
       numberAt(node.x, path + '.x'); numberAt(node.y, path + '.y');
     });
 
-    var dofCount = nodes.length * model.dofPerNode;
+    var dofCount = version === 4 ? positiveInteger(model.numberOfDOFs,'$.model.numberOfDOFs') : nodes.length * model.dofPerNode;
     matrix(model.dofMap, nodes.length, model.dofPerNode, '$.model.dofMap');
     var dofs = new Set();
     model.dofMap.forEach(function (row, rowIndex) {
       row.forEach(function (value, columnIndex) {
         var path = '$.model.dofMap[' + rowIndex + '][' + columnIndex + ']';
+        if (version === 4 && columnIndex === 2 && value === 0) return;
         positiveInteger(value, path);
         if (value > dofCount) fail(path, 'global DOF exceeds model size');
         if (dofs.has(value)) fail(path, 'duplicate global DOF');
         dofs.add(value);
       });
     });
-    if (dofs.size !== dofCount) fail('$.model.dofMap', 'does not contain every global DOF');
+    if (version !== 4 && dofs.size !== dofCount) fail('$.model.dofMap', 'does not contain every global DOF');
 
     var elements = arrayAt(model.elements, '$.model.elements');
     if (!elements.length || elements.length > M.config.maxElements) fail('$.model.elements', 'invalid or unreasonable element count');
@@ -106,7 +107,44 @@
       positiveInteger(support.nodeId, path + '.nodeId');
       if (!nodeIds.has(support.nodeId)) fail(path + '.nodeId', 'unknown node ID');
     });
+    if (version === 4) validateRegistry(model,dofCount);
     return { dofCount: dofCount, nodeIds: nodeIds, elementIds: elementIds };
+  }
+
+  function validateRegistry(model, count) {
+    var registry=arrayAt(model.dofRegistry,'$.model.dofRegistry'), releases=arrayAt(model.releases,'$.model.releases');
+    if (registry.length !== count || !releases.length || model.dofPerNode !== 3) fail('$.model','Invalid release registry size or family');
+    arrayAt(model.warnings,'$.model.warnings').forEach(function (s) { if (typeof s !== 'string') fail('$.model.warnings','expected strings'); });
+    var nodeRows=new Map(model.nodes.map(function (n,i) { return [n.id,i]; }));
+    var elementMap=new Map(model.elements.map(function (e) { return [e.id,e]; })), released=new Set(), used=new Set();
+    releases.forEach(function (r) {
+      objectAt(r,'$.model.releases');
+      var key=r.elementId+':'+r.end;
+      if (!elementMap.has(r.elementId) || [1,2].indexOf(r.end)<0 || r.component !== 'Mz' || released.has(key)) fail('$.model.releases','Invalid or duplicate Mz release');
+      released.add(key);
+    });
+    function check(id,kind,node,component,element,end) {
+      positiveInteger(id,'$.model.globalDOFs');
+      var r=registry[id-1];
+      if (!r || r.id !== id || r.kind !== kind || r.nodeId !== node || r.component !== component || r.elementId !== element || r.end !== end) fail('$.model.dofRegistry','DOF ownership does not match topology');
+      used.add(id);
+    }
+    model.dofMap.forEach(function (row,i) { row.forEach(function (id,d) { if (id) check(id,'node',model.nodes[i].id,['ux','uy','thetaZ'][d],0,0); }); });
+    var attached=new Set(), rigid=new Set();
+    model.elements.forEach(function (e) {
+      vector(e.globalDOFs,6,'$.model.elements.globalDOFs');
+      if (new Set(e.globalDOFs).size !== 6) fail('$.model.elements.globalDOFs','Duplicate element DOF');
+      e.nodeIds.forEach(function (node,j) {
+        attached.add(node); var row=model.dofMap[nodeRows.get(node)];
+        [0,1,2].forEach(function (d) {
+          var id=e.globalDOFs[j*3+d], internal=d===2 && released.has(e.id+':'+(j+1));
+          if (internal) check(id,'elementEnd',node,'thetaZ',e.id,j+1);
+          else { if (id !== row[d] || !id) fail('$.model.elements.globalDOFs','Incorrect shared DOF'); if (d===2) rigid.add(node); }
+        });
+      });
+    });
+    model.nodes.forEach(function (n,i) { if (attached.has(n.id) && Boolean(model.dofMap[i][2]) !== rigid.has(n.id)) fail('$.model.dofMap','Unused or missing shared rotation'); });
+    if (used.size !== count) fail('$.model.dofRegistry','Unused or missing DOF');
   }
 
   function validateStatic(analysis, context) {
@@ -176,11 +214,11 @@
   M.validateDataset = function (data) {
     objectAt(data, '$');
     if (data.format !== 'mkef-postprocessor') fail('$.format', 'expected "mkef-postprocessor"');
-    if (data.version !== 1 && data.version !== 2 && data.version !== 3) fail('$.version', 'unsupported format version ' + String(data.version));
+    if ([1,2,3,4].indexOf(data.version) < 0) fail('$.version', 'unsupported format version ' + String(data.version));
     var metadata = objectAt(data.metadata, '$.metadata');
     if (typeof metadata.title !== 'string') fail('$.metadata.title', 'expected a string');
     objectAt(metadata.units, '$.metadata.units');
-    var context = validateModel(data.model);
+    var context = validateModel(data.model,data.version);
     var analysis = objectAt(data.analysis, '$.analysis');
     if (analysis.type === 'static') validateStatic(analysis, context);
     else if (analysis.type === 'modal') validateModal(analysis, context);
@@ -204,7 +242,7 @@
       analysis.elementResults.forEach(function (result, index) { vector(result.equivalentLocalLoadVector, result.type === 113 ? 6 : 4, '$.analysis.elementResults[' + index + '].equivalentLocalLoadVector'); });
     }
 
-    if (data.version === 3) {
+    if (data.version === 3 || (data.version === 4 && data.model.mpcs)) {
       var mpcs = arrayAt(data.model.mpcs,'$.model.mpcs');
       if (!mpcs.length) fail('$.model.mpcs','version 3 requires MPCs');
       mpcs.forEach(function (m,i) {
@@ -215,6 +253,7 @@
       var validation = window.MKEFMPC.validate({nodes:data.model.nodes,elementType:data.model.dofPerNode === 2 ? 112 : 113,mpcs:mpcs,supports:data.model.supports.map(function (s) { return {node:s.nodeId,type:s.type}; })});
       if (validation.length) fail('$.model.mpcs',validation[0]);
       var dep = mpcs.map(function (m) { var row=data.model.nodes.findIndex(function (n) { return n.id === m.depNode; }); return data.model.dofMap[row][m.depDOF-1]; });
+      mpcs.forEach(function (m) { [{node:m.depNode,dof:m.depDOF}].concat(m.masters).forEach(function (a) { var row=data.model.nodes.findIndex(function (n) { return n.id === a.node; }); if (!data.model.dofMap[row][a.dof-1]) fail('$.model.mpcs','MPC references absent thetaZ'); }); });
       var fixed = new Set();
       data.model.supports.forEach(function (s) { var row=data.model.nodes.findIndex(function (n) { return n.id === s.nodeId; }); window.MKEFSupports.dofs(s,data.model.dofPerNode).forEach(function (d) { fixed.add(data.model.dofMap[row][d-1]); }); });
       var independent=[]; for (var d=1;d<=context.dofCount;d++) if (!fixed.has(d) && dep.indexOf(d)<0) independent.push(d);
@@ -235,9 +274,13 @@
     var dofById = new Map();
     data.model.dofMap.forEach(function (row, nodeIndex) {
       row.forEach(function (dofId, localIndex) {
+        if (!dofId) return;
         dofById.set(dofId, { id: dofId, nodeId: data.model.nodes[nodeIndex].id, nodeIndex: nodeIndex,
           localIndex: localIndex, label: data.model.dofLabels[localIndex] });
       });
+    });
+    if (data.version === 4) data.model.dofRegistry.forEach(function (r) {
+      if (r.kind === 'elementEnd') dofById.set(r.id,{id:r.id,nodeId:r.nodeId,nodeIndex:nodeIndexById.get(r.nodeId),elementId:r.elementId,end:r.end,localIndex:2,label:'Element '+r.elementId+' · end '+r.end+' · thetaZ'});
     });
     var resultsByElementId = new Map();
     if (analysis.type === 'static') analysis.elementResults.forEach(function (result) { resultsByElementId.set(result.elementId, result); });

@@ -384,6 +384,7 @@ dynamicResult = problem.RunTransient(1e-4, 1e-2, 3, 2, initial);</code></pre>
 <section aria-labelledby="mpc-title"><h2 id="mpc-title">MPC</h2><p>A repeatable mpc section contains an equation count and records depNode,depDOF,rhs,masterCount,node,dof,coefficient,... . DOFs: 1=ux, 2=uy, 3=thetaZ. Only rhs=0 is supported. The example imposes uy(3)=0.5uy(1)+0.5uy(2). Equation IDs follow input order across sections. Diagnostics identify the equation and source line.</p><pre><code>mpc
 1
 3,2,0,2,1,2,0.5,2,2,0.5</code></pre><p><a href="04a-mpc.html">Complete MPC guide</a> · <a href="../../postprocessor/schema-v3.md">JSON v3</a> · <a href="../../examples/cases/CaseMPCFrame.txt">CaseMPCFrame.txt</a> · <a href="../../examples/cases/CaseMPCTruss.txt">CaseMPCTruss.txt</a></p></section>
+<section aria-labelledby="end-releases-title"><h2 id="end-releases-title">Mz end releases</h2><p>After elements, a repeatable releases section contains a record count followed by elementId,end,Mz, with end 1 or 2. N/V components, duplicates and truss releases are rejected. The editor writes one section ordered by element/end. Toggling a release preserves element loads; deleting an element removes its releases.</p><p><a href="../../postprocessor/schema-v4.md">JSON v4</a> · <a href="../../examples/cases/CaseReleaseStatic.txt">CaseReleaseStatic</a> · <a href="../../examples/cases/CaseReleaseModal.txt">CaseReleaseModal</a> · <a href="../../examples/cases/CaseReleaseTransient.txt">CaseReleaseTransient</a></p></section>
 </main>
   </div>
 

@@ -18,6 +18,11 @@ for i = 1:size(model.forceBoundaryConditions, 1)
     nodeNumber = boundaryCondition(2);
     nodeDOFs = model.dofMap(nodeNumber, :);
     components = getNodalLoadComponents(model, boundaryCondition);
+    if any(components(nodeDOFs == 0) ~= 0)
+        error('MKEF:InactiveRotationLoad','Node %d: cannot apply Mz to absent thetaZ.',nodeNumber);
+    end
+    components = components(nodeDOFs > 0);
+    nodeDOFs = nodeDOFs(nodeDOFs > 0);
     loadVector(nodeDOFs) = loadVector(nodeDOFs) + components;
 end
 end

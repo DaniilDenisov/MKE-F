@@ -7,7 +7,12 @@
   G.nodeDisplacement = function (dataset, nodeId, displacement) {
     var row = dataset.raw.model.nodes.findIndex(function (node) { return node.id === nodeId; });
     var dofs = dataset.raw.model.dofMap[row];
-    return { x: displacement[dofs[0] - 1], y: displacement[dofs[1] - 1], r: dofs.length > 2 ? displacement[dofs[2] - 1] : 0 };
+    return { x: displacement[dofs[0] - 1], y: displacement[dofs[1] - 1], r: dofs[2] ? displacement[dofs[2] - 1] : 0 };
+  };
+  G.elementEndDisplacement = function (dataset, element, end, displacement) {
+    var value=G.nodeDisplacement(dataset,element.nodeIds[end-1],displacement);
+    if (element.type === 113 && element.globalDOFs) value.r=displacement[element.globalDOFs[end*3-1]-1];
+    return value;
   };
   G.elementBasis = function (first, second) {
     var dx = second.x - first.x, dy = second.y - first.y;
@@ -65,15 +70,15 @@
   G.sampleElementDisplacements = function (dataset, element, displacement, sampleCount) {
     var first = dataset.nodesById.get(element.nodeIds[0]);
     var second = dataset.nodesById.get(element.nodeIds[1]);
-    var firstD = G.nodeDisplacement(dataset, first.id, displacement);
-    var secondD = G.nodeDisplacement(dataset, second.id, displacement);
+    var firstD = G.elementEndDisplacement(dataset, element, 1, displacement);
+    var secondD = G.elementEndDisplacement(dataset, element, 2, displacement);
     return element.type === 112 ? G.sample112Displacements(firstD, secondD, sampleCount) : G.sample113Displacements(first, second, firstD, secondD, sampleCount);
   };
   G.sampleElement = function (dataset, element, displacement, scale, samples) {
     var first = dataset.nodesById.get(element.nodeIds[0]);
     var second = dataset.nodesById.get(element.nodeIds[1]);
-    var firstD = G.nodeDisplacement(dataset, first.id, displacement);
-    var secondD = G.nodeDisplacement(dataset, second.id, displacement);
+    var firstD = G.elementEndDisplacement(dataset, element, 1, displacement);
+    var secondD = G.elementEndDisplacement(dataset, element, 2, displacement);
     return element.type === 112 ? G.sample112(first, second, firstD, secondD, scale) : G.sample113(first, second, firstD, secondD, scale, samples);
   };
   G.modelBounds = function (model) {

@@ -11,7 +11,7 @@ if ~isequal(size(M), size(K))
         'The mass and stiffness matrices must have the same dimensions.');
 end
 
-numberOfDOFs = mesh.numberOfNodes * mesh.dofPerNode;
+numberOfDOFs = mesh.numberOfDOFs;
 if size(K, 1) ~= numberOfDOFs
     error('MKEF:InvalidModel', ...
         'Matrix dimensions do not match the mesh degrees of freedom.');
@@ -21,6 +21,9 @@ model = struct();
 model.stiffness = K;
 model.mass = M;
 model.dofMap = mesh.iMnod;
+model.dofRegistry = mesh.dofRegistry;
+model.releases = mesh.releases;
+model.warnings = mesh.warnings;
 model.fixedBoundaryConditions = normalizeSupports(mesh.allFixBCs, mesh.dofPerNode);
 model.forceBoundaryConditions = mesh.allForceBCs;
 model.elementLoads = mesh.elementLoads;

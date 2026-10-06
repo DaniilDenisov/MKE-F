@@ -165,7 +165,7 @@ switch data.analysis.type
                 data.analysis.displacementAmplitudeSpectrum);
         end
 end
-if data.version == 3
+if isfield(data.model,'mpcs')
     output.model.mpcs = recordArray(data.model.mpcs);
     for i = 1:numel(output.model.mpcs)
         output.model.mpcs{i}.masters = recordArray(data.model.mpcs(i).masters);
@@ -182,6 +182,14 @@ if data.version == 3
                 output.analysis.(name) = numericMatrix(data.analysis.(name));
             end
         end
+    end
+end
+if data.version == 4
+    output.model.dofRegistry = recordArray(data.model.dofRegistry);
+    output.model.releases = recordArray(data.model.releases);
+    output.model.warnings = data.model.warnings;
+    for i = 1:numel(output.model.elements)
+        output.model.elements{i}.globalDOFs = numericArray(data.model.elements(i).globalDOFs);
     end
 end
 

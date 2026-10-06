@@ -35,7 +35,7 @@
   }
   function nodeComponents(dataset, vector, onlyRestrained) {
     var model = dataset.raw.model, restrained = onlyRestrained ? restrainedDOFs(dataset) : null;
-    return model.nodes.map(function (node, row) { var dofs = model.dofMap[row]; function value(local) { return !restrained || restrained.has(dofs[local]) ? vector[dofs[local] - 1] : 0; } return { node: node, x: value(0), y: value(1), moment: dofs.length > 2 ? value(2) : 0 }; });
+    return model.nodes.map(function (node, row) { var dofs = model.dofMap[row]; function value(local) { return dofs[local] && (!restrained || restrained.has(dofs[local])) ? vector[dofs[local] - 1] : 0; } return { node: node, x: value(0), y: value(1), moment: dofs.length > 2 ? value(2) : 0 }; });
   }
   function tolerance(values) { return 1e-10 * Math.max(1, Math.max.apply(null, values.map(Math.abs).concat([0]))); }
   function textLegend(text) { return text ? { kind: 'text', text: text, summary: text } : { kind: 'none', summary: '' }; }
@@ -65,7 +65,7 @@
     var vector = new Array(dataset.raw.analysis.loadVector.length).fill(0);
     dataset.raw.model.nodalLoads.forEach(function (load) {
       var dofs = dataset.raw.model.dofMap[dataset.nodeIndexById.get(load.nodeId)];
-      [load.fx, load.fy, load.mz].forEach(function (value, index) { if (index < dofs.length) vector[dofs[index]-1] += value; });
+      [load.fx, load.fy, load.mz].forEach(function (value, index) { if (dofs[index]) vector[dofs[index]-1] += value; });
     });
     return vector;
   };
@@ -128,6 +128,7 @@
   function compactVector(dataset, vector, nodeId, prefix) {
     var row = dataset.nodeIndexById.get(nodeId), dofs = dataset.raw.model.dofMap[row], threshold = tolerance(vector), values = [];
     dofs.forEach(function (id, index) {
+      if (!id) return;
       var value = vector[id - 1];
       if (Math.abs(value) <= threshold) return;
       var label = index === 0 ? 'Fx' : index === 1 ? 'Fy' : 'Mz';
@@ -142,7 +143,7 @@
     var lengthUnit = unit(dataset, 'length'), components = [];
     components.push((model.dofLabels[0] || 'ux') + '=' + withUnit(values[0], lengthUnit));
     components.push((model.dofLabels[1] || 'uy') + '=' + withUnit(values[1], lengthUnit));
-    if (values.length > 2) components.push((model.dofLabels[2] || 'rz') + '=' + withUnit(values[2], 'rad'));
+    if (values.length > 2) components.push((model.dofLabels[2] || 'rz') + '=' + (dofs[2] ? withUnit(values[2], 'rad') : 'not defined'));
     var lines = ['Node ' + nodeId, '|u| = ' + withUnit(Math.hypot(values[0], values[1]), lengthUnit), 'Components: ' + components.join(', ')];
     var load = compactVector(dataset, S.nodalLoadVector(dataset), nodeId, !dataset.raw.model.elementLoads ? 'Load' : 'Nodal load');
     var reaction = compactVector(dataset, (dataset.raw.analysis.supportReactions || dataset.raw.analysis.reactions), nodeId, 'Support reaction');

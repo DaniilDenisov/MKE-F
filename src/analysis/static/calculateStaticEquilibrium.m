@@ -11,6 +11,10 @@ momentZ = sum(model.nodeCoordinates(:, 1) .* forceY - ...
     model.nodeCoordinates(:, 2) .* forceX);
 if model.dofPerNode >= 3
     momentDOFs = model.dofMap(:, 3);
+    if isfield(model,'dofRegistry')
+        momentDOFs = find(strcmp({model.dofRegistry.component},'thetaZ'));
+    end
+    momentDOFs = momentDOFs(momentDOFs > 0);
     momentZ = momentZ + sum(externalForces(momentDOFs));
 end
 

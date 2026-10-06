@@ -4,7 +4,7 @@
   function clear(el) { while (el.firstChild) el.removeChild(el.firstChild); }
   function format(v) { return Number(v.toPrecision(7)).toString(); }
   V.mount=function (dataset,renderer,panel) {
-    clear(panel); panel.hidden=dataset.raw.version !== 3;
+    clear(panel); panel.hidden=!dataset.raw.model.mpcs;
     if (panel.hidden) return null;
     var a=dataset.raw.analysis, model=dataset.raw.model, state={index:0};
     var title=document.createElement('h2'); title.textContent='MPC constraints and forces'; panel.appendChild(title);
@@ -36,7 +36,7 @@
       if (!a[name]) return null;
       if (a.type==='static') return a[name];
       if (a.type==='modal') return a[name].map(function (row) { return row[index]; });
-      var values=new Array(model.nodes.length*model.dofPerNode).fill(null);
+      var values=new Array(model.numberOfDOFs || model.nodes.length*model.dofPerNode).fill(null);
       a.globalDOFIds.forEach(function (id,row) { values[id-1]=a[name][row][index]; }); return values;
     }
     function drawForces(layer,values,color,label) {
@@ -69,6 +69,7 @@
       model.supports.forEach(function (s) { window.MKEFSupports.dofs(s,model.dofPerNode).forEach(function (d) { relevant.add(s.nodeId+':'+d); }); });
       relevant.forEach(function (key) {
         var pair=key.split(':').map(Number), row=dataset.nodeIndexById.get(pair[0]), id=model.dofMap[row][pair[1]-1], tr=document.createElement('tr');
+        if (!id) return;
         [pair[0],model.dofLabels[pair[1]-1],supports&&supports[id-1]!==null?format(supports[id-1]):'not exported',forces&&forces[id-1]!==null?format(forces[id-1]):'not exported'].forEach(function (text) { var td=document.createElement('td');td.textContent=String(text);tr.appendChild(td); }); body.appendChild(tr);
       });
       chart.hidden=a.type!=='transient'||!a.mpcMultipliers;

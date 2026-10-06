@@ -1,5 +1,5 @@
 function data = createPostprocessorData(model, result, options)
-%CREATEPOSTPROCESSORDATA Convert an analysis model/result to schema version 1 or 2.
+%CREATEPOSTPROCESSORDATA Convert an analysis model/result to schema v1-v4.
 % The returned struct contains only postprocessing data; assembled and
 % element matrices are deliberately excluded.
 
@@ -101,7 +101,17 @@ if isfield(model,'multiPointConstraints') && ~isempty(model.multiPointConstraint
         end
     end
 end
-
+if isfield(model,'releases') && ~isempty(model.releases)
+    data.version = 4;
+    data.model.numberOfDOFs = model.numberOfDOFs;
+    data.model.dofRegistry = model.dofRegistry;
+    data.model.releases = model.releases;
+    if isfield(data.model.releases,'sourceLine'), data.model.releases = rmfield(data.model.releases,'sourceLine'); end
+    data.model.warnings = model.warnings;
+    for i = 1:numel(model.elementData)
+        data.model.elements(i).globalDOFs = model.elementData(i).dofs(:).';
+    end
+end
 end
 
 function analysisType = validateAnalysisType(result)
@@ -249,7 +259,8 @@ if ~isnumeric(model.dofPerNode) || ~isscalar(model.dofPerNode) || ...
         ~ismember(model.dofPerNode, [2 3])
     invalidModel('model.dofPerNode must be 2 or 3.');
 end
-if model.numberOfDOFs ~= model.numberOfNodes * model.dofPerNode
+hasReleases = isfield(model,'releases') && ~isempty(model.releases);
+if ~hasReleases && model.numberOfDOFs ~= model.numberOfNodes * model.dofPerNode
     invalidModel('The model node and DOF counts are inconsistent.');
 end
 
@@ -263,8 +274,23 @@ validateNumeric(model.dofMap, 'model.dofMap');
 if ~isequal(size(model.dofMap), ...
         [model.numberOfNodes model.dofPerNode]) || ...
         any(model.dofMap(:) ~= fix(model.dofMap(:))) || ...
-        ~isequal(sort(model.dofMap(:)).', 1:model.numberOfDOFs)
+        (~hasReleases && ~isequal(sort(model.dofMap(:)).', 1:model.numberOfDOFs))
     invalidModel('model.dofMap must contain every global DOF exactly once.');
+end
+
+if hasReleases
+    requireFields(model,{'dofRegistry','warnings'},'model');
+    [expectedMap,expectedRegistry,expectedElements] = buildDOFRegistry( ...
+        model.numberOfNodes,model.dofPerNode,model.elementData,model.releases);
+    if ~isequal(expectedMap,model.dofMap) || ~isequal(expectedRegistry,model.dofRegistry) || ...
+            numel(expectedRegistry) ~= model.numberOfDOFs
+        invalidModel('Inconsistent release DOF registry.');
+    end
+    for i = 1:numel(expectedElements)
+        if ~isequal(expectedElements(i).dofs,model.elementData(i).dofs)
+            invalidModel('Inconsistent element DOF map.');
+        end
+    end
 end
 
 if ~isstruct(model.elementData) || isempty(model.elementData)
