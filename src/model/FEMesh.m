@@ -34,7 +34,7 @@ classdef FEMesh < handle
             obj.sourceFilename = filename;
             obj.allNodes = zeros(0, 3);
             obj.allMeshElems = struct([]);
-            obj.allFixBCs = zeros(0, 5);
+            obj.allFixBCs = normalizeSupports(zeros(0, 5), 3);
             obj.allForceBCs = zeros(0, 6);
             obj.analysisConfiguration = struct();
 
@@ -276,9 +276,9 @@ classdef FEMesh < handle
                 values = this.parseNumericRecord( ...
                     line, lineNumber, 5, ...
                     'fixed condition [type,node,0,0,0]');
-                if values(1) ~= fix(values(1)) || ~ismember(values(1), 1:4)
+                if values(1) ~= fix(values(1)) || ~ismember(values(1), 1:(6 + (this.dofPerNode == 3)))
                     this.fail('MKEF:MalformedInput', lineNumber, ...
-                        'Unsupported fixed-condition type %g; expected 1, 2, 3, or 4.', ...
+                        'Unsupported fixed-condition type %g; expected a supported type 1..7.', ...
                         values(1));
                 end
                 this.validateNodeID(values(2), lineNumber, 'fixed condition');
@@ -288,7 +288,7 @@ classdef FEMesh < handle
                 end
                 conditions(i, :) = values;
             end
-            this.allFixBCs = [this.allFixBCs; conditions];
+            this.allFixBCs = [this.allFixBCs; normalizeSupports(conditions, this.dofPerNode)];
             this.numberOfFixBCs = size(this.allFixBCs, 1);
         end
 

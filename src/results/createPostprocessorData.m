@@ -256,20 +256,6 @@ for i = 1:numel(model.elementData)
     end
 end
 
-validateNumeric(model.fixedBoundaryConditions, ...
-    'model.fixedBoundaryConditions');
-if size(model.fixedBoundaryConditions, 2) ~= 5
-    invalidModel('model.fixedBoundaryConditions must have five columns.');
-end
-for i = 1:size(model.fixedBoundaryConditions, 1)
-    support = model.fixedBoundaryConditions(i, :);
-    if support(1) ~= fix(support(1)) || ~ismember(support(1), 1:4) || ...
-            support(2) ~= fix(support(2)) || support(2) < 1 || ...
-            support(2) > model.numberOfNodes || any(support(3:5) ~= 0)
-        invalidModel(sprintf('Support %d is invalid.', i));
-    end
-end
-
 % Reuse the production constraint rules, including duplicate-DOF rejection.
 try
     partitionDOFs(model);
@@ -333,11 +319,11 @@ end
 output.elements = elements;
 output.dofMap = double(model.dofMap);
 
-supports = repmat(struct('type', 0, 'nodeId', 0), ...
-    size(model.fixedBoundaryConditions, 1), 1);
+masks = normalizeSupports(model.fixedBoundaryConditions, model.dofPerNode);
+supports = repmat(struct('type', 0, 'nodeId', 0), numel(masks), 1);
 for i = 1:numel(supports)
-    supports(i).type = model.fixedBoundaryConditions(i, 1);
-    supports(i).nodeId = model.fixedBoundaryConditions(i, 2);
+    supports(i).type = supportType(masks(i), model.dofPerNode);
+    supports(i).nodeId = masks(i).node;
 end
 output.supports = supports;
 end

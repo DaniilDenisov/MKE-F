@@ -131,7 +131,7 @@
         for (var s = 0; s < supportCount; s += 1) {
           var supportRecord = nextData('fixed condition');
           var supportValues = parseRecord(supportRecord.text, 5, supportRecord.line, 'Fixed condition');
-          model.supports.push({ type: supportValues[0], node: supportValues[1] });
+          try { model.supports.push(global.MKEFSupports.fromType(supportValues[0], supportValues[1], model.elementType === 112 ? 2 : 3)); } catch (error) { fail(supportRecord.line, error.message); }
           if (supportValues.slice(2).some(function (value) { return value !== 0; })) fail(supportRecord.line, 'Only zero prescribed displacements are supported.');
         }
       } else if (marker === 'eload_uniform') {
@@ -163,13 +163,6 @@
     return model;
   }
 
-  function constrainedDOFs(type, dofPerNode) {
-    if (type === 1) return dofPerNode === 2 ? [1, 2] : [1, 2, 3];
-    if (type === 2) return dofPerNode === 2 ? [2] : [2, 3];
-    if (type === 3) return dofPerNode === 2 ? [1] : [1, 3];
-    return dofPerNode === 2 ? [1, 2] : [1, 2];
-  }
-
   function validateModel(model, options) {
     options = options || {};
     var errors = [], nodeCount = model.nodes.length, dofPerNode = model.elementType === 112 ? 2 : 3;
@@ -194,15 +187,14 @@
     });
     var constrained = {};
     model.supports.forEach(function (support, index) {
-      if (!integer(support.type) || support.type < 1 || support.type > 4) add('Support ' + (index + 1) + ' has an invalid type.');
       if (!integer(support.node) || support.node < 1 || support.node > nodeCount) add('Support ' + (index + 1) + ' has an invalid node.');
-      if (integer(support.type) && support.type >= 1 && support.type <= 4 && integer(support.node)) {
-        constrainedDOFs(support.type, dofPerNode).forEach(function (dof) {
+      try {
+        global.MKEFSupports.dofs(support, dofPerNode).forEach(function (dof) {
           var key = support.node + ':' + dof;
-          if (constrained[key]) add('Support ' + (index + 1) + ' duplicates a constrained degree of freedom at node ' + support.node + '.');
+          if (constrained[key]) add('Support ' + (index + 1) + ' duplicates node ' + support.node + ' DOF ' + ['ux','uy','thetaZ'][dof - 1] + '.');
           constrained[key] = true;
         });
-      }
+      } catch (error) { add(error.message); }
     });
     model.loads.forEach(function (load, index) {
       var label = 'Load ' + (index + 1);
@@ -246,7 +238,7 @@
       out.push(values.map(numberText).join(','));
     });
     out.push('bcfix', String(model.supports.length));
-    model.supports.forEach(function (support) { out.push([support.type, support.node, 0, 0, 0].join(',')); });
+    model.supports.forEach(function (support) { out.push([global.MKEFSupports.type(support, model.elementType === 112 ? 2 : 3), support.node, 0, 0, 0].join(',')); });
     [{ type: 10, marker: 'bcforce_stat' }, { type: 11, marker: 'bcforce_harm' }, { type: 12, marker: 'bcforce_pulse' }, { type: 13, marker: 'bcforce_step' }].forEach(function (group) {
       var loads = model.loads.filter(function (load) { return load.type === group.type; });
       if (!loads.length) return;

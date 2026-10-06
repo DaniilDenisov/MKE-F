@@ -55,3 +55,5 @@ visible frame and chart, not a reconstructed or subsequently animated frame.
 All numbers are finite JSON numbers. Complex, sparse, `NaN`, and infinite
 values are invalid. Missing optional transient fields are omitted. Readers must
 reject unknown major versions and may ignore additional fields in version 1.
+
+Support catalog extension: frame support types 5, 6, 7 restrain only ux, uy, thetaZ respectively. Trusses accept types 1–6, export canonical types 1, 3, 2, and reject 7. Existing types retain their original meaning. Older readers reject unknown support types.

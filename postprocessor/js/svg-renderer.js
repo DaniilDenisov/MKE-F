@@ -108,7 +108,7 @@
     dataset.raw.model.supports.forEach(function (support) {
       var point = M.geometry.svgPoint(dataset.nodesById.get(support.nodeId));
       var supportName = window.MKEFSupportMarkers.label(support.type, dataset.raw.model.dofPerNode);
-      window.MKEFSupportMarkers.append(M.svgElement, this.layers.supports, point.x, point.y, support.type, this.size * .035, { 'data-node-id': support.nodeId, 'data-support-node-id': support.nodeId }, 'Support ' + support.type + ' · ' + supportName + ' at node ' + support.nodeId);
+      window.MKEFSupportMarkers.append(M.svgElement, this.layers.supports, point.x, point.y, dataset.raw.model.dofPerNode === 2 && support.type !== 1 && support.type !== 4 ? (support.type === 2 || support.type === 6 ? 6 : 5) : support.type, this.size * .035, { 'data-node-id': support.nodeId, 'data-support-node-id': support.nodeId }, 'Support ' + support.type + ' · ' + supportName + ' at node ' + support.nodeId);
     }, this);
     this.setVisibility({ showOriginal: true, showDeformed: true, showNodes: true, showNodeLabels: false, showElementLabels: false, showSupports: true, showLoads: true, showReactions: true });
     this.fit();

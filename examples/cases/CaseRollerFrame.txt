@@ -1,0 +1,17 @@
+# Frame pin at node 1 and a roller restraining only uy at node 2.
+analysis
+static
+nodes
+2
+0,0,0
+2,0,0
+elems_113
+1
+113,1,2,0.01,200000000000,7850,0.000001
+bcfix
+2
+4,1,0,0,0
+6,2,0,0,0
+eload_uniform
+1
+20,1,2,0,-1000

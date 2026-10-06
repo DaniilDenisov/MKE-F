@@ -102,7 +102,7 @@
       var path = '$.model.supports[' + index + ']';
       objectAt(support, path);
       positiveInteger(support.type, path + '.type');
-      if (support.type > 4) fail(path + '.type', 'unsupported support type');
+      try { window.MKEFSupports.mask(support, model.dofPerNode); } catch (error) { fail(path + '.type', error.message); }
       positiveInteger(support.nodeId, path + '.nodeId');
       if (!nodeIds.has(support.nodeId)) fail(path + '.nodeId', 'unknown node ID');
     });

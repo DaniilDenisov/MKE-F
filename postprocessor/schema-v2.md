@@ -42,3 +42,5 @@ an analytical reconstruction of the internal loaded-beam deflection.
 For both original and deformed geometry, distributed-load arrows keep their
 original physical direction. SVG/PNG snapshots include the visible arrows
 and sampled diagrams.
+
+Support catalog extension: frame support types 5, 6, 7 restrain only ux, uy, thetaZ respectively. Trusses accept types 1–6, export canonical types 1, 3, 2, and reject 7. Existing types retain their original meaning. Older readers reject unknown support types.

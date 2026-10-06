@@ -5,6 +5,7 @@ const path = require('path');
 const http = require('http');
 const assert = require('assert/strict');
 const root = path.resolve(__dirname, '..');
+require('child_process').execFileSync(process.execPath, [path.join(__dirname, 'generate-support-catalog.cjs'), '--check']);
 const server = http.createServer((req, res) => {
   const pathname = decodeURIComponent(new URL(req.url, 'http://localhost').pathname);
   let file = path.resolve(root, '.' + pathname);

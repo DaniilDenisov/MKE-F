@@ -19,6 +19,7 @@ RUN groupadd --gid 10001 mkef \
 WORKDIR /app
 COPY --chown=mkef:mkef setup.m /app/setup.m
 COPY --chown=mkef:mkef src /app/src
+COPY --chown=mkef:mkef shared /app/shared
 COPY --chown=mkef:mkef scripts /app/scripts
 COPY --chown=mkef:mkef examples /app/examples
 COPY --chown=mkef:mkef backend /app/backend

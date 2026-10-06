@@ -27,6 +27,7 @@ runNamedTest('nodal load semantics', @testNodalLoadSemantics);
 runNamedTest('functional analysis core', @testFunctionalAnalysisCore);
 runNamedTest('free-DOF reduction', @testFreeDOFReduction);
 runNamedTest('constraint validation', @testConstraintValidation);
+runNamedTest('support masks', @test_support_masks);
 runNamedTest('Newmark transient analysis', @test_newmark_transient);
 runNamedTest('element result recovery', @test_result_recovery);
 runNamedTest('uniform element loads', @test_element_loads);
@@ -351,17 +352,17 @@ problem = StructFEProblem(fullfile('tests', 'fixtures', ...
 model = problem.GetAnalysisModel();
 
 duplicateModel = model;
-duplicateModel.fixedBoundaryConditions(end + 1, :) = [2, 1, 0, 0, 0];
+duplicateModel.fixedBoundaryConditions(end + 1, 1) = normalizeSupports([2, 1, 0, 0, 0], 2);
 assertThrows('MKEF:DuplicateConstraint', ...
     @() partitionDOFs(duplicateModel));
 
 invalidTypeModel = model;
-invalidTypeModel.fixedBoundaryConditions(1, 1) = 99;
+invalidTypeModel.fixedBoundaryConditions = [99, 1, 0, 0, 0];
 assertThrows('MKEF:InvalidConstraint', ...
     @() partitionDOFs(invalidTypeModel));
 
 invalidNodeModel = model;
-invalidNodeModel.fixedBoundaryConditions(1, 2) = 3;
+invalidNodeModel.fixedBoundaryConditions(1).node = 3;
 assertThrows('MKEF:InvalidConstraint', ...
     @() partitionDOFs(invalidNodeModel));
 

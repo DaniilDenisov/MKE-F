@@ -16,10 +16,7 @@
   document.head.appendChild(style);
 
   S.label = function (type, dofPerNode) {
-    if (type === 1) return 'fixed';
-    if (type === 2) return 'free ux only';
-    if (type === 3) return 'free uy only';
-    return dofPerNode === 2 ? 'fixed (truss)' : 'free rotation only';
+    return global.MKEFSupports.label({type:type}, dofPerNode);
   };
 
   S.append = function (svgElement, layer, x, y, type, size, attributes, titleText) {
@@ -58,6 +55,15 @@
       marker.appendChild(svgElement('circle', { cx: x - size * 0.5, cy: y, r: size * 0.13, class: 'support-roller' }));
       marker.appendChild(svgElement('path', { d: 'M ' + (x - size * 0.64) + ' ' + y + ' l ' + (-size * 0.62) + ' ' + (-size * 0.72) + ' l 0 ' + (size * 1.44) + ' Z', class: 'support-body' }));
       verticalGround(x - size * 1.36, size * 0.82);
+    } else if (type === 5 || type === 6) {
+      var body = svgElement('g', type === 5 ? {transform:'rotate(90 ' + x + ' ' + y + ')'} : {});
+      body.appendChild(svgElement('path', {d:'M ' + x + ' ' + y + ' l ' + (-size*.7) + ' ' + size + ' h ' + (size*1.4) + ' Z', class:'support-body'}));
+      [-.45,.45].forEach(function (offset) { body.appendChild(svgElement('circle', {cx:x+size*offset,cy:y+size*1.2,r:size*.15,class:'support-roller'})); });
+      body.appendChild(svgElement('line', {x1:x-size,y1:y+size*1.4,x2:x+size,y2:y+size*1.4,class:'support-ground'}));
+      marker.appendChild(body);
+    } else if (type === 7) {
+      marker.appendChild(svgElement('rect', {x:x-size*.5,y:y-size*.5,width:size,height:size,class:'support-body'}));
+      var text = svgElement('text', {x:x,y:y+size*.3,'text-anchor':'middle','font-size':size*.8}); text.textContent = 'θ'; marker.appendChild(text);
     } else {
       marker.appendChild(svgElement('path', { d: 'M ' + x + ' ' + y + ' l ' + (-size) + ' ' + size + ' l ' + (2 * size) + ' 0 Z', class: 'support-body' }));
       horizontalGround(y + size * 1.1, size * 1.1);

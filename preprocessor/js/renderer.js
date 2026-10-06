@@ -219,7 +219,10 @@
   Renderer.prototype.drawSupport = function (layer, support, scale) {
     var node = this.model.nodes[support.node - 1];
     if (!node) return;
-    global.MKEFSupportMarkers.append(M.svgElement, layer, node.x, -node.y, support.type, scale * 0.035, { 'aria-hidden': 'true' });
+    var dofs = this.model.elementType === 112 ? 2 : 3, type;
+    try { type = global.MKEFSupports.type(support, dofs); } catch (_) { return; }
+    if (dofs === 2 && type !== 1) type = type === 2 ? 6 : 5;
+    global.MKEFSupportMarkers.append(M.svgElement, layer, node.x, -node.y, type, scale * 0.035, { 'aria-hidden': 'true' });
   };
 
   Renderer.prototype.drawLoad = function (layer, load, scale) {

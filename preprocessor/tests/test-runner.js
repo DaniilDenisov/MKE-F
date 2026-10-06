@@ -6,6 +6,18 @@
   function throws(fragment, operation) { try { operation(); } catch (error) { assert(error.message.indexOf(fragment) >= 0, 'Unexpected error: ' + error.message); return; } throw new Error('Expected an error containing ' + fragment); }
   function fixture(record) { return ['# browser fixture', 'analysis', record || 'static', 'nodes', '2', '0,0,0', '1,0,0', 'elems_113', '1', '113,1,2,0.1,200,10,0.01', 'bcfix', '1', '1,1,0,0,0', 'bcforce_stat', '1', '10,2,5,-2,1', ''].join('\n'); }
 
+  test('complete support catalog and family preservation', function () {
+    var S = MKEFSupports;
+    for (var type=1; type<=7; type++) assert(S.type(S.fromType(type,1,3),3) === type);
+    assert(S.type(S.fromType(4,1,2),2) === 1);
+    assert(S.type(S.fromType(5,1,2),2) === 3);
+    throws('Unsupported', function () { S.fromType(7,1,2); });
+    var model = {elementType:112,supports:[S.fromType(1,1,2)]};
+    S.changeFamily(model,113); assert(S.type(model.supports[0],3) === 4);
+    model.supports.push(S.fromType(7,2,3));
+    throws('thetaZ',function () { S.changeFamily(model,112); });
+    assert(model.elementType === 113);
+  });
   test('parses and serializes a configured static case', function () { var model = MKEFPre.caseFormat.parse(fixture()), text = MKEFPre.caseFormat.serialize(model); assert(model.analysis.type === 'static'); assert(text.indexOf('analysis\nstatic\n') === 0); assert(text.indexOf('bcforce_stat\n1\n10,2,5,-2,1') > 0); });
   test('canonical round trip preserves semantic data', function () { var first = MKEFPre.caseFormat.parse(fixture()), second = MKEFPre.caseFormat.parse(MKEFPre.caseFormat.serialize(first)); assert(JSON.stringify(first) === JSON.stringify(second)); });
   test('legacy cases require a task only at export', function () { var model = MKEFPre.caseFormat.parse(fixture().replace('analysis\nstatic\n', '')); assert(model.analysis.type === ''); throws('Select static', function () { MKEFPre.caseFormat.serialize(model); }); });

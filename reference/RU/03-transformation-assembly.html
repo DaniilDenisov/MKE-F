@@ -314,7 +314,8 @@ disp(tx' * r.mass * tx);</code></pre>
           <li><a href="../examples/example_02_sparse_assembly.m"><code>example_02_sparse_assembly.m</code></a> — учебная сборка двух элементов.</li>
         </ul>
       </section>
-    </main>
+    <section aria-labelledby="support-masks-title"><h2 id="support-masks-title">SPC: ux, uy, thetaZ</h2><p>Опоры хранятся как маски fixUx/fixUy/fixThetaZ. Типы 1–4 сохраняют прежний смысл; новые типы: 5 — только ux, 6 — только uy, 7 — только thetaZ. Для фермы тип 7 запрещён, а экспорт использует только типы 1, 3 и 2. При смене семейства маски сохраняются; перед переходом к ферме нужно убрать thetaZ. Повторы диагностируются по узлу и СС.</p><p><a href="../../examples/cases/CaseRollerFrame.txt">CaseRollerFrame.txt</a></p></section>
+</main>
   </div>
 
   <nav class="page-nav" aria-label="Навигация между главами">

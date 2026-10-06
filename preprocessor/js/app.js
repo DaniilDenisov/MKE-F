@@ -199,7 +199,8 @@
       var row = document.createElement('tr'); idCell(row, index + 1);
       inputCell(row, support.node, 'number', function (value) { commit(function () { state.supports[index].node = value; }); });
       var supportDOFs = state.elementType === 112 ? 2 : 3;
-      selectCell(row, support.type, [1, 2, 3, 4].map(function (type) { return [type, type + ' · ' + global.MKEFSupportMarkers.label(type, supportDOFs)]; }), function (value) { commit(function () { state.supports[index].type = value; }); });
+      selectCell(row, global.MKEFSupports.type(support, supportDOFs), (supportDOFs === 2 ? [1, 3, 2] : [1, 2, 3, 4, 5, 6, 7]).map(function (type) { return [type, type + ' · ' + global.MKEFSupportMarkers.label(type, supportDOFs)]; }), function (value) { commit(function () { state.supports[index] = global.MKEFSupports.fromType(value, support.node, supportDOFs); }); });
+      idCell(row, global.MKEFSupports.label(support, supportDOFs).replace('Fixed: ', ''));
       deleteCell(row, function () { commit(function () { state.supports.splice(index, 1); }); }, 'support ' + (index + 1)); elements.supportsBody.appendChild(row);
     });
     elements.supportCount.textContent = '(' + state.supports.length + ')';
@@ -304,7 +305,7 @@
     byId('reset-view').addEventListener('click', function () { renderer.fit(); renderer.draw(state); });
     elements.caseName.addEventListener('change', function () { state.name = elements.caseName.value.trim() || 'Case'; dirty = true; render(); });
     elements.analysisType.addEventListener('change', function () { var value = elements.analysisType.value; commit(function () { state.analysis.type = value; }); });
-    elements.elementType.addEventListener('change', function () { var value = Number(elements.elementType.value); if (state.elements.length) { global.alert('Delete all elements before changing the element family.'); elements.elementType.value = String(state.elementType); return; } if (value === 112 && (state.loads.some(function (load) { return load.mz !== 0; }) || (state.analysis.type === 'transient' && state.analysis.monitorDOF > 2))) { global.alert('Set all load moments to zero and choose monitor DOF 1 or 2 before changing to a truss.'); elements.elementType.value = String(state.elementType); return; } commit(function () { state.elementType = value; }); });
+    elements.elementType.addEventListener('change', function () { var value = Number(elements.elementType.value); if (state.elements.length) { global.alert('Delete all elements before changing the element family.'); elements.elementType.value = String(state.elementType); return; } if (value === 112 && (state.loads.some(function (load) { return load.mz !== 0; }) || (state.analysis.type === 'transient' && state.analysis.monitorDOF > 2))) { global.alert('Set all load moments to zero and choose monitor DOF 1 or 2 before changing to a truss.'); elements.elementType.value = String(state.elementType); return; } commit(function () { global.MKEFSupports.changeFamily(state, value); }); });
     [['timeStep', elements.timeStep], ['duration', elements.duration], ['monitorNode', elements.monitorNode]].forEach(function (binding) { binding[1].addEventListener('change', function () { var value = numeric(binding[1]); commit(function () { state.analysis[binding[0]] = value; }); }); });
     elements.monitorDOF.addEventListener('change', function () { commit(function () { state.analysis.monitorDOF = Number(elements.monitorDOF.value); }); });
     elements.gridEnabled.addEventListener('change', function () { renderer.setGrid(elements.gridEnabled.checked, numeric(elements.gridSpacing)); });
@@ -324,7 +325,7 @@
         setNotice('Element Add mode: select first node for element');
       }
     });
-    byId('add-support').addEventListener('click', function () { commit(function () { state.supports.push({ type: 1, node: currentNode() }); }); });
+    byId('add-support').addEventListener('click', function () { commit(function () { state.supports.push(global.MKEFSupports.fromType(1, currentNode(), state.elementType === 112 ? 2 : 3)); }); });
     elements.addLoad.addEventListener('click', function () { if (state.analysis.type === 'modal') return; commit(function () { state.loads.push({ type: state.analysis.type === 'static' ? 10 : 13, node: currentNode(), fx: 0, fy: -1, mz: 0, frequency: null }); }); });
     elements.addElementLoad.addEventListener('click', function () { if (elements.addElementLoad.disabled) return; commit(function () { state.elementLoads.push({ type: 20, elementId: selection.index + 1, coordinateSystem: 2, qx: 0, qy: -1 }); }); });
     var drop = byId('drop-zone'); drop.addEventListener('dragover', function (event) { event.preventDefault(); }); drop.addEventListener('drop', function (event) { event.preventDefault(); if (event.dataTransfer.files.length) openFile(event.dataTransfer.files[0]); });

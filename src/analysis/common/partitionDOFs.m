@@ -1,44 +1,22 @@
 function [fixedDOFs, freeDOFs] = partitionDOFs(model)
-%PARTITIONDOFS Convert support definitions to validated DOF index vectors.
-
-fixedDOFs = [];
-for i = 1:size(model.fixedBoundaryConditions, 1)
-    boundaryCondition = model.fixedBoundaryConditions(i, :);
-    boundaryType = boundaryCondition(1);
-    nodeNumber = boundaryCondition(2);
-
-    if ~isfinite(boundaryType) || boundaryType ~= fix(boundaryType) || ...
-            ~ismember(boundaryType, 1:4)
-        error('MKEF:InvalidConstraint', ...
-            'Constraint %d has unsupported type %g.', i, boundaryType);
+%PARTITIONDOFS Partition masks; legacy numeric records are adapted at entry.
+supports = normalizeSupports(model.fixedBoundaryConditions, model.dofPerNode);
+restrained = false(1, model.numberOfDOFs);
+labels = {'ux', 'uy', 'thetaZ'};
+for i = 1:numel(supports)
+    s = supports(i);
+    if s.node ~= fix(s.node) || s.node < 1 || s.node > model.numberOfNodes
+        error('MKEF:InvalidConstraint', 'Constraint %d refers to invalid node %g.', i, s.node);
     end
-    if ~isfinite(nodeNumber) || nodeNumber ~= fix(nodeNumber) || ...
-            nodeNumber < 1 || nodeNumber > model.numberOfNodes
-        error('MKEF:InvalidConstraint', ...
-            'Constraint %d refers to invalid node %g.', i, nodeNumber);
+    local = find([s.fixUx s.fixUy s.fixThetaZ]);
+    for dof = local
+        id = model.dofMap(s.node, dof);
+        if restrained(id)
+            error('MKEF:DuplicateConstraint', 'Constraint %d repeats node %d DOF %s.', i, s.node, labels{dof});
+        end
+        restrained(id) = true;
     end
-
-    switch boundaryType
-        case 1
-            localFixedDOFs = 1:model.dofPerNode;
-        case 2
-            localFixedDOFs = 2:model.dofPerNode;
-        case 3
-            localFixedDOFs = [1, 3:model.dofPerNode];
-        case 4
-            localFixedDOFs = [1:2, 4:model.dofPerNode];
-    end
-
-    newFixedDOFs = model.dofMap(nodeNumber, localFixedDOFs);
-    duplicateDOFs = intersect(fixedDOFs, newFixedDOFs);
-    if ~isempty(duplicateDOFs)
-        error('MKEF:DuplicateConstraint', ...
-            'Constraint %d repeats restrained global DOF %d.', ...
-            i, duplicateDOFs(1));
-    end
-    fixedDOFs = [fixedDOFs, newFixedDOFs]; %#ok<AGROW>
 end
-
-fixedDOFs = sort(fixedDOFs);
-freeDOFs = setdiff(1:model.numberOfDOFs, fixedDOFs);
+fixedDOFs = find(restrained);
+freeDOFs = find(~restrained);
 end

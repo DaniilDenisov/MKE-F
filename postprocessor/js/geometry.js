@@ -104,9 +104,6 @@
     }).join(' ');
   };
   G.restrainedLocalDOFs = function (type, dofPerNode) {
-    if (type === 1) return Array.from({ length: dofPerNode }, function (_, i) { return i; });
-    if (type === 2) return Array.from({ length: dofPerNode - 1 }, function (_, i) { return i + 1; });
-    if (type === 3) return [0].concat(dofPerNode === 3 ? [2] : []);
-    return [0, 1];
+    return window.MKEFSupports.dofs({type:type}, dofPerNode).map(function (dof) { return dof - 1; });
   };
 }(window.MKEFPost));
