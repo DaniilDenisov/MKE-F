@@ -221,7 +221,7 @@
     this.applyView();
   };
 
-  Renderer.prototype.setTool = function (tool, pendingNode) { this.tool = tool; this.pendingNode = Number.isInteger(pendingNode) ? pendingNode : null; this.previewPointerPoint = null; this.previewPoint = null; this.draw(); };
+  Renderer.prototype.setTool = function (tool, pendingNode) { this.tool = tool; this.pendingNode = Number.isInteger(pendingNode) ? pendingNode : null; this.previewPointerPoint = null; this.previewPoint = null; this.draw(); if (this.callbacks.toolChanged) this.callbacks.toolChanged(); };
   Renderer.prototype.setSelection = function (selection) { this.selection = selection; this.draw(); };
 
   Renderer.prototype.updateNodePreview = function (point) {
@@ -244,12 +244,12 @@
     if (this.tool === 'member') {
       if (this.pendingNode === null) {
         this.pendingNode = index;
-        if (this.callbacks.elementPending) this.callbacks.elementPending(index);
       }
       else if (this.pendingNode !== index) {
         if (!this.callbacks.addElement || this.callbacks.addElement(this.pendingNode, index) !== false) this.pendingNode = null;
       }
       this.draw();
+      if (this.callbacks.toolChanged) this.callbacks.toolChanged();
     } else if (this.callbacks.select) this.callbacks.select({ kind: 'node', index: index });
   };
 

@@ -5,6 +5,60 @@ const path = require('path');
 const http = require('http');
 const assert = require('assert/strict');
 const root = path.resolve(__dirname, '..');
+async function checkCanvasTools(page) {
+  const hint = page.locator('#canvas-tool-hint');
+  assert.equal(await page.locator('.settings [data-tool]').count(), 0);
+  assert.equal(await page.locator('.table-actions [data-tool]').count(), 3);
+  assert.equal(await page.locator('#add-node').count(), 0);
+  await page.locator('#grid-spacing').fill('0.5'); await page.locator('#grid-spacing').dispatchEvent('change');
+  await page.locator('#place-node').click();
+  assert.equal(await page.locator('#nodes-body tr').count(), 0, 'Activating placement inserted a node');
+  assert.match(await hint.innerText(), /Click the canvas/);
+  for (const point of [{x:-.5,y:0}, {x:.5,y:0}, {x:.5,y:.5}]) {
+    const screen = await page.locator('#viewport').evaluate((svg, p) => {
+      const screen = new DOMPoint(p.x, -p.y).matrixTransform(svg.getScreenCTM());
+      return {x:screen.x,y:screen.y};
+    }, point);
+    await page.mouse.click(screen.x, screen.y);
+  }
+  assert.equal(await page.locator('#nodes-body tr').count(), 3);
+  assert.deepEqual(await page.locator('#nodes-body tr').evaluateAll(rows => rows.map(row => [...row.querySelectorAll('input')].map(input => +input.value))), [[-.5,0],[.5,0],[.5,.5]]);
+  await page.locator('#add-element').click();
+  assert.match(await hint.innerText(), /select second node/); // Last placed node is selected.
+  await page.locator('.model-node[data-node-id="2"]').dispatchEvent('click');
+  assert.equal(await page.locator('#elements-body tr').count(), 0);
+  assert.match(await hint.innerText(), /select second node/, 'Rejected creation lost the first endpoint');
+  await page.locator('#element-type').selectOption('113');
+  await page.locator('#analysis-type').selectOption('static');
+  await page.locator('.model-node[data-node-id="2"]').dispatchEvent('click');
+  assert.equal(await page.locator('#elements-body tr').count(), 1);
+  assert.match(await hint.innerText(), /select first node/);
+  assert.equal(await page.locator('#add-element').getAttribute('aria-pressed'), 'true');
+  await page.locator('.model-node[data-node-id="1"]').dispatchEvent('click');
+  assert.match(await hint.innerText(), /select second node/);
+  await page.locator('.model-node[data-node-id="2"]').dispatchEvent('click');
+  assert.equal(await page.locator('#elements-body tr').count(), 2);
+  assert.match(await hint.innerText(), /select first node/);
+  await page.locator('#undo').click(); assert.equal(await page.locator('#elements-body tr').count(), 1);
+  assert.match(await hint.innerText(), /select first node/);
+  await page.locator('#redo').click(); assert.equal(await page.locator('#elements-body tr').count(), 2);
+  assert.match(await hint.innerText(), /select first node/);
+  await page.locator('.model-node[data-node-id="1"]').dispatchEvent('click');
+  await page.locator('#place-node').click();
+  assert.equal(await page.locator('.model-node.pending').count(), 0);
+  assert.match(await hint.innerText(), /Click the canvas/);
+  await page.locator('[data-tool="select"]').click();
+  assert.match(await hint.innerText(), /Select a node or element/);
+  assert.equal(await page.locator('#place-node').getAttribute('aria-pressed'), 'false');
+  assert.equal(await page.locator('#add-element').getAttribute('aria-pressed'), 'false');
+  fs.mkdirSync(path.join(root,'output'), {recursive:true});
+  await page.locator('#add-element').click();
+  await page.screenshot({path:path.join(root,'output/preprocessor-canvas-tools.png'),fullPage:true});
+  page.once('dialog', dialog => dialog.accept());
+  await page.locator('#new-case').click();
+  assert.equal(await page.locator('[data-tool="select"]').getAttribute('aria-pressed'), 'true');
+  console.log('preprocessor tools: PASS (canvas placement, repeated members, rejected creation, persistent prompts, undo/redo, mode changes)');
+}
 async function checkTableLayout(page) {
   const panels = page.locator('.tables > details');
   const initialOpen = await panels.evaluateAll(items => items.map(item => item.open));
@@ -76,6 +130,7 @@ const server = http.createServer((req, res) => {
       assert(!report.includes('FAIL'),report);
     }
     await page.goto(base+'/preprocessor/index.html');
+    await checkCanvasTools(page);
     await page.locator('#file-input').setInputFiles(path.join(root,'examples/cases/CaseUniformFrame.txt'));
     await page.waitForFunction(() => document.querySelectorAll('#element-loads-body tr').length===1);
     await checkTableLayout(page);

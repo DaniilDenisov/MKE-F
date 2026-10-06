@@ -25,8 +25,8 @@ h2 { margin:0 0 .6rem; font-size:.85rem; text-transform:uppercase; letter-spacin
 label { display:block; margin:.48rem 0 .2rem; }
 input:not([type=checkbox]),select,textarea { width:100%; min-height:34px; border:1px solid #b9c4d2; border-radius:5px; background:#fff; padding:.38rem .45rem; color:var(--ink); }
 input:focus,select:focus,textarea:focus,button:focus-visible,.button:focus-visible { outline:3px solid rgba(23,105,170,.22); outline-offset:1px; border-color:var(--blue); }
-.segmented { display:grid; gap:.35rem; }
-.segmented button.active { background:#e5f1fb; border-color:var(--blue); color:var(--blue2); font-weight:650; }
+.table-actions button.active { background:#e5f1fb; border-color:var(--blue); color:var(--blue2); font-weight:650; }
+#canvas-tool-hint { flex-basis:100%; color:var(--muted); }
 .help { color:var(--muted); }
 .workspace { min-width:0; min-height:0; display:flex; flex-direction:column; gap:.55rem; padding:.7rem; }
 .message { white-space:pre-wrap; padding:.65rem .8rem; border-radius:7px; }

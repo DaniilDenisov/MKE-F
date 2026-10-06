@@ -160,8 +160,17 @@
   }
 
   function activateCanvasTool(tool, pendingNode) {
-    document.querySelectorAll('[data-tool]').forEach(function (button) { button.classList.toggle('active', button.getAttribute('data-tool') === tool); });
     renderer.setTool(tool, pendingNode);
+  }
+
+  function updateCanvasTool() {
+    document.querySelectorAll('[data-tool]').forEach(function (button) {
+      var active = button.getAttribute('data-tool') === renderer.tool;
+      button.classList.toggle('active', active); button.setAttribute('aria-pressed', String(active));
+    });
+    byId('canvas-tool-hint').textContent = renderer.tool === 'member'
+      ? (renderer.pendingNode === null ? 'Add element: select first node.' : 'Add element: select second node.')
+      : renderer.tool === 'node' ? 'Click the canvas to place a node.' : 'Select a node or element, or drag the canvas to pan.';
   }
 
   function selectItem(next) { selection = next; render(); }
@@ -307,7 +316,8 @@
     var gridSize = numeric(elements.gridSpacing), validGridSize = Number.isFinite(gridSize) && gridSize > 0;
     elements.gridSpacing.setCustomValidity(validGridSize ? '' : 'Grid size must be positive and finite.');
     renderer.setGrid(elements.gridEnabled.checked, validGridSize ? gridSize : 1);
-    renderer.selection = selection; renderer.draw(state);
+    if (renderer.pendingNode !== null && !state.nodes[renderer.pendingNode]) renderer.pendingNode = null;
+    renderer.selection = selection; renderer.draw(state); updateCanvasTool();
     var errors = F.validate(state), text = '';
     if (!errors.length) { text = F.serialize(state); elements.validationStatus.textContent = 'Valid ' + state.analysis.type + ' case · ready to download'; elements.validationStatus.className = 'status-valid'; elements.download.disabled = false; }
     else { text = '# Resolve validation errors to generate a case file.\n'; elements.validationStatus.textContent = errors.length + ' validation issue' + (errors.length === 1 ? '' : 's'); elements.validationStatus.className = ''; elements.download.disabled = true; }
@@ -327,7 +337,7 @@
   function loadText(text, filename) {
     try {
       var parsed = F.parse(text); parsed.name = (filename || 'Case').replace(/\.txt$/i, '') || 'Case';
-      state = parsed; undoStack = []; redoStack = []; dirty = false; selection = null; setError(''); render(); renderer.fit(); renderer.draw(state);
+      state = parsed; undoStack = []; redoStack = []; dirty = false; selection = null; setError(''); render(); activateCanvasTool('select'); renderer.fit(); renderer.draw(state);
       if (!state.analysis.type) setNotice('This legacy case has no analysis section. Choose a task before exporting.');
     } catch (error) { setError(error.message); }
   }
@@ -347,9 +357,9 @@
       gridEnabled: byId('grid-enabled'), snapEnabled: byId('snap-enabled'), gridSpacing: byId('grid-spacing'), defaultArea: byId('default-area'), defaultYoung: byId('default-young'), defaultDensity: byId('default-density'), defaultInertia: byId('default-inertia'), defaultInertiaLabel: byId('default-inertia-label'),
       selectionDetails: byId('selection-details'), nodeCoordinateEditor: byId('node-coordinate-editor'), selectedNodeX: byId('selected-node-x'), selectedNodeY: byId('selected-node-y'), nodesBody: byId('nodes-body'), elementsHead: byId('elements-head'), elementsBody: byId('elements-body'), supportsBody: byId('supports-body'), loadsBody: byId('loads-body'), elementLoadsBody: byId('element-loads-body'), elementLoadCount: byId('element-load-count'), addElementLoad: byId('add-element-load'), nodeCount: byId('node-count'), elementCount: byId('element-count'), supportCount: byId('support-count'), loadCount: byId('load-count'), preview: byId('case-preview'), validationStatus: byId('validation-status'), addLoad: byId('add-load')
     };
-    renderer = new M.Renderer(byId('viewport'), { addNode: addNode, addElement: addElement, select: selectItem, placementPoint: placementPoint, elementPending: function () { setNotice('Element Add mode: select second node for element'); } });
+    renderer = new M.Renderer(byId('viewport'), { addNode: addNode, addElement: addElement, select: selectItem, placementPoint: placementPoint, toolChanged: updateCanvasTool });
     state = F.newModel('', 0); resetTablePanels(); render(); renderer.fit(); renderer.draw(state);
-    byId('new-case').addEventListener('click', function () { if (!confirmDiscard()) return; state = F.newModel('', 0); undoStack = []; redoStack = []; dirty = false; selection = null; resetTablePanels(); render(); renderer.fit(); });
+    byId('new-case').addEventListener('click', function () { if (!confirmDiscard()) return; state = F.newModel('', 0); undoStack = []; redoStack = []; dirty = false; selection = null; resetTablePanels(); render(); activateCanvasTool('select'); renderer.fit(); });
     elements.fileInput.addEventListener('change', function () { openFile(elements.fileInput.files[0]); elements.fileInput.value = ''; });
     elements.run.addEventListener('click', submitCurrentCase);
     elements.cancelRun.addEventListener('click', cancelActiveJob);
@@ -367,18 +377,13 @@
     elements.snapEnabled.addEventListener('change', function () { renderer.refreshNodePreview(); });
     elements.selectedNodeX.addEventListener('change', function () { if (!selection || selection.kind !== 'node') return; var index = selection.index, value = numeric(elements.selectedNodeX); commit(function () { M.modelEdit.updateNode(state, index, 'x', value); }); });
     elements.selectedNodeY.addEventListener('change', function () { if (!selection || selection.kind !== 'node') return; var index = selection.index, value = numeric(elements.selectedNodeY); commit(function () { M.modelEdit.updateNode(state, index, 'y', value); }); });
-    document.querySelectorAll('[data-tool]').forEach(function (button) { button.addEventListener('click', function () { activateCanvasTool(button.getAttribute('data-tool')); }); });
-    byId('add-node').addEventListener('click', function () { addNode({ x: 0, y: 0 }); });
-    byId('add-element').addEventListener('click', function () {
+    document.querySelectorAll('[data-tool]').forEach(function (button) { button.addEventListener('click', function () {
+      var tool = button.getAttribute('data-tool');
+      if (tool !== 'member') { activateCanvasTool(tool); return; }
       if (state.nodes.length < 2) { setNotice('Add at least two nodes first.'); return; }
-      if (selection && selection.kind === 'node') {
-        activateCanvasTool('member', selection.index);
-        setNotice('Element Add mode: select second node for element');
-      } else {
-        activateCanvasTool('member', null);
-        setNotice('Element Add mode: select first node for element');
-      }
-    });
+      if (selection && selection.kind === 'node') activateCanvasTool('member', selection.index);
+      else activateCanvasTool('member', null);
+    }); });
     byId('add-mpc').addEventListener('click',function () { commit(function () {
       state.mpcs = state.mpcs || [];
       state.mpcs.push({depNode:currentNode(),depDOF:1,rhs:0,masters:[{node:currentNode() === 1 ? 2 : 1,dof:1,coefficient:1}]});
