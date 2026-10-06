@@ -82,7 +82,7 @@
 
   Renderer.prototype.bindResize = function () {
     var self = this;
-    function synchronize() { self.synchronizeAspectRatio(); }
+    function synchronize() { self.synchronizeAspectRatio(); self.updateLabelSizes(); }
     if (typeof ResizeObserver !== 'undefined') {
       this.resizeObserver = new ResizeObserver(synchronize);
       this.resizeObserver.observe(this.svg);
@@ -107,6 +107,28 @@
   Renderer.prototype.applyView = function () {
     this.svg.setAttribute('viewBox', [this.view.x, this.view.y, this.view.width, this.view.height].join(' '));
     this.drawCoordinateSystem();
+    this.updateLabelSizes();
+  };
+
+  Renderer.prototype.updateLabelSizes = function () {
+    var matrix = this.svg.getScreenCTM();
+    if (!matrix) return;
+    // SVG font sizes use model units; compensate for the view transform so
+    // identifiers remain 14 screen pixels after fitting, zooming or resizing.
+    var pixelsPerUnit = Math.hypot(matrix.a, matrix.b);
+    if (!(pixelsPerUnit > 0)) return;
+    this.svg.querySelectorAll('.node-label, .element-label').forEach(function (label) {
+      label.setAttribute('font-size', 14 / pixelsPerUnit);
+      if (label.classList.contains('element-label')) {
+        var nx = Number(label.getAttribute('data-normal-x')), ny = Number(label.getAttribute('data-normal-y'));
+        var bounds = label.getBBox();
+        // Leave a six-pixel gap beyond the text bounds, including on vertical
+        // members and for identifiers with several digits.
+        var offset = 6 / pixelsPerUnit + (Math.abs(nx) * bounds.width + Math.abs(ny) * bounds.height) / 2;
+        label.setAttribute('dx', nx * offset);
+        label.setAttribute('dy', ny * offset);
+      }
+    });
   };
 
   Renderer.prototype.setGrid = function (enabled, spacing) {
@@ -273,7 +295,12 @@
       line.addEventListener('keydown', function (event) { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); if (self.callbacks.select) self.callbacks.select({ kind: 'element', index: index }); } });
       elementLayer.appendChild(line);
       [1,2].forEach(function (end) { if (global.MKEFReleases.has(self.model,index+1,end)) global.MKEFReleases.append(M.svgElement,elementLayer,{x:first.x,y:-first.y},{x:second.x,y:-second.y},end,scale*.035,{'data-release-element':index+1,'data-release-end':end}); });
-      var text = M.svgElement('text', { x: (first.x + second.x) / 2, y: -(first.y + second.y) / 2, class: 'element-label' }); text.textContent = 'E' + (index + 1); labelLayer.appendChild(text);
+      var dx = second.x - first.x, dy = first.y - second.y, length = Math.hypot(dx, dy);
+      var nx = length ? dy / length : 0, ny = length ? -dx / length : -1;
+      // Prefer the upper side (right for vertical members), independently of
+      // the element's node ordering.
+      if (ny > 0 || (ny === 0 && nx < 0)) { nx = -nx; ny = -ny; }
+      var text = M.svgElement('text', { x: (first.x + second.x) / 2, y: -(first.y + second.y) / 2, class: 'element-label', 'data-normal-x': nx, 'data-normal-y': ny }); text.textContent = 'E' + (index + 1); labelLayer.appendChild(text);
     });
     this.model.supports.forEach(function (support) { self.drawSupport(supportLayer, support, scale); });
     this.model.loads.forEach(function (load) { self.drawLoad(loadLayer, load, scale); });
@@ -284,6 +311,7 @@
       circle.addEventListener('keydown', function (event) { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); self.nodeClicked(index, event); } });
       var text = M.svgElement('text', { x: node.x + scale * 0.018, y: -node.y - scale * 0.018, class: 'node-label' }); text.textContent = String(index + 1); labelLayer.appendChild(text);
     });
+    this.updateLabelSizes();
   };
 
   Renderer.prototype.drawElementLoads = function (layer, scale) {

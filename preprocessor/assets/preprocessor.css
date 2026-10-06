@@ -53,7 +53,7 @@ input:focus,select:focus,textarea:focus,button:focus-visible,.button:focus-visib
 .model-element.selected { stroke:var(--blue); stroke-width:6px; }
 .model-node { fill:#fff; stroke:#1f2937; stroke-width:3px; vector-effect:non-scaling-stroke; cursor:pointer; }
 .model-node.selected,.model-node.pending { fill:#37b6a0; stroke:var(--blue2); stroke-width:5px; }
-.node-label,.element-label { fill:#4a5868; font-size:.045px; font-weight:650; text-anchor:middle; dominant-baseline:central; pointer-events:none; }
+.node-label,.element-label { fill:#4a5868; font-weight:650; text-anchor:middle; dominant-baseline:central; pointer-events:none; }
 .load-symbol { stroke:#d44a3a; stroke-width:3px; vector-effect:non-scaling-stroke; }
 .arrow-head { fill:#d44a3a; }
 .moment-symbol { fill:none; stroke:#d44a3a; stroke-width:3px; vector-effect:non-scaling-stroke; }
