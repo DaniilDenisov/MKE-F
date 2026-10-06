@@ -16,7 +16,8 @@ classdef FEMesh < handle
         allNodes;
         allFixBCs;
         allForceBCs;
-        elementLoads = struct('type', {}, 'elementId', {}, 'coordinateSystem', {}, 'qx', {}, 'qy', {});
+        elementLoads = struct('type', {}, 'elementId', {}, 'coordinateSystem', {}, 'qx', {}, 'qy', {}, ...
+            'qx1', {}, 'qy1', {}, 'qx2', {}, 'qy2', {});
         multiPointConstraints = struct('depNode',{},'depDOF',{},'rhs',{},'masters',{},'sourceLine',{});
         analysisConfiguration;
     end
@@ -78,7 +79,9 @@ classdef FEMesh < handle
                     case 'bcforce_stat'
                         obj.readLoads(fid, 10, 5, 'static load');
                     case 'eload_uniform'
-                        obj.readElementLoads(fid);
+                        obj.readElementLoads(fid, 20);
+                    case 'eload_linear'
+                        obj.readElementLoads(fid, 21);
                     case 'bcforce_harm'
                         obj.readLoads(fid, 11, 6, 'harmonic load');
                     case 'bcforce_pulse'
@@ -356,22 +359,29 @@ classdef FEMesh < handle
             this.numberOfFixBCs = size(this.allFixBCs, 1);
         end
 
-        function readElementLoads(this, fid)
+        function readElementLoads(this, fid, loadType)
             this.requireElements(this.sourceLineNumber);
-            count = this.readBlockCount(fid, 'uniform element load', false);
+            count = this.readBlockCount(fid, 'element load', false);
+            fieldCount = 5 + 2*(loadType == 21);
             for i = 1:count
-                [line, lineNumber] = this.readDataLine(fid, 'uniform element load');
-                v = this.parseNumericRecord(line, lineNumber, 5, 'Uniform element load');
-                if v(1) ~= 20 || v(2) ~= fix(v(2)) || v(2) < 1 || ...
+                [line, lineNumber] = this.readDataLine(fid, 'element load');
+                v = this.parseNumericRecord(line, lineNumber, fieldCount, 'Element load');
+                if v(1) ~= loadType || v(2) ~= fix(v(2)) || v(2) < 1 || ...
                         v(2) > this.numberOfElems || ~ismember(v(3), [1 2]) || ...
-                        (v(4) == 0 && v(5) == 0)
-                    this.fail('MKEF:InvalidElementLoad', lineNumber, 'Invalid uniform element load.');
+                        all(v(4:end) == 0)
+                    this.fail('MKEF:InvalidElementLoad', lineNumber, 'Invalid element load.');
                 end
                 if this.allMeshElems(v(2)).type ~= 113
-                    this.fail('MKEF:UnsupportedElementLoad', lineNumber, 'Uniform loads require frame element 113.');
+                    this.fail('MKEF:UnsupportedElementLoad', lineNumber, 'Distributed loads require frame element 113.');
                 end
-                this.elementLoads(end+1) = struct('type', 20, 'elementId', v(2), ...
-                    'coordinateSystem', v(3), 'qx', v(4), 'qy', v(5));
+                load = struct('type', loadType, 'elementId', v(2), 'coordinateSystem', v(3), ...
+                    'qx', [], 'qy', [], 'qx1', [], 'qy1', [], 'qx2', [], 'qy2', []);
+                if loadType == 20
+                    load.qx = v(4); load.qy = v(5);
+                else
+                    load.qx1 = v(4); load.qy1 = v(5); load.qx2 = v(6); load.qy2 = v(7);
+                end
+                this.elementLoads(end+1) = load;
             end
         end
 

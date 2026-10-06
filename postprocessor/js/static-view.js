@@ -174,47 +174,79 @@
     throw new Error('Unsupported frame diagram ' + quantity + '.');
   };
 
+  function loadEnds(load) {
+    return load.type===21 ? [{x:load.qx1,y:load.qy1},{x:load.qx2,y:load.qy2}] : [{x:load.qx,y:load.qy},{x:load.qx,y:load.qy}];
+  }
   S.elementIntensities = function (dataset, element) {
-    var a = dataset.nodesById.get(element.nodeIds[0]), b = dataset.nodesById.get(element.nodeIds[1]);
-    var basis = M.geometry.elementBasis(a, b), x = 0, y = 0;
+    var a=dataset.nodesById.get(element.nodeIds[0]), b=dataset.nodesById.get(element.nodeIds[1]);
+    var basis=M.geometry.elementBasis(a,b), ends=[{x:0,y:0},{x:0,y:0}];
     (dataset.raw.model.elementLoads || []).forEach(function (load) {
-      if (load.elementId !== element.id) return;
-      x += load.coordinateSystem === 1 ? load.qx : basis.c*load.qx + basis.s*load.qy;
-      y += load.coordinateSystem === 1 ? load.qy : -basis.s*load.qx + basis.c*load.qy;
+      if (load.elementId!==element.id) return;
+      loadEnds(load).forEach(function (q,i) {
+        ends[i].x+=load.coordinateSystem===1 ? q.x : basis.c*q.x+basis.s*q.y;
+        ends[i].y+=load.coordinateSystem===1 ? q.y : -basis.s*q.x+basis.c*q.y;
+      });
     });
-    return { x:x, y:y, length:basis.length };
+    return {x:ends[0].x,y:ends[0].y,dx:ends[1].x-ends[0].x,dy:ends[1].y-ends[0].y,length:basis.length};
   };
   S.elementDiagram = function (dataset, element, quantity, xi) {
-    var f = dataset.resultsByElementId.get(element.id).localEndForces;
-    if (!dataset.raw.model.elementLoads) return S.frameDiagram(f, quantity, xi);
-    var q = S.elementIntensities(dataset, element), x = xi*q.length;
-    if (quantity === 'N') return -f[0]-q.x*x;
-    if (quantity === 'V') return -f[1]-q.y*x;
-    if (quantity === 'M') return -f[2]+f[1]*x+q.y*x*x/2;
-    throw new Error('Unsupported frame diagram ' + quantity + '.');
+    var f=dataset.resultsByElementId.get(element.id).localEndForces;
+    if (!dataset.raw.model.elementLoads) return S.frameDiagram(f,quantity,xi);
+    var q=S.elementIntensities(dataset,element), x=xi*q.length;
+    if (quantity==='N') return -f[0]-q.x*x-q.dx*x*xi/2;
+    if (quantity==='V') return -f[1]-q.y*x-q.dy*x*xi/2;
+    if (quantity==='M') return -f[2]+f[1]*x+q.y*x*x/2+q.dy*x*x*xi/6;
+    throw new Error('Unsupported frame diagram '+quantity+'.');
   };
+  // Scaled, cancellation-resistant roots; linear/uniform cases are exact limits.
+  function quadraticRoots(a,b,c) {
+    var scale=Math.max(Math.abs(a),Math.abs(b),Math.abs(c));
+    if (!scale) return [];
+    a/=scale; b/=scale; c/=scale;
+    if (Math.abs(a)<1e-14) return b ? [-c/b] : [];
+    var d=b*b-4*a*c;
+    if (d < -1e-14) return [];
+    var t=-.5*(b+(b>=0 ? 1 : -1)*Math.sqrt(Math.max(0,d)));
+    return t ? [t/a,c/t] : [-b/(2*a)];
+  }
   S.diagramSamples = function (dataset, element, quantity, count) {
-    var positions = [], n = Math.max(5, count || M.config.defaultFrameSamples);
-    for (var i=0; i<n; i+=1) positions.push(i/(n-1));
-    if (quantity === 'M' && !!dataset.raw.model.elementLoads) {
-      var q = S.elementIntensities(dataset, element), f = dataset.resultsByElementId.get(element.id).localEndForces;
-      var xi = q.y ? -f[1]/(q.y*q.length) : -1;
-      if (xi>0 && xi<1) positions.push(xi);
+    var positions=[], n=Math.max(5,count || M.config.defaultFrameSamples);
+    for (var i=0;i<n;i++) positions.push(i/(n-1));
+    if (dataset.raw.model.elementLoads) {
+      var q=S.elementIntensities(dataset,element), f=dataset.resultsByElementId.get(element.id).localEndForces, roots=[];
+      if (quantity==='M') roots=quadraticRoots(q.dy*q.length/2,q.y*q.length,f[1]);
+      else if (quantity==='N' && q.dx) roots=[-q.x/q.dx];
+      else if (quantity==='V' && q.dy) roots=[-q.y/q.dy];
+      roots.forEach(function (xi) { if (xi>0 && xi<1) positions.push(xi); });
     }
-    return positions.sort(function (a,b) { return a-b; }).map(function (xi) { return { xi:xi, value:S.elementDiagram(dataset, element, quantity, xi) }; });
+    return Array.from(new Set(positions)).sort(function (a,b) { return a-b; }).map(function (xi) { return {xi:xi,value:S.elementDiagram(dataset,element,quantity,xi)}; });
   };
 
-  S.drawElementLoads = function (renderer, dataset, scale, showOriginal, showDeformed) {
-    Array.prototype.forEach.call(renderer.layers.loads.querySelectorAll('.element-load-symbol'), function (item) { item.remove(); });
+  S.drawElementLoads = function (renderer,dataset,scale,showOriginal,showDeformed) {
+    Array.prototype.forEach.call(renderer.layers.loads.querySelectorAll('.element-load-symbol'),function (item) { item.remove(); });
     (dataset.raw.model.elementLoads || []).forEach(function (load) {
-      var element = dataset.elementsById.get(load.elementId), a = dataset.nodesById.get(element.nodeIds[0]), b = dataset.nodesById.get(element.nodeIds[1]), basis = M.geometry.elementBasis(a,b);
-      var vector = { x:load.qx, y:load.qy };
-      if (load.coordinateSystem === 1) vector = { x:basis.c*load.qx-basis.s*load.qy, y:basis.s*load.qx+basis.c*load.qy };
-      var size = Math.min(diagonal(dataset)*.08, basis.length*.3);
-      [showOriginal ? 0 : null, showDeformed && (scale !== 0 || !showOriginal) ? scale : null].forEach(function (factor) {
-        if (factor === null) return;
-        var points = M.geometry.sampleElement(dataset, element, dataset.raw.analysis.displacements, factor, 9);
-        points.slice(1,-1).forEach(function (point) { appendPath(renderer.layers.loads, { d:arrowPath(point, vector, size), class:'element-load-symbol load-symbol load-force-symbol', 'data-element-id':element.id }, (load.coordinateSystem === 1 ? 'Local' : 'Global') + ' q=(' + format(load.qx) + ', ' + format(load.qy) + ') ' + (unit(dataset,'force') && unit(dataset,'length') ? unit(dataset,'force') + '/' + unit(dataset,'length') : 'force/length')); });
+      var element=dataset.elementsById.get(load.elementId), a=dataset.nodesById.get(element.nodeIds[0]), b=dataset.nodesById.get(element.nodeIds[1]), basis=M.geometry.elementBasis(a,b);
+      var ends=loadEnds(load), vectors=ends.map(function (q) { return load.coordinateSystem===1 ? {x:basis.c*q.x-basis.s*q.y,y:basis.s*q.x+basis.c*q.y} : q; });
+      var maximum=Math.max(Math.hypot(vectors[0].x,vectors[0].y),Math.hypot(vectors[1].x,vectors[1].y));
+      if (!maximum) return;
+      var size=Math.min(diagonal(dataset)*.08,basis.length*.3);
+      var units=unit(dataset,'force') && unit(dataset,'length') ? unit(dataset,'force')+'/'+unit(dataset,'length') : 'force/length';
+      function pair(q) { return '('+format(q.x)+', '+format(q.y)+')'; }
+      var label=(load.coordinateSystem===1 ? 'Local' : 'Global')+(load.type===21 ? ' q1='+pair(ends[0])+' → q2='+pair(ends[1]) : ' q='+pair(ends[0]))+' '+units;
+      [showOriginal ? 0 : null,showDeformed && (scale!==0 || !showOriginal) ? scale : null].forEach(function (factor) {
+        if (factor===null) return;
+        var points=M.geometry.sampleElement(dataset,element,dataset.raw.analysis.displacements,factor,9), tails=[];
+        points.forEach(function (point,i) {
+          var xi=i/(points.length-1), vector={x:vectors[0].x*(1-xi)+vectors[1].x*xi,y:vectors[0].y*(1-xi)+vectors[1].y*xi};
+          var magnitude=Math.hypot(vector.x,vector.y);
+          tails.push({x:point.x-vector.x/maximum*size,y:point.y-vector.y/maximum*size});
+          if (magnitude) appendPath(renderer.layers.loads,{d:arrowPath(point,vector,size*magnitude/maximum),class:'element-load-symbol load-symbol load-force-symbol','data-element-id':element.id},label);
+        });
+        appendPath(renderer.layers.loads,{d:M.geometry.pathData(tails),class:'element-load-symbol element-load-envelope load-symbol load-force-symbol',fill:'none','data-element-id':element.id},label);
+        var anchor=tails[Math.floor(tails.length/2)], position=M.geometry.svgPoint(anchor);
+        position.y=Math.min.apply(null,tails.map(function (point) { return M.geometry.svgPoint(point).y; }));
+        var text=M.svgElement('text',{x:position.x,y:position.y-diagonal(dataset)*.015,'font-size':diagonal(dataset)*.018,'text-anchor':'middle',fill:'#b63a3f',class:'element-load-symbol element-load-label'});
+        text.textContent=label; renderer.layers.loads.appendChild(text);
       });
     });
   };

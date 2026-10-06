@@ -1,53 +1,75 @@
 function [localVectors, intensities, resultant] = getElementLoadData(model)
-%GETELEMENTLOADDATA Validate uniform loads and integrate in the original basis.
+%GETELEMENTLOADDATA Integrate full-span uniform/linear frame loads exactly.
+% intensities contains summed local [qx1 qy1 qx2 qy2] for each element.
 count = numel(model.elementData);
 localVectors = cell(count, 1);
-intensities = zeros(count, 2);
+intensities = zeros(count, 4);
 resultant = zeros(3, 1);
 for i = 1:count
     localVectors{i} = zeros(numel(model.elementData(i).dofs), 1);
 end
-if ~isfield(model, 'elementLoads') || isempty(model.elementLoads)
-    return;
-end
+if ~isfield(model, 'elementLoads') || isempty(model.elementLoads), return; end
 loads = model.elementLoads;
-fields = {'type', 'elementId', 'coordinateSystem', 'qx', 'qy'};
-if ~isstruct(loads) || ~all(isfield(loads, fields))
-    error('MKEF:InvalidElementLoad', 'Element loads require type, elementId, coordinateSystem, qx and qy.');
+baseFields = {'type', 'elementId', 'coordinateSystem'};
+if ~isstruct(loads) || ~all(isfield(loads, baseFields))
+    error('MKEF:InvalidElementLoad', 'Element loads require type, elementId and coordinateSystem.');
 end
 for i = 1:numel(loads)
     load = loads(i);
-    for j = 1:numel(fields)
-        value = load.(fields{j});
-        if ~isnumeric(value) || ~isreal(value) || ~isscalar(value) || ~isfinite(value)
-            error('MKEF:InvalidElementLoad', 'Element load components and identifiers must be finite scalars.');
-        end
+    validateScalars(load, baseFields);
+    if load.type == 20
+        fields = {'qx', 'qy'};
+    elseif load.type == 21
+        fields = {'qx1', 'qy1', 'qx2', 'qy2'};
+    else
+        error('MKEF:InvalidElementLoad', 'Unsupported element load type.');
+    end
+    validateScalars(load, fields);
+    if load.type == 20
+        ends = [load.qx load.qx; load.qy load.qy];
+    else
+        ends = [load.qx1 load.qx2; load.qy1 load.qy2];
     end
     id = load.elementId;
-    if load.type ~= 20 || id ~= fix(id) || id < 1 || id > count || ...
-            ~ismember(load.coordinateSystem, [1 2]) || (load.qx == 0 && load.qy == 0)
-        error('MKEF:InvalidElementLoad', 'Invalid uniform element load %d.', i);
+    if id ~= fix(id) || id < 1 || id > count || ...
+            ~ismember(load.coordinateSystem, [1 2]) || all(ends(:) == 0)
+        error('MKEF:InvalidElementLoad', 'Invalid element load %d.', i);
     end
     element = model.elementData(id);
     if element.type ~= 113
-        error('MKEF:UnsupportedElementLoad', 'Uniform element loads require frame element 113.');
+        error('MKEF:UnsupportedElementLoad', 'Distributed loads require frame element 113.');
     end
     rotation = element.transformation(1:2, 1:2);
-    q = [load.qx; load.qy];
     if load.coordinateSystem == 2
-        globalQ = q;
-        q = rotation * q;
+        globalEnds = ends; ends = rotation * ends;
     else
-        globalQ = rotation.' * q;
+        globalEnds = rotation.' * ends;
     end
     L = element.length;
+    a = ends(:, 1); b = ends(:, 2);
     localVectors{id} = localVectors{id} + ...
-        [q(1)*L/2; q(2)*L/2; q(2)*L^2/12; ...
-         q(1)*L/2; q(2)*L/2; -q(2)*L^2/12];
-    intensities(id, :) = intensities(id, :) + q.';
-    % Independent integration of the source distribution's force and moment.
-    center = mean(element.nodeCoordinates(:, 1:2), 1);
-    force = globalQ * L;
-    resultant = resultant + [force; center(1)*force(2)-center(2)*force(1)];
+        [L*(2*a(1)+b(1))/6; L*(7*a(2)+3*b(2))/20; L^2*(3*a(2)+2*b(2))/60; ...
+         L*(a(1)+2*b(1))/6; L*(3*a(2)+7*b(2))/20; -L^2*(2*a(2)+3*b(2))/60];
+    intensities(id, :) = intensities(id, :) + ends(:).';
+    % Integrate r(x) cross q(x) independently of the FE load vector.
+    origin = element.nodeCoordinates(1, 1:2).';
+    delta = element.nodeCoordinates(2, 1:2).' - origin;
+    force = L * (globalEnds(:, 1) + globalEnds(:, 2))/2;
+    firstMoment = L * (globalEnds(:, 1) + 2*globalEnds(:, 2))/6;
+    moment = origin(1)*force(2)-origin(2)*force(1) + ...
+        delta(1)*firstMoment(2)-delta(2)*firstMoment(1);
+    resultant = resultant + [force; moment];
+end
+end
+
+function validateScalars(load, fields)
+for j = 1:numel(fields)
+    if ~isfield(load, fields{j})
+        error('MKEF:InvalidElementLoad', 'Missing component %s.', fields{j});
+    end
+    value = load.(fields{j});
+    if ~isnumeric(value) || ~isreal(value) || ~isscalar(value) || ~isfinite(value)
+        error('MKEF:InvalidElementLoad', 'Element load components and identifiers must be finite scalars.');
+    end
 end
 end

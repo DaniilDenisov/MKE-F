@@ -292,16 +292,23 @@
       var element = self.model.elements[load.elementId - 1], a = element && self.model.nodes[element.node1 - 1], b = element && self.model.nodes[element.node2 - 1];
       if (!a || !b) return;
       var L = Math.hypot(b.x-a.x, b.y-a.y), c = (b.x-a.x)/L, s = (b.y-a.y)/L;
-      var x = load.coordinateSystem === 1 ? c*load.qx-s*load.qy : load.qx;
-      var y = load.coordinateSystem === 1 ? s*load.qx+c*load.qy : load.qy;
-      var magnitude = Math.hypot(x, y); if (!Number.isFinite(magnitude) || !magnitude || !L) return;
-      var size = Math.min(scale*.08, L*.3), group = M.svgElement('g', { class: 'element-load-symbol', 'data-element-id': load.elementId });
-      for (var i = 0; i < 7; i += 1) {
-        var xi = (i+.5)/7, px = a.x+(b.x-a.x)*xi, py = a.y+(b.y-a.y)*xi;
-        group.appendChild(M.svgElement('line', { x1: px-x/magnitude*size, y1: -py+y/magnitude*size, x2: px, y2: -py, class: 'load-symbol', 'marker-end': 'url(#arrow)' }));
+      var ends = load.type===21 ? [[load.qx1,load.qy1],[load.qx2,load.qy2]] : [[load.qx,load.qy],[load.qx,load.qy]];
+      var vectors=ends.map(function (q) { return load.coordinateSystem===1 ? [c*q[0]-s*q[1],s*q[0]+c*q[1]] : q; });
+      var maximum=Math.max(Math.hypot.apply(null,vectors[0]),Math.hypot.apply(null,vectors[1]));
+      if (!Number.isFinite(maximum) || !maximum || !L) return;
+      var size=Math.min(scale*.08,L*.3), group=M.svgElement('g',{class:'element-load-symbol','data-element-id':load.elementId}), tails=[];
+      for (var i=0;i<=8;i++) {
+        var xi=i/8, px=a.x+(b.x-a.x)*xi, py=a.y+(b.y-a.y)*xi;
+        var x=vectors[0][0]*(1-xi)+vectors[1][0]*xi, y=vectors[0][1]*(1-xi)+vectors[1][1]*xi;
+        var tx=px-x/maximum*size, ty=-py+y/maximum*size;
+        tails.push(tx+','+ty);
+        if (Math.hypot(x,y)>0) group.appendChild(M.svgElement('line',{x1:tx,y1:ty,x2:px,y2:-py,class:'load-symbol','marker-end':'url(#arrow)'}));
       }
-      var label = M.svgElement('text', { x: (a.x+b.x)/2-x/magnitude*size, y: -(a.y+b.y)/2+y/magnitude*size-scale*.015, 'font-size':scale*.018, class: 'element-load-label' });
-      label.textContent = (load.coordinateSystem === 1 ? 'Local' : 'Global') + ' q=(' + Number(load.qx.toPrecision(5)) + ', ' + Number(load.qy.toPrecision(5)) + ')';
+      group.appendChild(M.svgElement('polyline',{points:tails.join(' '),class:'load-symbol element-load-envelope',fill:'none'}));
+      var midX=(vectors[0][0]+vectors[1][0])/2, labelY=Math.min.apply(null,tails.map(function (point) { return Number(point.split(',')[1]); }));
+      var label=M.svgElement('text',{x:(a.x+b.x)/2-midX/maximum*size,y:labelY-scale*.018,'text-anchor':'middle','font-size':scale*.018,class:'element-load-label'});
+      function pair(q) { return '('+q.map(function (v) { return Number(v.toPrecision(5)); }).join(', ')+')'; }
+      label.textContent=(load.coordinateSystem===1 ? 'Local' : 'Global') + (load.type===21 ? ' q1='+pair(ends[0])+' → q2='+pair(ends[1]) : ' q='+pair(ends[0]));
       group.appendChild(label); layer.appendChild(group);
     });
     if (this.selection && this.selection.kind === 'element') {

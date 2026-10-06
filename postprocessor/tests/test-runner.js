@@ -98,6 +98,44 @@
     data.analysis.elementResults[0].equivalentLocalLoadVector=data.analysis.loadVector.slice();
     return data;
   }
+  function linearFixture() {
+    var data=uniformFixture(); data.version=5;
+    data.model.elementLoads=[{type:21,elementId:1,coordinateSystem:2,qx1:0,qy1:0,qx2:0,qy2:-1000}];
+    data.analysis.elementResults[0].localEndForces=[0,1000/3,0,0,2000/3,0];
+    return data;
+  }
+  test('v5 validates linear loads and rejects unsupported or incomplete data', function () {
+    assert(M.validateDataset(linearFixture()));
+    [function(d){d.version=4;},function(d){delete d.model.elementLoads[0].qy2;},function(d){d.model.elementLoads[0].qy2=0;},function(d){d.model.elementLoads[0].qx1=Infinity;},function(d){d.model.releases=[{elementId:1,end:1,component:'Mz'}];},function(d){delete d.analysis.elementResults[0].equivalentLocalLoadVector;}].forEach(function (change) {
+      var data=linearFixture(); change(data); var rejected=false; try { M.validateDataset(data); } catch (_) { rejected=true; } assert(rejected);
+    });
+  });
+  test('triangle diagrams recover exact shear endpoints and cubic moment maximum', function () {
+    var dataset=M.validateDataset(linearFixture()), e=dataset.raw.model.elements[0], S=M.staticResults;
+    close(S.elementDiagram(dataset,e,'V',0),-1000/3); close(S.elementDiagram(dataset,e,'V',1),2000/3);
+    close(S.elementDiagram(dataset,e,'M',0),0); close(S.elementDiagram(dataset,e,'M',1),0);
+    var xi=1/Math.sqrt(3), maximum=4000/(9*Math.sqrt(3));
+    close(S.elementDiagram(dataset,e,'M',xi),maximum);
+    close(Math.max.apply(null,S.diagramSamples(dataset,e,'M',6).map(function (v) { return v.value; })),maximum);
+  });
+  test('sign-changing loads include both moment extrema and N/V stationary points', function () {
+    var data=linearFixture(), q=data.model.elementLoads[0]; q.qx1=q.qy1=1000; q.qx2=q.qy2=-1000;
+    data.analysis.elementResults[0].localEndForces=[0,-320,0,0,0,0];
+    var dataset=M.validateDataset(data), e=dataset.raw.model.elements[0], S=M.staticResults;
+    var moments=S.diagramSamples(dataset,e,'M',6);
+    assert(moments.some(function(v){return Math.abs(v.xi-.2)<1e-12;}) && moments.some(function(v){return Math.abs(v.xi-.8)<1e-12;}));
+    ['N','V'].forEach(function (quantity) { assert(S.diagramSamples(dataset,e,quantity,6).some(function(v){return Math.abs(v.xi-.5)<1e-12;})); });
+    close(S.elementDiagram(dataset,e,'N',.5),-500);
+  });
+  test('linear load graphics omit the zero arrow and retain endpoint labels in exports', function () {
+    var dataset=M.validateDataset(linearFixture()), svg=document.getElementById('test-svg'), renderer=new M.Renderer(svg);
+    renderer.mount(dataset); M.staticResults.drawElementLoads(renderer,dataset,1,true,false);
+    assert(renderer.layers.loads.querySelectorAll('path.element-load-symbol:not(.element-load-envelope)').length===8);
+    assert(renderer.layers.loads.querySelector('.element-load-envelope'));
+    assert(renderer.layers.loads.querySelector('text.element-load-label').textContent.includes('q1=(0, 0)'));
+    var prepared=M.exporting.prepareSvg(svg,{title:'Triangle',analysisType:'static'},null,null);
+    assert(prepared.querySelector('.element-load-envelope') && prepared.textContent.includes('q2='));
+  });
   test('v2 validation rejects malformed load data and missing equivalent vectors', function () {
     assert(M.validateDataset(uniformFixture()));
     [function(d){d.model.elementLoads[0].elementId=7;},function(d){d.model.elementLoads[0].qy=0;},function(d){d.model.elementLoads[0].qx=Infinity;},function(d){delete d.analysis.elementResults[0].equivalentLocalLoadVector;},function(d){d.model.nodalLoads={};}].forEach(function (change) {
@@ -116,15 +154,15 @@
   test('uniform forces are not double drawn as equivalent nodal forces', function () {
     var dataset=M.validateDataset(uniformFixture()), renderer=new M.Renderer(document.getElementById('test-svg')); renderer.mount(dataset); M.staticResults.mount(renderer,dataset);
     assert(renderer.layers.loads.querySelectorAll('.load-symbol').length===0);
-    M.staticResults.drawElementLoads(renderer,dataset,1,true,true); assert(renderer.layers.loads.querySelectorAll('.element-load-symbol').length===14);
-    M.staticResults.drawElementLoads(renderer,dataset,1,false,true); assert(renderer.layers.loads.querySelectorAll('.element-load-symbol').length===7);
+    M.staticResults.drawElementLoads(renderer,dataset,1,true,true); assert(renderer.layers.loads.querySelectorAll('.element-load-symbol').length===22);
+    M.staticResults.drawElementLoads(renderer,dataset,1,false,true); assert(renderer.layers.loads.querySelectorAll('.element-load-symbol').length===11);
     M.staticResults.drawElementLoads(renderer,dataset,1,false,false); assert(renderer.layers.loads.querySelectorAll('.element-load-symbol').length===0);
   });
   test('uniform SVG and PNG exports include distributions and curved diagrams', async function () {
     var dataset=M.validateDataset(uniformFixture()), svg=document.getElementById('test-svg'), renderer=new M.Renderer(svg); renderer.mount(dataset); M.staticResults.mount(renderer,dataset);
     M.staticResults.drawElementLoads(renderer,dataset,1,true,false); M.staticResults.applyResult(renderer,dataset,'M',6);
     var prepared=M.exporting.prepareSvg(svg,{title:'Uniform beam',analysisType:'static'},null,null);
-    assert(prepared.querySelectorAll('.element-load-symbol').length===7); assert(prepared.querySelector('.diagram-line').getAttribute('d').split('L').length>2);
+    assert(prepared.querySelectorAll('.element-load-symbol').length===11); assert(prepared.querySelector('.diagram-line').getAttribute('d').split('L').length>2);
     var blob=await M.exporting.pngBlob(svg,{title:'Uniform beam',analysisType:'static'},1,null,null); assert(blob.type==='image/png' && blob.size>0);
   });
 

@@ -1,5 +1,5 @@
 function data = createPostprocessorData(model, result, options)
-%CREATEPOSTPROCESSORDATA Convert an analysis model/result to schema v1-v4.
+%CREATEPOSTPROCESSORDATA Convert an analysis model/result to schema v1-v5.
 % The returned struct contains only postprocessing data; assembled and
 % element matrices are deliberately excluded.
 
@@ -111,6 +111,9 @@ if isfield(model,'releases') && ~isempty(model.releases)
     for i = 1:numel(model.elementData)
         data.model.elements(i).globalDOFs = model.elementData(i).dofs(:).';
     end
+end
+if isfield(model, 'elementLoads') && ~isempty(model.elementLoads) && any([model.elementLoads.type] == 21)
+    data.version = 5;
 end
 end
 

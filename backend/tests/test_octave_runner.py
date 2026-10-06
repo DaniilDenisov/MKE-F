@@ -106,14 +106,21 @@ def test_fixed_octave_runner_exports_each_analysis(tmp_path, case_name, analysis
     assert result["metadata"]["title"] == f"Integration {analysis_type}"
 
 
-def test_uniform_load_through_real_api(tmp_path):
+@pytest.mark.parametrize(("case_name", "version", "reactions"), [
+    ("CaseUniformFrame", 2, [0, 2000, 2000]),
+    ("CaseLinearFrame", 5, [0, 1200, 1400]),
+    ("CaseTriangleFrame", 5, [0, 1000, 4000/3]),
+    ("CaseLinearRelease", 5, None),
+    ("CaseLinearMPC", 5, None),
+])
+def test_distributed_load_through_real_api(tmp_path, case_name, version, reactions):
     if not RUNNER.is_file():
         pytest.skip("container Octave runner is not available")
     settings = Settings(jobs_root=tmp_path / "jobs", repository_root=REPOSITORY_ROOT,
                         runner_script=RUNNER, job_timeout_seconds=60)
-    text = (REPOSITORY_ROOT / "examples/cases/CaseUniformFrame.txt").read_text()
+    text = (REPOSITORY_ROOT / "examples/cases" / f"{case_name}.txt").read_text()
     with TestClient(create_app(settings)) as client:
-        response = client.post("/api/v1/jobs", json={"name": "Uniform beam", "caseText": text})
+        response = client.post("/api/v1/jobs", json={"name": case_name, "caseText": text})
         assert response.status_code == 202, response.text
         job_id = response.json()["id"]
         deadline = time.monotonic() + 65
@@ -124,8 +131,20 @@ def test_uniform_load_through_real_api(tmp_path):
             time.sleep(0.05)
         assert job["status"] == "succeeded", job
         result = client.get(f"/api/v1/jobs/{job_id}/result").json()
-        assert result["version"] == 2
-        assert result["model"]["nodalLoads"] == []
+        assert result["version"] == version
+        if case_name != "CaseLinearMPC":
+            assert result["model"]["nodalLoads"] == []
         assert len(result["model"]["elementLoads"]) == 1
-        assert result["analysis"]["reactions"][:3] == pytest.approx([0, 2000, 2000])
-        assert result["analysis"]["elementResults"][0]["localEndForces"][3:] == pytest.approx([0, 0, 0], abs=1e-8)
+        assert result["analysis"]["equilibriumResidual"] == pytest.approx([0, 0, 0], abs=1e-8)
+        if reactions is not None:
+            assert result["analysis"]["reactions"][:3] == pytest.approx(reactions)
+            assert result["analysis"]["elementResults"][0]["localEndForces"][3:] == pytest.approx([0, 0, 0], abs=1e-8)
+        if version == 5:
+            assert "qx" not in result["model"]["elementLoads"][0]
+            assert "qy2" in result["model"]["elementLoads"][0]
+        if case_name == "CaseLinearRelease":
+            assert len(result["model"]["dofRegistry"]) == result["model"]["numberOfDOFs"]
+            assert result["analysis"]["elementResults"][0]["localEndForces"][2::3] == pytest.approx([0, 0], abs=1e-8)
+        if case_name == "CaseLinearMPC":
+            assert len(result["model"]["mpcs"]) == 1
+            assert len(result["analysis"]["mpcMultipliers"]) == 1

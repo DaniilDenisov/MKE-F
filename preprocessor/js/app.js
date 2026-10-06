@@ -260,9 +260,21 @@
     (state.elementLoads || []).forEach(function (load, index) {
       var row = document.createElement('tr'); idCell(row, index + 1);
       inputCell(row, load.elementId, 'number', function (value) { commit(function () { state.elementLoads[index].elementId = value; }); });
-      cell(row).textContent = 'Uniform';
+      selectCell(row, load.type, [[20, 'Uniform'], [21, 'Linear']], function (value) { commit(function () { M.modelEdit.changeLoadType(state, index, value); }); });
       selectCell(row, load.coordinateSystem, [[1, 'Local'], [2, 'Global']], function (value) { commit(function () { M.modelEdit.changeCoordinates(state, index, value); }); });
-      ['qx', 'qy'].forEach(function (field) { inputCell(row, load[field], 'number', function (value) { commit(function () { state.elementLoads[index][field] = value; }); }); });
+      var member=state.elements[load.elementId-1];
+      var fields=load.type===21 ? ['qx1','qy1','qx2','qy2'] : ['qx','qy'];
+      fields.forEach(function (field, component) {
+        var input=inputCell(row, load[field], 'number', function (value) { commit(function () { state.elementLoads[index][field] = value; }); });
+        var end=component<2 ? 1 : 2, node=member && member['node'+end];
+        input.setAttribute('aria-label', 'Load '+(index+1)+' '+field+(load.type===21 ? ' at node '+node : ''));
+        input.title=load.type===21 ? 'Node '+node+' (element end '+end+')' : 'Uniform intensity';
+        if (load.type===21) {
+          var label=document.createElement('small'); label.className='load-end-label'; label.textContent='Node '+(node || '?');
+          input.parentNode.insertBefore(label,input);
+        }
+      });
+      if (load.type===20) { cell(row).textContent='—'; cell(row).textContent='—'; }
       deleteCell(row, function () { commit(function () { state.elementLoads.splice(index, 1); }); }, 'element load ' + (index + 1));
       elements.elementLoadsBody.appendChild(row);
     });

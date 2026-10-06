@@ -58,7 +58,7 @@
         </ul>
         <div class="callout callout--warning">
           <span class="callout__title">Model limitations</span>
-          <p>Types 112 and 113 cannot be mixed in one file because their nodes have different DOF counts. Static uniform loads on type 113 frames are supported. Other element loads, nonzero prescribed displacements, plasticity, geometric nonlinearity, damping and frame shear deformation are not implemented.</p>
+          <p>Types 112 and 113 cannot be mixed in one file because their nodes have different DOF counts. Static uniform and linear loads on type 113 frames are supported. Other element loads, nonzero prescribed displacements, plasticity, geometric nonlinearity, damping and frame shear deformation are not implemented.</p>
         </div>
       </section>
 
@@ -115,7 +115,7 @@ modal</code></pre>
         <pre><code>analysis
 transient,timeStep,duration,monitorNode,monitorDOF</code></pre>
         <p>This section is optional for backward compatibility and may appear only once. For transient analysis, the step must be positive, duration must span at least one step, and the monitoring node and local DOF must be within model bounds. <code>RunSelected</code> runs the specified analysis; without the section, use the original explicit methods.</p>
-        <p>Static analysis allows type 10 nodal loads and type 20 uniform element loads; modal analysis allows no loads; transient analysis allows types 10–13. Type 10 retains its historical single-step pulse meaning in transient analysis.</p>
+        <p>Static analysis allows type 10 nodal loads and type 20 uniform and type 21 linear element loads; modal analysis allows no loads; transient analysis allows types 10–13. Type 10 retains its historical single-step pulse meaning in transient analysis.</p>
       </section>
 
       <section aria-labelledby="nodes-title">
@@ -381,6 +381,14 @@ dynamicResult = problem.RunTransient(1e-4, 1e-2, 3, 2, initial);</code></pre>
         <p>Select a frame element and click Add element load. The Element loads table contains the coordinate system and components. Switching Local/Global converts components while preserving load direction.</p>
         <p>Any actual change to element ends, A, E, rho or I removes its distributed loads. Changing node coordinates removes distributed loads from all incident elements, preserving nodal loads and supports. Re-entering the same value removes nothing.</p>
         <p>Deleting a node also deletes its elements, their distributed loads and the node’s own conditions. Other nodes remain and references are renumbered. Deleting an element does not delete its nodes. One Undo restores the whole operation. A deleted transient monitoring node must be selected again.</p>
+        <h3 id="linear-loads">Linear distribution</h3>
+        <p>Add a repeatable <code>eload_linear</code> section after the elements: a record count followed by <code>21,elementId,coordinateSystem,qx1,qy1,qx2,qy2</code>. For example:</p>
+        <pre><code>eload_linear
+1
+21,1,2,0,-300,0,-900</code></pre>
+        <p>On element 1, global qY varies from −300 at its first node to −900 at its second node. Zero components at one end give a triangle. Components must be finite; only an entirely zero record is rejected. The same restrictions apply: static analysis, frame 113, entire element length. Split the member into elements for partial loading. Both sections may repeat and coexist; loads add together.</p>
+        <p>Choose Uniform or Linear in the Element loads table. Linear mode shows four fields with endpoint node numbers. Converting to Linear copies the uniform values to both ends; converting back takes their mean. Changing coordinate systems transforms both vectors. Results with type 21 use <a href="../../postprocessor/schema-v5.md">JSON v5</a>; older models retain versions v1–v4.</p>
+        <p>Examples: <a href="../../examples/cases/CaseLinearFrame.txt">trapezoid</a>, <a href="../../examples/cases/CaseTriangleFrame.txt">triangle</a>, <a href="../../examples/cases/CaseLinearRelease.txt">with releases</a>, <a href="../../examples/cases/CaseLinearMPC.txt">with MPCs</a>.</p>
       </section>
     <section aria-labelledby="support-masks-title"><h2 id="support-masks-title">SPC: ux, uy, thetaZ</h2><p>Supports use fixUx/fixUy/fixThetaZ masks. Types 1–4 retain their meaning; new types are 5: ux only, 6: uy only, 7: thetaZ only. Trusses reject type 7 and export canonical types 1, 3 and 2. Changing element family preserves masks; remove thetaZ restraints before switching to a truss. Duplicate restraints identify the node and DOF.</p><p><a href="../../examples/cases/CaseRollerFrame.txt">CaseRollerFrame.txt</a></p></section>
 <section aria-labelledby="mpc-title"><h2 id="mpc-title">MPC</h2><p>A repeatable mpc section contains an equation count and records depNode,depDOF,rhs,masterCount,node,dof,coefficient,... . DOFs: 1=ux, 2=uy, 3=thetaZ. Only rhs=0 is supported. The example imposes uy(3)=0.5uy(1)+0.5uy(2). Equation IDs follow input order across sections. Diagnostics identify the equation and source line.</p><pre><code>mpc

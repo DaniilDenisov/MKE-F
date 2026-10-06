@@ -115,8 +115,8 @@ const server = http.createServer((req, res) => {
     await page.waitForFunction(()=>document.querySelectorAll('.element-load-symbol').length>0);
     await page.locator('#static-result').selectOption('M');
     assert.equal(await page.locator('.load-symbol[data-node-id]').count(),0);
-    const count=await page.locator('.element-load-symbol').count(); assert.equal(count,14);
-    await page.locator('#show-original').uncheck(); assert.equal(await page.locator('.element-load-symbol').count(),7);
+    const count=await page.locator('.element-load-symbol').count(); assert.equal(count,22);
+    await page.locator('#show-original').uncheck(); assert.equal(await page.locator('.element-load-symbol').count(),11);
     await page.locator('#show-original').check();
     await page.screenshot({path:path.join(root,'output/uniform-postprocessor.png'),fullPage:true});
     console.log('postprocessor integration: PASS (Octave JSON v2, curved moment diagram, original/deformed loads)');

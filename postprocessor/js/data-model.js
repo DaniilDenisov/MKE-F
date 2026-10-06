@@ -59,20 +59,21 @@
       numberAt(node.x, path + '.x'); numberAt(node.y, path + '.y');
     });
 
-    var dofCount = version === 4 ? positiveInteger(model.numberOfDOFs,'$.model.numberOfDOFs') : nodes.length * model.dofPerNode;
+    var hasReleases = version === 4 || (version === 5 && (Object.prototype.hasOwnProperty.call(model,'releases') || Object.prototype.hasOwnProperty.call(model,'dofRegistry')));
+    var dofCount = hasReleases ? positiveInteger(model.numberOfDOFs,'$.model.numberOfDOFs') : nodes.length * model.dofPerNode;
     matrix(model.dofMap, nodes.length, model.dofPerNode, '$.model.dofMap');
     var dofs = new Set();
     model.dofMap.forEach(function (row, rowIndex) {
       row.forEach(function (value, columnIndex) {
         var path = '$.model.dofMap[' + rowIndex + '][' + columnIndex + ']';
-        if (version === 4 && columnIndex === 2 && value === 0) return;
+        if (hasReleases && columnIndex === 2 && value === 0) return;
         positiveInteger(value, path);
         if (value > dofCount) fail(path, 'global DOF exceeds model size');
         if (dofs.has(value)) fail(path, 'duplicate global DOF');
         dofs.add(value);
       });
     });
-    if (version !== 4 && dofs.size !== dofCount) fail('$.model.dofMap', 'does not contain every global DOF');
+    if (!hasReleases && dofs.size !== dofCount) fail('$.model.dofMap', 'does not contain every global DOF');
 
     var elements = arrayAt(model.elements, '$.model.elements');
     if (!elements.length || elements.length > M.config.maxElements) fail('$.model.elements', 'invalid or unreasonable element count');
@@ -107,8 +108,8 @@
       positiveInteger(support.nodeId, path + '.nodeId');
       if (!nodeIds.has(support.nodeId)) fail(path + '.nodeId', 'unknown node ID');
     });
-    if (version === 4) validateRegistry(model,dofCount);
-    return { dofCount: dofCount, nodeIds: nodeIds, elementIds: elementIds };
+    if (hasReleases) validateRegistry(model,dofCount);
+    return { dofCount: dofCount, nodeIds: nodeIds, elementIds: elementIds, hasReleases: hasReleases };
   }
 
   function validateRegistry(model, count) {
@@ -214,7 +215,8 @@
   M.validateDataset = function (data) {
     objectAt(data, '$');
     if (data.format !== 'mkef-postprocessor') fail('$.format', 'expected "mkef-postprocessor"');
-    if ([1,2,3,4].indexOf(data.version) < 0) fail('$.version', 'unsupported format version ' + String(data.version));
+    if ([1,2,3,4,5].indexOf(data.version) < 0) fail('$.version', 'unsupported format version ' + String(data.version));
+    if (data.version === 5 && (!Array.isArray(data.model && data.model.elementLoads) || !data.model.elementLoads.some(function (load) { return load && load.type === 21; }))) fail('$.model.elementLoads','version 5 requires a linear load');
     var metadata = objectAt(data.metadata, '$.metadata');
     if (typeof metadata.title !== 'string') fail('$.metadata.title', 'expected a string');
     objectAt(metadata.units, '$.metadata.units');
@@ -235,14 +237,15 @@
       arrayAt(data.model.elementLoads, '$.model.elementLoads').forEach(function (load, index) {
         var path = '$.model.elementLoads[' + index + ']'; objectAt(load, path);
         var member = memberMap.get(load.elementId);
-        if (load.type !== 20 || !member || member.type !== 113 || [1, 2].indexOf(load.coordinateSystem) < 0) fail(path, 'expected a uniform load on a frame in Local/Global coordinates');
-        numberAt(load.qx, path + '.qx'); numberAt(load.qy, path + '.qy');
-        if (!load.qx && !load.qy) fail(path, 'intensity cannot be zero');
+        if ((load.type !== 20 && !(data.version === 5 && load.type === 21)) || !member || member.type !== 113 || [1, 2].indexOf(load.coordinateSystem) < 0) fail(path, 'expected a distributed load on a frame in Local/Global coordinates');
+        var fields=load.type===21 ? ['qx1','qy1','qx2','qy2'] : ['qx','qy'];
+        fields.forEach(function (key) { numberAt(load[key],path+'.'+key); });
+        if (fields.every(function (key) { return load[key]===0; })) fail(path, 'intensity cannot be zero');
       });
       analysis.elementResults.forEach(function (result, index) { vector(result.equivalentLocalLoadVector, result.type === 113 ? 6 : 4, '$.analysis.elementResults[' + index + '].equivalentLocalLoadVector'); });
     }
 
-    if (data.version === 3 || (data.version === 4 && data.model.mpcs)) {
+    if (data.version === 3 || (data.version >= 4 && data.model.mpcs)) {
       var mpcs = arrayAt(data.model.mpcs,'$.model.mpcs');
       if (!mpcs.length) fail('$.model.mpcs','version 3 requires MPCs');
       mpcs.forEach(function (m,i) {
@@ -279,7 +282,7 @@
           localIndex: localIndex, label: data.model.dofLabels[localIndex] });
       });
     });
-    if (data.version === 4) data.model.dofRegistry.forEach(function (r) {
+    if (context.hasReleases) data.model.dofRegistry.forEach(function (r) {
       if (r.kind === 'elementEnd') dofById.set(r.id,{id:r.id,nodeId:r.nodeId,nodeIndex:nodeIndexById.get(r.nodeId),elementId:r.elementId,end:r.end,localIndex:2,label:'Element '+r.elementId+' · end '+r.end+' · thetaZ'});
     });
     var resultsByElementId = new Map();

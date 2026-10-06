@@ -51,16 +51,32 @@
     model.elementLoads = (model.elementLoads || []).filter(function (load) { return !affected.has(load.elementId); });
     return true;
   };
+  E.changeLoadType = function (model, index, type) {
+    var load=model.elementLoads[index];
+    if (load.type===type) return;
+    if (type===21) {
+      load.qx1=load.qx2=load.qx; load.qy1=load.qy2=load.qy;
+      delete load.qx; delete load.qy;
+    } else {
+      load.qx=(load.qx1+load.qx2)/2; load.qy=(load.qy1+load.qy2)/2;
+      ['qx1','qy1','qx2','qy2'].forEach(function (key) { delete load[key]; });
+    }
+    load.type=type;
+  };
   E.changeCoordinates = function (model, index, system) {
     var load = model.elementLoads[index];
     if (load.coordinateSystem === system) return;
     var element = model.elements[load.elementId - 1];
     var a = element && model.nodes[element.node1 - 1], b = element && model.nodes[element.node2 - 1];
     var length = a && b ? Math.hypot(b.x - a.x, b.y - a.y) : NaN;
-    if (!Number.isFinite(length) || length <= 0 || !Number.isFinite(load.qx) || !Number.isFinite(load.qy)) throw new Error('Valid element geometry and finite components are required to change coordinates.');
-    var c = (b.x - a.x)/length, s = (b.y - a.y)/length, x = load.qx, y = load.qy;
-    load.qx = system === 1 ? c*x + s*y : c*x - s*y;
-    load.qy = system === 1 ? -s*x + c*y : s*x + c*y;
+    var fields = load.type === 21 ? [['qx1','qy1'],['qx2','qy2']] : [['qx','qy']];
+    if (!Number.isFinite(length) || length <= 0 || !fields.every(function (pair) { return pair.every(function (key) { return Number.isFinite(load[key]); }); })) throw new Error('Valid element geometry and finite components are required to change coordinates.');
+    var c = (b.x - a.x)/length, s = (b.y - a.y)/length;
+    fields.forEach(function (pair) {
+      var x=load[pair[0]], y=load[pair[1]];
+      load[pair[0]] = system === 1 ? c*x + s*y : c*x - s*y;
+      load[pair[1]] = system === 1 ? -s*x + c*y : s*x + c*y;
+    });
     load.coordinateSystem = system;
   };
 }(window.MKEFPre));

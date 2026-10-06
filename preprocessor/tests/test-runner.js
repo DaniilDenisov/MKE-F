@@ -117,8 +117,42 @@
   });
   test('uniform arrows and local axes are visible for selected element', function () {
     var renderer=new MKEFPre.Renderer(document.getElementById('test-svg')); renderer.draw(uniformFixture()); renderer.setSelection({kind:'element',index:0});
-    assert(document.querySelectorAll('#test-svg .element-load-symbol line').length===7);
+    assert(document.querySelectorAll('#test-svg .element-load-symbol line').length===9);
     assert(document.querySelectorAll('#test-svg .local-axis').length===2);
+  });
+
+  function linearFixture() { return MKEFPre.caseFormat.parse(fixture()+'eload_linear\n1\n21,1,2,0,0,0,-8\n'); }
+  test('mixed linear and uniform loads round trip in order', function () {
+    var F=MKEFPre.caseFormat, model=F.parse(F.serialize(linearFixture())+'eload_uniform\n1\n20,1,1,2,0\neload_linear\n1\n21,1,1,3,-4,-3,4\n');
+    assert(JSON.stringify(F.parse(F.serialize(model)).elementLoads)===JSON.stringify(model.elementLoads));
+  });
+  test('linear parser and validation reject invalid records and tasks', function () {
+    ['21,1,2,0,0,0,0','20,1,2,0,1,0,2','21,1,2,0,NaN,0,1','21,1,2,0,Inf,0,1','21,1,2,0,,0,1','21,3,2,0,1,0,2','21,1,3,0,1,0,2','21,1,2,0,1,0'].forEach(function (record) {
+      throws('Line',function () { MKEFPre.caseFormat.parse(fixture()+'eload_linear\n1\n'+record); });
+    });
+    var model=linearFixture(); model.analysis.type='modal'; assert(MKEFPre.caseFormat.validate(model).some(function (s) { return s.includes('only for static'); }));
+    model.analysis.type='transient'; assert(MKEFPre.caseFormat.validate(model).some(function (s) { return s.includes('only for static'); }));
+    model.analysis.type='static'; model.elementType=112; assert(MKEFPre.caseFormat.validate(model).some(function (s) { return s.includes('frame element 113'); }));
+  });
+  test('load type conversion and both endpoint coordinate transforms preserve intensity', function () {
+    var E=MKEFPre.modelEdit, model=uniformFixture(); E.changeLoadType(model,0,21);
+    assert(model.elementLoads[0].qy1===-7 && model.elementLoads[0].qy2===-7);
+    model.elementLoads[0].qy1=0; model.nodes[1]={x:3,y:4}; E.changeCoordinates(model,0,1);
+    var q=model.elementLoads[0]; assert(q.qx1===0 && q.qy1===0 && Math.abs(q.qx2+5.6)<1e-12 && Math.abs(q.qy2+4.2)<1e-12);
+    E.changeCoordinates(model,0,2); E.changeLoadType(model,0,20);
+    assert(Math.abs(model.elementLoads[0].qx)<1e-12 && Math.abs(model.elementLoads[0].qy+3.5)<1e-12);
+  });
+  test('linear arrows grow to the endpoint and include an envelope', function () {
+    var renderer=new MKEFPre.Renderer(document.getElementById('test-svg')); renderer.draw(linearFixture());
+    var lines=Array.from(document.querySelectorAll('#test-svg .element-load-symbol line'));
+    assert(lines.length===8); var lengths=lines.map(function (line) { return Math.hypot(line.x2.baseVal.value-line.x1.baseVal.value,line.y2.baseVal.value-line.y1.baseVal.value); });
+    assert(lengths[7]>lengths[0]*7.9); assert(document.querySelector('#test-svg .element-load-envelope'));
+    assert(document.querySelector('#test-svg .element-load-label').textContent.includes('q1=(0, 0)'));
+  });
+  test('linear loads follow existing deletion and geometry invalidation rules', function () {
+    var model=linearFixture(); MKEFPre.modelEdit.setRelease(model,0,1,true); assert(model.elementLoads.length===1);
+    MKEFPre.modelEdit.updateNode(model,1,'x',2); assert(model.elementLoads.length===0);
+    model=linearFixture(); MKEFPre.modelEdit.deleteElement(model,0); assert(model.elementLoads.length===0);
   });
 
   document.addEventListener('DOMContentLoaded', function () {

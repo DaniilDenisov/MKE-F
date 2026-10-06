@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Supports and loads in MKE-F: nodal constraints, static and time-dependent nodal loads, and uniform distributed loads.">
+  <meta name="description" content="Supports and loads in MKE-F: nodal constraints, static and time-dependent nodal loads, and uniform or linear distributed loads.">
   <title>4. Boundary conditions and loads — MKE-F</title>
   <link rel="stylesheet" href="../assets/reference.css">
 </head>
@@ -116,12 +116,18 @@ step  = [F0, F0, F0, F0, F0];</code></pre>
       </section>
 
       <section aria-labelledby="element-loads-title">
-        <h2 id="element-loads-title">Uniform element loading</h2>
+        <h2 id="element-loads-title">Distributed element loading</h2>
         <p><code>eload_uniform</code> is supported only for frame 113 in statics. A record <code>20,elementId,coordinateSystem,qx,qy</code> gives force per unit actual member length. System 1 uses local axes (x from the first node to the second, y rotated +90° from x); system 2 uses global X, Y. Repeated records add together; the two components cannot both be zero.</p>
         <p>After converting q to local axes, the consistent vector is:</p>
         <p class="equation">f<sub>e</sub> = [qₓL/2, qᵧL/2, qᵧL²/12, qₓL/2, qᵧL/2, −qᵧL²/12]ᵀ</p>
         <p>With u<sub>local</sub> = R u<sub>global</sub>, the global contribution is Rᵀf<sub>e</sub>. It is added to nodal loads; do not enter those equivalent actions a second time. Editing an element or its endpoint coordinates removes its distributed loads; Undo restores them. Switching Local/Global preserves the physical load direction.</p>
         <p>Format and example: <a href="10-input-format.html#element-loads-title">eload_uniform</a>. Distributed loads are rejected in transient and modal analysis.</p>
+        <h3 id="linear-loads">Linear loads: trapezoids and triangles</h3>
+        <p>Section <code>eload_linear</code> contains <code>21,elementId,coordinateSystem,qx1,qy1,qx2,qy2</code>. Values belong to the first and second element nodes: q(ξ) = (1 − ξ)q₁ + ξq₂. Loading covers the entire member. A zero endpoint gives a triangle; equal endpoints give a uniform load. Opposite signs are allowed; an entirely zero record is rejected.</p>
+        <p>For local endpoint vectors a and b, exact shape-function integration gives:</p>
+        <p class="equation">fₑ = [L(2aₓ+bₓ)/6, L(7aᵧ+3bᵧ)/20, L²(3aᵧ+2bᵧ)/60, L(aₓ+2bₓ)/6, L(3aᵧ+7bᵧ)/20, −L²(2aᵧ+3bᵧ)/60]ᵀ</p>
+        <p>N and V diagrams are quadratic and M is cubic; plotting includes interior extrema. Both load types add together and support MPCs and Mz releases. Select Linear in the editor and enter endpoint components; Local/Global transforms both vectors. Converting to Uniform takes the endpoint mean, preserving force but generally changing its moment.</p>
+        <p><a href="../../examples/cases/CaseTriangleFrame.txt">Triangular load</a> · <a href="../../examples/cases/CaseLinearFrame.txt">Trapezoidal load</a> · <a href="../../postprocessor/schema-v5.md">JSON v5</a></p>
       </section>
 
       <section aria-labelledby="practice-title">

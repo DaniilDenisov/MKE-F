@@ -89,3 +89,5 @@ td button { padding:.3rem .5rem; color:var(--red); }
 .element-load-symbol { pointer-events:none; }
 .element-load-label { fill:#a23427; pointer-events:none; }
 .local-axis { stroke:#49768c; stroke-width:1.5; vector-effect:non-scaling-stroke; pointer-events:none; }
+
+.load-end-label { display: block; color: #52687f; white-space: nowrap; margin-bottom: 2px; }

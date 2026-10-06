@@ -155,14 +155,14 @@
           try { model.supports.push(global.MKEFSupports.fromType(supportValues[0], supportValues[1], model.elementType === 112 ? 2 : 3)); } catch (error) { fail(supportRecord.line, error.message); }
           if (supportValues.slice(2).some(function (value) { return value !== 0; })) fail(supportRecord.line, 'Only zero prescribed displacements are supported.');
         }
-      } else if (marker === 'eload_uniform') {
+      } else if (marker === 'eload_uniform' || marker === 'eload_linear') {
         requireElements(markerLine);
-        var elementLoadCount = count(marker, false);
+        var elementLoadCount = count(marker, false), linear = marker === 'eload_linear';
         for (var el = 0; el < elementLoadCount; el += 1) {
-          var elementLoadRecord = nextData('uniform element load');
-          var v = parseRecord(elementLoadRecord.text, 5, elementLoadRecord.line, 'Uniform element load');
-          if (v[0] !== 20 || !integer(v[1]) || v[1] < 1 || v[1] > model.elements.length || model.elementType !== 113 || [1, 2].indexOf(v[2]) < 0 || (v[3] === 0 && v[4] === 0)) fail(elementLoadRecord.line, 'Invalid uniform element load; requires frame 113, existing element, Local/Global and nonzero intensity.');
-          model.elementLoads.push({ type: 20, elementId: v[1], coordinateSystem: v[2], qx: v[3], qy: v[4] });
+          var elementLoadRecord = nextData('element load');
+          var v = parseRecord(elementLoadRecord.text, linear ? 7 : 5, elementLoadRecord.line, 'Element load');
+          if (v[0] !== (linear ? 21 : 20) || !integer(v[1]) || v[1] < 1 || v[1] > model.elements.length || model.elementType !== 113 || [1, 2].indexOf(v[2]) < 0 || v.slice(3).every(function (q) { return q === 0; })) fail(elementLoadRecord.line, 'Invalid element load; requires frame 113, existing element, Local/Global and nonzero intensity.');
+          model.elementLoads.push(linear ? { type:21, elementId:v[1], coordinateSystem:v[2], qx1:v[3], qy1:v[4], qx2:v[5], qy2:v[6] } : { type:20, elementId:v[1], coordinateSystem:v[2], qx:v[3], qy:v[4] });
         }
       } else if (['bcforce_stat', 'bcforce_harm', 'bcforce_pulse', 'bcforce_step'].indexOf(marker) >= 0) {
         requireElements(markerLine);
@@ -231,10 +231,11 @@
     });
     (model.elementLoads || []).forEach(function (load, index) {
       var label = 'Element load ' + (index + 1);
-      if (load.type !== 20 || model.elementType !== 113) add(label + ' requires uniform load type 20 and frame element 113.');
+      if ([20,21].indexOf(load.type) < 0 || model.elementType !== 113) add(label + ' requires load type 20/21 and frame element 113.');
       if (!integer(load.elementId) || load.elementId < 1 || load.elementId > model.elements.length) add(label + ' has an invalid element.');
       if ([1, 2].indexOf(load.coordinateSystem) < 0) add(label + ' requires Local or Global coordinates.');
-      if (![load.qx, load.qy].every(finite) || (load.qx === 0 && load.qy === 0)) add(label + ' requires finite, nonzero intensity.');
+      var components = load.type === 21 ? [load.qx1,load.qy1,load.qx2,load.qy2] : [load.qx,load.qy];
+      if (!components.every(finite) || components.every(function (q) { return q === 0; })) add(label + ' requires finite, nonzero intensity.');
       if (model.analysis.type && model.analysis.type !== 'static') add(label + ' is valid only for static analysis.');
     });
     if (model.analysis.type === 'transient') {
@@ -285,9 +286,17 @@
         out.push(values.map(numberText).join(','));
       });
     });
-    if ((model.elementLoads || []).length) {
-      out.push('eload_uniform', String(model.elementLoads.length));
-      model.elementLoads.forEach(function (load) { out.push([20, load.elementId, load.coordinateSystem, load.qx, load.qy].map(numberText).join(',')); });
+    // Contiguous groups preserve the order of mixed load records on round trip.
+    var elementLoads = model.elementLoads || [];
+    for (var start=0; start<elementLoads.length;) {
+      var type=elementLoads[start].type, end=start+1;
+      while (end<elementLoads.length && elementLoads[end].type===type) end++;
+      out.push(type===21 ? 'eload_linear' : 'eload_uniform', String(end-start));
+      elementLoads.slice(start,end).forEach(function (load) {
+        var components=load.type===21 ? [load.qx1,load.qy1,load.qx2,load.qy2] : [load.qx,load.qy];
+        out.push([load.type,load.elementId,load.coordinateSystem].concat(components).map(numberText).join(','));
+      });
+      start=end;
     }
     return out.join('\n') + '\n';
   }

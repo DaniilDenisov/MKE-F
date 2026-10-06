@@ -117,6 +117,13 @@ output.model.supports = recordArray(data.model.supports);
 if isfield(data.model, 'elementLoads')
     output.model.nodalLoads = recordArray(data.model.nodalLoads);
     output.model.elementLoads = recordArray(data.model.elementLoads);
+    for i = 1:numel(output.model.elementLoads)
+        load = output.model.elementLoads{i};
+        if load.type == 20, fields = {'qx1','qy1','qx2','qy2'};
+        else, fields = {'qx','qy'}; end
+        fields = fields(isfield(load, fields));
+        output.model.elementLoads{i} = rmfield(load, fields);
+    end
 end
 
 switch data.analysis.type
@@ -184,7 +191,7 @@ if isfield(data.model,'mpcs')
         end
     end
 end
-if data.version == 4
+if isfield(data.model, 'dofRegistry')
     output.model.dofRegistry = recordArray(data.model.dofRegistry);
     output.model.releases = recordArray(data.model.releases);
     output.model.warnings = data.model.warnings;

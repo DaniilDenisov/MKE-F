@@ -86,6 +86,23 @@ docker compose up --build
 
 См. [JSON v4](postprocessor/schema-v4.md) и примеры `CaseReleaseStatic`, `CaseReleaseModal`, `CaseReleaseTransient`. Проверка: `setup; addpath(fullfile(pwd, 'tests')); test_releases`, затем `node scripts/test_releases_browser.cjs` с Playwright.
 
+### Линейная распределённая нагрузка
+
+В статике для рам 113 доступны Uniform и Linear. В Linear задаются `qx1, qy1, qx2, qy2`
+на концах элемента в местных или глобальных осях. Нулевой конец даёт треугольник,
+разные значения — трапецию; допускается смена знака. Нагрузка действует на всю
+длину элемента и суммируется с другими распределёнными и узловыми нагрузками.
+
+Входной блок: `eload_linear`, число записей, строки
+`21,elementId,coordinateSystem,qx1,qy1,qx2,qy2`.
+См. [JSON v5](postprocessor/schema-v5.md), [формат](reference/RU/10-input-format.html#linear-loads)
+и примеры `CaseLinearFrame`, `CaseTriangleFrame`, `CaseLinearRelease`, `CaseLinearMPC`.
+Старый `eload_uniform` совместим без изменений. Эпюры N/V/M учитывают точное
+линейное распределение и внутренние экстремумы.
+
+Проверка: `setup; addpath('tests'); test_linear_loads` в Octave, затем
+`node scripts/test_linear_loads_browser.cjs` с Playwright.
+
 ### NAFEMS Challenge Problem 5
 
 Сохранённые входы: `examples/cases/nafems-challenge-5/manifest.csv`.
