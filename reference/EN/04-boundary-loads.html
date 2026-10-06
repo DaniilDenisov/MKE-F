@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Boundary conditions and nodal loads in MKE-F: free and constrained DOFs, static and time-dependent loads.">
+  <meta name="description" content="Supports and loads in MKE-F: nodal constraints, static and time-dependent nodal loads, and uniform distributed loads.">
   <title>4. Boundary conditions and loads — MKE-F</title>
   <link rel="stylesheet" href="../assets/reference.css">
 </head>
@@ -13,7 +13,7 @@
     <div class="site-header__inner">
       <nav class="language-switch" aria-label="Reference language"><a href="../RU/04-boundary-loads.html" lang="ru" hreflang="ru">RU</a> <a href="../EN/04-boundary-loads.html" lang="en" hreflang="en" aria-current="true">EN</a></nav>
       <p class="eyebrow">Student FEM Reference · Chapter 4</p>
-      <p class="site-title">Supports and nodal loads</p>
+      <p class="site-title">Supports and loads</p>
       <p class="site-subtitle">Which components are removed from the system and how a specified load becomes a vector or time history.</p>
     </div>
   </header>
@@ -26,6 +26,7 @@
         <li><a href="02-element-matrices.html">Element matrices</a></li>
         <li><a href="03-transformation-assembly.html">Transformation and assembly</a></li>
         <li><a aria-current="page" href="04-boundary-loads.html">Boundary conditions and loads</a></li>
+        <li value="4" class="mpc-chapter"><a href="04a-mpc.html">Linear multipoint constraints (MPC)</a></li>
         <li><a href="05-static-analysis.html">Static analysis</a></li>
         <li><a href="06-modal-analysis.html">Modal analysis</a></li>
         <li><a href="07-newmark-transient.html">Newmark transient analysis</a></li>
@@ -42,7 +43,7 @@
 
     <main class="chapter" id="main">
       <span class="chapter-number">Chapter 4</span>
-      <h1>Boundary conditions and nodal loads</h1>
+      <h1>Boundary conditions and loads</h1>
       <p class="lead">A support specifies prohibited nodal motions; a load specifies generalized forces applied to the relevant components. In MKE-F these data do not change the original matrices: DOF indices and the load vector are rebuilt for each analysis.</p>
 
       <section aria-labelledby="partition-title">
@@ -50,29 +51,30 @@
         <p>The function <a href="../../src/analysis/common/partitionDOFs.m"><code>partitionDOFs</code></a> converts support records into two disjoint lists:</p>
         <ul>
           <li><code>fixedDOFs</code> — DOFs with prescribed zero displacement;</li>
-          <li><code>freeDOFs</code> — unknowns included in the reduced system.</li>
+          <li><code>freeDOFs</code> — all DOFs not restrained by SPC; with SPC alone, these are the reduced-system unknowns.</li>
         </ul>
         <p class="equation">fixedDOFs ∪ freeDOFs = {1, …, n}, &nbsp; fixedDOFs ∩ freeDOFs = ∅</p>
-        <p>Matrices <strong>K</strong> and <strong>M</strong> remain full and unchanged. This separation preserves the physical meaning of the original model and allows correct reaction recovery.</p>
+        <p>The original global matrices <strong>K</strong> and <strong>M</strong> remain unchanged (and may be sparse). This separation preserves the physical meaning of the original model and allows correct reaction recovery.</p>
       </section>
 
       <section aria-labelledby="supports-title">
         <h2 id="supports-title">Support types</h2>
         <p>A record has the form <code>type,node,0,0,0</code>. Nonzero prescribed displacements are not yet supported.</p>
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>Type</th><th>Free</th><th>Constrained</th><th>Physical interpretation</th></tr></thead>
-            <tbody>
-              <tr><td><code>1</code></td><td>none</td><td>all nodal DOFs</td><td>fully fixed node</td></tr>
-              <tr><td><code>2</code></td><td>only <em>u<sub>x</sub></em></td><td><em>u<sub>y</sub></em> and frame <em>θ<sub>z</sub></em></td><td>only horizontal translation is free; rotation is restrained</td></tr>
-              <tr><td><code>3</code></td><td>only <em>u<sub>y</sub></em></td><td><em>u<sub>x</sub></em> and frame <em>θ<sub>z</sub></em></td><td>only vertical translation is free; rotation is restrained</td></tr>
-              <tr><td><code>4</code></td><td><em>θ<sub>z</sub></em> for a frame</td><td><em>u<sub>x</sub>, u<sub>y</sub></em></td><td>pinned frame node</td></tr>
-            <tr><td><code>5</code></td><td>uy, thetaZ</td><td>ux</td><td>ux</td></tr>
-<tr><td><code>6</code></td><td>ux, thetaZ</td><td>uy</td><td>uy</td></tr>
-<tr><td><code>7</code></td><td>ux, uy</td><td>thetaZ</td><td>thetaZ</td></tr></tbody>
-          </table>
-        </div>
-        <p>A truss node has no <em>θ<sub>z</sub></em>, so type 4 is equivalent to full restraint. Constraining the same DOF twice is an error: it usually indicates a duplicate or incorrect record, not a stiffer support.</p>
+        <p>Frame 113 supports all seven combinations:</p>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Type</th><th>Constrained</th><th>Free</th><th>Physical meaning</th></tr></thead>
+          <tbody>
+            <tr><td><code>1</code></td><td><code>ux, uy, thetaZ</code></td><td><code>—</code></td><td>Fully fixed</td></tr>
+            <tr><td><code>2</code></td><td><code>uy, thetaZ</code></td><td><code>ux</code></td><td>Only ux free; rotation restrained</td></tr>
+            <tr><td><code>3</code></td><td><code>ux, thetaZ</code></td><td><code>uy</code></td><td>Only uy free; rotation restrained</td></tr>
+            <tr><td><code>4</code></td><td><code>ux, uy</code></td><td><code>thetaZ</code></td><td>Pinned support</td></tr>
+            <tr><td><code>5</code></td><td><code>ux</code></td><td><code>uy, thetaZ</code></td><td>Roller: ux restrained, rotation free</td></tr>
+            <tr><td><code>6</code></td><td><code>uy</code></td><td><code>ux, thetaZ</code></td><td>Roller: uy restrained, rotation free</td></tr>
+            <tr><td><code>7</code></td><td><code>thetaZ</code></td><td><code>ux, uy</code></td><td>Rotation restraint only</td></tr>
+          </tbody>
+        </table></div>
+        <p>Truss 112 has no rotation: types 1 and 4 restrain ux, uy; types 3 and 5 restrain only ux; types 2 and 6 restrain only uy. Type 7 is rejected. The editor shows three unique combinations and exports types 1, 3 and 2 respectively.</p>
+        <p id="support-masks-title">Supports are stored as <code>fixUx/fixUy/fixThetaZ</code> masks. Changing element family preserves them; remove thetaZ restraints before switching to a truss. Duplicate restraints report the node and component. A pin-and-roller example is <a href="../../examples/cases/CaseRollerFrame.txt">CaseRollerFrame.txt</a>.</p>
       </section>
 
       <section aria-labelledby="conjugate-title">
@@ -92,6 +94,7 @@
 
       <section aria-labelledby="loads-title">
         <h2 id="loads-title">Four load histories</h2>
+        <p>Nodal components use global axes: <code>type,node,Fx,Fy,Mz</code>; harmonic records append a positive frequency <code>f</code> in Hz. Modal analysis accepts no loads. A load on a restrained DOF remains in the full vector and contributes to the reaction.</p>
         <p>Time-history columns correspond to <em>t = 0, Δt, …, NΔt</em>. If several records act on the same DOF, their values are added.</p>
         <div class="table-wrap">
           <table>
@@ -108,6 +111,15 @@
         <pre><code>% Five columns: t = [0, dt, 2dt, 3dt, 4dt]
 pulse = [0, F0, 0,  0, 0];
 step  = [F0, F0, F0, F0, F0];</code></pre>
+      </section>
+
+      <section aria-labelledby="element-loads-title">
+        <h2 id="element-loads-title">Uniform element loading</h2>
+        <p><code>eload_uniform</code> is supported only for frame 113 in statics. A record <code>20,elementId,coordinateSystem,qx,qy</code> gives force per unit actual member length. System 1 uses local axes (x from the first node to the second, y rotated +90° from x); system 2 uses global X, Y. Repeated records add together; the two components cannot both be zero.</p>
+        <p>After converting q to local axes, the consistent vector is:</p>
+        <p class="equation">f<sub>e</sub> = [qₓL/2, qᵧL/2, qᵧL²/12, qₓL/2, qᵧL/2, −qᵧL²/12]ᵀ</p>
+        <p>With u<sub>local</sub> = R u<sub>global</sub>, the global contribution is Rᵀf<sub>e</sub>. It is added to nodal loads; do not enter those equivalent actions a second time. Editing an element or its endpoint coordinates removes its distributed loads; Undo restores them. Switching Local/Global preserves the physical load direction.</p>
+        <p>Format and example: <a href="10-input-format.html#element-loads-title">eload_uniform</a>. Distributed loads are rejected in transient and modal analysis.</p>
       </section>
 
       <section aria-labelledby="practice-title">
@@ -141,7 +153,7 @@ r = example_04_load_histories();</code></pre>
 
         <div class="callout">
           <span class="callout__title">Reference values</span>
-          <p>Static sum: <code>[15; −18; 2]</code>. For Fₓ, the rows are <code>[0 10 0 0 0]</code>, <code>[10 10 10 10 10]</code> and <code>[0 10 0 −10 0]</code>. Impulse: <code>[2,5; −5; 0,75]</code> (N·s, N·s, N·m·s). Halving the step at fixed amplitude halves the impulse; double the amplitude to preserve it.</p>
+          <p>Static sum: <code>[15; −18; 2]</code>. For Fₓ, the rows are <code>[0 10 0 0 0]</code>, <code>[10 10 10 10 10]</code> and <code>[0 10 0 −10 0]</code>. Impulse: <code>[2.5; −5; 0.75]</code> (N·s, N·s, N·m·s). Halving the step at fixed amplitude halves the impulse; double the amplitude to preserve it.</p>
         </div>
         <h3>What to include in the report</h3>
         <p>The static load sum, a table or sketch of the three Fₓ(t) histories, impulse units, and an explanation of the time-step effect.</p>
@@ -153,23 +165,22 @@ r = example_04_load_histories();</code></pre>
           <li><a href="../../src/analysis/common/partitionDOFs.m"><code>partitionDOFs.m</code></a> — support validation and DOF partitioning;</li>
           <li><a href="../../src/analysis/common/getNodalLoadComponents.m"><code>getNodalLoadComponents.m</code></a> — mapping loads to nodal DOFs;</li>
           <li><a href="../../src/analysis/static/buildStaticLoad.m"><code>buildStaticLoad.m</code></a> — fresh static vector;</li>
+          <li><a href="../../src/analysis/static/buildElementLoadVector.m"><code>buildElementLoadVector.m</code></a> — consistent element loads;</li>
           <li><a href="../../src/analysis/transient/buildTransientLoad.m"><code>buildTransientLoad.m</code></a> — time histories;</li>
           <li><a href="../examples/example_04_load_histories.m"><code>example_04_load_histories.m</code></a> — executable laboratory.</li>
         </ul>
       </section>
-      <section><h2>Static uniform loads</h2><p>Section <code>eload_uniform</code> specifies distributed qx/qy in local or global coordinates for type 113 frames only. The full vector F combines nodal and consistent element contributions. For a local load, fe=[qxL/2, qyL/2, qyL²/12, qxL/2, qyL/2, −qyL²/12]ᵀ, and the global contribution is Tᵀfe. Details and editor rules are in the <a href="10-input-format.html#element-loads-title">input format</a>.</p></section>
-    <section aria-labelledby="support-masks-title"><h2 id="support-masks-title">SPC: ux, uy, thetaZ</h2><p>Supports use fixUx/fixUy/fixThetaZ masks. Types 1–4 retain their meaning; new types are 5: ux only, 6: uy only, 7: thetaZ only. Trusses reject type 7 and export canonical types 1, 3 and 2. Changing element family preserves masks; remove thetaZ restraints before switching to a truss. Duplicate restraints identify the node and DOF.</p><p><a href="../../examples/cases/CaseRollerFrame.txt">CaseRollerFrame.txt</a></p></section>
-<section aria-labelledby="mpc-title"><h2 id="mpc-title">MPC</h2><p>A dependent MPC DOF cannot also be restrained by an SPC or dependent in another equation. Masters may be fixed or dependent. Cycles, self references, repeated masters and zero equations are rejected. The axis helper creates n·uₖ = (1−xi)n·uᵢ + xi*n·uⱼ; its coefficients stay fixed after geometry edits.</p><p><a href="../../postprocessor/schema-v3.md">JSON v3 / MPC</a> · <a href="../../examples/cases/CaseMPCFrame.txt">CaseMPCFrame.txt</a> · <a href="../../examples/cases/CaseMPCTruss.txt">CaseMPCTruss.txt</a></p></section>
+<p id="mpc-title" class="callout">Relationships between displacements at several nodes are covered separately in <a href="04a-mpc.html">Chapter 4a: MPC</a>, including dependent DOFs, the axis helper and constraint forces.</p>
 </main>
   </div>
 
   <nav class="page-nav" aria-label="Chapter navigation">
     <a href="03-transformation-assembly.html"><span class="page-nav__label">Previous</span>← 3. Transformation and assembly</a>
-    <a href="05-static-analysis.html"><span class="page-nav__label">Next</span>5. Static analysis →</a>
+    <a href="04a-mpc.html"><span class="page-nav__label">Next</span>4a. Linear multipoint constraints (MPC) →</a>
   </nav>
 
   <footer class="site-footer">
-    <div class="site-footer__inner"><p>MKE-F · offline learning reference · chapter 4 of 15</p></div>
+    <div class="site-footer__inner"><p>MKE-F · offline learning reference · chapter 4 of 16</p></div>
   </footer>
 </body>
 </html>

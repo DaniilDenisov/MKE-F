@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Homogeneous MPCs: input format, axis helper, elimination and constraint forces.">
+  <title>4a. Linear multipoint constraints (MPC) — MKE-F</title>
+  <link rel="stylesheet" href="../assets/reference.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="site-header__inner">
+      <nav class="language-switch" aria-label="Reference language"><a href="../RU/04a-mpc.html" lang="ru" hreflang="ru">RU</a> <a href="../EN/04a-mpc.html" lang="en" hreflang="en" aria-current="true">EN</a></nav>
+      <p class="eyebrow">Student FEM Reference · Chapter 4a</p>
+      <p class="site-title">Linear multipoint constraints (MPC)</p>
+      <p class="site-subtitle">Homogeneous MPCs: input format, axis helper, elimination and constraint forces.</p>
+    </div>
+  </header>
+
+  <div class="layout">
+    <nav class="contents" aria-label="Reference contents">
+      <h2>Contents</h2>
+      <ol>
+        <li><a href="01-model-dofs.html">Model, nodes, elements and DOFs</a></li>
+        <li><a href="02-element-matrices.html">Element matrices</a></li>
+        <li><a href="03-transformation-assembly.html">Transformation and assembly</a></li>
+        <li><a href="04-boundary-loads.html">Boundary conditions and loads</a></li>
+        <li value="4" class="mpc-chapter"><a aria-current="page" href="04a-mpc.html">Linear multipoint constraints (MPC)</a></li>
+        <li><a href="05-static-analysis.html">Static analysis</a></li>
+        <li><a href="06-modal-analysis.html">Modal analysis</a></li>
+        <li><a href="07-newmark-transient.html">Newmark transient analysis</a></li>
+        <li><a href="08-result-recovery.html">Element results</a></li>
+        <li><a href="09-architecture-verification.html">Architecture and verification</a></li>
+        <li><a href="10-input-format.html">Input file format</a></li>
+        <li><a href="11-mario-paz-modal-example.html">Mario Paz modal example</a></li>
+        <li><a href="12-local-octave-workflow.html">Local GNU Octave workflow</a></li>
+        <li><a href="13-fem-assembly-visualizer.html">Interactive FEM assembly</a></li>
+        <li><a href="14-mario-paz-matrices-visualizer.html">Interactive frame matrices</a></li>
+        <li><a href="15-sparse-matrix-assembly.html">Sparse matrix assembly</a></li>
+      </ol>
+    </nav>
+
+    <main class="chapter" id="main">
+      <span class="chapter-number">Chapter 4a</span>
+      <h1>Linear multipoint constraints (MPC)</h1>
+      <p class="lead">An MPC relates nodal displacements. Unlike a support, it can make one node follow several others without fixing those nodes to ground. MKE-F supports homogeneous linear MPCs in static, modal and transient analysis.</p>
+
+      <section aria-labelledby="equation-title">
+        <h2 id="equation-title">Dependent and master DOFs</h2>
+        <p>Each equation explicitly selects one dependent DOF and expresses it through master DOFs:</p>
+        <p class="equation">u<sub>d</sub> = Σ c<sub>j</sub>u<sub>j</sub></p>
+        <p>For example, <code>uy(3) = 0.5·uy(1) + 0.5·uy(2)</code> makes the vertical displacement of node 3 equal to the average of the other two. It leaves <code>ux(3)</code> and any frame rotation unaffected. A master may itself depend on another MPC, provided the dependency graph has no cycles.</p>
+        <p>The local DOF codes are <code>1 = ux</code>, <code>2 = uy</code>, <code>3 = thetaZ</code>. Truss 112 nodes have only the first two. Coefficients may be negative; when mixing translations and rotations, choose their units consistently.</p>
+      </section>
+
+      <section aria-labelledby="input-title">
+        <h2 id="input-title">Case-file record and editor</h2>
+        <p>After an element section, add a repeatable <code>mpc</code> block: the equation count followed by records in this order:</p>
+        <pre><code>depNode,depDOF,rhs,masterCount,node1,dof1,c1,...
+
+mpc
+1
+3,2,0,2,1,2,0.5,2,2,0.5</code></pre>
+        <p>This record is the averaging equation above. <code>rhs</code> must be zero in every analysis; nonzero prescribed displacements are not supported. Equation IDs follow record order across all MPC blocks.</p>
+        <p>In the preprocessor, open <strong>MPC constraints</strong>, click <strong>Add MPC</strong>, choose the dependent node and DOF, and add master rows with coefficients. The displayed equation and purple links identify the relationship; a circle marks the dependent node. Errors prevent export and calculation. Deleting a referenced node removes the entire equation; Undo restores the operation.</p>
+      </section>
+
+      <section aria-labelledby="compatibility-title">
+        <h2 id="compatibility-title">Combining MPCs with supports</h2>
+        <ul>
+          <li>A dependent DOF cannot also be restrained by an SPC or dependent in another equation.</li>
+          <li>Masters may be fixed: their displacement contribution is zero, but they still receive constraint forces.</li>
+          <li>Unknown nodes/DOFs, repeated master DOFs, self references, cycles, nonfinite coefficients and records with all coefficients zero are rejected.</li>
+        </ul>
+        <p>Zero coefficients are permitted alongside nonzero coefficients and do not create dependency edges. The directed form with unique dependent DOFs guarantees independent constraint rows; it does not guarantee a stable structure. The solver checks the reduced stiffness and mass matrices for remaining mechanisms and invalid systems.</p>
+      </section>
+
+      <section aria-labelledby="axis-title">
+        <h2 id="axis-title">Helper: a node on a member axis</h2>
+        <p>Choose axis endpoints <em>i, j</em> and intermediate node <em>k</em>. All three nodes must be distinct; the endpoints must have nonzero separation, and k must lie inside the segment within perpendicular tolerance <code>1e−9·L</code>.</p>
+        <p class="equation">ξ = ((x<sub>k</sub> − x<sub>i</sub>) · (x<sub>j</sub> − x<sub>i</sub>)) / L²<br>n · u<sub>k</sub> = (1 − ξ)n · u<sub>i</sub> + ξn · u<sub>j</sub></p>
+        <p>Here <strong>n</strong> is the unit normal to the original axis. For a horizontal member this interpolates <code>uy</code>; for a vertical member it interpolates <code>ux</code>. An inclined member couples both components. Axial motion remains free. This relation admits rigid translation and infinitesimal rigid rotation.</p>
+        <p>The helper chooses the intermediate component with the largest absolute normal coefficient (ux on a tie), trying the other nonzero component if the first conflicts with existing constraints. If neither is available, it reports an error.</p>
+        <div class="callout"><span class="callout__title">Coefficients are generated once</span><p>The result is an ordinary MPC, without a persistent geometric attachment. Moving nodes does not recalculate it. Recreate the equation when the intended axis or interpolation position changes.</p></div>
+      </section>
+
+      <section aria-labelledby="reduction-title">
+        <h2 id="reduction-title">Exact elimination in all three analyses</h2>
+        <p>The solver combines SPCs and MPCs into a sparse transformation from independent coordinates q to the complete nodal vector:</p>
+        <p class="equation">u = Tq, &nbsp; K<sub>r</sub> = TᵀKT, &nbsp; M<sub>r</sub> = TᵀMT, &nbsp; F<sub>r</sub> = TᵀF</p>
+        <p>It solves the static system, generalized eigenproblem or Newmark integration in these coordinates. Modes, velocities and accelerations are also reconstructed with T. Initial displacement and velocity must satisfy every SPC and MPC; incompatible values are rejected.</p>
+        <p><code>freeDOFs</code> still means all DOFs not restrained by SPC. <code>dependentDOFs</code> lists MPC dependents in equation order; <code>independentDOFs</code> gives the actual solution coordinates. The original K and M, including consistent element mass, are retained. No penalty stiffness is added.</p>
+      </section>
+
+      <section aria-labelledby="forces-title">
+        <h2 id="forces-title">Constraint forces and signs</h2>
+        <p>Each row of C represents <code>uDependent − Σ c·uMaster = 0</code>. After reconstructing the full solution, the solver separates the residual:</p>
+        <p class="equation">r = supportReactions + Cᵀλ<br>mpcForces = Cᵀλ, &nbsp; mpcMultipliers = λ</p>
+        <p>Use <code>r = Ku − F</code> in statics, <code>r = Ma + Ku − F</code> in the undamped transient analysis, and <code>r = Kφ − ω²Mφ</code> for a mode. Positive λ acts positively on the dependent DOF and contributes <code>−c·λ</code> to each master. For the averaging equation and λ = 10 N, the MPC forces are +10 N at node 3 and −5 N at nodes 1 and 2.</p>
+        <p>At a fixed master, the support reaction is the residual minus the MPC force. The legacy <code>reactions</code> field stores the full residual and must not be interpreted as support reactions alone. The postprocessor provides separate force layers, an equation selector and a transient λ history. Modal values use the stored eigenvector amplitude, not the visual deformation scale.</p>
+        <p>MPC models export <a href="../../postprocessor/schema-v3.md">JSON v3</a>. Time decimation applies to all histories; selected-DOF export filters nodal forces while retaining every equation multiplier. Models without MPC retain v1/v2.</p>
+      </section>
+
+      <section aria-labelledby="examples-title">
+        <h2 id="examples-title">Examples and limits</h2>
+        <p>Open <a href="../../examples/cases/CaseMPCFrame.txt">CaseMPCFrame.txt</a> in the preprocessor to inspect a loaded dependent DOF. Related cases cover <a href="../../examples/cases/CaseMPCModal.txt">modes</a>, <a href="../../examples/cases/CaseMPCTransient.txt">transient response</a> and <a href="../../examples/cases/CaseMPCUniform.txt">distributed loading</a>. <a href="../../examples/cases/CaseMPCTruss.txt">CaseMPCTruss.txt</a> constrains the spurious transverse motion of an intermediate truss node.</p>
+        <pre><code>addpath(pwd);
+setup;
+p = StructFEProblem(fullfile(pwd, 'examples', 'cases', 'CaseMPCFrame.txt'));
+r = p.RunSelected();
+disp(r.displacements);
+disp(r.mpcMultipliers);
+disp(r.supportReactions);</code></pre>
+        <p>MPCs describe linear kinematic relationships. They do not implement contact, finite-rotation following, nonzero prescribed motion or element-end moment releases.</p>
+      </section>
+
+      <section class="source-list" aria-labelledby="sources-title">
+        <h2 id="sources-title">Implementation and verification</h2>
+        <ul>
+          <li><a href="../../src/analysis/common/buildConstraintTransform.m">buildConstraintTransform.m</a> — validation, dependency ordering and sparse T;</li>
+          <li><a href="../../src/analysis/common/recoverConstraintForces.m">recoverConstraintForces.m</a> — forces and residual decomposition;</li>
+          <li><a href="../../shared/mpc.js">shared/mpc.js</a> — browser validation and axis helper;</li>
+          <li><a href="../../tests/test_mpc.m">test_mpc.m</a> — independent multiplier/nullspace solutions, histories, error cases and refined-truss convergence.</li>
+        </ul>
+      </section>
+    </main>
+  </div>
+
+  <nav class="page-nav" aria-label="Chapter navigation">
+    <a href="04-boundary-loads.html"><span class="page-nav__label">Previous</span>← 4. Boundary conditions and loads</a>
+    <a href="05-static-analysis.html"><span class="page-nav__label">Next</span>5. Static analysis →</a>
+  </nav>
+
+  <footer class="site-footer">
+    <div class="site-footer__inner"><p>MKE-F · offline learning reference · chapter 4a of 16</p></div>
+  </footer>
+</body>
+</html>

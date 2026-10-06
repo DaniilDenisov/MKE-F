@@ -592,3 +592,6 @@ tr:last-child td {
   min-width: 560px;
   height: auto;
 }
+
+/* Inserted chapter keeps existing chapter and laboratory numbers stable. */
+.contents .mpc-chapter::marker { content: "4a. "; }

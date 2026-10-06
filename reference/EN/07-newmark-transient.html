@@ -26,6 +26,7 @@
         <li><a href="02-element-matrices.html">Element matrices</a></li>
         <li><a href="03-transformation-assembly.html">Transformation and assembly</a></li>
         <li><a href="04-boundary-loads.html">Boundary conditions and loads</a></li>
+        <li value="4" class="mpc-chapter"><a href="04a-mpc.html">Linear multipoint constraints (MPC)</a></li>
         <li><a href="05-static-analysis.html">Static analysis</a></li>
         <li><a href="06-modal-analysis.html">Modal analysis</a></li>
         <li><a aria-current="page" href="07-newmark-transient.html">Newmark transient analysis</a></li>
@@ -215,7 +216,7 @@ disp([r.time(idx).', r.displacements(1,idx).', ...
           <li><a href="https://xn--h1acbaaqgcqcheicn.xn--p1ai/2017/11/25/%D0%BC%D0%BA%D1%8D-%D1%84-%D0%BC%D0%B5%D1%82%D0%BE%D0%B4-%D0%BD%D1%8C%D1%8E%D0%BC%D0%B0%D1%80%D0%BA%D0%B0/">“MKE-F — Newmark method”</a> — historical description of version 0.4 from 2017; old commands and numerical results do not document the current implementation.</li>
         </ul>
       </section>
-    <section aria-labelledby="mpc-title"><h2 id="mpc-title">MPC</h2><p>Newmark integrates independent coordinates with Kr, Mr and TᵀF(t). Displacement, velocity and acceleration are reconstructed with T. Initial displacement and velocity must satisfy SPC and MPC constraints; incompatible values are rejected. Dynamic constraint forces use r = Ma + Ku − F.</p><p><a href="../../postprocessor/schema-v3.md">JSON v3 / MPC</a> · <a href="../../examples/cases/CaseMPCFrame.txt">CaseMPCFrame.txt</a> · <a href="../../examples/cases/CaseMPCTruss.txt">CaseMPCTruss.txt</a></p></section>
+    <section aria-labelledby="mpc-title"><h2 id="mpc-title">MPC</h2><p>Newmark integrates independent coordinates with Kr, Mr and TᵀF(t). Displacement, velocity and acceleration are reconstructed with T. Initial displacement and velocity must satisfy SPC and MPC constraints; incompatible values are rejected. Dynamic constraint forces use r = Ma + Ku − F.</p><p><a href="04a-mpc.html">Complete MPC guide</a> · <a href="../../postprocessor/schema-v3.md">JSON v3</a> · <a href="../../examples/cases/CaseMPCFrame.txt">CaseMPCFrame.txt</a> · <a href="../../examples/cases/CaseMPCTruss.txt">CaseMPCTruss.txt</a></p></section>
 </main>
   </div>
 
@@ -225,7 +226,7 @@ disp([r.time(idx).', r.displacements(1,idx).', ...
   </nav>
 
   <footer class="site-footer">
-    <div class="site-footer__inner"><p>MKE-F · offline learning reference · chapter 7 of 15</p></div>
+    <div class="site-footer__inner"><p>MKE-F · offline learning reference · chapter 7 of 16</p></div>
   </footer>
 </body>
 </html>

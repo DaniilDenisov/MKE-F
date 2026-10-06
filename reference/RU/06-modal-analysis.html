@@ -26,6 +26,7 @@
         <li><a href="02-element-matrices.html">Матрицы элементов</a></li>
         <li><a href="03-transformation-assembly.html">Преобразование и сборка</a></li>
         <li><a href="04-boundary-loads.html">Граничные условия и нагрузки</a></li>
+        <li value="4" class="mpc-chapter"><a href="04a-mpc.html">Линейные многоточечные связи MPC</a></li>
         <li><a href="05-static-analysis.html">Статический расчёт</a></li>
         <li><a aria-current="page" href="06-modal-analysis.html">Модальный анализ</a></li>
         <li><a href="07-newmark-transient.html">Переходный анализ Ньюмарка</a></li>
@@ -183,7 +184,7 @@ r = example_05_modal_frame();</code></pre>
           <li>Henri P. Gavin, <a href="https://people.duke.edu/~hpgavin/StructuralDynamics/RealModes.pdf"><cite>Real Modes of Vibration of Building Structures</cite></a>, Duke University, редакция 16 сентября 2025 года: раздел 2, формулы (2)–(5).</li>
         </ul>
       </section>
-    <section aria-labelledby="mpc-title"><h2 id="mpc-title">MPC</h2><p>При MPC решается Kr φr = ω²Mr φr, затем φ = Tφr. Число форм равно числу независимых СС. Связи поперечных перемещений промежуточных узлов устраняют паразитные механизмы измельчённого ферменного члена. Ненулевой rhs запрещён.</p><p><a href="../../postprocessor/schema-v3.md">JSON v3 / MPC</a> · <a href="../../examples/cases/CaseMPCFrame.txt">CaseMPCFrame.txt</a> · <a href="../../examples/cases/CaseMPCTruss.txt">CaseMPCTruss.txt</a></p></section>
+    <section aria-labelledby="mpc-title"><h2 id="mpc-title">MPC</h2><p>При MPC решается Kr φr = ω²Mr φr, затем φ = Tφr. Число форм равно числу независимых СС. Связи поперечных перемещений промежуточных узлов устраняют паразитные механизмы измельчённого ферменного члена. Ненулевой rhs запрещён.</p><p><a href="04a-mpc.html">Подробное описание MPC</a> · <a href="../../postprocessor/schema-v3.md">JSON v3</a> · <a href="../../examples/cases/CaseMPCFrame.txt">CaseMPCFrame.txt</a> · <a href="../../examples/cases/CaseMPCTruss.txt">CaseMPCTruss.txt</a></p></section>
 </main>
   </div>
 
@@ -193,7 +194,7 @@ r = example_05_modal_frame();</code></pre>
   </nav>
 
   <footer class="site-footer">
-    <div class="site-footer__inner"><p>МКЭ-Ф · автономный учебный справочник · глава 6 из 15</p></div>
+    <div class="site-footer__inner"><p>МКЭ-Ф · автономный учебный справочник · глава 6 из 16</p></div>
   </footer>
 </body>
 </html>

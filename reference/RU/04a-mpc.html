@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Однородные MPC: формат, помощник оси, исключение зависимых СС и силы связей.">
+  <title>4a. Линейные многоточечные связи MPC — MKE-F</title>
+  <link rel="stylesheet" href="../assets/reference.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">К содержанию</a>
+  <header class="site-header">
+    <div class="site-header__inner">
+      <nav class="language-switch" aria-label="Язык справочника"><a href="../RU/04a-mpc.html" lang="ru" hreflang="ru" aria-current="true">RU</a> <a href="../EN/04a-mpc.html" lang="en" hreflang="en">EN</a></nav>
+      <p class="eyebrow">Student FEM Reference · Глава 4a</p>
+      <p class="site-title">Линейные многоточечные связи MPC</p>
+      <p class="site-subtitle">Однородные MPC: формат, помощник оси, исключение зависимых СС и силы связей.</p>
+    </div>
+  </header>
+
+  <div class="layout">
+    <nav class="contents" aria-label="Оглавление справочника">
+      <h2>Оглавление</h2>
+      <ol>
+        <li><a href="01-model-dofs.html">Модель, узлы, элементы и СС</a></li>
+        <li><a href="02-element-matrices.html">Матрицы элементов</a></li>
+        <li><a href="03-transformation-assembly.html">Преобразование и сборка</a></li>
+        <li><a href="04-boundary-loads.html">Граничные условия и нагрузки</a></li>
+        <li value="4" class="mpc-chapter"><a aria-current="page" href="04a-mpc.html">Линейные многоточечные связи MPC</a></li>
+        <li><a href="05-static-analysis.html">Статический расчёт</a></li>
+        <li><a href="06-modal-analysis.html">Модальный анализ</a></li>
+        <li><a href="07-newmark-transient.html">Переходный анализ Ньюмарка</a></li>
+        <li><a href="08-result-recovery.html">Результаты в элементах</a></li>
+        <li><a href="09-architecture-verification.html">Архитектура и проверка</a></li>
+        <li><a href="10-input-format.html">Формат входного файла</a></li>
+        <li><a href="11-mario-paz-modal-example.html">Модальный пример Mario Paz</a></li>
+        <li><a href="12-local-octave-workflow.html">Локальный запуск в GNU Octave</a></li>
+        <li><a href="13-fem-assembly-visualizer.html">Интерактивная сборка МКЭ</a></li>
+        <li><a href="14-mario-paz-matrices-visualizer.html">Интерактивные матрицы рамы</a></li>
+        <li><a href="15-sparse-matrix-assembly.html">Разреженная сборка матриц</a></li>
+      </ol>
+    </nav>
+
+    <main class="chapter" id="main">
+      <span class="chapter-number">Глава 4a</span>
+      <h1>Линейные многоточечные связи MPC</h1>
+      <p class="lead">MPC связывает перемещения узлов. В отличие от опоры, такая связь позволяет одному узлу следовать за несколькими другими, не закрепляя их относительно основания. МКЭ-Ф поддерживает однородные линейные MPC в статическом, модальном и переходном анализе.</p>
+
+      <section aria-labelledby="equation-title">
+        <h2 id="equation-title">Зависимая и ведущие СС</h2>
+        <p>В каждом уравнении явно выбирается одна зависимая СС, которая выражается через ведущие:</p>
+        <p class="equation">u<sub>d</sub> = Σ c<sub>j</sub>u<sub>j</sub></p>
+        <p>Например, <code>uy(3) = 0.5·uy(1) + 0.5·uy(2)</code> делает вертикальное перемещение узла 3 средним перемещений двух других узлов. Связь не ограничивает <code>ux(3)</code> и поворот рамного узла. Ведущая СС может зависеть от другого MPC, если граф зависимостей не содержит циклов.</p>
+        <p>Локальные коды СС: <code>1 = ux</code>, <code>2 = uy</code>, <code>3 = thetaZ</code>. У фермы 112 есть только первые две. Коэффициенты могут быть отрицательными; при смешивании поступательных перемещений и поворотов нужно согласовать их размерности.</p>
+      </section>
+
+      <section aria-labelledby="input-title">
+        <h2 id="input-title">Запись в файле и редактор</h2>
+        <p>После секции элементов добавьте повторяемый блок <code>mpc</code>: число уравнений и записи с таким порядком полей:</p>
+        <pre><code>depNode,depDOF,rhs,masterCount,node1,dof1,c1,...
+
+mpc
+1
+3,2,0,2,1,2,0.5,2,2,0.5</code></pre>
+        <p>Эта запись соответствует приведённому выше усреднению. Во всех видах анализа <code>rhs</code> должен равняться нулю; ненулевые заданные перемещения не поддерживаются. Номера уравнений следуют порядку записей во всех блоках MPC.</p>
+        <p>В препроцессоре откройте <strong>MPC constraints</strong>, нажмите <strong>Add MPC</strong>, выберите зависимый узел и СС, затем добавьте ведущие компоненты и коэффициенты. Уравнение и фиолетовые линии показывают связь, кружок выделяет зависимый узел. Ошибки блокируют экспорт и расчёт. Удаление участвующего узла удаляет уравнение целиком; Undo восстанавливает операцию.</p>
+      </section>
+
+      <section aria-labelledby="compatibility-title">
+        <h2 id="compatibility-title">Совместная работа с опорами</h2>
+        <ul>
+          <li>Зависимая СС не может одновременно быть закреплена SPC или быть зависимой в другом уравнении.</li>
+          <li>Ведущая СС может быть закреплена: её вклад в перемещение равен нулю, но сила связи на неё передаётся.</li>
+          <li>Несуществующие узлы и СС, повторы ведущих СС, самоссылки, циклы, неконечные коэффициенты и записи со всеми нулевыми коэффициентами отклоняются.</li>
+        </ul>
+        <p>Нулевые коэффициенты допустимы рядом с ненулевыми и не создают рёбер графа. Направленная форма с уникальными зависимыми СС гарантирует независимость строк ограничений, но не устойчивость конструкции. Оставшиеся механизмы и некорректность системы проверяются по редуцированным матрицам жёсткости и массы.</p>
+      </section>
+
+      <section aria-labelledby="axis-title">
+        <h2 id="axis-title">Помощник «узел на оси члена»</h2>
+        <p>Выберите концы оси <em>i, j</em> и промежуточный узел <em>k</em>. Все три узла должны быть различными; расстояние между концами должно быть ненулевым, а k — лежать внутри отрезка с допуском поперечного отклонения <code>1e−9·L</code>.</p>
+        <p class="equation">ξ = ((x<sub>k</sub> − x<sub>i</sub>) · (x<sub>j</sub> − x<sub>i</sub>)) / L²<br>n · u<sub>k</sub> = (1 − ξ)n · u<sub>i</sub> + ξn · u<sub>j</sub></p>
+        <p>Здесь <strong>n</strong> — единичная нормаль к исходной оси. Для горизонтального члена интерполируется <code>uy</code>, для вертикального — <code>ux</code>. У наклонного члена связываются обе компоненты. Продольное движение остаётся свободным. Уравнение допускает жёсткий перенос и бесконечно малый жёсткий поворот.</p>
+        <p>Помощник выбирает компоненту промежуточного узла с наибольшим по модулю коэффициентом нормали (при равенстве — ux). Если она конфликтует с ограничениями, проверяется вторая ненулевая компонента. Когда обе недоступны, выводится ошибка.</p>
+        <div class="callout"><span class="callout__title">Коэффициенты создаются один раз</span><p>Результат — обычное MPC без сохраняемой геометрической привязки. Перемещение узлов не пересчитывает коэффициенты. Если меняется нужная ось или положение интерполяции, создайте уравнение заново.</p></div>
+      </section>
+
+      <section aria-labelledby="reduction-title">
+        <h2 id="reduction-title">Точное исключение во всех трёх анализах</h2>
+        <p>Решатель объединяет SPC и MPC в разреженное преобразование независимых координат q в полный узловой вектор:</p>
+        <p class="equation">u = Tq, &nbsp; K<sub>r</sub> = TᵀKT, &nbsp; M<sub>r</sub> = TᵀMT, &nbsp; F<sub>r</sub> = TᵀF</p>
+        <p>В этих координатах решается статическая система, обобщённая задача собственных значений или выполняется интегрирование Ньюмарка. Формы, скорости и ускорения также восстанавливаются через T. Начальные перемещения и скорости должны удовлетворять всем SPC и MPC; несовместные значения отклоняются.</p>
+        <p><code>freeDOFs</code> по-прежнему означает все СС, не закреплённые SPC. <code>dependentDOFs</code> перечисляет зависимые СС в порядке уравнений; <code>independentDOFs</code> задаёт фактические координаты решения. Исходные K и M, включая согласованную массу элементов, сохраняются. Штрафная жёсткость не добавляется.</p>
+      </section>
+
+      <section aria-labelledby="forces-title">
+        <h2 id="forces-title">Силы связей и знаки</h2>
+        <p>Каждая строка C представляет <code>uDependent − Σ c·uMaster = 0</code>. После восстановления полного решения невязка разделяется:</p>
+        <p class="equation">r = supportReactions + Cᵀλ<br>mpcForces = Cᵀλ, &nbsp; mpcMultipliers = λ</p>
+        <p>В статике <code>r = Ku − F</code>, в переходном расчёте без демпфирования <code>r = Ma + Ku − F</code>, для моды <code>r = Kφ − ω²Mφ</code>. Положительное λ действует положительно на зависимую СС и даёт <code>−c·λ</code> на каждой ведущей. Для связи усреднения при λ = 10 Н силы MPC равны +10 Н в узле 3 и −5 Н в узлах 1 и 2.</p>
+        <p>На закреплённой ведущей СС опорная реакция равна невязке минус сила MPC. Совместимое поле <code>reactions</code> хранит полную невязку и не означает только опорные реакции. Постпроцессор показывает отдельные слои сил, выбор уравнения и временной график λ. Модальные значения соответствуют амплитуде сохранённого собственного вектора, а не масштабу изображения деформации.</p>
+        <p>Модели с MPC экспортируются в <a href="../../postprocessor/schema-v3.md">JSON v3</a>. Прореживание времени применяется ко всем историям; выбор СС фильтрует узловые силы, но сохраняет множители всех уравнений. Модели без MPC используют v1/v2.</p>
+      </section>
+
+      <section aria-labelledby="examples-title">
+        <h2 id="examples-title">Примеры и границы применимости</h2>
+        <p>Откройте в препроцессоре <a href="../../examples/cases/CaseMPCFrame.txt">CaseMPCFrame.txt</a>, чтобы исследовать нагрузку на зависимой СС. Отдельные примеры охватывают <a href="../../examples/cases/CaseMPCModal.txt">формы колебаний</a>, <a href="../../examples/cases/CaseMPCTransient.txt">переходный отклик</a> и <a href="../../examples/cases/CaseMPCUniform.txt">распределённую нагрузку</a>. В <a href="../../examples/cases/CaseMPCTruss.txt">CaseMPCTruss.txt</a> ограничено паразитное поперечное движение промежуточного узла фермы.</p>
+        <pre><code>addpath(pwd);
+setup;
+p = StructFEProblem(fullfile(pwd, 'examples', 'cases', 'CaseMPCFrame.txt'));
+r = p.RunSelected();
+disp(r.displacements);
+disp(r.mpcMultipliers);
+disp(r.supportReactions);</code></pre>
+        <p>MPC описывают линейные кинематические соотношения. Они не реализуют контакт, следование при конечных поворотах, ненулевые заданные перемещения или освобождение момента на конце элемента.</p>
+      </section>
+
+      <section class="source-list" aria-labelledby="sources-title">
+        <h2 id="sources-title">Реализация и проверки</h2>
+        <ul>
+          <li><a href="../../src/analysis/common/buildConstraintTransform.m">buildConstraintTransform.m</a> — валидация, порядок зависимостей и разреженная T;</li>
+          <li><a href="../../src/analysis/common/recoverConstraintForces.m">recoverConstraintForces.m</a> — силы и разложение невязки;</li>
+          <li><a href="../../shared/mpc.js">shared/mpc.js</a> — браузерная валидация и помощник оси;</li>
+          <li><a href="../../tests/test_mpc.m">test_mpc.m</a> — независимые решения через множители и базис допустимых перемещений, истории, ошибки и сходимость измельчённой фермы.</li>
+        </ul>
+      </section>
+    </main>
+  </div>
+
+  <nav class="page-nav" aria-label="Навигация между главами">
+    <a href="04-boundary-loads.html"><span class="page-nav__label">Назад</span>← 4. Граничные условия и нагрузки</a>
+    <a href="05-static-analysis.html"><span class="page-nav__label">Далее</span>5. Статический расчёт →</a>
+  </nav>
+
+  <footer class="site-footer">
+    <div class="site-footer__inner"><p>МКЭ-Ф · автономный учебный справочник · глава 4a из 16</p></div>
+  </footer>
+</body>
+</html>

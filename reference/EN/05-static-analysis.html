@@ -26,6 +26,7 @@
         <li><a href="02-element-matrices.html">Element matrices</a></li>
         <li><a href="03-transformation-assembly.html">Transformation and assembly</a></li>
         <li><a href="04-boundary-loads.html">Boundary conditions and loads</a></li>
+        <li value="4" class="mpc-chapter"><a href="04a-mpc.html">Linear multipoint constraints (MPC)</a></li>
         <li><a aria-current="page" href="05-static-analysis.html">Static analysis</a></li>
         <li><a href="06-modal-analysis.html">Modal analysis</a></li>
         <li><a href="07-newmark-transient.html">Newmark transient analysis</a></li>
@@ -252,17 +253,17 @@ r = example_03_static_bar();</code></pre>
         </ul>
       </section>
       <section><h2>Checking distributed loads</h2><p>Consistent element loads enter the full F before solving and calculating R=Ku−F. For a uniform load, the resultant is qL and acts at the midpoint of the original element; global equilibrium is also checked using these original resultants. For a cantilever, |v(L)|=|q|L⁴/(8EI), |θ(L)|=|q|L³/(6EI); free-end forces are zero.</p></section>
-    <section aria-labelledby="mpc-title"><h2 id="mpc-title">MPC</h2><p>MPC analysis solves Kr q = Fr and reconstructs full u = Tq. Forces are recovered from the original system, including loads on dependent and fixed DOFs. Global static equilibrium includes both support reactions and MPC forces.</p><p><a href="../../postprocessor/schema-v3.md">JSON v3 / MPC</a> · <a href="../../examples/cases/CaseMPCFrame.txt">CaseMPCFrame.txt</a> · <a href="../../examples/cases/CaseMPCTruss.txt">CaseMPCTruss.txt</a></p></section>
+    <section aria-labelledby="mpc-title"><h2 id="mpc-title">MPC</h2><p>MPC analysis solves Kr q = Fr and reconstructs full u = Tq. Forces are recovered from the original system, including loads on dependent and fixed DOFs. Global static equilibrium includes both support reactions and MPC forces.</p><p><a href="04a-mpc.html">Complete MPC guide</a> · <a href="../../postprocessor/schema-v3.md">JSON v3</a> · <a href="../../examples/cases/CaseMPCFrame.txt">CaseMPCFrame.txt</a> · <a href="../../examples/cases/CaseMPCTruss.txt">CaseMPCTruss.txt</a></p></section>
 </main>
   </div>
 
   <nav class="page-nav" aria-label="Chapter navigation">
-    <a href="04-boundary-loads.html"><span class="page-nav__label">Previous</span>← 4. Boundary conditions and loads</a>
+    <a href="04a-mpc.html"><span class="page-nav__label">Previous</span>← 4a. Linear multipoint constraints (MPC)</a>
     <a href="06-modal-analysis.html"><span class="page-nav__label">Next</span>6. Modal analysis →</a>
   </nav>
 
   <footer class="site-footer">
-    <div class="site-footer__inner"><p>MKE-F · offline learning reference · chapter 5 of 15</p></div>
+    <div class="site-footer__inner"><p>MKE-F · offline learning reference · chapter 5 of 16</p></div>
   </footer>
 </body>
 </html>

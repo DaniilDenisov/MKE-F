@@ -26,6 +26,7 @@
         <li><a href="02-element-matrices.html">Матрицы элементов</a></li>
         <li><a href="03-transformation-assembly.html">Преобразование и сборка</a></li>
         <li><a href="04-boundary-loads.html">Граничные условия и нагрузки</a></li>
+        <li value="4" class="mpc-chapter"><a href="04a-mpc.html">Линейные многоточечные связи MPC</a></li>
         <li><a aria-current="page" href="05-static-analysis.html">Статический расчёт</a></li>
         <li><a href="06-modal-analysis.html">Модальный анализ</a></li>
         <li><a href="07-newmark-transient.html">Переходный анализ Ньюмарка</a></li>
@@ -252,17 +253,17 @@ r = example_03_static_bar();</code></pre>
         </ul>
       </section>
       <section><h2>Проверка распределённых нагрузок</h2><p>Согласованные элементные нагрузки включаются в полный F до решения и вычисления R=Ku−F. Для равномерной нагрузки результирующая равна qL и приложена в середине исходного элемента; глобальное равновесие дополнительно проверяется по этим исходным результирующим. Для консоли |v(L)|=|q|L⁴/(8EI), |θ(L)|=|q|L³/(6EI); концевые усилия свободного конца равны нулю.</p></section>
-    <section aria-labelledby="mpc-title"><h2 id="mpc-title">MPC</h2><p>Для MPC решается Kr q = Fr и восстанавливается полный u = Tq. Силы вычисляются по исходной системе, включая нагрузки на зависимых и закреплённых СС. Статическое равновесие учитывает отдельно опорные реакции и силы MPC.</p><p><a href="../../postprocessor/schema-v3.md">JSON v3 / MPC</a> · <a href="../../examples/cases/CaseMPCFrame.txt">CaseMPCFrame.txt</a> · <a href="../../examples/cases/CaseMPCTruss.txt">CaseMPCTruss.txt</a></p></section>
+    <section aria-labelledby="mpc-title"><h2 id="mpc-title">MPC</h2><p>Для MPC решается Kr q = Fr и восстанавливается полный u = Tq. Силы вычисляются по исходной системе, включая нагрузки на зависимых и закреплённых СС. Статическое равновесие учитывает отдельно опорные реакции и силы MPC.</p><p><a href="04a-mpc.html">Подробное описание MPC</a> · <a href="../../postprocessor/schema-v3.md">JSON v3</a> · <a href="../../examples/cases/CaseMPCFrame.txt">CaseMPCFrame.txt</a> · <a href="../../examples/cases/CaseMPCTruss.txt">CaseMPCTruss.txt</a></p></section>
 </main>
   </div>
 
   <nav class="page-nav" aria-label="Навигация между главами">
-    <a href="04-boundary-loads.html"><span class="page-nav__label">Назад</span>← 4. Граничные условия и нагрузки</a>
+    <a href="04a-mpc.html"><span class="page-nav__label">Назад</span>← 4a. Линейные многоточечные связи MPC</a>
     <a href="06-modal-analysis.html"><span class="page-nav__label">Далее</span>6. Модальный анализ →</a>
   </nav>
 
   <footer class="site-footer">
-    <div class="site-footer__inner"><p>МКЭ-Ф · автономный учебный справочник · глава 5 из 15</p></div>
+    <div class="site-footer__inner"><p>МКЭ-Ф · автономный учебный справочник · глава 5 из 16</p></div>
   </footer>
 </body>
 </html>
