@@ -23,10 +23,8 @@
     return 'M ' + a.x + ' ' + a.y + ' L ' + b.x + ' ' + b.y + ' M ' + h1.x + ' ' + h1.y + ' L ' + b.x + ' ' + b.y + ' L ' + h2.x + ' ' + h2.y;
   }
   function momentPath(node, value, maximum, size) {
-    var radius = size * (.32 + .3 * Math.abs(value) / maximum), p = M.geometry.svgPoint(node), sweep = value > 0 ? 0 : 1;
-    return 'M ' + (p.x + radius) + ' ' + p.y + ' A ' + radius + ' ' + radius + ' 0 1 ' + sweep + ' ' + (p.x - radius * .7) + ' ' + (p.y - radius * .7) +
-      ' M ' + (p.x - radius * .7) + ' ' + (p.y - radius * .7) + ' l ' + (value > 0 ? radius * .05 : radius * .35) + ' ' + radius * .04 +
-      ' M ' + (p.x - radius * .7) + ' ' + (p.y - radius * .7) + ' l ' + radius * .04 + ' ' + (value > 0 ? radius * .35 : radius * .05);
+    var radius = size * (.32 + .3 * Math.abs(value) / maximum), p = M.geometry.svgPoint(node);
+    return window.MKEFMomentSymbol.path(p.x, p.y, radius, value);
   }
   function restrainedDOFs(dataset) {
     var restrained = new Set(), model = dataset.raw.model;

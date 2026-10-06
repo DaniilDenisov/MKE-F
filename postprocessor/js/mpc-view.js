@@ -50,8 +50,7 @@
           path='M '+(x-dx)+' '+(y-dy)+' L '+x+' '+y+' M '+(x-dx*.25-dy*.12)+' '+(y-dy*.25+dx*.12)+' L '+x+' '+y+' L '+(x-dx*.25+dy*.12)+' '+(y-dy*.25-dx*.12);
         }
         if (Math.abs(moment)>max*1e-10) {
-          var radius=size*.45, sx=node.x-radius*.7, sy=-node.y-radius*.7, direction=moment>0?-1:1;
-          path+=' M '+(node.x+radius)+' '+(-node.y)+' A '+radius+' '+radius+' 0 1 '+(moment>0?0:1)+' '+sx+' '+sy+' l '+(radius*.3)+' '+(direction*radius*.05)+' M '+sx+' '+sy+' l '+(direction*radius*.05)+' '+(radius*.3);
+          path+=' '+window.MKEFMomentSymbol.path(node.x,-node.y,size*.45,moment);
         }
         if (path) { var symbol=M.svgElement('path',{d:path,stroke:color,fill:'none','stroke-width':2,'vector-effect':'non-scaling-stroke','data-node-id':node.id}); var tip=M.svgElement('title'); tip.textContent=label+' node '+node.id+': Fx='+format(fx)+', Fy='+format(fy)+', Mz='+format(moment); symbol.appendChild(tip); layer.appendChild(symbol); }
       });

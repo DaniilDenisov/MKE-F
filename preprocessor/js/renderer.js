@@ -245,7 +245,7 @@
       var dx = load.fx / magnitude * size, dy = -load.fy / magnitude * size;
       layer.appendChild(M.svgElement('line', { x1: node.x - dx, y1: -node.y - dy, x2: node.x, y2: -node.y, class: 'load-symbol', 'marker-end': 'url(#arrow)' }));
     }
-    if (load.mz) layer.appendChild(M.svgElement('circle', { cx: node.x, cy: -node.y, r: size * 0.35, class: 'moment-symbol' }));
+    if (load.mz) layer.appendChild(M.svgElement('path', { d: global.MKEFMomentSymbol.path(node.x, -node.y, size * 0.35, load.mz), class: 'moment-symbol' }));
   };
 
   Renderer.prototype.draw = function (model) {
