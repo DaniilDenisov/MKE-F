@@ -5,6 +5,51 @@ const path = require('path');
 const http = require('http');
 const assert = require('assert/strict');
 const root = path.resolve(__dirname, '..');
+async function checkTableLayout(page) {
+  const panels = page.locator('.tables > details');
+  const initialOpen = await panels.evaluateAll(items => items.map(item => item.open));
+  for (const viewport of [{width:1680,height:800}, {width:1280,height:720}, {width:390,height:844}]) {
+    await page.setViewportSize(viewport);
+    for (const mode of ['closed', 'elements', 'all']) {
+      await panels.evaluateAll((items, mode) => items.forEach((item, i) => {
+        item.open = mode === 'all' || (mode === 'elements' && i === 1);
+      }), mode);
+      const layout = await page.evaluate(() => {
+        const tables = document.querySelector('.tables');
+        return {
+          height: tables.clientHeight, content: tables.scrollHeight,
+          panels: [...tables.children].map(item => {
+            const box = item.getBoundingClientRect();
+            return {
+              open: item.open, height: box.height,
+              header: item.querySelector('summary').getBoundingClientRect().height,
+              contentBottom: item.lastElementChild.getBoundingClientRect().bottom - box.top
+            };
+          })
+        };
+      });
+      for (const panel of layout.panels) {
+        assert(panel.height >= panel.header + 1, `Clipped header: ${viewport.width}/${mode}`);
+        if (!panel.open) assert(Math.abs(panel.height - panel.header - 2) < 1, 'Closed panel stretched beside open panel');
+        else assert(panel.contentBottom <= panel.height, 'Open panel clips its contents');
+      }
+      if (mode === 'all') {
+        assert(layout.content > layout.height, 'Expanded panels must overflow the list region');
+        const before = await page.locator('.canvas-wrap').boundingBox();
+        const scrolled = await page.locator('.tables').evaluate(el => {
+          el.scrollTop = el.scrollHeight;
+          return el.scrollTop;
+        });
+        assert(scrolled > 0, 'List region must scroll');
+        assert.deepEqual(await page.locator('.canvas-wrap').boundingBox(), before, 'Scrolling lists moves canvas');
+      }
+    }
+  }
+  await panels.evaluateAll((items, states) => items.forEach((item, i) => { item.open = states[i]; }), initialOpen);
+  await page.locator('.tables').evaluate(el => { el.scrollTop = 0; });
+  await page.setViewportSize({width:1440,height:1000});
+  console.log('preprocessor layout: PASS (headers, panel contents, independent scrolling, desktop and mobile)');
+}
 require('child_process').execFileSync(process.execPath, [path.join(__dirname, 'generate-support-catalog.cjs'), '--check']);
 const server = http.createServer((req, res) => {
   const pathname = decodeURIComponent(new URL(req.url, 'http://localhost').pathname);
@@ -33,6 +78,7 @@ const server = http.createServer((req, res) => {
     await page.goto(base+'/preprocessor/index.html');
     await page.locator('#file-input').setInputFiles(path.join(root,'examples/cases/CaseUniformFrame.txt'));
     await page.waitForFunction(() => document.querySelectorAll('#element-loads-body tr').length===1);
+    await checkTableLayout(page);
     await page.locator('details').filter({has:page.locator('#nodes-body')}).locator('summary').click().catch(()=>{});
     // Canvas selection gives access to the second coordinate editor.
     await page.locator('#viewport [data-node-id="2"]').dispatchEvent('click');
