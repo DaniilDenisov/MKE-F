@@ -12,6 +12,7 @@ button:disabled { opacity:.45; cursor:not-allowed; }
 .brand-mark { display:grid; place-items:center; width:38px; height:38px; border-radius:10px; color:#fff; background:linear-gradient(145deg,var(--blue),#19a18e); font-weight:800; font-size:20px; }
 .brand small { display:block; color:var(--muted); }
 .toolbar-actions { display:flex; flex-wrap:wrap; gap:.45rem; justify-content:flex-end; }
+.toolbar-actions > .button { display:inline-flex; align-items:center; margin:0; }
 .app-nav { display:flex; align-items:center; gap:.2rem; margin-right:.35rem; }
 .app-nav a { padding:.42rem .55rem; border-radius:5px; color:var(--muted); text-decoration:none; }
 .app-nav a:hover,.app-nav a[aria-current=page] { color:var(--blue2); background:#e8f2fa; }
