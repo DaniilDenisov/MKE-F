@@ -18,6 +18,34 @@
     throws('thetaZ',function () { S.changeFamily(model,112); });
     assert(model.elementType === 113);
   });
+  test('MPC parser round trip and validation parity', function () {
+    var text=fixture()+'mpc\n1\n2,2,0,1,1,2,1\n', model=MKEFPre.caseFormat.parse(text);
+    assert(model.mpcs.length===1 && model.mpcs[0].masters[0].coefficient===1);
+    assert(MKEFPre.caseFormat.serialize(MKEFPre.caseFormat.parse(MKEFPre.caseFormat.serialize(model)))===MKEFPre.caseFormat.serialize(model));
+    ['2,2,1,1,1,2,1','2,2,0,2,1,2,1','2,2,0,1,1,2,NaN','2,2,0,1,1,2,0','2,2,0,1,2,2,1','2,4,0,1,1,2,1','2,2,0,2,1,2,1,1,2,2','1,2,0,1,2,2,1'].forEach(function (record) {
+      throws('MPC',function () { MKEFPre.caseFormat.parse(fixture()+'mpc\n1\n'+record); });
+    });
+    throws('Cycle',function () { MKEFPre.caseFormat.parse(fixture()+'mpc\n2\n2,2,0,1,2,1,1\n2,1,0,1,2,2,1'); });
+    throws('more than one',function () { MKEFPre.caseFormat.parse(text+'mpc\n1\n2,2,0,1,1,2,1'); });
+  });
+  test('axis helper respects rigid motion, orientation and dependent availability', function () {
+    [[2,0],[0,2],[2,2],[3,4]].forEach(function (end) {
+      var model={elementType:112,nodes:[{x:0,y:0},{x:end[0],y:end[1]},{x:end[0]*.25,y:end[1]*.25}],supports:[],mpcs:[]};
+      var m=MKEFMPC.onAxis(model,1,2,3);
+      function motion(node,dof) { var p=model.nodes[node-1]; return dof===1?2-.03*p.y:-4+.03*p.x; }
+      var right=m.masters.reduce(function (v,a) { return v+a.coefficient*motion(a.node,a.dof); },0);
+      assert(Math.abs(motion(m.depNode,m.depDOF)-right)<1e-12);
+      if (end[0]===end[1]) { assert(m.depDOF===1); model.supports=[MKEFSupports.fromType(3,3,2)]; assert(MKEFMPC.onAxis(model,1,2,3).depDOF===2); }
+      model.nodes[2].x+=100; throws('inside',function () { MKEFMPC.onAxis(model,1,2,3); });
+    });
+  });
+  test('MPC node deletion, renumbering and geometry edits', function () {
+    var model=MKEFPre.caseFormat.parse(fixture()); model.nodes.push({x:2,y:0});
+    model.mpcs=[{depNode:3,depDOF:2,rhs:0,masters:[{node:2,dof:2,coefficient:.5}]}];
+    var saved=JSON.stringify(model.mpcs); MKEFPre.modelEdit.updateNode(model,2,'x',3); assert(JSON.stringify(model.mpcs)===saved);
+    MKEFPre.modelEdit.deleteNode(model,0); assert(model.mpcs[0].depNode===2 && model.mpcs[0].masters[0].node===1);
+    MKEFPre.modelEdit.deleteNode(model,0); assert(model.mpcs.length===0);
+  });
   test('parses and serializes a configured static case', function () { var model = MKEFPre.caseFormat.parse(fixture()), text = MKEFPre.caseFormat.serialize(model); assert(model.analysis.type === 'static'); assert(text.indexOf('analysis\nstatic\n') === 0); assert(text.indexOf('bcforce_stat\n1\n10,2,5,-2,1') > 0); });
   test('canonical round trip preserves semantic data', function () { var first = MKEFPre.caseFormat.parse(fixture()), second = MKEFPre.caseFormat.parse(MKEFPre.caseFormat.serialize(first)); assert(JSON.stringify(first) === JSON.stringify(second)); });
   test('legacy cases require a task only at export', function () { var model = MKEFPre.caseFormat.parse(fixture().replace('analysis\nstatic\n', '')); assert(model.analysis.type === ''); throws('Select static', function () { MKEFPre.caseFormat.serialize(model); }); });

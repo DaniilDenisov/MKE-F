@@ -174,7 +174,8 @@ results = run_reference_examples();</code></pre>
         </ul>
       </section>
       <section><h2>Diagrams for loaded elements</h2><p>For total local intensities qx, qy and end vector f: N(x)=−f₁−qx·x, V(x)=−f₂−qy·x, M(x)=−f₃+f₂·x+qy·x²/2. The postprocessor includes the interior extremum of M. Scalars axialStrain, axialStress, axialForce and the stress returned by StressCalc are average axial quantities, not bending stresses. Displacement geometry retains finite element interpolation.</p><p>Results with element loads are exported as <a href="../../postprocessor/schema-v2.md">JSON v2</a>; legacy v1 results remain supported.</p></section>
-    </main>
+    <section aria-labelledby="mpc-title"><h2 id="mpc-title">MPC</h2><p>Each C row has dependent coefficient +1 and master coefficients −c. The residual splits as r = supportReactions + Cᵀλ; mpcForces = Cᵀλ and mpcMultipliers = λ. At a fixed master, the support reaction is r minus the MPC force. For a mode, r = Kφ − ω²Mφ; forces use the stored eigenvector amplitude. The reactions field retains the full residual. JSON v3 labels these quantities separately.</p><p><a href="../../postprocessor/schema-v3.md">JSON v3 / MPC</a> · <a href="../../examples/cases/CaseMPCFrame.txt">CaseMPCFrame.txt</a> · <a href="../../examples/cases/CaseMPCTruss.txt">CaseMPCTruss.txt</a></p></section>
+</main>
   </div>
 
   <nav class="page-nav" aria-label="Chapter navigation">

@@ -193,6 +193,30 @@
     elements.elementCount.textContent = '(' + state.elements.length + ')';
   }
 
+  function renderMPCs() {
+    var body=byId('mpcs-body'); clear(body);
+    var choices=(state.elementType === 112 ? ['ux','uy'] : ['ux','uy','thetaZ']).map(function (label,i) { return [i+1,label]; });
+    (state.mpcs || []).forEach(function (m,index) {
+      var row=document.createElement('tr'); idCell(row,index+1);
+      inputCell(row,m.depNode,'number',function (v) { commit(function () { m.depNode=v; }); });
+      selectCell(row,m.depDOF,choices,function (v) { commit(function () { m.depDOF=v; }); });
+      var host=cell(row);
+      m.masters.forEach(function (a,j) {
+        var table=document.createElement('table'), term=document.createElement('tr');
+        inputCell(term,a.node,'number',function (v) { commit(function () { a.node=v; }); });
+        selectCell(term,a.dof,choices,function (v) { commit(function () { a.dof=v; }); });
+        inputCell(term,a.coefficient,'number',function (v) { commit(function () { a.coefficient=v; }); });
+        deleteCell(term,function () { commit(function () { m.masters.splice(j,1); }); },'master '+(j+1));
+        table.appendChild(term); host.appendChild(table);
+      });
+      var add=document.createElement('button'); add.textContent='Add master'; add.type='button';
+      add.addEventListener('click',function () { commit(function () { m.masters.push({node:1,dof:1,coefficient:1}); }); }); host.appendChild(add);
+      idCell(row,global.MKEFMPC.equation(m));
+      deleteCell(row,function () { commit(function () { state.mpcs.splice(index,1); }); },'MPC '+(index+1));
+      body.appendChild(row);
+    });
+  }
+
   function renderSupports() {
     clear(elements.supportsBody);
     state.supports.forEach(function (support, index) {
@@ -255,7 +279,7 @@
   }
 
   function render() {
-    setNotice(''); renderAnalysis(); renderNodes(); renderElements(); renderSupports(); renderLoads(); renderElementLoads(); renderSelection();
+    setNotice(''); renderAnalysis(); renderNodes(); renderElements(); renderSupports(); renderMPCs(); renderLoads(); renderElementLoads(); renderSelection();
     var gridSize = numeric(elements.gridSpacing), validGridSize = Number.isFinite(gridSize) && gridSize > 0;
     elements.gridSpacing.setCustomValidity(validGridSize ? '' : 'Grid size must be positive and finite.');
     renderer.setGrid(elements.gridEnabled.checked, validGridSize ? gridSize : 1);
@@ -325,6 +349,14 @@
         setNotice('Element Add mode: select first node for element');
       }
     });
+    byId('add-mpc').addEventListener('click',function () { commit(function () {
+      state.mpcs = state.mpcs || [];
+      state.mpcs.push({depNode:currentNode(),depDOF:1,rhs:0,masters:[{node:currentNode() === 1 ? 2 : 1,dof:1,coefficient:1}]});
+    }); });
+    byId('mpc-axis-create').addEventListener('click',function () { commit(function () {
+      var m=global.MKEFMPC.onAxis(state,numeric(byId('mpc-axis-i')),numeric(byId('mpc-axis-j')),numeric(byId('mpc-axis-k')));
+      state.mpcs = state.mpcs || []; state.mpcs.push(m);
+    }); });
     byId('add-support').addEventListener('click', function () { commit(function () { state.supports.push(global.MKEFSupports.fromType(1, currentNode(), state.elementType === 112 ? 2 : 3)); }); });
     elements.addLoad.addEventListener('click', function () { if (state.analysis.type === 'modal') return; commit(function () { state.loads.push({ type: state.analysis.type === 'static' ? 10 : 13, node: currentNode(), fx: 0, fy: -1, mz: 0, frequency: null }); }); });
     elements.addElementLoad.addEventListener('click', function () { if (elements.addElementLoad.disabled) return; commit(function () { state.elementLoads.push({ type: 20, elementId: selection.index + 1, coordinateSystem: 2, qx: 0, qy: -1 }); }); });

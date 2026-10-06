@@ -380,6 +380,9 @@ dynamicResult = problem.RunTransient(1e-4, 1e-2, 3, 2, initial);</code></pre>
         <p>Удаление узла каскадно удаляет его элементы, их распределённые нагрузки и условия самого узла. Остальные узлы остаются, номера ссылок обновляются. Удаление элемента не удаляет его узлы. Одно Undo восстанавливает всю операцию. Удалённый узел наблюдения transient необходимо выбрать заново.</p>
       </section>
     <section aria-labelledby="support-masks-title"><h2 id="support-masks-title">SPC: ux, uy, thetaZ</h2><p>Опоры хранятся как маски fixUx/fixUy/fixThetaZ. Типы 1–4 сохраняют прежний смысл; новые типы: 5 — только ux, 6 — только uy, 7 — только thetaZ. Для фермы тип 7 запрещён, а экспорт использует только типы 1, 3 и 2. При смене семейства маски сохраняются; перед переходом к ферме нужно убрать thetaZ. Повторы диагностируются по узлу и СС.</p><p><a href="../../examples/cases/CaseRollerFrame.txt">CaseRollerFrame.txt</a></p></section>
+<section aria-labelledby="mpc-title"><h2 id="mpc-title">MPC</h2><p>Повторяемая секция mpc содержит число уравнений и строки depNode,depDOF,rhs,masterCount,node,dof,coefficient,... . Коды СС: 1=ux, 2=uy, 3=thetaZ. rhs допускается только 0. Пример ниже задаёт uy(3)=0.5uy(1)+0.5uy(2). Номера уравнений следуют порядку записи во всех секциях. Диагностика указывает номер уравнения и исходную строку.</p><pre><code>mpc
+1
+3,2,0,2,1,2,0.5,2,2,0.5</code></pre><p><a href="../../postprocessor/schema-v3.md">JSON v3 / MPC</a> · <a href="../../examples/cases/CaseMPCFrame.txt">CaseMPCFrame.txt</a> · <a href="../../examples/cases/CaseMPCTruss.txt">CaseMPCTruss.txt</a></p></section>
 </main>
   </div>
 

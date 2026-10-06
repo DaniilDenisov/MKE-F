@@ -114,7 +114,7 @@ for i = 1:numel(output.model.elements)
 end
 output.model.dofMap = numericMatrix(data.model.dofMap);
 output.model.supports = recordArray(data.model.supports);
-if data.version == 2
+if isfield(data.model, 'elementLoads')
     output.model.nodalLoads = recordArray(data.model.nodalLoads);
     output.model.elementLoads = recordArray(data.model.elementLoads);
 end
@@ -132,7 +132,7 @@ switch data.analysis.type
         for i = 1:numel(output.analysis.elementResults)
             output.analysis.elementResults{i}.localEndForces = numericArray( ...
                 output.analysis.elementResults{i}.localEndForces);
-            if data.version == 2
+            if isfield(data.model, 'elementLoads')
                 output.analysis.elementResults{i}.equivalentLocalLoadVector = ...
                     numericArray(output.analysis.elementResults{i}.equivalentLocalLoadVector);
             end
@@ -165,6 +165,26 @@ switch data.analysis.type
                 data.analysis.displacementAmplitudeSpectrum);
         end
 end
+if data.version == 3
+    output.model.mpcs = recordArray(data.model.mpcs);
+    for i = 1:numel(output.model.mpcs)
+        output.model.mpcs{i}.masters = recordArray(data.model.mpcs(i).masters);
+    end
+    output.model.dependentDOFs = numericArray(data.model.dependentDOFs);
+    output.model.independentDOFs = numericArray(data.model.independentDOFs);
+    names = {'supportReactions','mpcForces','mpcMultipliers'};
+    for i = 1:numel(names)
+        name = names{i};
+        if isfield(data.analysis,name)
+            if strcmp(data.analysis.type,'static')
+                output.analysis.(name) = numericArray(data.analysis.(name));
+            else
+                output.analysis.(name) = numericMatrix(data.analysis.(name));
+            end
+        end
+    end
+end
+
 end
 
 function output = recordArray(value)

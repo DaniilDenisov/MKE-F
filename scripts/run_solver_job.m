@@ -26,7 +26,8 @@ try
         'stressUnit', '', 'timeUnit', '', 'prettyPrint', false);
     if strcmp(result.analysisType, 'transient')
         exportOptions.transientFields = {'displacements', 'velocities', ...
-            'accelerations', 'loadHistory', 'reactions', 'spectrum'};
+            'accelerations', 'loadHistory', 'reactions', 'spectrum', ...
+            'supportReactions', 'mpcForces', 'mpcMultipliers'};
         exportOptions.timeStride = 1;
     end
     exportPostprocessorData(model, result, outputPath, exportOptions);

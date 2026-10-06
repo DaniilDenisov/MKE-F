@@ -13,6 +13,7 @@ classdef FEMesh < handle
         allFixBCs;
         allForceBCs;
         elementLoads = struct('type', {}, 'elementId', {}, 'coordinateSystem', {}, 'qx', {}, 'qy', {});
+        multiPointConstraints = struct('depNode',{},'depDOF',{},'rhs',{},'masters',{},'sourceLine',{});
         analysisConfiguration;
     end
     properties (Access = private)
@@ -64,6 +65,8 @@ classdef FEMesh < handle
                         obj.readElements(fid, 112, markerLine);
                     case 'elems_113'
                         obj.readElements(fid, 113, markerLine);
+                    case 'mpc'
+                        obj.readMPC(fid);
                     case 'bcfix'
                         obj.readFixedConditions(fid);
                     case 'bcforce_stat'
@@ -84,6 +87,11 @@ classdef FEMesh < handle
 
             obj.validateCompleteModel();
             obj.validateAnalysisConfiguration();
+            validationModel = struct('fixedBoundaryConditions',obj.allFixBCs, ...
+                'dofPerNode',obj.dofPerNode,'numberOfNodes',obj.numberOfNodes, ...
+                'numberOfDOFs',obj.numberOfNodes*obj.dofPerNode,'dofMap',obj.iMnod, ...
+                'multiPointConstraints',obj.multiPointConstraints);
+            buildConstraintTransform(validationModel);
             clear fileCleanup;
         end
 
@@ -265,6 +273,25 @@ classdef FEMesh < handle
                 this.allMeshElems = [this.allMeshElems; appendedElements];
             end
             this.numberOfElems = numel(this.allMeshElems);
+        end
+
+        function readMPC(this, fid)
+            this.requireElements(this.sourceLineNumber);
+            count = this.readBlockCount(fid, 'mpc', false);
+            for i = 1:count
+                [line, lineNumber] = this.readDataLine(fid, 'MPC');
+                fields = strsplit(line, ',');
+                if numel(fields) < 7
+                    this.fail('MKEF:MalformedInput',lineNumber,'MPC requires depNode,depDOF,rhs,masterCount,node,dof,coefficient,...');
+                end
+                masterCount = str2double(fields{4});
+                if ~isfinite(masterCount) || masterCount ~= fix(masterCount) || masterCount < 1 || numel(fields) ~= 4+3*masterCount
+                    this.fail('MKEF:MalformedInput',lineNumber,'MPC masterCount does not match its fields.');
+                end
+                v = this.parseNumericRecord(line,lineNumber,4+3*masterCount,'MPC');
+                this.multiPointConstraints(end+1) = struct('depNode',v(1),'depDOF',v(2), ...
+                    'rhs',v(3),'masters',reshape(v(5:end),3,[]).','sourceLine',lineNumber);
+            end
         end
 
         function readFixedConditions(this, fid)

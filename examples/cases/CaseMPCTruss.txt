@@ -1,0 +1,19 @@
+# Refined axial truss: intermediate transverse motion follows its endpoints.
+analysis
+modal
+nodes
+3
+0,0,0
+2,0,0
+1,0,0
+elems_112
+2
+112,1,3,0.01,200000000000,7850
+112,3,2,0.01,200000000000,7850
+bcfix
+2
+1,1,0,0,0
+2,2,0,0,0
+mpc
+1
+3,2,0,2,1,2,0.5,2,2,0.5

@@ -52,6 +52,9 @@ input[type="number"],input[type="range"],select { width:100%; padding:.4rem .5re
 .chart-panel { min-height:17rem; }
 .chart-help { margin:.35rem 0 0; color:var(--muted); font-size:.78rem; }
 #history-chart { display:block; width:100%; height:15rem; }
+#mpc-history-chart { width:100%; height:12rem; }
+#mpc-results table { border-collapse:collapse; font-size:.8rem; }
+#mpc-results td,#mpc-results th { padding:.35rem; border-bottom:1px solid var(--line); text-align:left; }
 .status-bar { flex:none; color:var(--muted); font-size:.82rem; }
 .structural-viewport .viewport-background { fill:#fff; }
 .structural-viewport .original-element { fill:none; stroke:#7b8795; stroke-width:1.5; stroke-dasharray:6 4; vector-effect:non-scaling-stroke; }

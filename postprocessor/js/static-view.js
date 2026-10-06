@@ -61,7 +61,7 @@
   }
 
   S.nodalLoadVector = function (dataset) {
-    if (dataset.raw.version === 1) return dataset.raw.analysis.loadVector;
+    if (!dataset.raw.model.elementLoads) return dataset.raw.analysis.loadVector;
     var vector = new Array(dataset.raw.analysis.loadVector.length).fill(0);
     dataset.raw.model.nodalLoads.forEach(function (load) {
       var dofs = dataset.raw.model.dofMap[dataset.nodeIndexById.get(load.nodeId)];
@@ -74,7 +74,7 @@
     renderer.clearLayer('loads'); renderer.clearLayer('reactions');
     var sets = [
       { layer: renderer.layers.loads, values: nodeComponents(dataset, S.nodalLoadVector(dataset), false), forceClass: 'load-symbol load-force-symbol', momentClass: 'load-symbol load-moment-symbol', prefix: 'Load' },
-      { layer: renderer.layers.reactions, values: nodeComponents(dataset, dataset.raw.analysis.reactions, true), forceClass: 'reaction-symbol reaction-force-symbol', momentClass: 'reaction-symbol reaction-moment-symbol', prefix: 'Reaction' }
+      { layer: renderer.layers.reactions, values: nodeComponents(dataset, (dataset.raw.analysis.supportReactions || dataset.raw.analysis.reactions), true), forceClass: 'reaction-symbol reaction-force-symbol', momentClass: 'reaction-symbol reaction-moment-symbol', prefix: 'Reaction' }
     ];
     var size = diagonal(dataset) * .13;
     sets.forEach(function (set) {
@@ -144,8 +144,8 @@
     components.push((model.dofLabels[1] || 'uy') + '=' + withUnit(values[1], lengthUnit));
     if (values.length > 2) components.push((model.dofLabels[2] || 'rz') + '=' + withUnit(values[2], 'rad'));
     var lines = ['Node ' + nodeId, '|u| = ' + withUnit(Math.hypot(values[0], values[1]), lengthUnit), 'Components: ' + components.join(', ')];
-    var load = compactVector(dataset, S.nodalLoadVector(dataset), nodeId, dataset.raw.version === 1 ? 'Load' : 'Nodal load');
-    var reaction = compactVector(dataset, dataset.raw.analysis.reactions, nodeId, 'Reaction');
+    var load = compactVector(dataset, S.nodalLoadVector(dataset), nodeId, !dataset.raw.model.elementLoads ? 'Load' : 'Nodal load');
+    var reaction = compactVector(dataset, (dataset.raw.analysis.supportReactions || dataset.raw.analysis.reactions), nodeId, 'Support reaction');
     if (load) lines.push(load);
     if (reaction) lines.push(reaction);
     return lines;
@@ -155,7 +155,7 @@
     if (mode === 'none' || mode === 'displacementMagnitude') return [];
     var connected = dataset.raw.model.elements.filter(function (element) { return element.nodeIds.indexOf(nodeId) >= 0; });
     if (!connected.length) return [];
-    var labels = { axialForce: dataset.raw.version === 1 ? 'axial force' : 'mean axial force', axialStress: dataset.raw.version === 1 ? 'axial stress' : 'mean axial stress', N: 'axial force N', V: 'shear force V', M: 'bending moment M' };
+    var labels = { axialForce: !dataset.raw.model.elementLoads ? 'axial force' : 'mean axial force', axialStress: !dataset.raw.model.elementLoads ? 'axial stress' : 'mean axial stress', N: 'axial force N', V: 'shear force V', M: 'bending moment M' };
     var suffix = mode === 'axialStress' ? unit(dataset, 'stress') : mode === 'M' ? unit(dataset, 'moment') : unit(dataset, 'force');
     var lines = ['Displayed ' + labels[mode] + ' at connected element' + (connected.length === 1 ? '' : 's') + ':'];
     connected.forEach(function (element) {
@@ -185,7 +185,7 @@
   };
   S.elementDiagram = function (dataset, element, quantity, xi) {
     var f = dataset.resultsByElementId.get(element.id).localEndForces;
-    if (dataset.raw.version === 1) return S.frameDiagram(f, quantity, xi);
+    if (!dataset.raw.model.elementLoads) return S.frameDiagram(f, quantity, xi);
     var q = S.elementIntensities(dataset, element), x = xi*q.length;
     if (quantity === 'N') return -f[0]-q.x*x;
     if (quantity === 'V') return -f[1]-q.y*x;
@@ -195,7 +195,7 @@
   S.diagramSamples = function (dataset, element, quantity, count) {
     var positions = [], n = Math.max(5, count || M.config.defaultFrameSamples);
     for (var i=0; i<n; i+=1) positions.push(i/(n-1));
-    if (quantity === 'M' && dataset.raw.version === 2) {
+    if (quantity === 'M' && !!dataset.raw.model.elementLoads) {
       var q = S.elementIntensities(dataset, element), f = dataset.resultsByElementId.get(element.id).localEndForces;
       var xi = q.y ? -f[1]/(q.y*q.length) : -1;
       if (xi>0 && xi<1) positions.push(xi);

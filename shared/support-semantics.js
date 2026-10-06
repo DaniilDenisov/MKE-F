@@ -20,6 +20,7 @@
   S.dofs = function (support, count) { return S.mask(support, count).map(function (v, i) { return v ? i + 1 : 0; }).filter(Boolean); };
   S.label = function (support, count) { return 'Fixed: ' + S.dofs(support, count).map(function (i) { return names[i - 1]; }).join(', '); };
   S.changeFamily = function (model, family) {
+    if (family === 112 && (model.mpcs || []).some(function (m) { return m.depDOF === 3 || m.masters.some(function (a) { return a.dof === 3; }); })) throw new Error('Remove thetaZ MPC terms before changing to a truss.');
     var oldCount = model.elementType === 112 ? 2 : 3;
     var supports = model.supports.map(function (s) { var m = S.mask(s, oldCount); return {node:s.node, fixUx:m[0], fixUy:m[1], fixThetaZ:m[2]}; });
     if (family === 112 && supports.some(function (s) { return s.fixThetaZ; })) throw new Error('Remove thetaZ restraints before changing to a truss.');

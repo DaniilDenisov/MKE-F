@@ -229,6 +229,7 @@ freeDOFs  = [4 5 6];</code></pre>
         </ul>
       </section>
     <section aria-labelledby="support-masks-title"><h2 id="support-masks-title">SPC: ux, uy, thetaZ</h2><p>Опоры хранятся как маски fixUx/fixUy/fixThetaZ. Типы 1–4 сохраняют прежний смысл; новые типы: 5 — только ux, 6 — только uy, 7 — только thetaZ. Для фермы тип 7 запрещён, а экспорт использует только типы 1, 3 и 2. При смене семейства маски сохраняются; перед переходом к ферме нужно убрать thetaZ. Повторы диагностируются по узлу и СС.</p><p><a href="../../examples/cases/CaseRollerFrame.txt">CaseRollerFrame.txt</a></p></section>
+<section aria-labelledby="mpc-title"><h2 id="mpc-title">MPC</h2><p>MPC связывает несколько узловых СС: одна зависимая СС выражается через ведущие. Физическая нумерация узловых СС остаётся прежней; независимые координаты расчёта q выделяются отдельно. В ферме нет thetaZ. Концевые освобождения не реализованы.</p><p><a href="../../postprocessor/schema-v3.md">JSON v3 / MPC</a> · <a href="../../examples/cases/CaseMPCFrame.txt">CaseMPCFrame.txt</a> · <a href="../../examples/cases/CaseMPCTruss.txt">CaseMPCTruss.txt</a></p></section>
 </main>
   </div>
 

@@ -1,8 +1,8 @@
 # MKE-F postprocessor JSON format, version 2
 
 Version 2 extends [version 1](schema-v1.md) for static uniform frame loads.
-The exporter uses version 2 only when the model has element-load records;
-other results retain version 1. The viewer accepts both. A version-1-only
+The exporter uses version 2 when the model has element-load records and no MPC;
+MPC models use [version 3](schema-v3.md), and other results retain version 1. The viewer accepts all three. A version-1-only
 viewer must reject version 2 rather than plot incorrect member diagrams.
 
 All version 1 static fields remain, including the full assembled

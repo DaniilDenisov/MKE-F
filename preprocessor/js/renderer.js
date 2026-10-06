@@ -216,6 +216,17 @@
     } else if (this.callbacks.select) this.callbacks.select({ kind: 'node', index: index });
   };
 
+  Renderer.prototype.drawMPCs = function (layer,scale) {
+    var self=this;
+    (this.model.mpcs || []).forEach(function (m,i) {
+      var p=self.model.nodes[m.depNode-1]; if (!p) return;
+      var group=M.svgElement('g',{'class':'mpc-constraint','data-mpc-id':i+1,stroke:'#7c3aed','stroke-width':scale*.003,fill:'none'});
+      var title=M.svgElement('title'); title.textContent='MPC '+(i+1)+': '+global.MKEFMPC.equation(m); group.appendChild(title);
+      m.masters.forEach(function (a) { var q=self.model.nodes[a.node-1]; if (q) group.appendChild(M.svgElement('line',{x1:p.x,y1:-p.y,x2:q.x,y2:-q.y,'stroke-dasharray':scale*.02+' '+scale*.01})); });
+      group.appendChild(M.svgElement('circle',{cx:p.x,cy:-p.y,r:scale*.025})); layer.appendChild(group);
+    });
+  };
+
   Renderer.prototype.drawSupport = function (layer, support, scale) {
     var node = this.model.nodes[support.node - 1];
     if (!node) return;
@@ -248,8 +259,9 @@
     this.svg.appendChild(this.gridLayer); this.svg.appendChild(this.axisLayer); this.drawCoordinateSystem();
     var elementLayer = M.svgElement('g', { class: 'elements-layer' }), supportLayer = M.svgElement('g', { class: 'supports-layer' }), nodeLayer = M.svgElement('g', { class: 'nodes-layer' }), labelLayer = M.svgElement('g', { class: 'labels-layer' }), loadLayer = M.svgElement('g', { class: 'loads-layer' });
     this.previewLayer = M.svgElement('g', { class: 'node-preview-layer', 'aria-hidden': 'true' });
-    this.svg.appendChild(elementLayer); this.svg.appendChild(supportLayer); this.svg.appendChild(nodeLayer); this.svg.appendChild(labelLayer); this.svg.appendChild(this.previewLayer); this.svg.appendChild(loadLayer);
     var scale = Math.max(this.view.width, this.view.height, 1);
+    var mpcLayer=M.svgElement('g',{'class':'mpcs-layer'}); this.svg.appendChild(mpcLayer); this.drawMPCs(mpcLayer,scale);
+    this.svg.appendChild(elementLayer); this.svg.appendChild(supportLayer); this.svg.appendChild(nodeLayer); this.svg.appendChild(labelLayer); this.svg.appendChild(this.previewLayer); this.svg.appendChild(loadLayer);
     this.previewElement = M.svgElement('circle', { r: scale * 0.012, class: 'node-placement-preview', visibility: 'hidden' });
     this.previewLayer.appendChild(this.previewElement); this.updateNodePreview();
     this.model.elements.forEach(function (element, index) {

@@ -1,9 +1,9 @@
 (function (M) {
   'use strict';
   var E = M.modelEdit = {};
-  function counts(model) { return [model.nodes.length, model.elements.length, model.supports.length, model.loads.length, (model.elementLoads || []).length]; }
+  function counts(model) { return [model.nodes.length, model.elements.length, model.supports.length, model.loads.length, (model.elementLoads || []).length, (model.mpcs || []).length]; }
   E.describe = function (before, model) {
-    var after = counts(model), labels = ['nodes', 'elements', 'supports', 'nodal loads', 'element loads'];
+    var after = counts(model), labels = ['nodes', 'elements', 'supports', 'nodal loads', 'element loads', 'MPCs'];
     var removed = before.map(function (value, index) { return value > after[index] ? (value - after[index]) + ' ' + labels[index] : ''; }).filter(Boolean);
     return removed.length ? 'Removed: ' + removed.join(', ') + '. Undo restores the entire operation.' : '';
   };
@@ -26,6 +26,8 @@
       model[key] = model[key].filter(function (item) { return item.node !== id; });
       model[key].forEach(function (item) { if (item.node > id) item.node -= 1; });
     });
+    model.mpcs = (model.mpcs || []).filter(function (m) { return m.depNode !== id && !m.masters.some(function (a) { return a.node === id; }); });
+    model.mpcs.forEach(function (m) { if (m.depNode > id) m.depNode--; m.masters.forEach(function (a) { if (a.node > id) a.node--; }); });
     if (model.analysis.monitorNode === id) model.analysis.monitorNode = 0;
     else if (model.analysis.monitorNode > id) model.analysis.monitorNode -= 1;
   };

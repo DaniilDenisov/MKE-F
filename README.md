@@ -60,3 +60,22 @@ docker compose up --build
 [Русский](reference/RU/project-operations.html) · [English](reference/EN/project-operations.html).
 
 Порядок выпуска новой версии описан в [руководстве разработчика](DEVGUIDE.md).
+
+
+### Узловые ограничения и MPC
+
+Для рамы доступны все семь масок закреплений. Типы `5`, `6`, `7` закрепляют
+только `ux`, `uy`, `thetaZ`. Ферма использует три уникальные комбинации.
+Редактор сохраняет маски при смене семейства и требует убрать `thetaZ`
+перед переходом к ферме.
+
+Однородные MPC доступны в статике, модальном и переходном расчёте.
+Редактор MPC и помощник «узел на оси» создают секцию `mpc`; помощник сохраняет
+коэффициенты после правки геометрии. См. [формат и знаки сил](postprocessor/schema-v3.md).
+Примеры: `CaseMPCFrame`, `CaseMPCModal`, `CaseMPCTransient`, `CaseMPCUniform`,
+`CaseMPCTruss` в `examples/cases`.
+
+Для сквозной проверки сначала выполните в Octave `setup; export_mpc_examples`,
+затем `node scripts/test_mpc_browser.cjs` с установленным Playwright
+(или заданным `MKEF_PLAYWRIGHT_MODULE`). `node scripts/generate-support-catalog.cjs --check`
+проверяет синхронизацию общего справочника опор.

@@ -59,6 +59,49 @@ if data.version == 2
             double(source.equivalentLocalLoadVector(:).');
     end
 end
+if isfield(model,'multiPointConstraints') && ~isempty(model.multiPointConstraints)
+    data.version = 3;
+    constraints = buildConstraintTransform(model);
+    equations = model.multiPointConstraints;
+    outputMPC = repmat(struct('id',0,'depNode',0,'depDOF',0,'rhs',0,'masters',[]),numel(equations),1);
+    for i = 1:numel(equations)
+        m = equations(i);
+        masters = repmat(struct('node',0,'dof',0,'coefficient',0),size(m.masters,1),1);
+        for j = 1:numel(masters)
+            masters(j) = struct('node',m.masters(j,1),'dof',m.masters(j,2),'coefficient',m.masters(j,3));
+        end
+        outputMPC(i) = struct('id',i,'depNode',m.depNode,'depDOF',m.depDOF,'rhs',m.rhs,'masters',masters);
+    end
+    data.model.mpcs = outputMPC;
+    data.model.dependentDOFs = constraints.dependentDOFs;
+    data.model.independentDOFs = constraints.independentDOFs;
+    names = {'supportReactions','mpcForces','mpcMultipliers'};
+    for i = 1:numel(names)
+        name = names{i};
+        if strcmp(analysisType,'transient') && ~ismember(name,settings.transientFields), continue; end
+        requireFields(result,{name},'result');
+        values = result.(name);
+        validateNumeric(values,['result.' name]);
+        rows = model.numberOfDOFs;
+        if strcmp(name,'mpcMultipliers'), rows = numel(equations); end
+        columns = 1;
+        if strcmp(analysisType,'modal'), columns = numel(result.eigenvalues); end
+        if strcmp(analysisType,'transient'), columns = numel(result.time); end
+        if ~isequal(size(values),[rows columns]), invalidResult(['Invalid dimensions of ' name]); end
+        if strcmp(analysisType,'transient')
+            indices = 1:settings.timeStride:columns;
+            if indices(end) ~= columns, indices(end+1) = columns; end
+            selected = 1:rows;
+            if ~strcmp(name,'mpcMultipliers') && ~isempty(settings.selectedGlobalDOFs), selected = settings.selectedGlobalDOFs; end
+            data.analysis.(name) = full(values(selected,indices));
+        elseif strcmp(analysisType,'static')
+            data.analysis.(name) = full(values(:).');
+        else
+            data.analysis.(name) = full(values);
+        end
+    end
+end
+
 end
 
 function analysisType = validateAnalysisType(result)
@@ -109,7 +152,8 @@ settings.momentUnit = '';
 settings.stressUnit = '';
 settings.timeUnit = '';
 settings.transientFields = {'displacements', 'velocities', ...
-    'accelerations', 'loadHistory', 'reactions', 'spectrum'};
+    'accelerations', 'loadHistory', 'reactions', 'spectrum', ...
+    'supportReactions', 'mpcForces', 'mpcMultipliers'};
 settings.timeStride = 1;
 settings.selectedGlobalDOFs = [];
 settings.prettyPrint = false;
@@ -136,7 +180,7 @@ if isfield(options, 'transientFields')
     end
     fields = fields(:).';
     validFields = {'displacements', 'velocities', 'accelerations', ...
-        'loadHistory', 'reactions', 'spectrum'};
+        'loadHistory', 'reactions', 'spectrum', 'supportReactions', 'mpcForces', 'mpcMultipliers'};
     for i = 1:numel(fields)
         fields{i} = scalarText(fields{i}, 'transientFields');
         if ~ismember(fields{i}, validFields)

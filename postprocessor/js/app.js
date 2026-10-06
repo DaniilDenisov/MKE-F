@@ -1,6 +1,7 @@
 (function (M) {
   'use strict';
   var elements = {}, dataset = null, renderer = null, currentVector = null, currentScale = 1, transientScale = 1, playback = null, currentLegend = null;
+  var mpcPresentation = null;
   var modalPresentation = null, modalPhaseAngle = 0, modalPhaseFactor = 1;
   function byId(id) { return document.getElementById(id); }
   function option(value, label) { var item = document.createElement('option'); item.value = value; item.textContent = label; return item; }
@@ -34,7 +35,11 @@
   function setStatus(message) { elements.status.textContent = message; }
   function setSection(section, visible) { section.hidden = !visible; }
 
+  function updateMPC() {
+    if (mpcPresentation) mpcPresentation.update(dataset.raw.analysis.type === 'modal' ? Number(elements.modeNumber.value) : Number(elements.timeIndex.value || 0));
+  }
   function updateGeometry() {
+    updateMPC();
     if (!dataset || !currentVector) return;
     try { renderer.updateDeformation(currentVector, currentScale, samples()); if (dataset.raw.analysis.type === 'static') M.staticResults.drawElementLoads(renderer, dataset, currentScale, elements.showOriginal.checked, elements.showDeformed.checked); updateDetails(renderer.selection); }
     catch (error) { showError(error); }
@@ -191,10 +196,14 @@
     var next = M.validateDataset(parsed); dataset = next;
     elements.title.textContent = parsed.metadata.title || 'Untitled dataset'; elements.dropZone.classList.add('has-data');
     elements.reset.disabled = false; elements.exportSvg.disabled = false; elements.exportPng.disabled = false; elements.downloadJson.disabled = false;
+    mpcPresentation = null;
     resetSections(); renderer.mount(dataset);
     if (parsed.analysis.type === 'static') configureStatic();
     else if (parsed.analysis.type === 'modal') configureModal();
     else configureTransient();
+    mpcPresentation = M.mpcView.mount(dataset,renderer,byId('mpc-results'));
+    elements.showReactions.closest('label').style.display = mpcPresentation ? 'none' : '';
+    if (mpcPresentation) renderer.clearLayer('reactions');
     renderer.setVisibility(layerSettings()); updateGeometry(); renderer.setSelection(null);
     if (parsed.model.elements.length > 2000) notice((elements.notice.hidden ? '' : elements.notice.textContent + '\n') + 'This model exceeds the interactive target of 2,000 elements.');
     updateStatus();
@@ -254,7 +263,7 @@
     elements.nextFrame.disabled = value >= analysis.time.length - 1;
     if (M.transientView.hasFullDisplacements(dataset)) { currentVector = M.transientView.vectorAt(dataset, 'displacements', value); updateGeometry(); }
     elements.timeValue.textContent = 'sample ' + (value + 1) + ' / ' + analysis.time.length + ' · t = ' + number(analysis.time[value]) + (dataset.raw.metadata.units.time ? ' ' + dataset.raw.metadata.units.time : '');
-    updateChart(); updateDetails(renderer.selection); updateStatus();
+    updateMPC(); updateChart(); updateDetails(renderer.selection); updateStatus();
   }
 
   function setHistoryValue(series, index, xValue, yValue) {
@@ -431,7 +440,7 @@
         'Sampling: ' + sampling.exported + ' of ' + sampling.original + ' samples exported · export stride ' + sampling.stride + (sampling.decimated ? ' · decimated history' : '')
       ];
       if (series) context.captionLines.splice(3, 0, (quantity === 'spectrum' ? 'Selected spectrum sample: f = ' + number(series.x[selectedIndex]) + ' Hz' : 'Current history value') + ' · ' + number(series.y[selectedIndex]) + (descriptor.unit ? ' ' + descriptor.unit : ''));
-      if (quantity === 'reactions') context.captionLines.push('Dynamic residual is M·a + K·u − F; restrained rows are support reactions.');
+      if (quantity === 'reactions') context.captionLines.push(dataset.raw.version === 3 ? 'Dynamic residual is M·a + K·u − F = support reactions + MPC forces.' : 'Dynamic residual is M·a + K·u − F; restrained rows are support reactions.');
     }
     return context;
   }

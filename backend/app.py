@@ -357,7 +357,7 @@ class JobManager:
             result = json.load(result_file)
         if not isinstance(result, dict):
             raise RuntimeError("The generated result is not a JSON object.")
-        if result.get("format") != "mkef-postprocessor" or result.get("version") not in (1, 2):
+        if result.get("format") != "mkef-postprocessor" or result.get("version") not in (1, 2, 3):
             raise RuntimeError("The generated result has an unsupported schema.")
 
     async def _cleanup_loop(self) -> None:

@@ -380,6 +380,9 @@ dynamicResult = problem.RunTransient(1e-4, 1e-2, 3, 2, initial);</code></pre>
         <p>Deleting a node also deletes its elements, their distributed loads and the node’s own conditions. Other nodes remain and references are renumbered. Deleting an element does not delete its nodes. One Undo restores the whole operation. A deleted transient monitoring node must be selected again.</p>
       </section>
     <section aria-labelledby="support-masks-title"><h2 id="support-masks-title">SPC: ux, uy, thetaZ</h2><p>Supports use fixUx/fixUy/fixThetaZ masks. Types 1–4 retain their meaning; new types are 5: ux only, 6: uy only, 7: thetaZ only. Trusses reject type 7 and export canonical types 1, 3 and 2. Changing element family preserves masks; remove thetaZ restraints before switching to a truss. Duplicate restraints identify the node and DOF.</p><p><a href="../../examples/cases/CaseRollerFrame.txt">CaseRollerFrame.txt</a></p></section>
+<section aria-labelledby="mpc-title"><h2 id="mpc-title">MPC</h2><p>A repeatable mpc section contains an equation count and records depNode,depDOF,rhs,masterCount,node,dof,coefficient,... . DOFs: 1=ux, 2=uy, 3=thetaZ. Only rhs=0 is supported. The example imposes uy(3)=0.5uy(1)+0.5uy(2). Equation IDs follow input order across sections. Diagnostics identify the equation and source line.</p><pre><code>mpc
+1
+3,2,0,2,1,2,0.5,2,2,0.5</code></pre><p><a href="../../postprocessor/schema-v3.md">JSON v3 / MPC</a> · <a href="../../examples/cases/CaseMPCFrame.txt">CaseMPCFrame.txt</a> · <a href="../../examples/cases/CaseMPCTruss.txt">CaseMPCTruss.txt</a></p></section>
 </main>
   </div>
 

@@ -20,14 +20,24 @@ end
 
 stepCount = fix(duration / timeStep);
 loads = buildTransientLoad(model, timeStep, stepCount);
-[fixedDOFs, freeDOFs] = partitionDOFs(model);
+constraints = buildConstraintTransform(model);
+fixedDOFs = constraints.fixedDOFs;
+freeDOFs = constraints.freeDOFs;
+independent = constraints.independentDOFs;
+T = constraints.T;
 reducedK = model.stiffness(freeDOFs, freeDOFs);
 reducedM = model.mass(freeDOFs, freeDOFs);
+reducedLoads = loads(freeDOFs,:);
+if constraints.hasMPC
+    reducedK = T.' * model.stiffness * T;
+    reducedM = T.' * model.mass * T;
+    reducedLoads = T.' * loads;
+end
 validateReducedSystem(reducedK, reducedM, 'transient');
 
-reducedAccelerations = zeros(numel(freeDOFs), stepCount + 1);
-reducedVelocities = zeros(numel(freeDOFs), stepCount + 1);
-reducedDisplacements = zeros(numel(freeDOFs), stepCount + 1);
+reducedAccelerations = zeros(numel(independent), stepCount + 1);
+reducedVelocities = zeros(numel(independent), stepCount + 1);
+reducedDisplacements = zeros(numel(independent), stepCount + 1);
 
 initialDisplacement = getInitialCondition(options, ...
     'initialDisplacement', model.numberOfDOFs);
@@ -38,10 +48,16 @@ if any(initialDisplacement(fixedDOFs) ~= 0) || ...
     error('MKEF:InvalidInitialConditions', ...
         'Initial displacement and velocity must be zero at restrained DOFs.');
 end
-reducedDisplacements(:, 1) = initialDisplacement(freeDOFs);
-reducedVelocities(:, 1) = initialVelocity(freeDOFs);
+if constraints.hasMPC
+    if norm(initialDisplacement-T*initialDisplacement(independent),inf) > 1e-10*max(1,norm(initialDisplacement,inf)) || ...
+            norm(initialVelocity-T*initialVelocity(independent),inf) > 1e-10*max(1,norm(initialVelocity,inf))
+        error('MKEF:InvalidInitialConditions','Initial displacement and velocity must satisfy all MPC equations.');
+    end
+end
+reducedDisplacements(:, 1) = initialDisplacement(independent);
+reducedVelocities(:, 1) = initialVelocity(independent);
 reducedAccelerations(:, 1) = reducedM \ ...
-    (loads(freeDOFs, 1) - reducedK * reducedDisplacements(:, 1));
+    (reducedLoads(:, 1) - reducedK * reducedDisplacements(:, 1));
 
 % Newmark-beta average-acceleration method, equations (22)-(23) in
 % H.P. Gavin, Numerical Integration in Structural Dynamics, Duke University:
@@ -57,7 +73,7 @@ effectiveK = reducedK + newmarkA0 * reducedM;
 effectiveFactor = chol((effectiveK + effectiveK.') / 2);
 
 for step = 1:stepCount
-    effectiveLoad = loads(freeDOFs, step + 1) + reducedM * ...
+    effectiveLoad = reducedLoads(:, step + 1) + reducedM * ...
         (newmarkA0 * reducedDisplacements(:, step) + ...
          newmarkA2 * reducedVelocities(:, step) + ...
          newmarkA3 * reducedAccelerations(:, step));
@@ -73,12 +89,9 @@ for step = 1:stepCount
         newmarkA7 * reducedAccelerations(:, step + 1);
 end
 
-accelerations = zeros(model.numberOfDOFs, stepCount + 1);
-velocities = zeros(model.numberOfDOFs, stepCount + 1);
-displacements = zeros(model.numberOfDOFs, stepCount + 1);
-accelerations(freeDOFs, :) = reducedAccelerations;
-velocities(freeDOFs, :) = reducedVelocities;
-displacements(freeDOFs, :) = reducedDisplacements;
+accelerations = full(T * reducedAccelerations);
+velocities = full(T * reducedVelocities);
+displacements = full(T * reducedDisplacements);
 
 dynamicResidual = model.mass * accelerations + ...
     model.stiffness * displacements - loads;
@@ -93,7 +106,7 @@ result.velocities = velocities;
 result.accelerations = accelerations;
 result.loadHistory = loads;
 result.reactions = dynamicResidual;
-result.equilibriumResidual = dynamicResidual(freeDOFs, :);
+result.equilibriumResidual = T.' * dynamicResidual;
 result.spectrumFrequencyHz = spectrumFrequencyHz;
 result.displacementAmplitudeSpectrum = displacementAmplitudeSpectrum;
 result.timeStep = timeStep;
@@ -104,6 +117,8 @@ result.fixedDOFs = fixedDOFs;
 result.freeDOFs = freeDOFs;
 result.newmarkBeta = beta;
 result.newmarkGamma = gamma;
+result = recoverConstraintForces(result,constraints,dynamicResidual, ...
+    max([norm(model.mass*accelerations,inf),norm(model.stiffness*displacements,inf),norm(loads,inf)]));
 end
 
 function values = getInitialCondition(options, fieldName, numberOfDOFs)

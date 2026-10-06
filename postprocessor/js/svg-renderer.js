@@ -1,7 +1,7 @@
 (function (M) {
   'use strict';
 
-  var layerNames = ['original-geometry', 'diagrams', 'deformed-geometry', 'supports', 'loads', 'reactions', 'nodes', 'labels', 'selection-overlay'];
+  var layerNames = ['original-geometry', 'diagrams', 'deformed-geometry', 'supports', 'loads', 'reactions', 'mpcs', 'spc-forces', 'mpc-forces', 'nodes', 'labels', 'selection-overlay'];
   var rendererSequence = 0;
 
   function clearElement(element) {

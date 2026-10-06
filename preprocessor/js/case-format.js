@@ -33,6 +33,7 @@
       nodes: [],
       elements: [],
       supports: [],
+      mpcs: [],
       loads: [],
       elementLoads: []
     };
@@ -125,6 +126,17 @@
           });
         }
         hasElements = true;
+      } else if (marker === 'mpc') {
+        requireElements(markerLine);
+        var mpcCount = count('mpc', false);
+        for (var mi=0; mi<mpcCount; mi++) {
+          var record=nextData('MPC'), parts=record.text.split(','), masters=Number(parts[3]);
+          if (!integer(masters) || masters < 1 || parts.length !== 4+3*masters) fail(record.line,'MPC masterCount does not match its fields.');
+          var values=parseRecord(record.text,4+3*masters,record.line,'MPC');
+          var mpc={depNode:values[0],depDOF:values[1],rhs:values[2],masters:[],sourceLine:record.line};
+          for (var mt=0;mt<masters;mt++) mpc.masters.push({node:values[4+3*mt],dof:values[5+3*mt],coefficient:values[6+3*mt]});
+          model.mpcs.push(mpc);
+        }
       } else if (marker === 'bcfix') {
         requireElements(markerLine);
         var supportCount = count('bcfix', false);
@@ -196,6 +208,7 @@
         });
       } catch (error) { add(error.message); }
     });
+    errors = errors.concat(global.MKEFMPC.validate(model));
     model.loads.forEach(function (load, index) {
       var label = 'Load ' + (index + 1);
       if ([10, 11, 12, 13].indexOf(load.type) < 0) add(label + ' has an unsupported type.');
@@ -237,6 +250,14 @@
       if (model.elementType === 113) values.push(element.momentOfInertia);
       out.push(values.map(numberText).join(','));
     });
+    if ((model.mpcs || []).length) {
+      out.push('mpc', String(model.mpcs.length));
+      model.mpcs.forEach(function (m) {
+        var values=[m.depNode,m.depDOF,m.rhs,m.masters.length];
+        m.masters.forEach(function (a) { values.push(a.node,a.dof,a.coefficient); });
+        out.push(values.map(numberText).join(','));
+      });
+    }
     out.push('bcfix', String(model.supports.length));
     model.supports.forEach(function (support) { out.push([global.MKEFSupports.type(support, model.elementType === 112 ? 2 : 3), support.node, 0, 0, 0].join(',')); });
     [{ type: 10, marker: 'bcforce_stat' }, { type: 11, marker: 'bcforce_harm' }, { type: 12, marker: 'bcforce_pulse' }, { type: 13, marker: 'bcforce_step' }].forEach(function (group) {

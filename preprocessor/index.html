@@ -6,7 +6,7 @@
   <title>MKE-F Preprocessor</title>
   <link rel="stylesheet" href="assets/preprocessor.css">
   <script defer src="js/namespace.js"></script>
-  <script defer src="../shared/support-catalog.js"></script><script defer src="../shared/support-semantics.js"></script><script defer src="../shared/support-markers.js"></script>
+  <script defer src="../shared/support-catalog.js"></script><script defer src="../shared/support-semantics.js"></script><script defer src="../shared/mpc.js"></script><script defer src="../shared/support-markers.js"></script>
   <script defer src="../shared/api-client.js"></script>
   <script defer src="js/case-format.js"></script><script defer src="js/model-edit.js"></script>
   <script defer src="js/renderer.js"></script>
@@ -48,6 +48,15 @@
         <details open><summary>Nodes <span id="node-count"></span></summary><div class="table-scroll"><table><thead><tr><th>ID</th><th>X</th><th>Y</th><th></th></tr></thead><tbody id="nodes-body"></tbody></table></div></details>
         <details><summary>Elements <span id="element-count"></span></summary><div class="table-scroll"><table><thead id="elements-head"></thead><tbody id="elements-body"></tbody></table></div></details>
         <details><summary>Supports <span id="support-count"></span></summary><div class="table-scroll"><table><thead><tr><th>ID</th><th>Node</th><th>Type</th><th>Fixed DOFs</th><th></th></tr></thead><tbody id="supports-body"></tbody></table></div></details>
+        <details id="mpc-editor"><summary>MPC constraints</summary>
+          <p class="control-note">u dependent = Σ coefficient · u master. Homogeneous constraints only. Axis helper coefficients remain fixed after geometry edits; recreate the MPC when needed.</p>
+          <div class="mpc-helper"><button id="add-mpc" type="button">Add MPC</button>
+          <label>Axis start <input id="mpc-axis-i" type="number" min="1" value="1"></label>
+          <label>Axis end <input id="mpc-axis-j" type="number" min="1" value="2"></label>
+          <label>Intermediate node <input id="mpc-axis-k" type="number" min="1" value="3"></label>
+          <button id="mpc-axis-create" type="button">Create node-on-axis MPC</button></div>
+          <div class="table-scroll"><table><thead><tr><th>ID</th><th>Dependent node</th><th>DOF</th><th>Masters (node, DOF, coefficient)</th><th>Equation</th><th></th></tr></thead><tbody id="mpcs-body"></tbody></table></div>
+        </details>
         <details><summary>Nodal loads <span id="load-count"></span></summary><div class="table-scroll"><table><thead><tr><th>ID</th><th>Type</th><th>Node</th><th>Fx</th><th>Fy</th><th>Mz</th><th>Frequency</th><th></th></tr></thead><tbody id="loads-body"></tbody></table></div></details>
         <details open><summary>Element loads <span id="element-load-count"></span></summary><p class="control-note">Force per unit member length. Editing an element or its end coordinates removes its element loads. Undo restores them.</p><div class="table-scroll"><table><thead><tr><th>ID</th><th>Element</th><th>Type</th><th>Coordinates</th><th>qx</th><th>qy</th><th></th></tr></thead><tbody id="element-loads-body"></tbody></table></div></details>
         <details><summary>Case text preview</summary><textarea id="case-preview" readonly spellcheck="false"></textarea></details>

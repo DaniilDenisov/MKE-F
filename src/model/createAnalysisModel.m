@@ -24,6 +24,7 @@ model.dofMap = mesh.iMnod;
 model.fixedBoundaryConditions = normalizeSupports(mesh.allFixBCs, mesh.dofPerNode);
 model.forceBoundaryConditions = mesh.allForceBCs;
 model.elementLoads = mesh.elementLoads;
+model.multiPointConstraints = mesh.multiPointConstraints;
 model.nodeCoordinates = mesh.allNodes(:, 1:2);
 model.elementData = mesh.allMeshElems;
 model.numberOfNodes = mesh.numberOfNodes;

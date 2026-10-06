@@ -1,0 +1,21 @@
+# Homogeneous MPC; force applied to the dependent node.
+analysis
+static
+nodes
+3
+0,0,0
+1,0,0
+2,0,0
+elems_113
+2
+113,1,2,0.01,200000000000,7850,0.000001
+113,2,3,0.01,200000000000,7850,0.000001
+bcfix
+1
+1,1,0,0,0
+mpc
+1
+3,2,0,2,1,2,0.5,2,2,0.5
+bcforce_stat
+1
+10,3,0,-1000,0

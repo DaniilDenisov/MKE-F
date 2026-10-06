@@ -2,12 +2,18 @@ function result = solveStatic(model)
 %SOLVESTATIC Solve a static model without modifying the supplied model.
 
 loads = buildStaticLoad(model);
-[fixedDOFs, freeDOFs] = partitionDOFs(model);
+constraints = buildConstraintTransform(model);
+fixedDOFs = constraints.fixedDOFs;
+freeDOFs = constraints.freeDOFs;
+T = constraints.T;
 reducedK = model.stiffness(freeDOFs, freeDOFs);
+if constraints.hasMPC, reducedK = T.' * model.stiffness * T; end
 validateReducedSystem(reducedK, [], 'static');
 
 displacements = zeros(model.numberOfDOFs, 1);
-if ~isempty(freeDOFs)
+if constraints.hasMPC
+    displacements = full(T * (reducedK \ (T.' * loads)));
+elseif ~isempty(freeDOFs)
     displacements(freeDOFs) = reducedK \ loads(freeDOFs);
 end
 reactions = model.stiffness * displacements - loads;
@@ -37,4 +43,5 @@ result.elementResults = elementResults;
 result.fixedDOFs = fixedDOFs;
 result.freeDOFs = freeDOFs;
 result.equilibriumResidual = equilibriumResidual;
+result = recoverConstraintForces(result, constraints, reactions, max(norm(model.stiffness*displacements,inf),norm(loads,inf)));
 end

@@ -63,6 +63,13 @@ details { min-width:0; border:1px solid var(--line); border-radius:7px; backgrou
 details[open] { min-height:calc(var(--table-list-height) + 35px); }
 summary { cursor:pointer; padding:.48rem .65rem; background:#f7f9fc; font-weight:650; }
 .table-scroll { width:100%; height:var(--table-list-height); max-height:none; overflow-x:auto; overflow-y:scroll; overscroll-behavior:contain; scrollbar-gutter:stable both-edges; }
+#mpc-editor { grid-column:1 / -1; }
+#mpc-editor[open] { min-height:400px; }
+#mpc-editor .control-note { margin:.5rem .7rem; }
+#mpc-editor .table-scroll { height:260px; }
+.mpc-helper { display:flex; flex-wrap:wrap; align-items:center; gap:.65rem; padding:.5rem .7rem; }
+.mpc-helper label { display:flex; align-items:center; gap:.35rem; }
+.mpc-helper input { width:5rem; }
 table { width:100%; border-collapse:collapse; font-size:.86rem; }
 th,td { padding:.28rem .34rem; border-top:1px solid #e7ebf0; text-align:left; white-space:nowrap; }
 thead { position:sticky; top:0; z-index:1; background:#fff; box-shadow:0 1px 0 #e7ebf0; }

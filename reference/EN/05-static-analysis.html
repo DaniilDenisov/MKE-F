@@ -252,7 +252,8 @@ r = example_03_static_bar();</code></pre>
         </ul>
       </section>
       <section><h2>Checking distributed loads</h2><p>Consistent element loads enter the full F before solving and calculating R=Ku−F. For a uniform load, the resultant is qL and acts at the midpoint of the original element; global equilibrium is also checked using these original resultants. For a cantilever, |v(L)|=|q|L⁴/(8EI), |θ(L)|=|q|L³/(6EI); free-end forces are zero.</p></section>
-    </main>
+    <section aria-labelledby="mpc-title"><h2 id="mpc-title">MPC</h2><p>MPC analysis solves Kr q = Fr and reconstructs full u = Tq. Forces are recovered from the original system, including loads on dependent and fixed DOFs. Global static equilibrium includes both support reactions and MPC forces.</p><p><a href="../../postprocessor/schema-v3.md">JSON v3 / MPC</a> · <a href="../../examples/cases/CaseMPCFrame.txt">CaseMPCFrame.txt</a> · <a href="../../examples/cases/CaseMPCTruss.txt">CaseMPCTruss.txt</a></p></section>
+</main>
   </div>
 
   <nav class="page-nav" aria-label="Chapter navigation">

@@ -12,6 +12,34 @@ REPOSITORY_ROOT = Path("/app")
 RUNNER = REPOSITORY_ROOT / "scripts" / "run_solver_job.m"
 
 
+@pytest.mark.parametrize("case_name", ["CaseMPCFrame", "CaseMPCModal", "CaseMPCTransient", "CaseMPCUniform"])
+def test_mpc_through_real_api(tmp_path, case_name):
+    if not RUNNER.is_file():
+        pytest.skip("container Octave runner is not available")
+    settings = Settings(jobs_root=tmp_path / "jobs", repository_root=REPOSITORY_ROOT,
+                        runner_script=RUNNER, job_timeout_seconds=60)
+    case_text = (REPOSITORY_ROOT / "examples" / "cases" / f"{case_name}.txt").read_text()
+    with TestClient(create_app(settings)) as client:
+        submitted = client.post("/api/v1/jobs", json={"name": case_name, "caseText": case_text})
+        assert submitted.status_code == 202, submitted.text
+        job_id = submitted.json()["id"]
+        deadline = time.monotonic() + 65
+        while time.monotonic() < deadline:
+            job = client.get(f"/api/v1/jobs/{job_id}").json()
+            if job["status"] in {"succeeded", "failed", "timed_out", "canceled"}:
+                break
+            time.sleep(0.05)
+        assert job["status"] == "succeeded", job
+        result = client.get(f"/api/v1/jobs/{job_id}/result").json()
+        assert result["version"] == 3
+        assert len(result["model"]["mpcs"]) == 1
+        assert isinstance(result["analysis"]["mpcMultipliers"], list)
+        assert "supportReactions" in result["analysis"]
+        assert "mpcForces" in result["analysis"]
+        if case_name == "CaseMPCUniform":
+            assert len(result["model"]["elementLoads"]) == 1
+
+
 @pytest.mark.parametrize(
     ("case_name", "analysis_type"),
     [

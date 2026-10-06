@@ -32,7 +32,7 @@
 
   T.availableQuantities = function (dataset) {
     var analysis = dataset.raw.analysis, values = [];
-    ['displacements', 'velocities', 'accelerations', 'loadHistory', 'reactions'].forEach(function (name) { if (analysis[name]) values.push(name); });
+    ['displacements', 'velocities', 'accelerations', 'loadHistory', 'reactions', 'supportReactions', 'mpcForces'].forEach(function (name) { if (analysis[name]) values.push(name); });
     if (analysis.spectrumFrequencyHz && analysis.displacementAmplitudeSpectrum) values.push('spectrum');
     return values;
   };
@@ -45,6 +45,8 @@
       velocities: { label: 'Velocity', unit: displacementUnit ? displacementUnit + '/' + timeUnit : '' },
       accelerations: { label: 'Acceleration', unit: displacementUnit ? displacementUnit + '/' + timeUnit + '²' : '' },
       loadHistory: { label: 'Applied load', unit: actionUnit },
+      supportReactions: { label: 'Support reaction', unit: actionUnit },
+      mpcForces: { label: 'MPC force', unit: actionUnit },
       reactions: { label: 'Dynamic residual / reaction', unit: actionUnit },
       spectrum: { label: 'Displacement amplitude', unit: displacementUnit }
     };
@@ -62,7 +64,7 @@
   };
 
   T.fieldStatus = function (dataset) {
-    var analysis = dataset.raw.analysis, names = ['displacements', 'velocities', 'accelerations', 'loadHistory', 'reactions'], present = [], omitted = [];
+    var analysis = dataset.raw.analysis, names = ['displacements', 'velocities', 'accelerations', 'loadHistory', 'reactions', 'supportReactions', 'mpcForces'], present = [], omitted = [];
     names.forEach(function (name) { (analysis[name] ? present : omitted).push(name); });
     if (analysis.spectrumFrequencyHz && analysis.displacementAmplitudeSpectrum) present.push('spectrum'); else omitted.push('spectrum');
     return { present: present, omitted: omitted };

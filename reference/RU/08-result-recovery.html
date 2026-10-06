@@ -174,7 +174,8 @@ results = run_reference_examples();</code></pre>
         </ul>
       </section>
       <section><h2>Эпюры загруженных элементов</h2><p>При суммарных локальных интенсивностях qx, qy и концевом векторе f: N(x)=−f₁−qx·x, V(x)=−f₂−qy·x, M(x)=−f₃+f₂·x+qy·x²/2. Постпроцессор учитывает внутренний экстремум M. Скалярные axialStrain, axialStress, axialForce и возвращаемое StressCalc напряжение обозначают средние осевые значения, а не изгибные напряжения. Геометрия перемещений сохраняет интерполяцию конечного элемента.</p><p>Результаты с элементными нагрузками экспортируются в <a href="../../postprocessor/schema-v2.md">JSON v2</a>; старые результаты v1 поддерживаются.</p></section>
-    </main>
+    <section aria-labelledby="mpc-title"><h2 id="mpc-title">MPC</h2><p>В строке C коэффициент зависимой СС равен +1, ведущих — −c. Невязка раскладывается как r = supportReactions + Cᵀλ; mpcForces = Cᵀλ, mpcMultipliers = λ. На закреплённой ведущей СС опорная реакция равна r минус сила MPC. Для моды r = Kφ − ω²Mφ, силы соответствуют масштабу сохранённой формы. Поле reactions сохраняет полную невязку. JSON v3 маркирует эти величины раздельно.</p><p><a href="../../postprocessor/schema-v3.md">JSON v3 / MPC</a> · <a href="../../examples/cases/CaseMPCFrame.txt">CaseMPCFrame.txt</a> · <a href="../../examples/cases/CaseMPCTruss.txt">CaseMPCTruss.txt</a></p></section>
+</main>
   </div>
 
   <nav class="page-nav" aria-label="Навигация между главами">

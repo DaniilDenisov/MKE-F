@@ -176,7 +176,7 @@
   M.validateDataset = function (data) {
     objectAt(data, '$');
     if (data.format !== 'mkef-postprocessor') fail('$.format', 'expected "mkef-postprocessor"');
-    if (data.version !== 1 && data.version !== 2) fail('$.version', 'unsupported format version ' + String(data.version));
+    if (data.version !== 1 && data.version !== 2 && data.version !== 3) fail('$.version', 'unsupported format version ' + String(data.version));
     var metadata = objectAt(data.metadata, '$.metadata');
     if (typeof metadata.title !== 'string') fail('$.metadata.title', 'expected a string');
     objectAt(metadata.units, '$.metadata.units');
@@ -186,7 +186,7 @@
     else if (analysis.type === 'modal') validateModal(analysis, context);
     else if (analysis.type === 'transient') validateTransient(analysis, context);
     else fail('$.analysis.type', 'unsupported analysis type');
-    if (data.version === 2) {
+    if (data.version === 2 || Object.prototype.hasOwnProperty.call(data.model,'elementLoads')) {
       if (analysis.type !== 'static') fail('$.analysis.type', 'version 2 element loads require static analysis');
       var memberMap = new Map(data.model.elements.map(function (item) { return [item.id, item]; }));
       arrayAt(data.model.nodalLoads, '$.model.nodalLoads').forEach(function (load, index) {
@@ -203,6 +203,31 @@
       });
       analysis.elementResults.forEach(function (result, index) { vector(result.equivalentLocalLoadVector, result.type === 113 ? 6 : 4, '$.analysis.elementResults[' + index + '].equivalentLocalLoadVector'); });
     }
+
+    if (data.version === 3) {
+      var mpcs = arrayAt(data.model.mpcs,'$.model.mpcs');
+      if (!mpcs.length) fail('$.model.mpcs','version 3 requires MPCs');
+      mpcs.forEach(function (m,i) {
+        var path='$.model.mpcs['+i+']'; objectAt(m,path);
+        if (m.id !== i+1) fail(path+'.id','IDs must follow equation order');
+        arrayAt(m.masters,path+'.masters').forEach(function (term,j) { objectAt(term,path+'.masters['+j+']'); });
+      });
+      var validation = window.MKEFMPC.validate({nodes:data.model.nodes,elementType:data.model.dofPerNode === 2 ? 112 : 113,mpcs:mpcs,supports:data.model.supports.map(function (s) { return {node:s.nodeId,type:s.type}; })});
+      if (validation.length) fail('$.model.mpcs',validation[0]);
+      var dep = mpcs.map(function (m) { var row=data.model.nodes.findIndex(function (n) { return n.id === m.depNode; }); return data.model.dofMap[row][m.depDOF-1]; });
+      var fixed = new Set();
+      data.model.supports.forEach(function (s) { var row=data.model.nodes.findIndex(function (n) { return n.id === s.nodeId; }); window.MKEFSupports.dofs(s,data.model.dofPerNode).forEach(function (d) { fixed.add(data.model.dofMap[row][d-1]); }); });
+      var independent=[]; for (var d=1;d<=context.dofCount;d++) if (!fixed.has(d) && dep.indexOf(d)<0) independent.push(d);
+      vector(data.model.dependentDOFs,dep.length,'$.model.dependentDOFs');
+      vector(data.model.independentDOFs,independent.length,'$.model.independentDOFs');
+      if (JSON.stringify(dep)!==JSON.stringify(data.model.dependentDOFs) || JSON.stringify(independent)!==JSON.stringify(data.model.independentDOFs)) fail('$.model','Incorrect MPC DOF partition');
+      ['supportReactions','mpcForces','mpcMultipliers'].forEach(function (name) {
+        if (analysis.type === 'transient' && !Object.prototype.hasOwnProperty.call(analysis,name)) return;
+        var rows=name === 'mpcMultipliers' ? mpcs.length : (analysis.type === 'transient' ? analysis.globalDOFIds.length : context.dofCount);
+        if (analysis.type === 'static') vector(analysis[name],rows,'$.analysis.'+name);
+        else matrix(analysis[name],rows,analysis.type === 'modal' ? analysis.frequenciesHz.length : analysis.time.length,'$.analysis.'+name);
+      });
+    } else if (Object.prototype.hasOwnProperty.call(data.model,'mpcs')) fail('$.version','MPC data requires version 3');
 
     var nodesById = new Map(data.model.nodes.map(function (node) { return [node.id, node]; }));
     var elementsById = new Map(data.model.elements.map(function (element) { return [element.id, element]; }));
