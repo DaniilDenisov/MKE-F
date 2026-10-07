@@ -80,50 +80,6 @@ docker compose up --build
 Запуск, настройка и проверка проекта:
 [Русский](reference/RU/project-operations.html) · [English](reference/EN/project-operations.html).
 
-Порядок выпуска новой версии описан в [руководстве разработчика](DEVGUIDE.md).
-
-
-### Узловые ограничения и MPC
-
-Для рамы доступны все семь масок закреплений. Типы `5`, `6`, `7` закрепляют
-только `ux`, `uy`, `thetaZ`. Ферма использует три уникальные комбинации.
-Редактор сохраняет маски при смене семейства и требует убрать `thetaZ`
-перед переходом к ферме.
-
-Однородные MPC доступны в статике, модальном и переходном расчёте.
-Редактор MPC и помощник «узел на оси» создают секцию `mpc`; помощник сохраняет
-коэффициенты после правки геометрии. См. [формат и знаки сил](postprocessor/schema-v3.md).
-Примеры: `CaseMPCFrame`, `CaseMPCModal`, `CaseMPCTransient`, `CaseMPCUniform`,
-`CaseMPCTruss` в `examples/cases`.
-
-Для сквозной проверки сначала выполните в Octave `setup; export_mpc_examples`,
-затем `node scripts/test_mpc_browser.cjs` с установленным Playwright
-(или заданным `MKEF_PLAYWRIGHT_MODULE`). `node scripts/generate-support-catalog.cjs --check`
-проверяет синхронизацию общего справочника опор.
-
-### Концевые освобождения Mz
-
-Для каждого конца рамы 113 доступны независимые освобождения Mz во всех трёх анализах. Секция `releases` сохраняет прежний формат элементов. Внутренние повороты учитываются с исходной согласованной массой и доступны в карточках и временных графиках. Закрепление отсутствующего узлового поворота игнорируется с предупреждением; нагрузка Mz и ссылки MPC на него отклоняются.
-
-См. [JSON v4](postprocessor/schema-v4.md) и примеры `CaseReleaseStatic`, `CaseReleaseModal`, `CaseReleaseTransient`. Проверка: `setup; addpath(fullfile(pwd, 'tests')); test_releases`, затем `node scripts/test_releases_browser.cjs` с Playwright.
-
-### Линейная распределённая нагрузка
-
-В статике для рам 113 доступны Uniform и Linear. В Linear задаются `qx1, qy1, qx2, qy2`
-на концах элемента в местных или глобальных осях. Нулевой конец даёт треугольник,
-разные значения — трапецию; допускается смена знака. Нагрузка действует на всю
-длину элемента и суммируется с другими распределёнными и узловыми нагрузками.
-
-Входной блок: `eload_linear`, число записей, строки
-`21,elementId,coordinateSystem,qx1,qy1,qx2,qy2`.
-См. [JSON v5](postprocessor/schema-v5.md), [формат](reference/RU/10-input-format.html#linear-loads)
-и примеры `CaseLinearFrame`, `CaseTriangleFrame`, `CaseLinearRelease`, `CaseLinearMPC`.
-Старый `eload_uniform` совместим без изменений. Эпюры N/V/M учитывают точное
-линейное распределение и внутренние экстремумы.
-
-Проверка: `setup; addpath('tests'); test_linear_loads` в Octave, затем
-`node scripts/test_linear_loads_browser.cjs` с Playwright.
-
 ### NAFEMS Challenge Problem 5
 
 Сохранённые входы: `examples/cases/nafems-challenge-5/manifest.csv`.
@@ -215,61 +171,6 @@ Further details are available in the [handbook](reference/index.html):
 [Русский](reference/RU/index.html) · [English](reference/EN/index.html).
 For setup, configuration, and verification:
 [Русский](reference/RU/project-operations.html) · [English](reference/EN/project-operations.html).
-
-The release procedure is described in the [developer guide](DEVGUIDE.md) (in Russian).
-
-### Nodal constraints and MPCs
-
-All seven restraint masks are available for frames. Types `5`, `6`, and `7`
-restrain only `ux`, `uy`, and `thetaZ`, respectively. Trusses use three unique
-combinations. The editor preserves the masks when switching element families
-and requires removing the `thetaZ` restraint before switching to trusses.
-
-Homogeneous multipoint constraints (MPCs) are supported in static, modal, and
-transient analyses. The MPC editor and the “node on axis” helper create the
-`mpc` section; the helper preserves the coefficients after geometry edits.
-See the [format and force sign conventions](postprocessor/schema-v3.md).
-Examples: `CaseMPCFrame`, `CaseMPCModal`, `CaseMPCTransient`, `CaseMPCUniform`,
-and `CaseMPCTruss` in `examples/cases`.
-
-For an end-to-end check, first run `setup; export_mpc_examples` in Octave,
-then run `node scripts/test_mpc_browser.cjs` with Playwright installed
-(or `MKEF_PLAYWRIGHT_MODULE` set). Run `node scripts/generate-support-catalog.cjs --check`
-to check that the shared support catalog is synchronized.
-
-### Mz end releases
-
-Independent Mz releases are available at each end of a type 113 frame element
-in all three analysis types. The `releases` section preserves the existing
-element format. Internal rotations are included using the original consistent
-mass matrix and are available in result cards and time-history plots.
-A restraint on an absent nodal rotation is ignored with a warning; an Mz load
-or an MPC reference to that rotation is rejected.
-
-See [JSON v4](postprocessor/schema-v4.md) and the `CaseReleaseStatic`,
-`CaseReleaseModal`, and `CaseReleaseTransient` examples. To verify, run
-`setup; addpath(fullfile(pwd, 'tests')); test_releases`, followed by
-`node scripts/test_releases_browser.cjs` with Playwright.
-
-### Linearly distributed loads
-
-Static analysis of type 113 frame elements supports Uniform and Linear loads.
-Linear loads specify `qx1, qy1, qx2, qy2` at the element ends in local or global
-coordinates. A zero value at one end produces a triangular distribution;
-different end values produce a trapezoidal distribution. Sign changes are
-allowed. The load acts along the full element length and is added to other
-distributed and nodal loads.
-
-The input block consists of `eload_linear`, the number of records, and rows of
-`21,elementId,coordinateSystem,qx1,qy1,qx2,qy2`.
-See [JSON v5](postprocessor/schema-v5.md), the [input format](reference/EN/10-input-format.html#linear-loads),
-and the `CaseLinearFrame`, `CaseTriangleFrame`, `CaseLinearRelease`, and
-`CaseLinearMPC` examples. The existing `eload_uniform` format remains compatible
-without changes. N/V/M diagrams account for the exact linear load distribution
-and interior extrema.
-
-To verify, run `setup; addpath('tests'); test_linear_loads` in Octave, followed by
-`node scripts/test_linear_loads_browser.cjs` with Playwright.
 
 ### NAFEMS Challenge Problem 5
 
