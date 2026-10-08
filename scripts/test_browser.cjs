@@ -18,9 +18,12 @@ async function checkConstraintAvailability(page, available) {
 async function checkCanvasTools(page) {
   const hint = page.locator('#canvas-tool-hint');
   await checkConstraintAvailability(page, false);
+  assert(await page.locator('#add-load').isDisabled());
+  await page.locator('#add-load').dispatchEvent('click');
+  assert.equal(await page.locator('#loads-body tr').count(), 0);
   assert(await page.locator('#undo').isDisabled(), 'Blocked constraints changed undo history');
   assert.equal(await page.locator('.settings [data-tool]').count(), 0);
-  assert.equal(await page.locator('.table-actions [data-tool]').count(), 4);
+  assert.equal(await page.locator('.table-actions [data-tool]').count(), 5);
   assert.equal(await page.locator('#add-node').count(), 0);
   await page.locator('#grid-spacing').fill('0.5'); await page.locator('#grid-spacing').dispatchEvent('change');
   await page.locator('#place-node').click();
@@ -114,6 +117,7 @@ async function checkCanvasTools(page) {
   await page.locator('#place-node').click();
   assert.equal(await page.locator('#selection-details').innerText(), 'Nothing selected');
   assert.equal(await page.locator('#viewport .selected, .selected-row').count(), 0);
+  await checkNodalLoadTool(page);
   fs.mkdirSync(path.join(root,'output'), {recursive:true});
   await page.locator('#add-element').click();
   await page.screenshot({path:path.join(root,'output/preprocessor-canvas-tools.png'),fullPage:true});
@@ -122,6 +126,45 @@ async function checkCanvasTools(page) {
   await checkConstraintAvailability(page, false);
   assert.equal(await page.locator('[data-tool="select"]').getAttribute('aria-pressed'), 'true');
   console.log('preprocessor tools: PASS (canvas placement, repeated members, rejected creation, persistent prompts, undo/redo, mode changes)');
+}
+async function checkNodalLoadTool(page) {
+  for (const analysis of ['static', 'transient']) {
+    await page.locator('#analysis-type').selectOption(analysis);
+    await page.locator('[data-tool="select"]').click();
+    await page.locator('.model-node[data-node-id="1"]').dispatchEvent('click');
+    await page.locator('#add-load').click();
+    assert.equal(await page.locator('#loads-body tr').count(), 0, 'Entering load mode created a load');
+    assert.equal(await page.locator('#selection-details').innerText(), 'Nothing selected');
+    assert.equal(await page.locator('#add-load').getAttribute('aria-pressed'), 'true');
+    assert.match(await page.locator('#canvas-tool-hint').innerText(), /Add nodal load: select a node/);
+    assert(await page.locator('#new-member-defaults').isHidden());
+    await page.locator('.model-node[data-node-id="3"]').dispatchEvent('click');
+    assert.equal(await page.locator('#loads-body tr').count(), 1);
+    assert.equal(await page.locator('#loads-body tr input').first().inputValue(), '3');
+    assert.equal(await page.locator('#loads-body tr select').inputValue(), analysis === 'static' ? '10' : '13');
+    await page.keyboard.press('Escape');
+    assert.equal(await page.locator('#selection-details').innerText(), 'Nothing selected');
+    assert.equal(await page.locator('#loads-body tr').count(), 1);
+    assert.equal(await page.locator('#add-load').getAttribute('aria-pressed'), 'true');
+    await page.locator('#undo').click();
+    assert.equal(await page.locator('#loads-body tr').count(), 0);
+    await page.locator('#redo').click();
+    assert.equal(await page.locator('#loads-body tr input').first().inputValue(), '3');
+    await page.locator('[data-tool="select"]').click();
+    await page.locator('.model-node[data-node-id="2"]').dispatchEvent('click');
+    assert.equal(await page.locator('#loads-body tr').count(), 1, 'Load placement remained active after tool change');
+    await page.locator('#add-load').click();
+    assert.equal(await page.locator('#loads-body tr').count(), 1, 'Re-entering load mode created a load');
+    await page.locator('#undo').click();
+    await page.locator('#analysis-type').selectOption('modal');
+    assert(await page.locator('#add-load').isDisabled());
+    assert.equal(await page.locator('[data-tool="select"]').getAttribute('aria-pressed'), 'true');
+    await page.locator('#add-load').dispatchEvent('click');
+    await page.locator('.model-node[data-node-id="3"]').dispatchEvent('click');
+    assert.equal(await page.locator('#loads-body tr').count(), 0, 'Modal analysis allowed load placement');
+  }
+  await page.locator('#analysis-type').selectOption('static');
+  console.log('nodal load tool: PASS (explicit node, static/transient defaults, Escape, undo/redo, mode changes, modal guard)');
 }
 async function checkTableLayout(page) {
   const panels = page.locator('.tables > details');

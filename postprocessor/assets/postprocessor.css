@@ -14,7 +14,7 @@ input[type="number"],input[type="range"],select { width:100%; padding:.4rem .5re
 :focus-visible { outline:3px solid rgba(23,107,135,.3); outline-offset:2px; }
 .toolbar { min-height:4.2rem; display:flex; align-items:center; justify-content:space-between; gap:1rem; padding:.7rem 1rem; background:#142432; color:#fff; flex-wrap:wrap; }
 .brand { display:flex; align-items:center; gap:.75rem; }
-.brand-mark { display:grid; place-items:center; width:2.55rem; height:2.55rem; border-radius:.7rem; background:#26a0bd; font-weight:800; font-size:1.3rem; }
+.brand-mark { display:block; flex-shrink:0; width:38px; height:38px; padding:4px; object-fit:contain; border-radius:10px; background:linear-gradient(145deg,#1769aa,#19a18e); }
 .brand small { display:block; max-width:50vw; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#bfccd6; }
 .toolbar-actions { display:flex; flex-wrap:wrap; gap:.55rem; }
 .app-nav { display:flex; align-items:center; gap:.2rem; margin-right:.3rem; }

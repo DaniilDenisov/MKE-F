@@ -137,6 +137,7 @@
 
   function currentNode() { return selection && selection.kind === 'node' ? selection.index + 1 : 1; }
   function canAddConstraints() { return state.nodes.length > 0 && state.elements.length > 0 && [112, 113].indexOf(state.elementType) >= 0; }
+  function canAddNodalLoads() { return state.nodes.length > 0 && ['static', 'transient'].indexOf(state.analysis.type) >= 0; }
   function placementPoint(point) {
     var x = point.x, y = point.y;
     if (elements.snapEnabled.checked) {
@@ -168,6 +169,14 @@
     });
   }
 
+  function addNodalLoad(index) {
+    if (!canAddNodalLoads() || !state.nodes[index]) return;
+    commit(function () {
+      state.loads.push({ type: state.analysis.type === 'static' ? 10 : 13, node: index + 1, fx: 0, fy: -1, mz: 0, frequency: null });
+      selection = { kind: 'node', index: index };
+    });
+  }
+
   function activateCanvasTool(tool) {
     selection = null;
     renderer.selection = null;
@@ -184,6 +193,7 @@
     byId('canvas-tool-hint').textContent = renderer.tool === 'member'
       ? (renderer.pendingNode === null ? 'Add element: select first node.' : 'Add element: select second node.')
       : renderer.tool === 'support' ? 'Add support: select a node.'
+      : renderer.tool === 'load' ? 'Add nodal load: select a node.'
       : renderer.tool === 'node' ? 'Click the canvas to place a node.' : 'Select a node or element, or drag the canvas to pan.';
   }
 
@@ -322,7 +332,8 @@
     elements.timeStep.value = state.analysis.timeStep; elements.duration.value = state.analysis.duration; elements.monitorNode.value = state.analysis.monitorNode;
     clear(elements.monitorDOF); var labels = state.elementType === 112 ? ['ux', 'uy'] : (state.elementType === 113 ? ['ux', 'uy', 'thetaZ'] : []); labels.forEach(function (label, index) { elements.monitorDOF.appendChild(option(index + 1, (index + 1) + ' · ' + label)); }); elements.monitorDOF.value = String(state.analysis.monitorDOF);
     elements.defaultInertia.hidden = state.elementType !== 113; elements.defaultInertiaLabel.hidden = state.elementType !== 113;
-    elements.addLoad.disabled = ['static', 'transient'].indexOf(state.analysis.type) < 0;
+    elements.addLoad.disabled = !canAddNodalLoads();
+    elements.addLoad.title = elements.addLoad.disabled ? 'Choose static or transient analysis and add nodes before adding nodal loads.' : '';
     ['add-support', 'add-mpc', 'mpc-axis-create'].forEach(function (id) {
       var button = byId(id);
       button.disabled = !canAddConstraints();
@@ -331,7 +342,7 @@
   }
 
   function render() {
-    if (renderer.tool === 'support' && !canAddConstraints()) {
+    if ((renderer.tool === 'support' && !canAddConstraints()) || (renderer.tool === 'load' && !canAddNodalLoads())) {
       selection = null; renderer.selection = null; renderer.setTool('select');
     }
     setNotice(''); renderAnalysis(); renderNodes(); renderElements(); renderSupports(); renderMPCs(); renderLoads(); renderElementLoads(); renderSelection();
@@ -379,7 +390,7 @@
       gridEnabled: byId('grid-enabled'), snapEnabled: byId('snap-enabled'), gridSpacing: byId('grid-spacing'), defaultArea: byId('default-area'), defaultYoung: byId('default-young'), defaultDensity: byId('default-density'), defaultInertia: byId('default-inertia'), defaultInertiaLabel: byId('default-inertia-label'),
       selectionDetails: byId('selection-details'), nodeCoordinateEditor: byId('node-coordinate-editor'), selectedNodeX: byId('selected-node-x'), selectedNodeY: byId('selected-node-y'), nodesBody: byId('nodes-body'), elementsHead: byId('elements-head'), elementsBody: byId('elements-body'), supportsBody: byId('supports-body'), loadsBody: byId('loads-body'), elementLoadsBody: byId('element-loads-body'), elementLoadCount: byId('element-load-count'), addElementLoad: byId('add-element-load'), nodeCount: byId('node-count'), elementCount: byId('element-count'), supportCount: byId('support-count'), loadCount: byId('load-count'), preview: byId('case-preview'), validationStatus: byId('validation-status'), addLoad: byId('add-load')
     };
-    renderer = new M.Renderer(byId('viewport'), { addNode: addNode, addElement: addElement, addSupport: addSupport, select: selectItem, placementPoint: placementPoint, toolChanged: updateCanvasTool });
+    renderer = new M.Renderer(byId('viewport'), { addNode: addNode, addElement: addElement, addSupport: addSupport, addNodalLoad: addNodalLoad, select: selectItem, placementPoint: placementPoint, toolChanged: updateCanvasTool });
     state = F.newModel('', 0); resetTablePanels(); render(); renderer.fit(); renderer.draw(state);
     byId('new-case').addEventListener('click', function () { if (!confirmDiscard()) return; state = F.newModel('', 0); undoStack = []; redoStack = []; dirty = false; selection = null; resetTablePanels(); render(); activateCanvasTool('select'); renderer.fit(); });
     elements.fileInput.addEventListener('change', function () { openFile(elements.fileInput.files[0]); elements.fileInput.value = ''; });
@@ -403,6 +414,7 @@
       var tool = button.getAttribute('data-tool');
       if (tool === 'member' && state.nodes.length < 2) { setNotice('Add at least two nodes first.'); return; }
       if (tool === 'support' && !canAddConstraints()) return;
+      if (tool === 'load' && !canAddNodalLoads()) return;
       activateCanvasTool(tool);
     }); });
     document.addEventListener('keydown', function (event) {
@@ -419,7 +431,6 @@
       var m=global.MKEFMPC.onAxis(state,numeric(byId('mpc-axis-i')),numeric(byId('mpc-axis-j')),numeric(byId('mpc-axis-k')));
       state.mpcs = state.mpcs || []; state.mpcs.push(m);
     }); });
-    elements.addLoad.addEventListener('click', function () { if (state.analysis.type === 'modal') return; commit(function () { state.loads.push({ type: state.analysis.type === 'static' ? 10 : 13, node: currentNode(), fx: 0, fy: -1, mz: 0, frequency: null }); }); });
     elements.addElementLoad.addEventListener('click', function () { if (elements.addElementLoad.disabled) return; commit(function () { state.elementLoads.push({ type: 20, elementId: selection.index + 1, coordinateSystem: 2, qx: 0, qy: -1 }); }); });
     var drop = byId('drop-zone'); drop.addEventListener('dragover', function (event) { event.preventDefault(); }); drop.addEventListener('drop', function (event) { event.preventDefault(); if (event.dataTransfer.files.length) openFile(event.dataTransfer.files[0]); });
     global.addEventListener('beforeunload', function (event) { if (!dirty || navigatingToResult) return; event.preventDefault(); event.returnValue = ''; });

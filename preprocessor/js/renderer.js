@@ -252,6 +252,8 @@
       if (this.callbacks.toolChanged) this.callbacks.toolChanged();
     } else if (this.tool === 'support') {
       if (this.callbacks.addSupport) this.callbacks.addSupport(index);
+    } else if (this.tool === 'load') {
+      if (this.callbacks.addNodalLoad) this.callbacks.addNodalLoad(index);
     } else if (this.callbacks.select) this.callbacks.select({ kind: 'node', index: index });
   };
 
