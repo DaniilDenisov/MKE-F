@@ -5,8 +5,20 @@ const path = require('path');
 const http = require('http');
 const assert = require('assert/strict');
 const root = path.resolve(__dirname, '..');
+async function checkConstraintAvailability(page, available) {
+  for (const id of ['add-support', 'add-mpc', 'mpc-axis-create']) {
+    assert.equal(await page.locator('#' + id).isDisabled(), !available, id);
+    if (!available) await page.locator('#' + id).dispatchEvent('click');
+  }
+  if (!available) {
+    assert.equal(await page.locator('#supports-body tr').count(), 0, 'Created a support without elements');
+    assert.equal(await page.locator('#mpcs-body > tr').count(), 0, 'Created an MPC without elements');
+  }
+}
 async function checkCanvasTools(page) {
   const hint = page.locator('#canvas-tool-hint');
+  await checkConstraintAvailability(page, false);
+  assert(await page.locator('#undo').isDisabled(), 'Blocked constraints changed undo history');
   assert.equal(await page.locator('.settings [data-tool]').count(), 0);
   assert.equal(await page.locator('.table-actions [data-tool]').count(), 3);
   assert.equal(await page.locator('#add-node').count(), 0);
@@ -23,6 +35,7 @@ async function checkCanvasTools(page) {
   }
   assert.equal(await page.locator('#nodes-body tr').count(), 3);
   assert.deepEqual(await page.locator('#nodes-body tr').evaluateAll(rows => rows.map(row => [...row.querySelectorAll('input')].map(input => +input.value))), [[-.5,0],[.5,0],[.5,.5]]);
+  await checkConstraintAvailability(page, false);
   await page.locator('#add-element').click();
   assert.match(await hint.innerText(), /select second node/); // Last placed node is selected.
   await page.locator('.model-node[data-node-id="2"]').dispatchEvent('click');
@@ -30,8 +43,18 @@ async function checkCanvasTools(page) {
   assert.match(await hint.innerText(), /select second node/, 'Rejected creation lost the first endpoint');
   await page.locator('#element-type').selectOption('113');
   await page.locator('#analysis-type').selectOption('static');
+  await checkConstraintAvailability(page, false);
   await page.locator('.model-node[data-node-id="2"]').dispatchEvent('click');
   assert.equal(await page.locator('#elements-body tr').count(), 1);
+  await checkConstraintAvailability(page, true);
+  await page.locator('#add-support').click();
+  assert.equal(await page.locator('#supports-body tr').count(), 1);
+  assert.match(await page.locator('#supports-body').textContent(), /ux, uy, thetaZ/);
+  await page.locator('#undo').click();
+  await page.locator('#undo').click();
+  await checkConstraintAvailability(page, false);
+  await page.locator('#redo').click();
+  await checkConstraintAvailability(page, true);
   assert.match(await hint.innerText(), /select first node/);
   assert.equal(await page.locator('#add-element').getAttribute('aria-pressed'), 'true');
   await page.locator('.model-node[data-node-id="1"]').dispatchEvent('click');
@@ -56,6 +79,7 @@ async function checkCanvasTools(page) {
   await page.screenshot({path:path.join(root,'output/preprocessor-canvas-tools.png'),fullPage:true});
   page.once('dialog', dialog => dialog.accept());
   await page.locator('#new-case').click();
+  await checkConstraintAvailability(page, false);
   assert.equal(await page.locator('[data-tool="select"]').getAttribute('aria-pressed'), 'true');
   console.log('preprocessor tools: PASS (canvas placement, repeated members, rejected creation, persistent prompts, undo/redo, mode changes)');
 }

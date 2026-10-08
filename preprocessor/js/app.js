@@ -136,6 +136,7 @@
   }
 
   function currentNode() { return selection && selection.kind === 'node' ? selection.index + 1 : 1; }
+  function canAddConstraints() { return state.nodes.length > 0 && state.elements.length > 0 && [112, 113].indexOf(state.elementType) >= 0; }
   function placementPoint(point) {
     var x = point.x, y = point.y;
     if (elements.snapEnabled.checked) {
@@ -164,6 +165,7 @@
   }
 
   function updateCanvasTool() {
+    byId('new-member-defaults').hidden = renderer.tool !== 'member';
     document.querySelectorAll('[data-tool]').forEach(function (button) {
       var active = button.getAttribute('data-tool') === renderer.tool;
       button.classList.toggle('active', active); button.setAttribute('aria-pressed', String(active));
@@ -309,6 +311,11 @@
     clear(elements.monitorDOF); var labels = state.elementType === 112 ? ['ux', 'uy'] : (state.elementType === 113 ? ['ux', 'uy', 'thetaZ'] : []); labels.forEach(function (label, index) { elements.monitorDOF.appendChild(option(index + 1, (index + 1) + ' · ' + label)); }); elements.monitorDOF.value = String(state.analysis.monitorDOF);
     elements.defaultInertia.hidden = state.elementType !== 113; elements.defaultInertiaLabel.hidden = state.elementType !== 113;
     elements.addLoad.disabled = ['static', 'transient'].indexOf(state.analysis.type) < 0;
+    ['add-support', 'add-mpc', 'mpc-axis-create'].forEach(function (id) {
+      var button = byId(id);
+      button.disabled = !canAddConstraints();
+      button.title = button.disabled ? 'Choose an element family and add nodes and elements before adding constraints.' : '';
+    });
   }
 
   function render() {
@@ -384,15 +391,15 @@
       if (selection && selection.kind === 'node') activateCanvasTool('member', selection.index);
       else activateCanvasTool('member', null);
     }); });
-    byId('add-mpc').addEventListener('click',function () { commit(function () {
+    byId('add-mpc').addEventListener('click',function () { if (!canAddConstraints()) return; commit(function () {
       state.mpcs = state.mpcs || [];
       state.mpcs.push({depNode:currentNode(),depDOF:1,rhs:0,masters:[{node:currentNode() === 1 ? 2 : 1,dof:1,coefficient:1}]});
     }); });
-    byId('mpc-axis-create').addEventListener('click',function () { commit(function () {
+    byId('mpc-axis-create').addEventListener('click',function () { if (!canAddConstraints()) return; commit(function () {
       var m=global.MKEFMPC.onAxis(state,numeric(byId('mpc-axis-i')),numeric(byId('mpc-axis-j')),numeric(byId('mpc-axis-k')));
       state.mpcs = state.mpcs || []; state.mpcs.push(m);
     }); });
-    byId('add-support').addEventListener('click', function () { commit(function () { state.supports.push(global.MKEFSupports.fromType(1, currentNode(), state.elementType === 112 ? 2 : 3)); }); });
+    byId('add-support').addEventListener('click', function () { if (!canAddConstraints()) return; commit(function () { state.supports.push(global.MKEFSupports.fromType(1, currentNode(), state.elementType === 112 ? 2 : 3)); }); });
     elements.addLoad.addEventListener('click', function () { if (state.analysis.type === 'modal') return; commit(function () { state.loads.push({ type: state.analysis.type === 'static' ? 10 : 13, node: currentNode(), fx: 0, fy: -1, mz: 0, frequency: null }); }); });
     elements.addElementLoad.addEventListener('click', function () { if (elements.addElementLoad.disabled) return; commit(function () { state.elementLoads.push({ type: 20, elementId: selection.index + 1, coordinateSystem: 2, qx: 0, qy: -1 }); }); });
     var drop = byId('drop-zone'); drop.addEventListener('dragover', function (event) { event.preventDefault(); }); drop.addEventListener('drop', function (event) { event.preventDefault(); if (event.dataTransfer.files.length) openFile(event.dataTransfer.files[0]); });
