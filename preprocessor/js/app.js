@@ -160,8 +160,19 @@
     return true;
   }
 
-  function activateCanvasTool(tool, pendingNode) {
-    renderer.setTool(tool, pendingNode);
+  function addSupport(index) {
+    if (!canAddConstraints() || !state.nodes[index]) return;
+    commit(function () {
+      state.supports.push(global.MKEFSupports.fromType(1, index + 1, state.elementType === 112 ? 2 : 3));
+      selection = { kind: 'node', index: index };
+    });
+  }
+
+  function activateCanvasTool(tool) {
+    selection = null;
+    renderer.selection = null;
+    renderer.setTool(tool);
+    render();
   }
 
   function updateCanvasTool() {
@@ -172,6 +183,7 @@
     });
     byId('canvas-tool-hint').textContent = renderer.tool === 'member'
       ? (renderer.pendingNode === null ? 'Add element: select first node.' : 'Add element: select second node.')
+      : renderer.tool === 'support' ? 'Add support: select a node.'
       : renderer.tool === 'node' ? 'Click the canvas to place a node.' : 'Select a node or element, or drag the canvas to pan.';
   }
 
@@ -319,6 +331,9 @@
   }
 
   function render() {
+    if (renderer.tool === 'support' && !canAddConstraints()) {
+      selection = null; renderer.selection = null; renderer.setTool('select');
+    }
     setNotice(''); renderAnalysis(); renderNodes(); renderElements(); renderSupports(); renderMPCs(); renderLoads(); renderElementLoads(); renderSelection();
     var gridSize = numeric(elements.gridSpacing), validGridSize = Number.isFinite(gridSize) && gridSize > 0;
     elements.gridSpacing.setCustomValidity(validGridSize ? '' : 'Grid size must be positive and finite.');
@@ -364,7 +379,7 @@
       gridEnabled: byId('grid-enabled'), snapEnabled: byId('snap-enabled'), gridSpacing: byId('grid-spacing'), defaultArea: byId('default-area'), defaultYoung: byId('default-young'), defaultDensity: byId('default-density'), defaultInertia: byId('default-inertia'), defaultInertiaLabel: byId('default-inertia-label'),
       selectionDetails: byId('selection-details'), nodeCoordinateEditor: byId('node-coordinate-editor'), selectedNodeX: byId('selected-node-x'), selectedNodeY: byId('selected-node-y'), nodesBody: byId('nodes-body'), elementsHead: byId('elements-head'), elementsBody: byId('elements-body'), supportsBody: byId('supports-body'), loadsBody: byId('loads-body'), elementLoadsBody: byId('element-loads-body'), elementLoadCount: byId('element-load-count'), addElementLoad: byId('add-element-load'), nodeCount: byId('node-count'), elementCount: byId('element-count'), supportCount: byId('support-count'), loadCount: byId('load-count'), preview: byId('case-preview'), validationStatus: byId('validation-status'), addLoad: byId('add-load')
     };
-    renderer = new M.Renderer(byId('viewport'), { addNode: addNode, addElement: addElement, select: selectItem, placementPoint: placementPoint, toolChanged: updateCanvasTool });
+    renderer = new M.Renderer(byId('viewport'), { addNode: addNode, addElement: addElement, addSupport: addSupport, select: selectItem, placementPoint: placementPoint, toolChanged: updateCanvasTool });
     state = F.newModel('', 0); resetTablePanels(); render(); renderer.fit(); renderer.draw(state);
     byId('new-case').addEventListener('click', function () { if (!confirmDiscard()) return; state = F.newModel('', 0); undoStack = []; redoStack = []; dirty = false; selection = null; resetTablePanels(); render(); activateCanvasTool('select'); renderer.fit(); });
     elements.fileInput.addEventListener('change', function () { openFile(elements.fileInput.files[0]); elements.fileInput.value = ''; });
@@ -386,11 +401,16 @@
     elements.selectedNodeY.addEventListener('change', function () { if (!selection || selection.kind !== 'node') return; var index = selection.index, value = numeric(elements.selectedNodeY); commit(function () { M.modelEdit.updateNode(state, index, 'y', value); }); });
     document.querySelectorAll('[data-tool]').forEach(function (button) { button.addEventListener('click', function () {
       var tool = button.getAttribute('data-tool');
-      if (tool !== 'member') { activateCanvasTool(tool); return; }
-      if (state.nodes.length < 2) { setNotice('Add at least two nodes first.'); return; }
-      if (selection && selection.kind === 'node') activateCanvasTool('member', selection.index);
-      else activateCanvasTool('member', null);
+      if (tool === 'member' && state.nodes.length < 2) { setNotice('Add at least two nodes first.'); return; }
+      if (tool === 'support' && !canAddConstraints()) return;
+      activateCanvasTool(tool);
     }); });
+    document.addEventListener('keydown', function (event) {
+      if (event.key !== 'Escape' || event.isComposing) return;
+      if (!selection && renderer.pendingNode === null) return;
+      event.preventDefault();
+      activateCanvasTool(renderer.tool);
+    });
     byId('add-mpc').addEventListener('click',function () { if (!canAddConstraints()) return; commit(function () {
       state.mpcs = state.mpcs || [];
       state.mpcs.push({depNode:currentNode(),depDOF:1,rhs:0,masters:[{node:currentNode() === 1 ? 2 : 1,dof:1,coefficient:1}]});
@@ -399,7 +419,6 @@
       var m=global.MKEFMPC.onAxis(state,numeric(byId('mpc-axis-i')),numeric(byId('mpc-axis-j')),numeric(byId('mpc-axis-k')));
       state.mpcs = state.mpcs || []; state.mpcs.push(m);
     }); });
-    byId('add-support').addEventListener('click', function () { if (!canAddConstraints()) return; commit(function () { state.supports.push(global.MKEFSupports.fromType(1, currentNode(), state.elementType === 112 ? 2 : 3)); }); });
     elements.addLoad.addEventListener('click', function () { if (state.analysis.type === 'modal') return; commit(function () { state.loads.push({ type: state.analysis.type === 'static' ? 10 : 13, node: currentNode(), fx: 0, fy: -1, mz: 0, frequency: null }); }); });
     elements.addElementLoad.addEventListener('click', function () { if (elements.addElementLoad.disabled) return; commit(function () { state.elementLoads.push({ type: 20, elementId: selection.index + 1, coordinateSystem: 2, qx: 0, qy: -1 }); }); });
     var drop = byId('drop-zone'); drop.addEventListener('dragover', function (event) { event.preventDefault(); }); drop.addEventListener('drop', function (event) { event.preventDefault(); if (event.dataTransfer.files.length) openFile(event.dataTransfer.files[0]); });

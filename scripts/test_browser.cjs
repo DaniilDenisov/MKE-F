@@ -20,7 +20,7 @@ async function checkCanvasTools(page) {
   await checkConstraintAvailability(page, false);
   assert(await page.locator('#undo').isDisabled(), 'Blocked constraints changed undo history');
   assert.equal(await page.locator('.settings [data-tool]').count(), 0);
-  assert.equal(await page.locator('.table-actions [data-tool]').count(), 3);
+  assert.equal(await page.locator('.table-actions [data-tool]').count(), 4);
   assert.equal(await page.locator('#add-node').count(), 0);
   await page.locator('#grid-spacing').fill('0.5'); await page.locator('#grid-spacing').dispatchEvent('change');
   await page.locator('#place-node').click();
@@ -37,7 +37,16 @@ async function checkCanvasTools(page) {
   assert.deepEqual(await page.locator('#nodes-body tr').evaluateAll(rows => rows.map(row => [...row.querySelectorAll('input')].map(input => +input.value))), [[-.5,0],[.5,0],[.5,.5]]);
   await checkConstraintAvailability(page, false);
   await page.locator('#add-element').click();
-  assert.match(await hint.innerText(), /select second node/); // Last placed node is selected.
+  assert.match(await hint.innerText(), /select first node/);
+  assert.equal(await page.locator('#selection-details').innerText(), 'Nothing selected');
+  assert.equal(await page.locator('.model-node.selected, .model-node.pending, .selected-row').count(), 0);
+  await page.locator('.model-node[data-node-id="3"]').dispatchEvent('click');
+  assert.match(await hint.innerText(), /select second node/);
+  await page.keyboard.press('Escape');
+  assert.equal(await page.locator('.model-node.pending').count(), 0);
+  assert.match(await hint.innerText(), /select first node/);
+  assert.equal(await page.locator('#add-element').getAttribute('aria-pressed'), 'true');
+  await page.locator('.model-node[data-node-id="3"]').dispatchEvent('click');
   await page.locator('.model-node[data-node-id="2"]').dispatchEvent('click');
   assert.equal(await page.locator('#elements-body tr').count(), 0);
   assert.match(await hint.innerText(), /select second node/, 'Rejected creation lost the first endpoint');
@@ -48,13 +57,32 @@ async function checkCanvasTools(page) {
   assert.equal(await page.locator('#elements-body tr').count(), 1);
   await checkConstraintAvailability(page, true);
   await page.locator('#add-support').click();
+  assert.equal(await page.locator('#supports-body tr').count(), 0, 'Entering support mode created a support');
+  assert.equal(await page.locator('#selection-details').innerText(), 'Nothing selected');
+  assert.equal(await page.locator('#add-support').getAttribute('aria-pressed'), 'true');
+  assert.match(await hint.innerText(), /Add support: select a node/);
+  assert(await page.locator('#new-member-defaults').isHidden());
+  await page.locator('.model-node[data-node-id="3"]').dispatchEvent('click');
   assert.equal(await page.locator('#supports-body tr').count(), 1);
+  assert.equal(await page.locator('#supports-body tr input').first().inputValue(), '3');
   assert.match(await page.locator('#supports-body').textContent(), /ux, uy, thetaZ/);
+  await page.keyboard.press('Escape');
+  assert.equal(await page.locator('#selection-details').innerText(), 'Nothing selected');
+  assert.equal(await page.locator('#supports-body tr').count(), 1);
+  assert.equal(await page.locator('#add-support').getAttribute('aria-pressed'), 'true');
+  await page.locator('#place-node').click();
+  await page.locator('.model-node[data-node-id="2"]').dispatchEvent('click');
+  assert.equal(await page.locator('#supports-body tr').count(), 1, 'Support placement remained active after tool change');
+  await page.locator('#add-support').click();
+  assert.equal(await page.locator('#selection-details').innerText(), 'Nothing selected');
+  assert.equal(await page.locator('#supports-body tr').count(), 1, 'Re-entering support mode created a support');
   await page.locator('#undo').click();
   await page.locator('#undo').click();
   await checkConstraintAvailability(page, false);
+  assert.equal(await page.locator('[data-tool="select"]').getAttribute('aria-pressed'), 'true');
   await page.locator('#redo').click();
   await checkConstraintAvailability(page, true);
+  await page.locator('#add-element').click();
   assert.match(await hint.innerText(), /select first node/);
   assert.equal(await page.locator('#add-element').getAttribute('aria-pressed'), 'true');
   await page.locator('.model-node[data-node-id="1"]').dispatchEvent('click');
@@ -74,6 +102,18 @@ async function checkCanvasTools(page) {
   assert.match(await hint.innerText(), /Select a node or element/);
   assert.equal(await page.locator('#place-node').getAttribute('aria-pressed'), 'false');
   assert.equal(await page.locator('#add-element').getAttribute('aria-pressed'), 'false');
+  for (const target of ['.model-node[data-node-id="1"]', '.model-element[data-element-id="1"]']) {
+    await page.locator(target).dispatchEvent('click');
+    assert.notEqual(await page.locator('#selection-details').innerText(), 'Nothing selected');
+    await page.keyboard.press('Escape');
+    assert.equal(await page.locator('#selection-details').innerText(), 'Nothing selected');
+    assert.equal(await page.locator('#viewport .selected, .selected-row').count(), 0);
+    assert(await page.locator('#node-coordinate-editor').isHidden());
+  }
+  await page.locator('.model-element[data-element-id="1"]').dispatchEvent('click');
+  await page.locator('#place-node').click();
+  assert.equal(await page.locator('#selection-details').innerText(), 'Nothing selected');
+  assert.equal(await page.locator('#viewport .selected, .selected-row').count(), 0);
   fs.mkdirSync(path.join(root,'output'), {recursive:true});
   await page.locator('#add-element').click();
   await page.screenshot({path:path.join(root,'output/preprocessor-canvas-tools.png'),fullPage:true});
