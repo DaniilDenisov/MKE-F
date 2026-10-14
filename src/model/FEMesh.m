@@ -11,6 +11,8 @@ classdef FEMesh < handle
         dofRegistry;
         releases = struct('elementId',{},'end',{},'component',{},'sourceLine',{});
         warnings = {};
+        sections = struct('id',{},'name',{},'type',{},'dimensions',{});
+        elementSections = zeros(0,3);
         iMnod;
         allMeshElems;
         allNodes;
@@ -74,6 +76,14 @@ classdef FEMesh < handle
                         obj.readMPC(fid);
                     case 'releases'
                         obj.readReleases(fid);
+                    case 'sections'
+                        obj.readSections(fid);
+                    case 'element_sections'
+                        count=obj.readBlockCount(fid,'element sections',false);
+                        for k=1:count
+                            [record,lineNumber]=obj.readDataLine(fid,'element section');
+                            obj.elementSections(end+1,:)=obj.parseNumericRecord(record,lineNumber,3,'elementId,sectionId,angle');
+                        end
                     case 'bcfix'
                         obj.readFixedConditions(fid);
                     case 'bcforce_stat'
@@ -95,6 +105,7 @@ classdef FEMesh < handle
             end
 
             obj.validateCompleteModel();
+            obj.applySections();
             [obj.iMnod,obj.dofRegistry,obj.allMeshElems] = buildDOFRegistry( ...
                 obj.numberOfNodes,obj.dofPerNode,obj.allMeshElems,obj.releases);
             obj.numberOfDOFs = numel(obj.dofRegistry);
@@ -119,6 +130,42 @@ classdef FEMesh < handle
                 'multiPointConstraints',obj.multiPointConstraints);
             buildConstraintTransform(validationModel);
             clear fileCleanup;
+        end
+
+        function readSections(this,fid)
+            count=this.readBlockCount(fid,'sections',false);
+            for i=1:count
+                [record,lineNumber]=this.readDataLine(fid,'section JSON');
+                try
+                    s=jsondecode(record);
+                    if ~isstruct(s) || ~isscalar(s) || ~all(isfield(s,{'id','name','type','dimensions'})) || ...
+                            ~isnumeric(s.id) || ~isscalar(s.id) || ~isfinite(s.id) || s.id<1 || s.id~=fix(s.id) || ...
+                            any([this.sections.id]==s.id) || ~ischar(s.name) || isempty(strtrim(s.name))
+                        error('MKEF:InvalidSection','Invalid section ID or name.');
+                    end
+                    sectionProperties(s);
+                    this.sections(end+1)=struct('id',s.id,'name',s.name,'type',s.type,'dimensions',s.dimensions);
+                catch err
+                    this.fail('MKEF:InvalidSection',lineNumber,'%s',err.message);
+                end
+            end
+        end
+
+        function applySections(this)
+            used=[];
+            for i=1:size(this.elementSections,1)
+                a=this.elementSections(i,:); id=a(1); sid=a(2); angle=a(3);
+                if id~=fix(id) || id<1 || id>this.numberOfElems || any(used==id) || ~any([this.sections.id]==sid)
+                    error('MKEF:InvalidSection','Invalid or duplicate element section assignment.');
+                end
+                used(end+1)=id;
+                s=this.sections(find([this.sections.id]==sid,1)); p=sectionProperties(s,angle);
+                old=this.allMeshElems(id); properties=old.properties; properties(1)=p.area;
+                if old.type==113, properties(4)=p.momentOfInertia; end
+                e=createStructuralElement(old.type,old.nodeCoordinates,old.nodeNumbers,properties,this.iMnod);
+                e.sectionId=sid; e.sectionAngle=angle; e.sectionProperties=p;
+                this.allMeshElems(id)=e;
+            end
         end
 
         function Plot2DMesh(this)

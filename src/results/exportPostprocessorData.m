@@ -114,6 +114,9 @@ for i = 1:numel(output.model.elements)
 end
 output.model.dofMap = numericMatrix(data.model.dofMap);
 output.model.supports = recordArray(data.model.supports);
+if isfield(data.model,'sections')
+    output.model.sections=recordArray(data.model.sections);
+end
 if isfield(data.model, 'elementLoads')
     output.model.nodalLoads = recordArray(data.model.nodalLoads);
     output.model.elementLoads = recordArray(data.model.elementLoads);
@@ -137,6 +140,9 @@ switch data.analysis.type
         output.analysis.elementResults = ...
             recordArray(data.analysis.elementResults);
         for i = 1:numel(output.analysis.elementResults)
+            if isfield(output.analysis.elementResults{i},'sectionStress') && ~isempty(output.analysis.elementResults{i}.sectionStress)
+                output.analysis.elementResults{i}.sectionStress.positions=numericArray(output.analysis.elementResults{i}.sectionStress.positions);
+            end
             output.analysis.elementResults{i}.localEndForces = numericArray( ...
                 output.analysis.elementResults{i}.localEndForces);
             if isfield(data.model, 'elementLoads')

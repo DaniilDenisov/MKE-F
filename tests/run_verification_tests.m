@@ -35,6 +35,7 @@ runNamedTest('Newmark transient analysis', @test_newmark_transient);
 runNamedTest('element result recovery', @test_result_recovery);
 runNamedTest('uniform element loads', @test_element_loads);
 runNamedTest('linear element loads', @test_linear_loads);
+runNamedTest('sections and normal stresses', @test_sections);
 runNamedTest('postprocessor export', @test_postprocessor_export);
 runNamedTest('offline postprocessor site', @test_postprocessor_site);
 runNamedTest('offline preprocessor site', @test_preprocessor_site);

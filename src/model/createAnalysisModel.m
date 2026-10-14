@@ -30,6 +30,7 @@ model.elementLoads = mesh.elementLoads;
 model.multiPointConstraints = mesh.multiPointConstraints;
 model.nodeCoordinates = mesh.allNodes(:, 1:2);
 model.elementData = mesh.allMeshElems;
+model.sections = mesh.sections;
 model.numberOfNodes = mesh.numberOfNodes;
 model.dofPerNode = mesh.dofPerNode;
 model.numberOfDOFs = numberOfDOFs;

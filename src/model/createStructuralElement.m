@@ -48,6 +48,9 @@ element.transformation = transformation;
 element.localStiffness = localStiffness;
 element.stiffness = transformation.' * localStiffness * transformation;
 element.mass = transformation.' * localMass * transformation;
+element.sectionId = 0;
+element.sectionAngle = 0;
+element.sectionProperties = struct();
 end
 
 function validateGeometry(nodeCoordinates, type)

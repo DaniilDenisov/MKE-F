@@ -61,6 +61,7 @@
     replaceOptions(elements.staticResult, type === 112 ? [
       { value: 'displacementMagnitude', label: 'Deflection |u|' }, { value: 'none', label: 'None' }, { value: 'axialForce', label: 'Mean axial force' }, { value: 'axialStress', label: 'Mean axial stress' }
     ] : [{ value: 'displacementMagnitude', label: 'Deflection |u|' }, { value: 'none', label: 'None' }, { value: 'N', label: 'Axial force N' }, { value: 'V', label: 'Shear force V' }, { value: 'M', label: 'Bending moment M' }]);
+    ['sigmaMin','sigmaMax'].forEach(function (mode) {var o=document.createElement('option');o.value=mode;o.textContent=mode==='sigmaMin' ? 'Normal stress σmin' : 'Normal stress σmax';o.disabled=!dataset.raw.model.elements.some(function (e) {return !!e.sectionId;});elements.staticResult.appendChild(o);});
     M.staticResults.mount(renderer, dataset);
     currentVector = dataset.raw.analysis.displacements;
     currentScale = M.geometry.automaticScale(dataset, currentVector, samples()).scale;
@@ -355,6 +356,7 @@
     });
   }
   function updateDetails(selection) {
+    M.sectionResults.show(dataset,selection);
     if (!selection || !dataset) { elements.details.textContent = 'Nothing selected'; return; }
     var analysis = dataset.raw.analysis, lines = [];
     if (selection.kind === 'node') {
@@ -387,6 +389,7 @@
         });
       }
       if (analysis.type === 'static') { var result = dataset.resultsByElementId.get(element.id); lines.push(labeledVector('Local end forces', result.localEndForces), 'Mean axial strain: ' + number(result.axialStrain), 'Mean axial stress: ' + number(result.axialStress), 'Mean axial force: ' + number(result.axialForce)); }
+      if (analysis.type === 'static') lines=lines.concat(M.sectionResults.details(dataset,element));
       else if (analysis.type === 'modal') {
         lines = lines.concat(modalNodeDetails(element.nodeIds[0]).map(function (line) { return 'Node ' + element.nodeIds[0] + ' · ' + line; }));
         lines = lines.concat(modalNodeDetails(element.nodeIds[1]).map(function (line) { return 'Node ' + element.nodeIds[1] + ' · ' + line; }));
@@ -470,6 +473,7 @@
     elements.manualScale.addEventListener('change', function () { if (elements.scaleMode.value === 'manual') { updateScale(); updateStatus(); } });
     elements.sampleCount.addEventListener('change', function () { updateScale(); if (dataset && dataset.raw.analysis.type === 'static') applyStaticResult(); });
     elements.staticResult.addEventListener('change', applyStaticResult);
+    byId('show-section-axes').addEventListener('change',function () {renderer.updateSectionAxes();});
     elements.modeNumber.addEventListener('change', changeMode);
     elements.previousMode.addEventListener('click', function () { selectModalMode(Number(elements.modeNumber.value) - 1); });
     elements.nextMode.addEventListener('click', function () { selectModalMode(Number(elements.modeNumber.value) + 1); });

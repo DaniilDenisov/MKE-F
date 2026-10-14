@@ -112,6 +112,7 @@ def test_fixed_octave_runner_exports_each_analysis(tmp_path, case_name, analysis
     ("CaseTriangleFrame", 5, [0, 1000, 4000/3]),
     ("CaseLinearRelease", 5, None),
     ("CaseLinearMPC", 5, None),
+    ("CaseSectionBeam", 6, None),
 ])
 def test_distributed_load_through_real_api(tmp_path, case_name, version, reactions):
     if not RUNNER.is_file():
@@ -132,6 +133,12 @@ def test_distributed_load_through_real_api(tmp_path, case_name, version, reactio
         assert job["status"] == "succeeded", job
         result = client.get(f"/api/v1/jobs/{job_id}/result").json()
         assert result["version"] == version
+        if version == 6:
+            assert result["model"]["sections"][0]["type"] == "rectangle"
+            stress = result["analysis"]["elementResults"][0]["sectionStress"]
+            assert stress["maximum"]["value"] == pytest.approx(750000)
+            assert stress["minimum"]["value"] == pytest.approx(-750000)
+            assert stress["maximum"]["xi"] == pytest.approx(0.5)
         if case_name != "CaseLinearMPC":
             assert result["model"]["nodalLoads"] == []
         assert len(result["model"]["elementLoads"]) == 1

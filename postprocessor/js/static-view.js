@@ -154,11 +154,12 @@
     if (mode === 'none' || mode === 'displacementMagnitude') return [];
     var connected = dataset.raw.model.elements.filter(function (element) { return element.nodeIds.indexOf(nodeId) >= 0; });
     if (!connected.length) return [];
-    var labels = { axialForce: !dataset.raw.model.elementLoads ? 'axial force' : 'mean axial force', axialStress: !dataset.raw.model.elementLoads ? 'axial stress' : 'mean axial stress', N: 'axial force N', V: 'shear force V', M: 'bending moment M' };
-    var suffix = mode === 'axialStress' ? unit(dataset, 'stress') : mode === 'M' ? unit(dataset, 'moment') : unit(dataset, 'force');
+    var labels = { sigmaMin:'normal stress σmin',sigmaMax:'normal stress σmax',axialForce: !dataset.raw.model.elementLoads ? 'axial force' : 'mean axial force', axialStress: !dataset.raw.model.elementLoads ? 'axial stress' : 'mean axial stress', N: 'axial force N', V: 'shear force V', M: 'bending moment M' };
+    var suffix = (mode === 'axialStress' || M.sectionResults.isStress(mode)) ? unit(dataset, 'stress') : mode === 'M' ? unit(dataset, 'moment') : unit(dataset, 'force');
     var lines = ['Displayed ' + labels[mode] + ' at connected element' + (connected.length === 1 ? '' : 's') + ':'];
     connected.forEach(function (element) {
       var result = dataset.resultsByElementId.get(element.id), endIndex = element.nodeIds[0] === nodeId ? 0 : 1;
+      if(M.sectionResults.isStress(mode)) {var data=M.sectionResults.get(dataset,element);lines.push('E'+element.id+' · end '+(endIndex+1)+' = '+(data ? withUnit(M.sectionResults.value(data,mode,endIndex),suffix) : 'unavailable (no section)'));return;}
       var value = mode === 'axialForce' || mode === 'axialStress' ? result[mode] : S.elementDiagram(dataset, element, mode, endIndex);
       lines.push('E' + element.id + ' · end ' + (endIndex + 1) + ' = ' + withUnit(value, suffix));
     });
@@ -208,6 +209,7 @@
     return t ? [t/a,c/t] : [-b/(2*a)];
   }
   S.diagramSamples = function (dataset, element, quantity, count) {
+    if(M.sectionResults.isStress(quantity))return M.sectionResults.samples(dataset,element,quantity,count);
     var positions=[], n=Math.max(5,count || M.config.defaultFrameSamples);
     for (var i=0;i<n;i++) positions.push(i/(n-1));
     if (dataset.raw.model.elementLoads) {
@@ -267,12 +269,13 @@
     });
     var diagramScale = maximumDiagram ? diagonal(dataset) * .14 / maximumDiagram : 0;
     dataset.raw.model.elements.forEach(function (element) {
+      if(!samplesByElement.get(element.id).length)return;
       var first = dataset.nodesById.get(element.nodeIds[0]), second = dataset.nodesById.get(element.nodeIds[1]), normal = elementNormal(dataset, element);
       var points = samplesByElement.get(element.id).map(function (item) { return { x:first.x+(second.x-first.x)*item.xi+normal.x*item.value*diagramScale, y:first.y+(second.y-first.y)*item.xi+normal.y*item.value*diagramScale }; });
       appendPath(renderer.layers.diagrams, { class:'diagram-fill', 'data-element-id':element.id, d:M.geometry.pathData([first].concat(points,[second]))+' Z', tabindex:'0' }, mode+' diagram for element '+element.id);
       appendPath(renderer.layers.diagrams, { class:'diagram-line', 'data-element-id':element.id, d:M.geometry.pathData(points) }, mode+' diagram edge for element '+element.id);
     });
-    return textLegend(mode + ' diagram · max |value| ' + withUnit(maximumDiagram, mode === 'M' ? unit(dataset, 'moment') : unit(dataset, 'force')) + ' · display scale ' + format(diagramScale));
+    return textLegend(mode + ' diagram · max |value| ' + withUnit(maximumDiagram, M.sectionResults.isStress(mode) ? unit(dataset,'stress') : mode === 'M' ? unit(dataset, 'moment') : unit(dataset, 'force')) + (M.sectionResults.isStress(mode) ? ' · + tension, − compression; unassigned elements unavailable' : '') + ' · display scale ' + format(diagramScale));
   };
   S.format = format; S.withUnit = withUnit; S.viridis = viridis;
 }(window.MKEFPost));

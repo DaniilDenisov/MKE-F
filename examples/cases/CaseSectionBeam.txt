@@ -1,0 +1,22 @@
+analysis
+static
+nodes
+2
+0,0,0
+2,0,0
+elems_113
+1
+113,1,2,0.02,200000000000,7800,0.00006666666666666667
+sections
+1
+{"id":1,"name":"Rectangle 100 x 200","type":"rectangle","dimensions":{"b":0.1,"h":0.2}}
+element_sections
+1
+1,1,0
+bcfix
+2
+4,1,0,0,0
+6,2,0,0,0
+eload_uniform
+1
+20,1,1,0,-1000

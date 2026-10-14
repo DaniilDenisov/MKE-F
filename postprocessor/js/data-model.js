@@ -59,7 +59,7 @@
       numberAt(node.x, path + '.x'); numberAt(node.y, path + '.y');
     });
 
-    var hasReleases = version === 4 || (version === 5 && (Object.prototype.hasOwnProperty.call(model,'releases') || Object.prototype.hasOwnProperty.call(model,'dofRegistry')));
+    var hasReleases = version === 4 || (version >= 5 && (Object.prototype.hasOwnProperty.call(model,'releases') || Object.prototype.hasOwnProperty.call(model,'dofRegistry')));
     var dofCount = hasReleases ? positiveInteger(model.numberOfDOFs,'$.model.numberOfDOFs') : nodes.length * model.dofPerNode;
     matrix(model.dofMap, nodes.length, model.dofPerNode, '$.model.dofMap');
     var dofs = new Set();
@@ -215,7 +215,7 @@
   M.validateDataset = function (data) {
     objectAt(data, '$');
     if (data.format !== 'mkef-postprocessor') fail('$.format', 'expected "mkef-postprocessor"');
-    if ([1,2,3,4,5].indexOf(data.version) < 0) fail('$.version', 'unsupported format version ' + String(data.version));
+    if ([1,2,3,4,5,6].indexOf(data.version) < 0) fail('$.version', 'unsupported format version ' + String(data.version));
     if (data.version === 5 && (!Array.isArray(data.model && data.model.elementLoads) || !data.model.elementLoads.some(function (load) { return load && load.type === 21; }))) fail('$.model.elementLoads','version 5 requires a linear load');
     var metadata = objectAt(data.metadata, '$.metadata');
     if (typeof metadata.title !== 'string') fail('$.metadata.title', 'expected a string');
@@ -226,6 +226,33 @@
     else if (analysis.type === 'modal') validateModal(analysis, context);
     else if (analysis.type === 'transient') validateTransient(analysis, context);
     else fail('$.analysis.type', 'unsupported analysis type');
+    if(data.version===6) {
+      var sections=arrayAt(data.model.sections,'$.model.sections');
+      if(!sections.length) fail('$.model.sections','version 6 requires a section catalog');
+      sections.forEach(function (s,i) {objectAt(s,'$.model.sections['+i+']');});
+      var sectionErrors=window.MKEFSections.validate(data.model);
+      if(sectionErrors.length) fail('$.model.sections',sectionErrors[0]);
+      data.model.elements.forEach(function (e,i) {
+        var path='$.model.elements['+i+']';
+        if(!Number.isInteger(e.sectionId) || e.sectionId<0) fail(path+'.sectionId','expected nonnegative integer');
+        try {window.MKEFSections.rotation(e.sectionAngle);} catch(err) {fail(path+'.sectionAngle',err.message);}
+        if(!e.sectionId)return;
+        var p=window.MKEFSections.properties(sections.find(function (s) {return s.id===e.sectionId;}),e.sectionAngle);
+        ['area'].concat(e.type===113 ? ['momentOfInertia'] : []).forEach(function (key) {if(Math.abs(e.properties[key]-p[key])>1e-9*Math.max(Math.abs(e.properties[key]),Math.abs(p[key])))fail(path+'.properties.'+key,'does not match section geometry');});
+        if(analysis.type==='static') {
+          var result=analysis.elementResults.find(function (r) {return r.elementId===e.id;}), stress=objectAt(result && result.sectionStress,path+'.sectionStress');
+          ['minimum','maximum'].forEach(function (key) {
+            var point=objectAt(stress[key],path+'.sectionStress.'+key);
+            ['value','xi','eta'].forEach(function (k) {numberAt(point[k],path+'.sectionStress.'+key+'.'+k);});
+            if(point.xi<0 || point.xi>1)fail(path+'.sectionStress','position outside element');
+          });
+          if(stress.minimum.value>stress.maximum.value)fail(path+'.sectionStress','inverted extrema');
+          var positions=arrayAt(stress.positions,path+'.sectionStress.positions');
+          if(positions.length<2 || positions[0]!==0 || positions[positions.length-1]!==1)fail(path+'.sectionStress.positions','expected endpoints');
+          positions.forEach(function (v,j) {numberAt(v,path+'.sectionStress.positions');if(v<0 || v>1 || (j && v<=positions[j-1]))fail(path+'.sectionStress.positions','expected increasing positions');});
+        }
+      });
+    }
     if (data.version === 2 || Object.prototype.hasOwnProperty.call(data.model,'elementLoads')) {
       if (analysis.type !== 'static') fail('$.analysis.type', 'version 2 element loads require static analysis');
       var memberMap = new Map(data.model.elements.map(function (item) { return [item.id, item]; }));
@@ -237,7 +264,7 @@
       arrayAt(data.model.elementLoads, '$.model.elementLoads').forEach(function (load, index) {
         var path = '$.model.elementLoads[' + index + ']'; objectAt(load, path);
         var member = memberMap.get(load.elementId);
-        if ((load.type !== 20 && !(data.version === 5 && load.type === 21)) || !member || member.type !== 113 || [1, 2].indexOf(load.coordinateSystem) < 0) fail(path, 'expected a distributed load on a frame in Local/Global coordinates');
+        if ((load.type !== 20 && !(data.version >= 5 && load.type === 21)) || !member || member.type !== 113 || [1, 2].indexOf(load.coordinateSystem) < 0) fail(path, 'expected a distributed load on a frame in Local/Global coordinates');
         var fields=load.type===21 ? ['qx1','qy1','qx2','qy2'] : ['qx','qy'];
         fields.forEach(function (key) { numberAt(load[key],path+'.'+key); });
         if (fields.every(function (key) { return load[key]===0; })) fail(path, 'intensity cannot be zero');

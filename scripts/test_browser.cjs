@@ -23,7 +23,7 @@ async function checkCanvasTools(page) {
   assert.equal(await page.locator('#loads-body tr').count(), 0);
   assert(await page.locator('#undo').isDisabled(), 'Blocked constraints changed undo history');
   assert.equal(await page.locator('.settings [data-tool]').count(), 0);
-  assert.equal(await page.locator('.table-actions [data-tool]').count(), 5);
+  assert.equal(await page.locator('.table-actions [data-tool]').count(), 6);
   assert.equal(await page.locator('#add-node').count(), 0);
   await page.locator('#grid-spacing').fill('0.5'); await page.locator('#grid-spacing').dispatchEvent('change');
   await page.locator('#place-node').click();

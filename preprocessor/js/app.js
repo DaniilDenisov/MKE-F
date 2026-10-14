@@ -3,6 +3,7 @@
   var M = global.MKEFPre, F = M.caseFormat;
   var state, renderer, undoStack = [], redoStack = [], dirty = false, selection = null;
   var elements = {};
+  var sectionToolId = null, sectionToolAngle = 0;
   var apiReady = false, activeJobId = null, pollTimer = null, navigatingToResult = false;
   var activeJobStorageKey = 'mkef-active-job';
 
@@ -178,14 +179,30 @@
   }
 
   function activateCanvasTool(tool) {
+    if (tool === 'section' && renderer.tool !== 'section' && selection && selection.kind === 'element') {
+      var member = state.elements[selection.index];
+      if (member && member.sectionId) { sectionToolId = member.sectionId; sectionToolAngle = member.sectionAngle || 0; }
+    }
     selection = null;
     renderer.selection = null;
     renderer.setTool(tool);
     render();
+    if (tool === 'section') byId('section-tool-settings').scrollIntoView({ block: 'nearest' });
   }
 
   function updateCanvasTool() {
     byId('new-member-defaults').hidden = renderer.tool !== 'member';
+    byId('section-tool-settings').hidden = renderer.tool !== 'section';
+    var catalog = state.sections || [], sectionSelect = byId('section-tool-id');
+    if (!catalog.some(function (section) { return section.id === sectionToolId; })) sectionToolId = catalog.length ? catalog[0].id : null;
+    clear(sectionSelect);
+    if (!catalog.length) sectionSelect.appendChild(option('', 'No sections yet'));
+    catalog.forEach(function (section) { sectionSelect.appendChild(option(section.id, section.id + ' · ' + section.name)); });
+    sectionSelect.value = sectionToolId === null ? '' : String(sectionToolId);
+    sectionSelect.disabled = !catalog.length;
+    byId('section-tool-angle').value = String(sectionToolAngle);
+    byId('section-tool-angle').disabled = !catalog.length;
+    byId('section-tool-empty').hidden = !!catalog.length;
     document.querySelectorAll('[data-tool]').forEach(function (button) {
       var active = button.getAttribute('data-tool') === renderer.tool;
       button.classList.toggle('active', active); button.setAttribute('aria-pressed', String(active));
@@ -194,10 +211,24 @@
       ? (renderer.pendingNode === null ? 'Add element: select first node.' : 'Add element: select second node.')
       : renderer.tool === 'support' ? 'Add support: select a node.'
       : renderer.tool === 'load' ? 'Add nodal load: select a node.'
+      : renderer.tool === 'section' ? (catalog.length ? 'Assign section: click elements to apply the chosen section and angle. Esc to finish.' : 'Assign section: create a section in the catalog first.')
       : renderer.tool === 'node' ? 'Click the canvas to place a node.' : 'Select a node or element, or drag the canvas to pan.';
   }
 
-  function selectItem(next) { selection = next; render(); }
+  function selectItem(next) {
+    if (renderer.tool === 'section' && next) {
+      if (next.kind !== 'element' || sectionToolId === null) return;
+      selection = next;
+      var member = state.elements[next.index];
+      if (member.sectionId === sectionToolId && (member.sectionAngle || 0) === sectionToolAngle) { render(); return; }
+      commit(function () {
+        member.sectionId = sectionToolId; member.sectionAngle = sectionToolAngle;
+        global.MKEFSections.sync(state);
+      });
+      return;
+    }
+    selection = next; render();
+  }
 
   function deleteNode(index) {
     commit(function () {
@@ -220,18 +251,20 @@
 
   function renderElements() {
     clear(elements.elementsHead); clear(elements.elementsBody);
-    var header = document.createElement('tr'), headings = ['ID', 'Node 1', 'Node 2', 'A', 'E', 'rho']; if (state.elementType === 113) headings.push('I', 'Release at end 1', 'Release at end 2'); headings.push('');
+    var header = document.createElement('tr'), headings = ['ID', 'Node 1', 'Node 2', 'A', 'E', 'rho']; if (state.elementType === 113) headings.push('I', 'Release at end 1', 'Release at end 2'); headings.push('Section', 'Orientation', '');
     headings.forEach(function (heading) { var th = document.createElement('th'); th.textContent = heading; header.appendChild(th); }); elements.elementsHead.appendChild(header);
     state.elements.forEach(function (item, index) {
       var row = document.createElement('tr'); if (selection && selection.kind === 'element' && selection.index === index) row.className = 'selected-row'; row.addEventListener('click', function (event) { if (['INPUT', 'SELECT', 'BUTTON'].indexOf(event.target.tagName) < 0) selectItem({ kind: 'element', index: index }); }); idCell(row, index + 1);
-      ['node1', 'node2', 'area', 'youngsModulus', 'density'].forEach(function (field) { inputCell(row, item[field], 'number', function (value) { commit(function () { M.modelEdit.updateElement(state, index, field, value); }); }); });
-      if (state.elementType === 113) inputCell(row, item.momentOfInertia, 'number', function (value) { commit(function () { M.modelEdit.updateElement(state, index, 'momentOfInertia', value); }); });
+      ['node1', 'node2', 'area', 'youngsModulus', 'density'].forEach(function (field) { inputCell(row, item[field], 'number', function (value) { commit(function () { M.modelEdit.updateElement(state, index, field, value); }); }, !!item.sectionId && field === 'area'); });
+      if (state.elementType === 113) inputCell(row, item.momentOfInertia, 'number', function (value) { commit(function () { M.modelEdit.updateElement(state, index, 'momentOfInertia', value); }); }, !!item.sectionId);
       if (state.elementType === 113) [1,2].forEach(function (end) {
         var input=document.createElement('input'); input.type='checkbox'; input.checked=global.MKEFReleases.has(state,index+1,end);
         input.setAttribute('aria-label','Element '+(index+1)+' release Mz'+end);
         input.addEventListener('change',function () { var checked=input.checked; commit(function () { M.modelEdit.setRelease(state,index,end,checked); }); });
         cell(row).appendChild(input);
       });
+      selectCell(row,item.sectionId || 0,[[0,'Manual A / I']].concat((state.sections || []).map(function (s) {return [s.id,s.name];})),function (id) {commit(function () {item.sectionId=id;item.sectionAngle=item.sectionAngle || 0;global.MKEFSections.sync(state);});});
+      var orientation=selectCell(row,item.sectionAngle || 0,[0,90,180,270].map(function (a) {return [a,a+'°'];}),function (angle) {commit(function () {item.sectionAngle=angle;global.MKEFSections.sync(state);});}); orientation.disabled=!item.sectionId;
       deleteCell(row, function () { commit(function () { M.modelEdit.deleteElement(state, index); selection = null; }); }, 'element ' + (index + 1)); elements.elementsBody.appendChild(row);
     });
     elements.elementCount.textContent = '(' + state.elements.length + ')';
@@ -345,7 +378,7 @@
     if ((renderer.tool === 'support' && !canAddConstraints()) || (renderer.tool === 'load' && !canAddNodalLoads())) {
       selection = null; renderer.selection = null; renderer.setTool('select');
     }
-    setNotice(''); renderAnalysis(); renderNodes(); renderElements(); renderSupports(); renderMPCs(); renderLoads(); renderElementLoads(); renderSelection();
+    setNotice(''); M.renderSections(state,commit,selection); renderAnalysis(); renderNodes(); renderElements(); renderSupports(); renderMPCs(); renderLoads(); renderElementLoads(); renderSelection();
     var gridSize = numeric(elements.gridSpacing), validGridSize = Number.isFinite(gridSize) && gridSize > 0;
     elements.gridSpacing.setCustomValidity(validGridSize ? '' : 'Grid size must be positive and finite.');
     renderer.setGrid(elements.gridEnabled.checked, validGridSize ? gridSize : 1);
@@ -419,9 +452,16 @@
     }); });
     document.addEventListener('keydown', function (event) {
       if (event.key !== 'Escape' || event.isComposing) return;
-      if (!selection && renderer.pendingNode === null) return;
+      if (!selection && renderer.pendingNode === null && renderer.tool !== 'section') return;
       event.preventDefault();
-      activateCanvasTool(renderer.tool);
+      activateCanvasTool(renderer.tool === 'section' ? 'select' : renderer.tool);
+    });
+    byId('section-tool-id').addEventListener('change', function () { sectionToolId = Number(this.value); });
+    byId('section-tool-angle').addEventListener('change', function () { sectionToolAngle = Number(this.value); });
+    byId('section-tool-catalog').addEventListener('click', function () {
+      var catalog = byId('sections-editor'); catalog.open = true;
+      catalog.scrollIntoView({ block: 'nearest' });
+      catalog.querySelector('summary').focus();
     });
     byId('add-mpc').addEventListener('click',function () { if (!canAddConstraints()) return; commit(function () {
       state.mpcs = state.mpcs || [];
@@ -434,6 +474,7 @@
     elements.addElementLoad.addEventListener('click', function () { if (elements.addElementLoad.disabled) return; commit(function () { state.elementLoads.push({ type: 20, elementId: selection.index + 1, coordinateSystem: 2, qx: 0, qy: -1 }); }); });
     var drop = byId('drop-zone'); drop.addEventListener('dragover', function (event) { event.preventDefault(); }); drop.addEventListener('drop', function (event) { event.preventDefault(); if (event.dataTransfer.files.length) openFile(event.dataTransfer.files[0]); });
     global.addEventListener('beforeunload', function (event) { if (!dirty || navigatingToResult) return; event.preventDefault(); event.returnValue = ''; });
+    byId('show-section-axes').addEventListener('change',function () {renderer.draw();});
     configureSolver();
   }
 

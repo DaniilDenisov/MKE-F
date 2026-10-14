@@ -11,7 +11,7 @@
     window.MKEFSupportMarkers.svgStyles,
     '.load-symbol{fill:none;stroke:#b63a3f;stroke-width:2;vector-effect:non-scaling-stroke}',
     '.reaction-symbol{fill:none;vector-effect:non-scaling-stroke}.reaction-force-symbol{stroke:#6d3ca5;stroke-width:2.8;stroke-dasharray:5 2.5}.reaction-moment-symbol{stroke:#c56a00;stroke-width:3;stroke-dasharray:none}',
-    '.diagram-fill{fill:#dceff4;stroke:none}.diagram-line{fill:none;stroke:#176b87;stroke-width:2;vector-effect:non-scaling-stroke}',
+    '.diagram-fill{fill:#dceff4;stroke:none;vector-effect:non-scaling-stroke}.diagram-line{fill:none;stroke:#176b87;stroke-width:2;vector-effect:non-scaling-stroke}',
     'path.selected,circle.selected{stroke:#ef7d18!important;stroke-width:4!important}',
     '.chart-frame,.chart-axis{fill:none;stroke:#9aa8b7;stroke-width:1}.chart-series{fill:none;stroke:#087f9c;stroke-width:2}.chart-cursor{stroke:#b63a3f;stroke-width:1.5}.chart-hit-area{fill:transparent}.chart-sample{fill:#fff;stroke:#b63a3f;stroke-width:2}.chart-tooltip rect{fill:#263847;opacity:.94}.chart-export text{fill:#354657;font:12px sans-serif}.chart-export .chart-tooltip text{fill:#fff}.chart-export [hidden]{display:none}'
   ].join('');

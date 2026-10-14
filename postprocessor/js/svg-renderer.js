@@ -32,6 +32,7 @@
     this.gradientPrefix = 'mkef-result-' + (++rendererSequence) + '-';
     this.createLayers();
     this.bindNavigation();
+    if (typeof ResizeObserver !== 'undefined') new ResizeObserver(this.updateSectionAxes.bind(this)).observe(this.svg);
   }
 
   Renderer.prototype.createLayers = function () {
@@ -196,8 +197,11 @@
     this.updateViewBox();
   };
 
+  Renderer.prototype.updateSectionAxes = function () { window.MKEFSectionDrawing.axes(this.svg,this.dataset && this.dataset.raw.model,!document.getElementById('show-section-axes') || document.getElementById('show-section-axes').checked); };
+
   Renderer.prototype.updateViewBox = function () {
     if (this.viewBox) this.svg.setAttribute('viewBox', [this.viewBox.x, this.viewBox.y, this.viewBox.width, this.viewBox.height].join(' '));
+    this.updateSectionAxes();
   };
 
   Renderer.prototype.pointerInViewBox = function (event) {

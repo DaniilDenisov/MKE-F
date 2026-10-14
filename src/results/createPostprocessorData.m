@@ -115,6 +115,18 @@ end
 if isfield(model, 'elementLoads') && ~isempty(model.elementLoads) && any([model.elementLoads.type] == 21)
     data.version = 5;
 end
+if isfield(model,'sections') && ~isempty(model.sections)
+    data.version=6;
+    data.model.sections=model.sections;
+    for i=1:numel(model.elementData)
+        e=model.elementData(i);
+        data.model.elements(i).sectionId=e.sectionId;
+        data.model.elements(i).sectionAngle=e.sectionAngle;
+        if strcmp(analysisType,'static')
+            data.analysis.elementResults(i).sectionStress=result.elementResults(i).sectionStress;
+        end
+    end
+end
 end
 
 function analysisType = validateAnalysisType(result)

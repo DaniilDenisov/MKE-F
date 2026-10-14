@@ -26,12 +26,12 @@ emptyResult = struct( ...
     'equivalentLocalLoadVector', [], ...
     'axialStrain', [], ...
     'axialStress', [], ...
-    'axialForce', []);
+    'axialForce', [], 'sectionStress', []);
 elementResults = repmat(emptyResult, numel(model.elementData), 1);
 for i = 1:numel(model.elementData)
     validateElementData(model.elementData(i), model.numberOfDOFs, i);
 end
-[localLoads, ~, ~] = getElementLoadData(model);
+[localLoads, intensities, ~] = getElementLoadData(model);
 
 for elementNumber = 1:numel(model.elementData)
     data = model.elementData(elementNumber);
@@ -64,6 +64,10 @@ for elementNumber = 1:numel(model.elementData)
     elementResults(elementNumber).axialStrain = axialStrain;
     elementResults(elementNumber).axialStress = axialStress;
     elementResults(elementNumber).axialForce = data.properties(1) * axialStress;
+    if isfield(data,'sectionId') && data.sectionId>0
+        elementResults(elementNumber).sectionStress = recoverSectionStress( ...
+            data.sectionProperties,data.type,data.length,localEndForces,intensities(elementNumber,:));
+    end
 end
 end
 

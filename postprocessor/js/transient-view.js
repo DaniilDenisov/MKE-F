@@ -23,7 +23,7 @@
     var bounds = M.geometry.modelBounds(dataset.raw.model);
     var size = Math.max(Math.hypot(bounds.maxX - bounds.minX, bounds.maxY - bounds.minY), 1e-9);
     var maximum = 0;
-    if (dataset.raw.version === 4 && T.hasFullDisplacements(dataset)) {
+    if (dataset.raw.version >= 4 && T.hasFullDisplacements(dataset)) {
       analysis.time.forEach(function (_,step) {
         var vector=T.vectorAt(dataset,'displacements',step);
         dataset.raw.model.elements.forEach(function (element) {

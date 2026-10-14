@@ -6,13 +6,13 @@
   <title>MKE-F Postprocessor</title>
   <link rel="stylesheet" href="assets/postprocessor.css">
   <script defer src="js/namespace.js"></script>
-  <script defer src="../shared/support-catalog.js"></script><script defer src="../shared/support-semantics.js"></script><script defer src="../shared/mpc.js"></script><script defer src="../shared/releases.js"></script><script defer src="../shared/support-markers.js"></script><script defer src="../shared/moment-symbol.js"></script>
+  <script defer src="../shared/sections.js"></script><script defer src="../shared/section-drawing.js"></script><script defer src="../shared/support-catalog.js"></script><script defer src="../shared/support-semantics.js"></script><script defer src="../shared/mpc.js"></script><script defer src="../shared/releases.js"></script><script defer src="../shared/support-markers.js"></script><script defer src="../shared/moment-symbol.js"></script>
   <script defer src="../shared/api-client.js"></script>
   <script defer src="js/data-model.js"></script>
   <script defer src="js/geometry.js"></script>
   <script defer src="js/svg-renderer.js"></script>
   <script defer src="js/static-view.js"></script>
-  <script defer src="js/modal-view.js"></script>
+  <script defer src="js/section-view.js"></script><script defer src="js/modal-view.js"></script>
   <script defer src="js/transient-view.js"></script>
   <script defer src="js/charts.js"></script>
   <script defer src="js/export.js"></script>
@@ -43,6 +43,7 @@
         <label><input id="show-deformed" type="checkbox" checked> Result geometry</label>
         <label><input id="show-nodes" type="checkbox" checked> Nodes</label>
         <label><input id="show-node-labels" type="checkbox"> Node IDs</label>
+        <label><input id="show-section-axes" type="checkbox" checked> Section axes</label>
         <label><input id="show-element-labels" type="checkbox"> Element IDs</label>
         <label><input id="show-supports" type="checkbox" checked> Supports</label>
         <label class="static-layer"><input id="show-loads" type="checkbox" checked> Loads</label>
@@ -112,7 +113,7 @@
       <section class="help">
         <h2>Navigation</h2>
         <p>Wheel to zoom, drag to pan, and select a node or element for numerical details.</p>
-        <a href="schema-v1.md">JSON format v1</a> · <a href="schema-v2.md">v2: element loads</a> · <a href="schema-v3.md">v3: MPC</a> · <a href="schema-v4.md">v4: end releases</a> · <a href="schema-v5.md">v5: linear loads</a>
+        <a href="schema-v1.md">JSON format v1</a> · <a href="schema-v2.md">v2: element loads</a> · <a href="schema-v3.md">v3: MPC</a> · <a href="schema-v4.md">v4: end releases</a> · <a href="schema-v5.md">v5: linear loads</a> · <a href="schema-v6.md">v6: sections</a>
       </section>
     </aside>
 
@@ -128,7 +129,10 @@
         <svg id="history-chart" role="img" aria-label="Selected degree of freedom history chart"></svg>
         <p class="chart-help">Move over the chart to inspect original samples. Click or use the arrow keys to select a sample; a history sample also moves the visible frame.</p>
       </section>
+      <div class="result-inspector">
+      <section id="section-result-panel" class="section-result-panel" hidden><h2>Normal stress across section</h2><label>x/L <input id="section-position" type="range" min="0" max="1" step="0.001" value="0.5"><input id="section-position-number" aria-label="Section position x/L" type="number" min="0" max="1" step="any" value="0.5"></label><svg id="section-result-svg" class="section-result-svg" xmlns="http://www.w3.org/2000/svg"></svg><pre id="section-result-info"></pre><button id="export-section-svg" type="button">Export section SVG</button></section>
       <section class="details-panel" aria-live="polite"><h2>Selection</h2><pre id="selection-details">Nothing selected</pre></section>
+      </div>
       <div class="status-bar"><span id="analysis-status">Waiting for a dataset</span></div>
     </section>
   </main>

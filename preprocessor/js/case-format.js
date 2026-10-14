@@ -32,6 +32,7 @@
       elementType: elementType === undefined ? 113 : elementType,
       nodes: [],
       elements: [],
+      sections: [],
       supports: [],
       mpcs: [],
       releases: [],
@@ -135,6 +136,17 @@
           if (releaseFields.length !== 3) fail(releaseRecord.line,'Expected elementId,end,Mz.');
           model.releases.push({elementId:Number(releaseFields[0]),end:Number(releaseFields[1]),component:releaseFields[2],sourceLine:releaseRecord.line});
         }
+      } else if (marker === 'sections') {
+        var sectionCount=count('sections',false);
+        for (var si=0;si<sectionCount;si++) { var sr=nextData('section JSON'); try { model.sections.push(JSON.parse(sr.text)); } catch (err) { fail(sr.line,'Invalid section JSON.'); } }
+      } else if (marker === 'element_sections') {
+        requireElements(markerLine);
+        var assignmentCount=count('element sections',false);
+        for (var ai=0;ai<assignmentCount;ai++) {
+          var ar=nextData('element section'), av=parseRecord(ar.text,3,ar.line,'elementId,sectionId,angle'), member=model.elements[av[0]-1];
+          if (!integer(av[0]) || !member || member.sectionId!==undefined || !integer(av[1]) || av[1]<1) fail(ar.line,'Invalid or duplicate element section assignment.');
+          member.sectionId=av[1]; member.sectionAngle=av[2];
+        }
       } else if (marker === 'mpc') {
         requireElements(markerLine);
         var mpcCount = count('mpc', false);
@@ -179,6 +191,7 @@
 
     if (!hasNodes) throw new Error('The input file contains no nodes section.');
     if (!hasElements) throw new Error('The input file contains no element section.');
+    global.MKEFSections.sync(model);
     var errors = validateModel(model, { requireAnalysis: false });
     if (errors.length) throw new Error(errors[0]);
     return model;
@@ -188,6 +201,7 @@
     options = options || {};
     var errors = [], nodeCount = model.nodes.length, dofPerNode = model.elementType === 112 ? 2 : 3;
     function add(message) { errors.push(message); }
+    errors=errors.concat(global.MKEFSections.validate(model));
     if (options.requireAnalysis !== false && ['static', 'modal', 'transient'].indexOf(model.analysis.type) < 0) add('Select static, modal, or transient analysis.');
     if ([112, 113].indexOf(model.elementType) < 0) add('Select truss element 112 or frame element 113.');
     if (!nodeCount) add('Add at least one node.');
@@ -248,6 +262,8 @@
   }
 
   function serializeCase(model) {
+    model=JSON.parse(JSON.stringify(model));
+    global.MKEFSections.sync(model);
     var errors = validateModel(model);
     if (errors.length) throw new Error(errors[0]);
     var out = ['analysis'];
@@ -261,6 +277,12 @@
       if (model.elementType === 113) values.push(element.momentOfInertia);
       out.push(values.map(numberText).join(','));
     });
+    if ((model.sections || []).length) {
+      out.push('sections',String(model.sections.length));
+      model.sections.forEach(function (s) { out.push(JSON.stringify(s)); });
+      var assigned=[]; model.elements.forEach(function (e,i) { if (e.sectionId) assigned.push([i+1,e.sectionId,e.sectionAngle].join(',')); });
+      if (assigned.length) out.push('element_sections',String(assigned.length),...assigned);
+    }
     if ((model.releases || []).length) {
       var releases=model.releases.slice().sort(function (a,b) { return a.elementId-b.elementId || a.end-b.end; });
       out.push('releases',String(releases.length));
