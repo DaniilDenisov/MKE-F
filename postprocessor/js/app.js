@@ -232,7 +232,7 @@
         var job = await window.MKEFApi.getJob(jobId);
         if (job.status === 'succeeded') {
           acceptData(await window.MKEFApi.getResult(jobId));
-          notice('Loaded result from the local GNU Octave solver. Download the JSON to keep it after Docker stops.');
+          notice('Results loaded. These results are stored temporarily. Download the JSON file to keep a copy.');
           return;
         }
         if (['failed', 'canceled', 'timed_out'].indexOf(job.status) >= 0) {
