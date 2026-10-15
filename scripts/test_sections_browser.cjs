@@ -1,6 +1,35 @@
 const {chromium}=require(process.env.MKEF_PLAYWRIGHT_MODULE || 'playwright');
 const fs=require('fs'),path=require('path'),http=require('http'),assert=require('assert/strict');
 const root=path.resolve(__dirname,'..');
+async function checkManualProperties(page) {
+  await page.locator('#file-input').setInputFiles(path.join(root,'examples/cases/CaseSectionBeam.txt'));
+  await page.waitForFunction(()=>document.querySelector('#case-name').value==='CaseSectionBeam');
+  await page.locator('#elements-body').evaluate(e=>e.closest('details').open=true);
+  await page.locator('#sections-editor').evaluate(e=>e.open=true);
+  const row=page.locator('#elements-body tr').first(),area=row.locator('input').nth(2),inertia=row.locator('input').nth(5);
+  const before=[await area.inputValue(),await inertia.inputValue()];
+  await row.locator('select').first().selectOption('0');
+  assert.deepEqual([await area.inputValue(),await inertia.inputValue()],before,'Detaching a section must preserve A and I');
+  assert(!(await area.isDisabled()));assert(!(await inertia.isDisabled()));
+  await area.fill('0.03');await area.dispatchEvent('change');
+  await inertia.fill('0.00002');await inertia.dispatchEvent('change');
+  await page.getByLabel('h · section 1',{exact:true}).fill('0.4');
+  await page.getByLabel('h · section 1',{exact:true}).dispatchEvent('change');
+  assert.equal(await area.inputValue(),'0.03');assert.equal(await inertia.inputValue(),'0.00002');
+  // An unused catalog can be removed entirely; the member still validates and roundtrips.
+  await page.locator('.section-card').getByRole('button',{name:'Delete',exact:true}).click();
+  assert.equal(await page.locator('.section-card').count(),0);
+  assert(!(await page.locator('#download-case').isDisabled()));
+  const saved=await page.locator('#case-preview').inputValue();
+  assert(!/\n(?:sections|element_sections)\n/.test(saved));
+  await page.locator('#file-input').setInputFiles({name:'manual.txt',mimeType:'text/plain',buffer:Buffer.from(saved)});
+  await page.waitForFunction(()=>document.querySelector('#case-name').value==='manual');
+  assert.equal(await row.locator('select').first().inputValue(),'0');
+  assert.equal(await area.inputValue(),'0.03');assert.equal(await inertia.inputValue(),'0.00002');
+  assert(await page.locator('#error-panel').isHidden());
+  assert.equal(await page.locator('.section-axes').count(),0);
+  console.log('Manual A/I: detach, edit, unused catalog changes/deletion, validation and TXT roundtrip PASS');
+}
 async function checkSectionMode(page) {
   const preview=()=>page.locator('#case-preview').inputValue();
   const tool=page.locator('#assign-section');
@@ -9,7 +38,7 @@ async function checkSectionMode(page) {
   assert(await page.locator('#section-tool-settings').isVisible());
   assert(await page.locator('#section-tool-id').isDisabled());
   assert(await page.locator('#section-tool-empty').isVisible());
-  await page.locator('#section-tool-catalog').click();
+  await page.locator('#sections-editor > summary').click();
   assert(await page.locator('#sections-editor').evaluate(e=>e.open));
   await page.locator('#add-section').click();
   assert(!(await page.locator('#section-tool-id').isDisabled()));
@@ -25,7 +54,12 @@ async function checkSectionMode(page) {
   await page.locator('#file-input').setInputFiles({name:'mode.txt',mimeType:'text/plain',buffer:Buffer.from(input)});
   await page.waitForFunction(()=>document.querySelector('#case-name').value==='mode');
   const initial=await preview();
+  await page.locator('.model-element[data-element-id="1"]').dispatchEvent('click');
+  assert.match(await page.locator('#selection-details').innerText(),/Element 1/);
+  await page.locator('#show-section-axes').uncheck();
   await tool.click();
+  assert.equal(await page.locator('#selection-details').innerText(),'Nothing selected');
+  assert.equal(await page.locator('.model-element.selected, .selected-row').count(),0);
   await page.locator('#section-tool-angle').selectOption('90');
   assert.equal(await preview(),initial,'Activating/configuring the tool must not assign anything');
   await page.locator('.model-node[data-node-id="1"]').dispatchEvent('click');
@@ -38,6 +72,10 @@ async function checkSectionMode(page) {
   }
   await clickMember(1);
   assert.match(await preview(),/element_sections\s+1\s+1,1,90/);
+  assert.equal(await page.locator('.section-axes text').count(),3,'Only the assigned member should have section axes');
+  await page.locator('#viewport').hover();await page.mouse.wheel(0,-300);await page.waitForTimeout(150);
+  assert.equal(await page.locator('.section-axes text').count(),3,'Zoom must retain axes in assignment mode');
+  await page.locator('#reset-view').click();
   const first=await preview();
   await clickMember(1);
   assert.equal(await preview(),first);
@@ -64,10 +102,19 @@ async function checkSectionMode(page) {
   await page.locator('#undo').click();
   assert.equal(await page.locator('#section-tool-id').inputValue(),'1','Removed catalog choices must fall back to an existing section');
   await page.keyboard.press('Escape');assert(await page.locator('#section-tool-settings').isHidden());
+  assert.equal(await page.locator('.section-axes').count(),0,'Leaving the tool restores the axes visibility preference');
   const finished=await preview();await clickMember(1);assert.equal(await preview(),finished,'Select mode must not apply the section tool');
   // Re-entering starts with the selected member's existing assignment.
   await tool.click();assert.equal(await page.locator('#section-tool-angle').inputValue(),'90');
+  assert.equal(await page.locator('#selection-details').innerText(),'Nothing selected');
+  assert.equal(await page.locator('.model-element.selected, .selected-row').count(),0);
+  assert.equal(await page.locator('.section-axes text').count(),6);
   await page.keyboard.press('Escape');
+  await page.locator('.model-node[data-node-id="1"]').dispatchEvent('click');
+  await tool.click();assert.equal(await page.locator('#selection-details').innerText(),'Nothing selected');
+  assert.equal(await page.locator('.model-node.selected, .selected-row').count(),0);
+  await page.keyboard.press('Escape');
+  await page.locator('#show-section-axes').check();
   console.log('Section mode: empty catalog, repeated canvas assignment, orientations, unchanged loads, undo/redo, Escape PASS');
 }
 const server=http.createServer((req,res)=>{
@@ -83,6 +130,7 @@ const server=http.createServer((req,res)=>{
   try {
     await page.goto(base+'/preprocessor/index.html');
     await checkSectionMode(page);
+    await checkManualProperties(page);
     await page.locator('#file-input').setInputFiles(path.join(root,'examples/cases/CaseSectionBeam.txt'));
     await page.waitForFunction(()=>document.querySelector('#case-name').value==='CaseSectionBeam');
     await page.locator('#sections-editor').evaluate(e=>e.open=true);
@@ -92,10 +140,13 @@ const server=http.createServer((req,res)=>{
     assert.equal(await page.locator('.section-axes text').count(),3);
     const row=page.locator('#elements-body tr').first();
     assert(await row.locator('input').nth(2).isDisabled());assert(await row.locator('input').nth(5).isDisabled());
-    assert(await page.getByRole('button',{name:'Assign to selected element',exact:true}).isDisabled());
+    assert.equal(await page.getByRole('button',{name:'Assign to selected element',exact:true}).count(),0);
     await page.locator('.model-element[data-element-id="1"]').dispatchEvent('click');
     await row.locator('select').first().selectOption('0');
-    await page.getByRole('button',{name:'Assign to selected element',exact:true}).click();
+    await page.locator('#assign-section').click();
+    await page.locator('#section-tool-angle').selectOption('0');
+    await page.locator('.model-element[data-element-id="1"]').dispatchEvent('click');
+    await page.keyboard.press('Escape');
     assert.equal(await row.locator('select').first().inputValue(),'1');
     assert.match(await page.locator('.section-assignments').innerText(),/Assigned to: E1/);
     assert.equal(await page.locator('#element-loads-body tr').count(),1);

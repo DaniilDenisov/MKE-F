@@ -36,12 +36,37 @@ for k=1:numel(types)
     end
 end
 if ~exist('output','dir'), mkdir('output'); end
+% Near-endpoint moment roots must not replace exact normalized endpoints.
+profile=sectionProperties(struct('type','rectangle','dimensions',struct('b',.01,'h',.02)));
+for root=[1e-12 1-1e-12 0 1]
+    endpointStress=recoverSectionStress(profile,113,1,[0;1;root;0;0;0],[0 0 0 0]);
+    assert(isequal(endpointStress.positions,[0 1]));
+end
+fixture=fullfile(fileparts(mfilename('fullpath')),'fixtures','CaseSectionEndpointRounding.txt');
+endpointProblem=StructFEProblem(fixture,struct('verbose',false,'plotting',false));
+endpointResult=endpointProblem.RunStatic();
+for k=1:numel(endpointResult.elementResults)
+    positions=endpointResult.elementResults(k).sectionStress.positions;
+    assert(positions(1)==0 && positions(end)==1 && all(diff(positions)>0));
+end
+exportPostprocessorData(endpointProblem.GetAnalysisModel(),endpointResult,fullfile('output','SectionCaseEndpointRounding.json'));
 fid=fopen(fullfile('output','section-parity.json'),'w');fprintf(fid,'%s',jsonencode(output));fclose(fid);
 p=StructFEProblem(exampleCasePath('CaseSectionBeam.txt'),struct('verbose',false,'plotting',false));
 m=p.GetAnalysisModel();r=p.RunStatic(); st=r.elementResults.sectionStress;
 near(st.maximum.value,750000); near(st.minimum.value,-750000); near(st.maximum.xi,.5);
 exportPostprocessorData(m,r,fullfile('output','CaseSectionBeam.json'));
 text=fileread(exampleCasePath('CaseSectionBeam.txt'));
+% Manual A/I produce the same solution with an unused catalog or no catalog.
+manual=regexprep(text,'element_sections\s+1\s+1,1,0\s*','');
+for withCatalog=[true false]
+    source=manual;
+    if ~withCatalog, source=regexprep(source,'sections\s+1\s+[^\r\n]+\s*',''); end
+    direct=fromText(source); directResult=direct.RunStatic(); directModel=direct.GetAnalysisModel();
+    assert(directModel.elementData(1).sectionId==0);
+    near(full(direct.K),full(p.K)); near(full(direct.M),full(p.M));
+    near(directResult.displacements,r.displacements);
+    near(directResult.elementResults.localEndForces,r.elementResults.localEndForces);
+end
 % Rotate the rectangular beam: weak-axis deflection is four times larger.
 p90=fromText(strrep(text,sprintf('1,1,0\n'),sprintf('1,1,90\n')));r90=p90.RunStatic();
 near(r90.displacements(3),4*r.displacements(3));

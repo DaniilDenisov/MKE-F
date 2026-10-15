@@ -116,7 +116,12 @@
     }
     this.drawCoordinateSystem();
     this.updateLabelSizes();
-    global.MKEFSectionDrawing.axes(this.svg,this.model,!document.getElementById('show-section-axes') || document.getElementById('show-section-axes').checked);
+    this.drawSectionAxes();
+  };
+
+  Renderer.prototype.drawSectionAxes = function () {
+    var toggle = document.getElementById('show-section-axes');
+    global.MKEFSectionDrawing.axes(this.svg, this.model, this.tool === 'section' || !toggle || toggle.checked);
   };
 
   Renderer.prototype.symbolScale = function () {
@@ -333,7 +338,7 @@
       var text = M.svgElement('text', { x: node.x + scale * 0.018, y: -node.y - scale * 0.018, class: 'node-label' }); text.textContent = String(index + 1); labelLayer.appendChild(text);
     });
     this.updateLabelSizes();
-    global.MKEFSectionDrawing.axes(this.svg,this.model,!document.getElementById('show-section-axes') || document.getElementById('show-section-axes').checked);
+    this.drawSectionAxes();
   };
 
   Renderer.prototype.drawElementLoads = function (layer, scale) {

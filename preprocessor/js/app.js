@@ -378,7 +378,7 @@
     if ((renderer.tool === 'support' && !canAddConstraints()) || (renderer.tool === 'load' && !canAddNodalLoads())) {
       selection = null; renderer.selection = null; renderer.setTool('select');
     }
-    setNotice(''); M.renderSections(state,commit,selection); renderAnalysis(); renderNodes(); renderElements(); renderSupports(); renderMPCs(); renderLoads(); renderElementLoads(); renderSelection();
+    setNotice(''); M.renderSections(state,commit); renderAnalysis(); renderNodes(); renderElements(); renderSupports(); renderMPCs(); renderLoads(); renderElementLoads(); renderSelection();
     var gridSize = numeric(elements.gridSpacing), validGridSize = Number.isFinite(gridSize) && gridSize > 0;
     elements.gridSpacing.setCustomValidity(validGridSize ? '' : 'Grid size must be positive and finite.');
     renderer.setGrid(elements.gridEnabled.checked, validGridSize ? gridSize : 1);
@@ -458,11 +458,6 @@
     });
     byId('section-tool-id').addEventListener('change', function () { sectionToolId = Number(this.value); });
     byId('section-tool-angle').addEventListener('change', function () { sectionToolAngle = Number(this.value); });
-    byId('section-tool-catalog').addEventListener('click', function () {
-      var catalog = byId('sections-editor'); catalog.open = true;
-      catalog.scrollIntoView({ block: 'nearest' });
-      catalog.querySelector('summary').focus();
-    });
     byId('add-mpc').addEventListener('click',function () { if (!canAddConstraints()) return; commit(function () {
       state.mpcs = state.mpcs || [];
       state.mpcs.push({depNode:currentNode(),depDOF:1,rhs:0,masters:[{node:currentNode() === 1 ? 2 : 1,dof:1,coefficient:1}]});

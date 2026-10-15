@@ -74,7 +74,12 @@
     }
     return S.unique(result);
   };
-  S.unique = function (values) { return values.sort(function (a,b) { return a-b; }).filter(function (v,i,a) { return i===0 || v-a[i-1]>1e-10; }); };
+  // Positions use normalized element coordinates; preserve exact endpoints
+  // when merging roots that coincide with them within numerical tolerance.
+  S.unique = function (values) {
+    return values.map(function (v) { return Math.abs(v)<=1e-10 ? 0 : Math.abs(v-1)<=1e-10 ? 1 : v; })
+      .sort(function (a,b) { return a-b; }).filter(function (v,i,a) { return i===0 || v-a[i-1]>1e-10; });
+  };
   S.stress = function (p,type,L,f,q) {
     q=q || [0,0,0,0];
     var n=[-f[0],-q[0]*L,-(q[2]-q[0])*L/2,0];

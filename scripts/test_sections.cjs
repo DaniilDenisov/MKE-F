@@ -8,6 +8,12 @@ for(const row of JSON.parse(fs.readFileSync(path.join(root,'output/section-parit
   for(const bound of ['minimum','maximum'])for(const key of ['value','xi','eta'])near(stress[bound][key],row.stress[bound][key]);
 }
 const rect={type:'rectangle',dimensions:{b:2,h:4}},p=S.properties(rect);
+for(const root of [1e-12,1-1e-12,0,1]) {
+  const endpointStress=S.stress(p,113,1,[0,1,root,0,0,0],[0,0,0,0]);
+  assert.deepEqual(endpointStress.positions,[0,1],'Near-endpoint roots must preserve exact endpoints');
+}
+assert.deepEqual(S.unique([0,1,1-1e-12,.5,1e-12]),[0,.5,1]);
+assert.deepEqual(S.unique([0,1,1-1e-8,1e-8]),[0,1e-8,1-1e-8,1]);
 near(p.area,8);near(p.Iz,2*4**3/12);near(S.properties(rect,90).momentOfInertia,4*2**3/12);
 for(const type of ['channel','tee','ibeam'])assert.throws(()=>S.properties({type,dimensions:{b:1,h:1,tw:1,tf:.1}}));
 assert.throws(()=>S.properties(rect,45));assert.throws(()=>S.properties({type:'angle',dimensions:{}}));
