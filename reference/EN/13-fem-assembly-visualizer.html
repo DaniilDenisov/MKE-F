@@ -9,24 +9,24 @@
   <style>
     :root {
       color-scheme: light;
-      --ink: #17211b;
-      --muted: #627067;
-      --paper: #f7f5ee;
+      --ink: #17313e;
+      --muted: #526772;
+      --paper: #f5f7f6;
       --panel: #ffffff;
       --panel-soft: #f5f8f5;
-      --line: #d7ddd6;
-      --green: #165c45;
-      --green-dark: #0c3d2d;
-      --green-soft: #e4f1e9;
+      --line: #d6e1e2;
+      --green: #087768;
+      --green-dark: #085e53;
+      --green-soft: #e9f3ef;
       --amber: #a75317;
       --amber-soft: #fff0da;
-      --blue: #26608e;
+      --blue: #14699a;
       --blue-soft: #e8f2fa;
       --red: #a33935;
       --red-soft: #f9e8e6;
       --violet: #6753a3;
-      --shadow: 0 18px 55px rgba(27, 48, 36, 0.10);
-      --radius: 18px;
+      --shadow: none;
+      --radius: 10px;
     }
 
     * { box-sizing: border-box; }
@@ -39,12 +39,8 @@
       margin: 0;
       min-width: 320px;
       color: var(--ink);
-      background:
-        linear-gradient(90deg, rgba(22, 92, 69, 0.035) 1px, transparent 1px),
-        linear-gradient(rgba(22, 92, 69, 0.035) 1px, transparent 1px),
-        var(--paper);
-      background-size: 32px 32px;
-      font-family: Inter, "Segoe UI", Arial, sans-serif;
+      background: var(--paper);
+      font-family: "Segoe UI", Arial, sans-serif;
       line-height: 1.45;
     }
 
@@ -60,13 +56,7 @@
       outline-offset: 3px;
     }
 
-    .page-header {
-      color: #fff;
-      background:
-        radial-gradient(circle at 88% 18%, rgba(255, 255, 255, 0.16), transparent 28%),
-        linear-gradient(135deg, var(--green-dark), var(--green));
-      border-bottom: 5px solid #d8a648;
-    }
+    .page-header { color: var(--ink); background: var(--paper); border-bottom: 1px solid var(--line); }
 
     .page-header__inner,
     main,
@@ -79,7 +69,7 @@
 
     .eyebrow {
       margin: 0 0 6px;
-      color: #cfe6d9;
+      color: var(--green);
       font-size: 12px;
       font-weight: 800;
       letter-spacing: 0.13em;
@@ -89,9 +79,9 @@
     h1 {
       margin: 0;
       max-width: 22ch;
-      font-family: Georgia, "Times New Roman", serif;
-      font-size: clamp(32px, 5vw, 58px);
-      font-weight: 500;
+      font-family: "Segoe UI", Arial, sans-serif;
+      font-size: clamp(32px, 4vw, 50px);
+      font-weight: 700;
       line-height: 1.04;
       letter-spacing: -0.025em;
     }
@@ -99,7 +89,7 @@
     .subtitle {
       max-width: 78ch;
       margin: 10px 0 0;
-      color: #e3f0e8;
+      color: var(--muted);
       font-size: 16px;
     }
 
@@ -234,9 +224,9 @@
     .status-band h2 {
       margin: 0 0 3px;
       color: var(--green-dark);
-      font-family: Georgia, "Times New Roman", serif;
+      font-family: "Segoe UI", Arial, sans-serif;
       font-size: 23px;
-      font-weight: 500;
+      font-weight: 700;
     }
 
     .status-band p { margin: 0; color: var(--muted); }
@@ -280,9 +270,9 @@
     .section-heading h3 {
       margin: 0;
       color: var(--green-dark);
-      font-family: Georgia, "Times New Roman", serif;
+      font-family: "Segoe UI", Arial, sans-serif;
       font-size: 20px;
-      font-weight: 500;
+      font-weight: 700;
     }
 
     .section-heading p {
@@ -432,7 +422,7 @@
 
     .matrix-symbol {
       color: var(--green-dark);
-      font-family: Georgia, serif;
+      font-family: "Segoe UI", Arial, sans-serif;
       font-size: 20px;
       font-style: italic;
       white-space: nowrap;
@@ -474,9 +464,9 @@
     .matrix-header h3 {
       margin: 0;
       color: var(--green-dark);
-      font-family: Georgia, "Times New Roman", serif;
+      font-family: "Segoe UI", Arial, sans-serif;
       font-size: 22px;
-      font-weight: 500;
+      font-weight: 700;
     }
 
     .equation-chip {
@@ -778,12 +768,21 @@
         transition-duration: 0.01ms !important;
       }
     }
-  </style>
+
+    .reference-toc > summary { box-shadow: none; }
+</style>
 </head>
 <body>
+  <header class="site-header">
+    <div class="site-header__inner">
+      <a class="site-brand" href="index.html"><img class="brand-mark" src="../assets/site-logo.png" alt="" width="42" height="42"><span>MKE-F</span><span class="site-brand__context">Documentation / GNU Octave</span></a>
+      <nav class="language-switch" aria-label="Reference language"><a href="../RU/13-fem-assembly-visualizer.html" lang="ru" hreflang="ru">RU</a> <a href="../EN/13-fem-assembly-visualizer.html" lang="en" hreflang="en" aria-current="true">EN</a></nav>
+    </div>
+  </header>
+
   <header class="page-header">
     <div class="page-header__inner">
-      <nav class="language-switch" aria-label="Reference language"><a href="../RU/13-fem-assembly-visualizer.html" lang="ru" hreflang="ru">RU</a> <a href="../EN/13-fem-assembly-visualizer.html" lang="en" hreflang="en" aria-current="true">EN</a></nav>
+
       <p class="eyebrow">Additional chapter 13 · interactive walkthrough</p>
       <h1>From element to global system</h1>
       <p class="subtitle">Three axial members, four degrees of freedom and the full sequence: element matrices → assembly → sparse storage → support → solution and reactions.</p>
@@ -793,6 +792,7 @@
   <details class="reference-toc">
     <summary>Reference contents</summary>
     <nav class="contents" aria-label="Reference contents">
+      <a class="contents-home" href="index.html">Documentation</a>
       <h2>Fifteen chapters</h2>
       <ol>
         <li><a href="01-model-dofs.html">Model, nodes, elements and DOFs</a></li>
@@ -814,6 +814,7 @@
         <li><a href="14-mario-paz-matrices-visualizer.html">Interactive frame matrices</a></li>
         <li><a href="15-sparse-matrix-assembly.html">Sparse matrix assembly</a></li>
       </ol>
+      <p class="offline-note">Works offline. Theory, examples and interactive chapters in one reference.</p>
     </nav>
   </details>
 

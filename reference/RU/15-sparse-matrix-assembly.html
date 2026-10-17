@@ -9,21 +9,21 @@
   <style>
     :root {
       color-scheme: light;
-      --ink: #17211b;
-      --muted: #657269;
-      --paper: #f4f3ec;
+      --ink: #17313e;
+      --muted: #526772;
+      --paper: #f5f7f6;
       --panel: #fff;
-      --line: #d8ded8;
-      --green: #165c45;
-      --green-dark: #0d3f30;
-      --green-soft: #e5f2ea;
-      --blue: #235e8b;
+      --line: #d6e1e2;
+      --green: #087768;
+      --green-dark: #085e53;
+      --green-soft: #e9f3ef;
+      --blue: #14699a;
       --blue-soft: #e7f1f8;
       --amber: #a85b16;
       --amber-soft: #fff0d8;
       --red: #a23d38;
       --violet: #6753a3;
-      --shadow: 0 18px 54px rgba(24, 45, 33, 0.11);
+      --shadow: none;
     }
 
     * { box-sizing: border-box; }
@@ -33,12 +33,8 @@
       min-width: 320px;
       margin: 0;
       color: var(--ink);
-      background:
-        linear-gradient(90deg, rgba(22, 92, 69, 0.035) 1px, transparent 1px),
-        linear-gradient(rgba(22, 92, 69, 0.035) 1px, transparent 1px),
-        var(--paper);
-      background-size: 32px 32px;
-      font-family: Inter, "Segoe UI", Arial, sans-serif;
+      background: var(--paper);
+      font-family: "Segoe UI", Arial, sans-serif;
       line-height: 1.48;
     }
 
@@ -49,13 +45,7 @@
       outline-offset: 3px;
     }
 
-    .page-header {
-      color: #fff;
-      border-bottom: 5px solid #d7a447;
-      background:
-        radial-gradient(circle at 85% 20%, rgba(255,255,255,.17), transparent 29%),
-        linear-gradient(135deg, var(--green-dark), var(--green));
-    }
+    .page-header { color: var(--ink); background: var(--paper); border-bottom: 1px solid var(--line); }
     .page-header__inner, main, footer {
       width: min(1480px, calc(100% - 32px));
       margin-inline: auto;
@@ -63,7 +53,7 @@
     .page-header__inner { padding: 28px 0 25px; }
     .eyebrow {
       margin: 0 0 6px;
-      color: #cfe6d9;
+      color: var(--green);
       font-size: 12px;
       font-weight: 800;
       letter-spacing: .13em;
@@ -72,11 +62,11 @@
     h1 {
       max-width: 23ch;
       margin: 0;
-      font: 500 clamp(32px, 5vw, 58px)/1.04 Georgia, "Times New Roman", serif;
+      font: 700 clamp(32px, 4vw, 50px)/1.2 "Segoe UI", Arial, sans-serif;
       letter-spacing: -.025em;
     }
-    .subtitle { max-width: 80ch; margin: 10px 0 0; color: #e5f0e9; font-size: 16px; }
-    .subtitle code { padding: 1px 4px; border-radius: 4px; color: #fff3cf; background: rgba(0, 0, 0, .17); }
+    .subtitle { max-width: 80ch; margin: 10px 0 0; color: var(--muted); font-size: 16px; }
+    .subtitle code { padding: 1px 4px; border-radius: 4px; color: var(--ink); background: rgba(0, 0, 0, .17); }
     main { padding: 24px 0 38px; }
 
     .app {
@@ -179,7 +169,7 @@
     .lane + .lane { border-left: 1px solid var(--line); }
     .lane--sparse { background: #fbfdfb; }
     .lane-heading { display: flex; gap: 14px; align-items: flex-start; justify-content: space-between; margin-bottom: 14px; }
-    .lane-heading h3 { margin: 0 0 3px; font: 600 23px/1.15 Georgia, "Times New Roman", serif; }
+    .lane-heading h3 { margin: 0 0 3px; font: 600 23px/1.15 "Segoe UI", Arial, sans-serif; }
     .lane-heading p { margin: 0; color: var(--muted); font-size: 13px; }
     .lane-chip { flex: none; padding: 6px 9px; border-radius: 8px; color: var(--red); background: #f8e7e5; font-size: 12px; font-weight: 800; }
     .lane--sparse .lane-chip { color: var(--green-dark); background: var(--green-soft); }
@@ -217,7 +207,7 @@
     .array-line { display: grid; grid-template-columns: 118px minmax(0, 1fr) minmax(120px, .8fr); gap: 8px; align-items: start; font: 12px/1.5 Consolas, "Courier New", monospace; }
     .array-name { color: var(--blue); font-weight: 800; }
     .array-values { overflow-wrap: anywhere; }
-    .array-note { color: var(--muted); font-family: Inter, "Segoe UI", Arial, sans-serif; }
+    .array-note { color: var(--muted); font-family: "Segoe UI", Arial, sans-serif; }
     .value-token { display: inline-block; min-width: 24px; margin: 1px; padding: 1px 4px; border: 2px solid var(--slot-border, #8a9b90); border-radius: 6px; color: var(--slot-ink, var(--green-dark)); background: var(--slot-bg, #eef4ef); text-align: center; font-weight: 850; }
     .value-token--dof { border-color: #668879; color: var(--green-dark); background: #edf5f0; }
     .slot-0 { --slot-border: #b85700; --slot-bg: #ffd18a; --slot-ink: #4e2500; --slot-glow: rgba(184, 87, 0, .25); }
@@ -243,7 +233,7 @@
     }
     .sparse-call code { overflow-x: auto; color: var(--green-dark); font: 700 13px/1.5 Consolas, monospace; white-space: nowrap; }
     .sparse-call p { grid-column: 1 / -1; margin: 0; color: #3e594a; font-size: 13px; }
-    .octave-mark { display: grid; width: 34px; height: 34px; place-items: center; border-radius: 9px; color: #fff; background: var(--green-dark); font: 900 18px Georgia, serif; }
+    .octave-mark { display: grid; width: 34px; height: 34px; place-items: center; border-radius: 9px; color: #fff; background: var(--green-dark); font: 900 18px "Segoe UI", Arial, sans-serif; }
 
     .metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; padding: 20px; border-top: 1px solid var(--line); background: #f8faf7; }
     .metric { padding: 14px; border: 1px solid var(--line); border-radius: 12px; background: #fff; }
@@ -290,12 +280,21 @@
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; }
     }
-  </style>
+
+    .reference-toc > summary { box-shadow: none; }
+</style>
 </head>
 <body>
+  <header class="site-header">
+    <div class="site-header__inner">
+      <a class="site-brand" href="index.html"><img class="brand-mark" src="../assets/site-logo.png" alt="" width="42" height="42"><span>MKE-F</span><span class="site-brand__context">Документация / GNU Octave</span></a>
+      <nav class="language-switch" aria-label="Язык справочника"><a href="../RU/15-sparse-matrix-assembly.html" lang="ru" hreflang="ru" aria-current="true">RU</a> <a href="../EN/15-sparse-matrix-assembly.html" lang="en" hreflang="en">EN</a></nav>
+    </div>
+  </header>
+
   <header class="page-header">
     <div class="page-header__inner">
-      <nav class="language-switch" aria-label="Язык справочника"><a href="../RU/15-sparse-matrix-assembly.html" lang="ru" hreflang="ru" aria-current="true">RU</a> <a href="../EN/15-sparse-matrix-assembly.html" lang="en" hreflang="en">EN</a></nav>
+
       <p class="eyebrow">Дополнительная глава 15 · интерактивный разбор</p>
       <h1>Разреженные матрицы. Механизм работы</h1>
       <p class="subtitle">Одна и та же матрица двумя путями: плотный квадрат <code>zeros(n,n)</code> и применённый в МКЭ‑Ф конвейер триплетов, библиотечная функция GNU Octave <code>sparse()</code> и решение редуцированной системы.</p>
@@ -305,6 +304,7 @@
   <details class="reference-toc">
     <summary>Оглавление справочника</summary>
     <nav class="contents" aria-label="Оглавление справочника">
+      <a class="contents-home" href="index.html">Документация</a>
       <h2>Пятнадцать глав</h2>
       <ol>
         <li><a href="01-model-dofs.html">Модель, узлы, элементы и СС</a></li>
@@ -326,6 +326,7 @@
         <li><a href="14-mario-paz-matrices-visualizer.html">Интерактивные матрицы рамы</a></li>
         <li><a aria-current="page" href="15-sparse-matrix-assembly.html">Разреженная сборка матриц</a></li>
       </ol>
+      <p class="offline-note">Работает без интернета. Теория, примеры и интерактивные главы в одном справочнике.</p>
     </nav>
   </details>
 
