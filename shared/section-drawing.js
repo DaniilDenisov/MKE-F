@@ -4,30 +4,50 @@
   function el(tag,attrs,text) { var n=document.createElementNS('http://www.w3.org/2000/svg',tag); Object.keys(attrs || {}).forEach(function (k) { n.setAttribute(k,attrs[k]); }); if(text!==undefined) n.textContent=text; return n; }
   D.preview=function (svg,section,angle,stress,xi,unit) {
     svg.replaceChildren();
+    // Keep result labels in screen units so small sections cannot shrink the text.
+    var canvas=svg, canvasHeight=0;
+    if(stress) {
+      var bounds=canvas.getBoundingClientRect();
+      canvasHeight=bounds.height || 240;
+      canvas.removeAttribute('viewBox');
+      canvas.setAttribute('width',bounds.width || 640);canvas.setAttribute('height',canvasHeight);
+      svg=el('svg',{id:canvas.id+'-geometry',width:'100%',height:Math.max(80,canvasHeight-84)});
+      canvas.appendChild(svg);
+    }
     var p=S.properties(section,angle), r=S.rotation(angle), vertices=p.vertices;
     function point(z,y) { return {x:z*r.c+y*r.s,y:-(y*r.c-z*r.s)}; }
     var points=vertices.map(function (v) { return point(v.z,v.y); });
-    var radius=section.type==='circle' ? section.dimensions.d/2 : 0;
+    var radius=section.type==='circle' || section.type==='circular_tube' ? section.dimensions.d/2 : 0;
     var xmin=radius ? -radius : Math.min.apply(null,points.map(function (v) {return v.x;})), xmax=radius ? radius : Math.max.apply(null,points.map(function (v) {return v.x;}));
     var ymin=-p.etaMax,ymax=-p.etaMin, size=Math.max(xmax-xmin,ymax-ymin), pad=size*.32;
-    svg.setAttribute('viewBox',[xmin-pad,ymin-pad,xmax-xmin+2*pad,ymax-ymin+2*pad+(stress ? size*.23 : 0)].join(' '));
-    svg.setAttribute('role','img'); svg.setAttribute('aria-label',section.name+' · '+angle+'°');
+    svg.setAttribute('viewBox',[xmin-pad,ymin-pad,xmax-xmin+2*pad,ymax-ymin+2*pad].join(' '));
+    canvas.setAttribute('role','img'); canvas.setAttribute('aria-label',section.name+' · '+angle+'°');
     var fill='#dce8f1';
     if(stress) {
       var values=stress.fibers.map(function (poly) { return S.evaluate(poly,xi); }), max=Math.max(Math.abs(stress.minimum.value),Math.abs(stress.maximum.value));
       var defs=el('defs'), grad=el('linearGradient',{id:svg.id+'-stress',gradientUnits:'userSpaceOnUse',x1:0,x2:0,y1:ymin,y2:ymax});
       for(var i=0;i<=16;i++) { var t=i/16, value=values[1]*(1-t)+values[0]*t; var strength=max ? Math.abs(value)/max : 0; grad.appendChild(el('stop',{offset:t,'stop-color':value>=0 ? 'hsl(4 65% '+(96-50*strength)+'%)' : 'hsl(218 65% '+(96-50*strength)+'%)'})); }
       defs.appendChild(grad); svg.appendChild(defs); fill='url(#'+svg.id+'-stress)';
-      svg.appendChild(el('text',{x:xmin,y:ymax+pad*.72,'font-size':size*.065,fill:'#23384d'},'σ: '+Math.min.apply(null,values).toPrecision(5)+' … '+Math.max.apply(null,values).toPrecision(5)+' '+(unit || '')));
+      var labels=el('g',{'class':'section-stress-labels','font-size':14,'font-family':'sans-serif',fill:'#23384d'});canvas.appendChild(labels);
+      labels.appendChild(el('text',{x:12,y:canvasHeight-64},'σmin: '+Math.min.apply(null,values).toPrecision(5)+' '+(unit || '')));
+      labels.appendChild(el('text',{x:12,y:canvasHeight-44},'σmax: '+Math.max.apply(null,values).toPrecision(5)+' '+(unit || '')));
       var legend=el('linearGradient',{id:svg.id+'-scale',x1:'0%',x2:'100%',y1:'0%',y2:'0%'});
       [[0,'hsl(218 65% 46%)'],[.5,'hsl(0 0% 96%)'],[1,'hsl(4 65% 46%)']].forEach(function (v) {legend.appendChild(el('stop',{offset:v[0],'stop-color':v[1]}));});defs.appendChild(legend);
-      var barY=ymax+pad+size*.015;
-      var barLeft=xmin-pad*.65,barRight=xmax+pad*.65;
-      svg.appendChild(el('rect',{x:barLeft,y:barY,width:barRight-barLeft,height:size*.05,fill:'url(#'+svg.id+'-scale)'}));
-      [[barLeft,-max,'start'],[(xmin+xmax)/2,0,'middle'],[barRight,max,'end']].forEach(function (v) {svg.appendChild(el('text',{x:v[0],y:barY+size*.14,'text-anchor':v[2],'font-size':size*.075,fill:'#23384d'},v[1]===0 ? '0' : v[1].toPrecision(3)));});
+      var barWidth=Math.max(0,(bounds.width || 640)-24);
+      labels.appendChild(el('rect',{x:12,y:canvasHeight-32,width:barWidth,height:10,rx:3,fill:'url(#'+svg.id+'-scale)'}));
+      [[12,-max,'start'],[12+barWidth/2,0,'middle'],[12+barWidth,max,'end']].forEach(function (v) {labels.appendChild(el('text',{x:v[0],y:canvasHeight-6,'text-anchor':v[2]},v[1]===0 ? '0' : v[1].toPrecision(3)));});
     }
     var group=el('g',{fill:fill,stroke:'#2b4861','stroke-width':size*.006}); svg.appendChild(group);
-    if(radius) group.appendChild(el('circle',{cx:0,cy:0,r:radius}));
+    if(section.type==='circular_tube') {
+      function ring(rad) {return 'M '+rad+' 0 A '+rad+' '+rad+' 0 1 0 '+(-rad)+' 0 A '+rad+' '+rad+' 0 1 0 '+rad+' 0 Z ';}
+      group.appendChild(el('path',{d:ring(radius)+ring(radius-section.dimensions.t),'fill-rule':'evenodd'}));
+    }
+    else if(section.type==='square_tube' || section.type==='rectangular_tube') {
+      var d=section.dimensions,h=section.type==='square_tube' ? d.b : d.h;
+      function box(b,h) {return [[-b/2,-h/2],[b/2,-h/2],[b/2,h/2],[-b/2,h/2]].map(function (a,i) {var q=point(a[0],a[1]);return (i ? 'L ' : 'M ')+q.x+' '+q.y;}).join(' ')+' Z ';}
+      group.appendChild(el('path',{d:box(d.b,h)+box(d.b-2*d.t,h-2*d.t),'fill-rule':'evenodd'}));
+    }
+    else if(radius) group.appendChild(el('circle',{cx:0,cy:0,r:radius}));
     else p.rectangles.forEach(function (v) { var pts=[[v.z,v.y],[v.z+v.b,v.y],[v.z+v.b,v.y+v.h],[v.z,v.y+v.h]].map(function (a) {var q=point(a[0],a[1]);return q.x+','+q.y;}); group.appendChild(el('polygon',{points:pts.join(' ')})); });
     function axis(z,y,label) { var q=point(z,y), length=Math.hypot(q.x,q.y), ux=q.x/length,uy=q.y/length,h=size*.045;
       svg.appendChild(el('path',{d:'M 0 0 L '+q.x+' '+q.y+' m '+(-ux*h-uy*h/2)+' '+(-uy*h+ux*h/2)+' L '+q.x+' '+q.y+' l '+(-ux*h+uy*h/2)+' '+(-uy*h-ux*h/2),fill:'none',stroke:'#172f44','stroke-width':size*.007}));

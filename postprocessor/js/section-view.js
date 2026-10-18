@@ -24,8 +24,9 @@
     function line(label,p) {return label+' = '+M.staticResults.withUnit(p.value,unit)+' at x/L='+M.staticResults.format(p.xi)+' (x='+M.staticResults.format(p.xi*data.length)+'), η='+M.staticResults.format(p.eta);}
     return ['Section: '+data.section.name+' · '+element.sectionAngle+'°',line('σmin',s.minimum),line('σmax',s.maximum)];
   };
-  var lastElement=null,lastDataset=null,position=.5;
+  var lastElement=null,lastDataset=null,position=.5,resizeObserver=null;
   V.show=function (dataset,selection) {
+    if(resizeObserver) {resizeObserver.disconnect();resizeObserver=null;}
     var panel=document.getElementById('section-result-panel');if(!panel)return;
     var element=selection && selection.kind==='element' && dataset && dataset.elementsById.get(selection.id);
     panel.hidden=!element || dataset.raw.analysis.type!=='static' || !element.sectionId;
@@ -51,6 +52,7 @@
     }
     function change(event) {var v=Number(event.target.value);if(event.target.value.trim()==='' || !Number.isFinite(v) || v<0 || v>1) {event.target.setCustomValidity('Use a position between 0 and 1.');return;} event.target.setCustomValidity('');position=v;draw();}
     range.oninput=change;input.oninput=change;draw();
+    if(typeof ResizeObserver!=='undefined') {resizeObserver=new ResizeObserver(function () {draw();});resizeObserver.observe(svg);}
     document.getElementById('export-section-svg').onclick=function () {
       var text=new XMLSerializer().serializeToString(svg),blob=new Blob([text],{type:'image/svg+xml'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='section-E'+element.id+'.svg';a.click();setTimeout(function () {URL.revokeObjectURL(url);},1000);
     };

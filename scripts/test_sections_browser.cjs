@@ -1,6 +1,38 @@
 const {chromium}=require(process.env.MKEF_PLAYWRIGHT_MODULE || 'playwright');
 const fs=require('fs'),path=require('path'),http=require('http'),assert=require('assert/strict');
 const root=path.resolve(__dirname,'..');
+async function checkTubeSections(page) {
+  await page.locator('#file-input').setInputFiles(path.join(root,'examples/cases/CaseSectionBeam.txt'));
+  await page.waitForFunction(()=>document.querySelector('#case-name').value==='CaseSectionBeam');
+  await page.locator('#sections-editor').evaluate(e=>e.open=true);
+  for(const type of ['square_tube','rectangular_tube','circular_tube']) {
+    await page.getByLabel('Shape · section 1',{exact:true}).selectOption(type);
+    const field=page.getByLabel('t · section 1',{exact:true});
+    assert.equal(await field.inputValue(),'0.005');
+    assert.equal(await page.getByLabel('h · section 1',{exact:true}).count(),type==='rectangular_tube' ? 1 : 0);
+    await field.fill('0.01');await field.dispatchEvent('change');
+    const saved=await page.locator('#case-preview').inputValue();
+    const model=await page.evaluate(()=>window.MKEFPre.caseFormat.parse(document.querySelector('#case-preview').value));
+    const expected=type==='square_tube' ? .0036 : type==='rectangular_tube' ? .0056 : Math.PI*.0009;
+    assert(Math.abs(model.elements[0].area-expected)<1e-14);
+    assert.equal(model.sections[0].type,type);assert.equal(model.elementLoads.length,1);
+    assert(await page.locator('#error-panel').isHidden());
+    const shape=page.locator('#section-preview-1 g path');
+    assert.equal(await shape.getAttribute('fill-rule'),'evenodd');
+    assert.deepEqual(await shape.evaluate(e=>[e.isPointInFill(new DOMPoint(0,0)),e.isPointInFill(new DOMPoint(.045,0))]),[false,true]);
+    assert(!/NaN|Infinity/.test(await page.locator('#section-preview-1').getAttribute('viewBox')));
+    await page.locator('#undo').click();assert.equal(await field.inputValue(),'0.005');
+    await page.locator('#redo').click();assert.equal(await field.inputValue(),'0.01');
+    await field.fill('0.05');await field.dispatchEvent('change');
+    assert.match(await page.locator('#error-panel').innerText(),/thickness leaves no clear space/);
+    assert.equal(await page.locator('#case-preview').inputValue(),saved,'Invalid tube must not change assigned geometry');
+    await page.locator('#file-input').setInputFiles({name:type+'.txt',mimeType:'text/plain',buffer:Buffer.from(saved)});
+    assert.equal(await page.getByLabel('Shape · section 1',{exact:true}).inputValue(),type);
+    assert.equal(await field.inputValue(),'0.01');
+    await page.locator('#section-preview-1').screenshot({path:path.join(root,'output/'+type+'-preview.png')});
+  }
+  console.log('Tubes: shape choices, wall dimensions, hollow previews, assignment, validation, undo/redo and TXT roundtrip PASS');
+}
 async function checkManualProperties(page) {
   await page.locator('#file-input').setInputFiles(path.join(root,'examples/cases/CaseSectionBeam.txt'));
   await page.waitForFunction(()=>document.querySelector('#case-name').value==='CaseSectionBeam');
@@ -131,6 +163,7 @@ const server=http.createServer((req,res)=>{
     await page.goto(base+'/preprocessor/index.html');
     await checkSectionMode(page);
     await checkManualProperties(page);
+    await checkTubeSections(page);
     await page.locator('#file-input').setInputFiles(path.join(root,'examples/cases/CaseSectionBeam.txt'));
     await page.waitForFunction(()=>document.querySelector('#case-name').value==='CaseSectionBeam');
     await page.locator('#sections-editor').evaluate(e=>e.open=true);
@@ -192,6 +225,20 @@ const server=http.createServer((req,res)=>{
     await page.locator('#section-position-number').fill('0');await page.locator('#section-position-number').dispatchEvent('input');
     const endValues=(await page.locator('#section-result-info').innerText()).match(/σmin=([^ ]+) · σmax=([^\n]+)/);assert(Math.abs(Number(endValues[1]))<1e-6 && Math.abs(Number(endValues[2]))<1e-6);
     await page.locator('#section-position-number').fill('0.5');await page.locator('#section-position-number').dispatchEvent('input');
+    for(const width of [1440,640]) {
+      await page.setViewportSize({width,height:1000});
+      await page.waitForFunction(()=>{
+        const svg=document.querySelector('#section-result-svg'),bounds=svg.getBoundingClientRect();
+        return Math.abs(Number(svg.getAttribute('width'))-bounds.width)<1;
+      });
+      const labels=await page.locator('#section-result-svg .section-stress-labels text').evaluateAll(nodes=>nodes.map(e=>{
+        const box=e.getBoundingClientRect(),svg=e.closest('svg').getBoundingClientRect();
+        return {size:parseFloat(getComputedStyle(e).fontSize),inside:box.left>=svg.left && box.right<=svg.right && box.top>=svg.top && box.bottom<=svg.bottom};
+      }));
+      assert.equal(labels.length,5);assert(labels.every(label=>label.size>=14 && label.inside),'Stress labels must be readable and fit the preview');
+      await page.locator('#section-result-svg').screenshot({path:path.join(root,'output/section-readable-'+width+'.png')});
+    }
+    await page.setViewportSize({width:1440,height:1000});
     const download=page.waitForEvent('download');await page.locator('#export-section-svg').click();const svg=await download;await svg.saveAs(path.join(root,'output/section-export.svg'));assert(fs.readFileSync(path.join(root,'output/section-export.svg'),'utf8').includes('linearGradient'));
     const modelDownload=page.waitForEvent('download');await page.locator('#export-svg').click();await (await modelDownload).saveAs(path.join(root,'output/sections-model.svg'));
     const pngDownload=page.waitForEvent('download');await page.locator('#export-png').click();await (await pngDownload).saveAs(path.join(root,'output/sections-model.png'));
@@ -225,7 +272,21 @@ const server=http.createServer((req,res)=>{
     assert.equal(await target.evaluate(e=>getComputedStyle(e).vectorEffect),'non-scaling-stroke');
     assert.equal(await target.evaluate(e=>getComputedStyle(e).strokeWidth),'4px');
     for(const file of fs.readdirSync(path.join(root,'output')).filter(n=>/^SectionCase.*\.json$/.test(n))) {
-      await page.locator('#file-input').setInputFiles(path.join(root,'output',file));assert(await page.locator('#error-panel').isHidden(),file+': '+await page.locator('#error-panel').innerText());
+      const data=JSON.parse(fs.readFileSync(path.join(root,'output',file),'utf8'));data.metadata.title=file;
+      await page.locator('#file-input').setInputFiles({name:file,mimeType:'application/json',buffer:Buffer.from(JSON.stringify(data))});
+      await page.waitForFunction(title=>document.querySelector('#dataset-title').textContent===title,file);
+      assert(await page.locator('#error-panel').isHidden(),file+': '+await page.locator('#error-panel').innerText());
+      if(file.includes('_tube_')) {
+        await page.locator('.original-element[data-element-id="1"]').dispatchEvent('click');
+        assert(await page.locator('#section-result-panel').isVisible());
+        const shape=page.locator('#section-result-svg g path');
+        assert.equal(await shape.getAttribute('fill-rule'),'evenodd');
+        assert.equal(await shape.evaluate(e=>e.isPointInFill(new DOMPoint(0,0))),false);
+        assert.match(await shape.locator('..').getAttribute('fill'),/url\(#.*-stress\)/);
+        const download=page.waitForEvent('download');await page.locator('#export-section-svg').click();
+        const output=path.join(root,'output',file.replace('.json','.svg'));await (await download).saveAs(output);
+        assert.match(fs.readFileSync(output,'utf8'),/fill-rule="evenodd"/);
+      }
     }
     // Horizontal, vertical, inclined and short members, one triad per orientation.
     const axes=await page.evaluate(()=>{

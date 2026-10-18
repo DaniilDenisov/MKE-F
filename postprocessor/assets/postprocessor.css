@@ -97,8 +97,8 @@ input[type="number"],input[type="range"],select { width:100%; padding:.4rem .5re
 .result-inspector:has(.section-result-panel:not([hidden])) .details-panel{max-height:none}
 .result-inspector .section-result-panel{margin:0;padding:12px;min-width:0}
 .result-inspector .section-result-panel h2{font-size:1rem;margin:0 0 8px}
-.result-inspector .section-result-svg{height:175px;margin-top:8px}
-.result-inspector .section-result-panel pre{font:12px/1.4 ui-monospace,monospace;margin:8px 0}
+.result-inspector .section-result-svg{height:240px;margin-top:8px}
+.result-inspector .section-result-panel pre{font:14px/1.4 ui-monospace,monospace;margin:8px 0}
 .workspace:has(.section-result-panel:not([hidden])) .drop-zone{min-height:240px}
 @media(max-width:1000px){.result-inspector:has(.section-result-panel:not([hidden])){grid-template-columns:1fr}.workspace:has(.section-result-panel:not([hidden])){overflow:auto}}
 @media(max-width:760px){.result-inspector{max-height:none}.result-inspector .section-result-svg{height:260px}}

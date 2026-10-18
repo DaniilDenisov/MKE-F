@@ -1,15 +1,27 @@
 function test_sections()
 % Independent profile values and beam solutions; fixtures shared with JS.
-types={'rectangle','circle','channel','tee','ibeam'};
+types={'rectangle','circle','channel','tee','ibeam','square_tube','rectangular_tube','circular_tube'};
 output=struct('section',{},'angle',{},'properties',{},'stress',{});
 for k=1:numel(types)
-    s=struct('id',k,'name',types{k},'type',types{k},'dimensions',struct('b',.1,'h',.2,'tw',.008,'tf',.012,'d',.1));
+    s=struct('id',k,'name',types{k},'type',types{k},'dimensions',struct('b',.1,'h',.2,'tw',.008,'tf',.012,'d',.1,'t',.005));
     for angle=[0 90 180 270]
         p=sectionProperties(s,angle);
         if strcmp(s.type,'rectangle')
             near(p.area,.02);near(p.Iy,.2*.1^3/12);near(p.Iz,.1*.2^3/12);
         elseif strcmp(s.type,'circle')
             near(p.area,pi*.1^2/4);near(p.momentOfInertia,pi*.1^4/64);
+        elseif strcmp(s.type,'circular_tube')
+            near(p.area,pi*(.1^2-.09^2)/4);near(p.momentOfInertia,pi*(.1^4-.09^4)/64);
+            near(p.centroidY,0);near(p.centroidZ,0);near(p.etaMin,-.05);near(p.etaMax,.05);
+        elseif ismember(s.type,{'square_tube','rectangular_tube'})
+            h=.2; if strcmp(s.type,'square_tube'), h=.1; end
+            near(p.area,.1*h-.09*(h-.01));
+            near(p.Iy,(h*.1^3-(h-.01)*.09^3)/12);
+            near(p.Iz,(.1*h^3-.09*(h-.01)^3)/12);
+            near(p.centroidY,h/2);near(p.centroidZ,.05);
+            extent=h/2; expectedI=p.Iz;
+            if ismember(angle,[90 270]), extent=.05; expectedI=p.Iy; end
+            near(p.etaMin,-extent);near(p.etaMax,extent);near(p.momentOfInertia,expectedI);
         elseif strcmp(s.type,'tee')
             near(p.area,.1*.012+.008*.188);
             near(p.centroidY,(.1*.012*.194+.008*.188*.094)/p.area);
@@ -56,6 +68,26 @@ m=p.GetAnalysisModel();r=p.RunStatic(); st=r.elementResults.sectionStress;
 near(st.maximum.value,750000); near(st.minimum.value,-750000); near(st.maximum.xi,.5);
 exportPostprocessorData(m,r,fullfile('output','CaseSectionBeam.json'));
 text=fileread(exampleCasePath('CaseSectionBeam.txt'));
+% Tube geometry drives beam stiffness, mass, stress and exported results.
+for type={'square_tube','rectangular_tube','circular_tube'}
+    section=struct('id',1,'name',type{1},'type',type{1},'dimensions',struct('b',.1,'h',.2,'d',.1,'t',.005));
+    source=regexprep(text,'\{"id":1[^\r\n]+',jsonencode(section));
+    for angle=[0 90 180 270]
+        tube=fromText(strrep(source,sprintf('1,1,0\n'),sprintf('1,1,%d\n',angle)));
+        tubeResult=tube.RunStatic(); tubeModel=tube.GetAnalysisModel();
+        props=sectionProperties(section,angle);
+        near(tubeResult.displacements(3),r.displacements(3)*(.1*.2^3/12)/props.momentOfInertia);
+        near(full(tube.M),full(p.M)*props.area/.02);
+        near(tubeResult.elementResults.sectionStress.maximum.value,500*props.etaMax/props.momentOfInertia);
+        exportPostprocessorData(tubeModel,tubeResult,fullfile('output',['SectionCase_' type{1} '_' num2str(angle) '.json']));
+    end
+    for thickness=[0 -.01 .05 .1 NaN Inf]
+        bad=section;bad.dimensions.t=thickness;mustFail(@() sectionProperties(bad));
+    end
+    bad=section;bad.dimensions=rmfield(bad.dimensions,'t');mustFail(@() sectionProperties(bad));
+end
+bad=struct('type','rectangular_tube','dimensions',struct('b',.2,'h',.1,'t',.05));
+mustFail(@() sectionProperties(bad));
 % Manual A/I produce the same solution with an unused catalog or no catalog.
 manual=regexprep(text,'element_sections\s+1\s+1,1,0\s*','');
 for withCatalog=[true false]

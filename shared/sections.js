@@ -1,8 +1,13 @@
 (function (root) {
   'use strict';
   var S = {};
-  S.types = {rectangle:'Rectangle',circle:'Solid circle',channel:'Channel',tee:'T section',ibeam:'I section'};
-  S.fields = function (type) { return type === 'circle' ? ['d'] : type === 'rectangle' ? ['b','h'] : ['b','h','tw','tf']; };
+  S.types = {rectangle:'Rectangle',circle:'Solid circle',square_tube:'Square tube',rectangular_tube:'Rectangular tube',circular_tube:'Circular tube',channel:'Channel',tee:'T section',ibeam:'I section'};
+  S.fields = function (type) {
+    if (type==='square_tube') return ['b','t'];
+    if (type==='rectangular_tube') return ['b','h','t'];
+    if (type==='circular_tube') return ['d','t'];
+    return type === 'circle' ? ['d'] : type === 'rectangle' ? ['b','h'] : ['b','h','tw','tf'];
+  };
   S.rotation = function (angle) {
     var i = [0,90,180,270].indexOf(angle);
     if (i < 0) throw new Error('Section orientation must be 0, 90, 180 or 270 degrees.');
@@ -14,9 +19,20 @@
     if (!d || !S.fields(section.type).every(function (k) { return Number.isFinite(d[k]) && d[k]>0; })) throw new Error('Section dimensions must be positive finite numbers.');
     var rects=[], A=0, cy=0, cz=0, Iy=0, Iz=0;
     function rect(z,y,b,h) { rects.push({z:z,y:y,b:b,h:h}); }
-    if (section.type==='circle') { A=Math.PI*d.d*d.d/4; Iy=Iz=Math.PI*Math.pow(d.d,4)/64; }
+    if (section.type==='circular_tube') {
+      if (2*d.t>=d.d) throw new Error('Section wall thickness leaves no clear space.');
+      var inner=d.d-2*d.t;
+      A=Math.PI*d.t*(d.d-d.t); Iy=Iz=A*(d.d*d.d+inner*inner)/16;
+    }
+    else if (section.type==='circle') { A=Math.PI*d.d*d.d/4; Iy=Iz=Math.PI*Math.pow(d.d,4)/64; }
     else {
       if (section.type==='rectangle') rect(0,0,d.b,d.h);
+      else if (section.type==='square_tube' || section.type==='rectangular_tube') {
+        var h=section.type==='square_tube' ? d.b : d.h;
+        if (2*d.t>=Math.min(d.b,h)) throw new Error('Section wall thickness leaves no clear space.');
+        rect(0,0,d.b,d.t); rect(0,h-d.t,d.b,d.t);
+        rect(0,d.t,d.t,h-2*d.t); rect(d.b-d.t,d.t,d.t,h-2*d.t);
+      }
       else {
         var doubleFlange=section.type!=='tee';
         if (d.tw>=d.b || (doubleFlange ? 2*d.tf : d.tf)>=d.h) throw new Error('Section wall/flange thickness leaves no clear space.');

@@ -14,15 +14,20 @@ unique positive integers, names are nonempty Unicode strings. Types and dimensio
 |---|---|---|
 | `rectangle` | `b,h` | Solid rectangle |
 | `circle` | `d` | Solid circle |
+| `square_tube` | `b,t` | Square tube with outer side b and uniform wall t |
+| `rectangular_tube` | `b,h,t` | Rectangular tube with outer width b, height h and uniform wall t |
+| `circular_tube` | `d,t` | Circular tube with outer diameter d and uniform wall t |
 | `channel` | `b,h,tw,tf` | Web at negative z, opening towards positive z |
 | `tee` | `b,h,tw,tf` | Centered web, top flange at positive y |
 | `ibeam` | `b,h,tw,tf` | Centered web and equal top/bottom flanges |
 
 All dimensions use model length units and must be positive finite values.
-For profiles `tw < b`; `tf < h` for a tee, `2*tf < h` otherwise. No fillets,
-flange slopes, hollow sections, torsion, eccentricity or out-of-plane DOFs.
+For open profiles `tw < b`; `tf < h` for a tee, `2*tf < h` otherwise.
+Tubes require `2*t < b` (square), `2*t < min(b,h)` (rectangular), or
+`2*t < d` (circular). Square and rectangular tubes have sharp corners.
+No fillets, flange slopes, torsion, eccentricity or out-of-plane DOFs.
 Areas and centroidal second moments are calculated from nonoverlapping rectangles
-and the parallel-axis theorem, or analytically for a circle.
+and the parallel-axis theorem, or analytically for a circle or annulus.
 
 Each element has `sectionId` (0 means manual A/I) and `sectionAngle` (0,90,180,270).
 Geometry is authoritative: exported `properties.area` and, for frames,

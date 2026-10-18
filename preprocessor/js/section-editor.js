@@ -3,7 +3,12 @@
   var S=window.MKEFSections;
   function node(tag,text) {var n=document.createElement(tag);if(text!==undefined)n.textContent=text;return n;}
   function nextId(model) {return Math.max.apply(null,(model.sections || []).map(function (s) {return s.id;}).concat([0]))+1;}
-  function defaults(type) {return type==='circle' ? {d:.1} : type==='rectangle' ? {b:.1,h:.2} : {b:.1,h:.2,tw:.008,tf:.012};}
+  function defaults(type) {
+    if(type==='square_tube') return {b:.1,t:.005};
+    if(type==='rectangular_tube') return {b:.1,h:.2,t:.005};
+    if(type==='circular_tube') return {d:.1,t:.005};
+    return type==='circle' ? {d:.1} : type==='rectangle' ? {b:.1,h:.2} : {b:.1,h:.2,tw:.008,tf:.012};
+  }
   M.renderSections=function (model,commit) {
     var host=document.getElementById('section-catalog'); host.replaceChildren();
     var add=node('button','Add section');add.id='add-section';add.type='button';host.appendChild(add);
@@ -16,6 +21,7 @@
       var label=node('label','Shape'),select=node('select');Object.keys(S.types).forEach(function (type) {var o=node('option',S.types[type]);o.value=type;select.appendChild(o);});select.value=s.type;select.setAttribute('aria-label','Shape · section '+s.id);label.appendChild(select);controls.appendChild(label);
       select.onchange=function () {commit(function () {s.type=select.value;s.dimensions=defaults(s.type);S.sync(model);});};
       S.fields(s.type).forEach(function (key) {input(key,s.dimensions[key],'number',function (v) {s.dimensions[key]=v;});});
+      if(S.fields(s.type).indexOf('t')>=0) {var note=node('p','Outer dimensions · t = uniform wall thickness');note.className='control-note';controls.appendChild(note);}
       var p=S.properties(s),info=node('p','A='+p.area.toPrecision(6)+' · Iy='+p.Iy.toPrecision(6)+' · Iz='+p.Iz.toPrecision(6)+' · centroid (y,z)=('+p.centroidY.toPrecision(5)+', '+p.centroidZ.toPrecision(5)+')');info.className='control-note';controls.appendChild(info);
       var assigned=[];model.elements.forEach(function (e,i) {if(e.sectionId===s.id)assigned.push('E'+(i+1));});
       var assignments=node('p',assigned.length ? 'Assigned to: '+assigned.join(', ') : 'Not assigned to any element.');assignments.className='control-note section-assignments';controls.appendChild(assignments);
