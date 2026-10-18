@@ -35,7 +35,7 @@ results = run_reference_examples();
 docker compose -f compose.release.yaml up -d
 ```
 
-Docker Compose автоматически загрузит и запустит образы релиза `0.8.3`:
+Docker Compose автоматически загрузит и запустит образы релиза `0.8.4`:
 
 - [denisovds/mkef-solver](https://hub.docker.com/r/denisovds/mkef-solver)
 - [denisovds/mkef-web](https://hub.docker.com/r/denisovds/mkef-web)
@@ -44,8 +44,8 @@ Docker Compose автоматически загрузит и запустит �
 OCI-метке:
 
 ```sh
-docker image inspect denisovds/mkef-web:0.8.3 --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}'
-docker image inspect denisovds/mkef-solver:0.8.3 --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}'
+docker image inspect denisovds/mkef-web:0.8.4 --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}'
+docker image inspect denisovds/mkef-solver:0.8.4 --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}'
 ```
 
 Новые релизные образы собираются скриптом `scripts/release_images.py`. Он
@@ -129,7 +129,7 @@ After cloning this repository, run the following from its root directory:
 docker compose -f compose.release.yaml up -d
 ```
 
-Docker Compose will automatically download and start the `0.8.3` release images:
+Docker Compose will automatically download and start the `0.8.4` release images:
 
 - [denisovds/mkef-solver](https://hub.docker.com/r/denisovds/mkef-solver)
 - [denisovds/mkef-web](https://hub.docker.com/r/denisovds/mkef-web)
@@ -137,8 +137,8 @@ Docker Compose will automatically download and start the `0.8.3` release images:
 To check which Git commit an image contains, inspect its standard OCI label:
 
 ```sh
-docker image inspect denisovds/mkef-web:0.8.3 --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}'
-docker image inspect denisovds/mkef-solver:0.8.3 --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}'
+docker image inspect denisovds/mkef-web:0.8.4 --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}'
+docker image inspect denisovds/mkef-solver:0.8.4 --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}'
 ```
 
 New release images are built with `scripts/release_images.py`. The script refuses
