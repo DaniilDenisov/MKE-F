@@ -1,6 +1,17 @@
 const {chromium}=require(process.env.MKEF_PLAYWRIGHT_MODULE || 'playwright');
 const fs=require('fs'),path=require('path'),http=require('http'),assert=require('assert/strict');
 const root=path.resolve(__dirname,'..');
+async function checkLiteralSectionNames(page) {
+  const source=fs.readFileSync(path.join(root,'examples/cases/CaseSectionBeam.txt'),'utf8');
+  const name='<img src=x onerror="window.sectionInjected=true">';
+  const hostile=source.replace(/\{"id":1[^\r\n]+/,line=>{const section=JSON.parse(line);section.name=name;return JSON.stringify(section);});
+  await page.locator('#file-input').setInputFiles({name:'untrusted.txt',mimeType:'text/plain',buffer:Buffer.from(hostile)});
+  await page.waitForFunction(()=>document.getElementById('case-name').value==='untrusted');
+  assert.equal(await page.getByLabel('Name · section 1',{exact:true}).inputValue(),name);
+  assert.equal(await page.locator('#section-catalog img').count(),0);
+  assert.equal(await page.evaluate(()=>window.sectionInjected),undefined);
+  console.log('Imported section names remain literal text PASS');
+}
 async function checkTubeSections(page) {
   await page.locator('#file-input').setInputFiles(path.join(root,'examples/cases/CaseSectionBeam.txt'));
   await page.waitForFunction(()=>document.querySelector('#case-name').value==='CaseSectionBeam');
@@ -150,6 +161,7 @@ async function checkSectionMode(page) {
   console.log('Section mode: empty catalog, repeated canvas assignment, orientations, unchanged loads, undo/redo, Escape PASS');
 }
 const server=http.createServer((req,res)=>{
+  res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'");
   const file=path.resolve(root,'.'+decodeURIComponent(req.url.split('?')[0]));
   if(!file.startsWith(root+path.sep)){res.writeHead(403).end();return;}
   fs.readFile(file,(err,data)=>{if(err){res.writeHead(404).end();return;}res.setHeader('Content-Type',file.endsWith('.html')?'text/html':file.endsWith('.js')?'text/javascript':file.endsWith('.css')?'text/css':'application/octet-stream');res.end(data);});
@@ -164,6 +176,7 @@ const server=http.createServer((req,res)=>{
     await checkSectionMode(page);
     await checkManualProperties(page);
     await checkTubeSections(page);
+    await checkLiteralSectionNames(page);
     await page.locator('#file-input').setInputFiles(path.join(root,'examples/cases/CaseSectionBeam.txt'));
     await page.waitForFunction(()=>document.querySelector('#case-name').value==='CaseSectionBeam');
     await page.locator('#sections-editor').evaluate(e=>e.open=true);

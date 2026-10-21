@@ -67,7 +67,7 @@ p=StructFEProblem(exampleCasePath('CaseSectionBeam.txt'),struct('verbose',false,
 m=p.GetAnalysisModel();r=p.RunStatic(); st=r.elementResults.sectionStress;
 near(st.maximum.value,750000); near(st.minimum.value,-750000); near(st.maximum.xi,.5);
 exportPostprocessorData(m,r,fullfile('output','CaseSectionBeam.json'));
-text=fileread(exampleCasePath('CaseSectionBeam.txt'));
+text=strrep(fileread(exampleCasePath('CaseSectionBeam.txt')),char(13),'');
 % Tube geometry drives beam stiffness, mass, stress and exported results.
 for type={'square_tube','rectangular_tube','circular_tube'}
     section=struct('id',1,'name',type{1},'type',type{1},'dimensions',struct('b',.1,'h',.2,'d',.1,'t',.005));

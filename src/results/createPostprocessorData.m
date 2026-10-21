@@ -1,5 +1,5 @@
 function data = createPostprocessorData(model, result, options)
-%CREATEPOSTPROCESSORDATA Convert an analysis model/result to schema v1-v5.
+%CREATEPOSTPROCESSORDATA Convert an analysis model/result to schema v1-v6.
 % The returned struct contains only postprocessing data; assembled and
 % element matrices are deliberately excluded.
 

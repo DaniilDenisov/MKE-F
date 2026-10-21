@@ -9,6 +9,10 @@ COPY src /usr/share/nginx/html/src
 COPY scripts /usr/share/nginx/html/scripts
 COPY examples /usr/share/nginx/html/examples
 
+# Git checkouts may use a restrictive umask; nginx must read all static assets.
+RUN chmod a+r /etc/nginx/nginx.conf \
+    && chmod -R a+rX /usr/share/nginx/html
+
 ARG MKEF_VERSION=dev
 ARG VCS_REF=unknown
 LABEL org.opencontainers.image.title="MKE-F web" \

@@ -2,11 +2,14 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import os
 import re
 import shutil
 import signal
+import time
 import uuid
+from collections import OrderedDict
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -21,6 +24,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 TERMINAL_STATES = {"succeeded", "failed", "canceled", "timed_out"}
 ERROR_PATTERN = re.compile(r"^MKEF_ERROR\t([^\t]+)\t(.*)$", re.MULTILINE)
+LOGGER = logging.getLogger("mkef")
 
 
 def utc_now() -> datetime:
@@ -100,6 +104,9 @@ class Job:
     error: dict[str, str] | None = None
     process: asyncio.subprocess.Process | None = None
     log: bytearray = field(default_factory=bytearray)
+    executing: bool = False
+    readers: int = 0
+    deleting: bool = False
 
     def append_log(self, chunk: bytes, limit: int) -> None:
         self.log.extend(chunk)
@@ -130,17 +137,51 @@ class QueueFullError(RuntimeError):
     pass
 
 
+class JobQueue(asyncio.Queue):
+    """A FIFO that releases waiting slots immediately when a job is canceled."""
+
+    def _init(self, maxsize):
+        self._queue = OrderedDict()
+
+    def _put(self, item):
+        self._queue[item] = None
+
+    def _get(self):
+        return self._queue.popitem(last=False)[0]
+
+    def discard(self, item):
+        if item in self._queue:
+            del self._queue[item]
+            self.task_done()
+
+
+class LeasedFileResponse(FileResponse):
+    """Keep the result on disk until an already-started download finishes."""
+
+    def __init__(self, job: Job, **kwargs):
+        self.job = job
+        super().__init__(job.result_path, **kwargs)
+        job.readers += 1
+
+    async def __call__(self, scope, receive, send):
+        try:
+            await super().__call__(scope, receive, send)
+        finally:
+            self.job.readers -= 1
+
+
 class JobManager:
     def __init__(self, settings: Settings):
         self.settings = settings
         self.jobs: dict[uuid.UUID, Job] = {}
-        self.queue: asyncio.Queue[uuid.UUID] = asyncio.Queue(
-            maxsize=settings.max_active_jobs
-        )
+        # Admission counts queued and still-executing jobs together.
+        self.queue: asyncio.Queue[uuid.UUID] = JobQueue()
+        self.submission_lock = asyncio.Lock()
         self.worker_task: asyncio.Task[None] | None = None
         self.cleanup_task: asyncio.Task[None] | None = None
         self.octave_version: str | None = None
         self.octave_error: str | None = None
+        self.accepting = False
 
     async def start(self) -> None:
         self.settings.jobs_root.mkdir(parents=True, exist_ok=True)
@@ -150,11 +191,25 @@ class JobManager:
             self.octave_version = "test-runtime"
         self.worker_task = asyncio.create_task(self._worker(), name="mkef-worker")
         self.cleanup_task = asyncio.create_task(self._cleanup_loop(), name="mkef-cleanup")
+        self.accepting = True
+
+    def healthy(self) -> bool:
+        return bool(
+            self.octave_version and self.accepting
+            and self.worker_task and not self.worker_task.done()
+            and self.cleanup_task and not self.cleanup_task.done()
+        )
 
     async def close(self) -> None:
+        # Let any accepted submission finish registration before shutdown.
+        async with self.submission_lock:
+            self.accepting = False
         for job in list(self.jobs.values()):
             if job.status in {"queued", "running"}:
                 await self.cancel(job.id)
+        # Cancellation can arrive while subprocess creation is suspended.
+        if self.worker_task and not self.worker_task.done():
+            await self.queue.join()
         for task in (self.worker_task, self.cleanup_task):
             if task:
                 task.cancel()
@@ -164,12 +219,14 @@ class JobManager:
         )
 
     async def _detect_octave(self) -> None:
+        process = None
         try:
             process = await asyncio.create_subprocess_exec(
                 self.settings.octave_executable,
                 "--version",
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.STDOUT,
+                start_new_session=True,
             )
             output, _ = await asyncio.wait_for(process.communicate(), timeout=10)
             if process.returncode != 0:
@@ -178,10 +235,20 @@ class JobManager:
             self.octave_version = first_line.strip()
         except Exception as exception:  # health endpoint reports the exact startup issue
             self.octave_error = str(exception)
+        finally:
+            if process and process.returncode is None:
+                await self._terminate_process(process)
 
     async def submit(self, name: str, case_text: str) -> Job:
+        # Keep asynchronous input writes, but serialize admission/registration.
+        async with self.submission_lock:
+            return await self._submit(name, case_text)
+
+    async def _submit(self, name: str, case_text: str) -> Job:
+        if not self.healthy():
+            raise QueueFullError("The local solver is unavailable.")
         active = sum(
-            job.status not in TERMINAL_STATES for job in self.jobs.values()
+            job.executing or job.status not in TERMINAL_STATES for job in self.jobs.values()
         )
         if active >= self.settings.max_active_jobs or self.queue.full():
             raise QueueFullError("The local solver queue is full.")
@@ -207,7 +274,7 @@ class JobManager:
 
     def get(self, job_id: uuid.UUID) -> Job:
         job = self.jobs.get(job_id)
-        if job is None:
+        if job is None or job.deleting:
             raise KeyError(job_id)
         return job
 
@@ -220,9 +287,11 @@ class JobManager:
             "code": "MKEF:Canceled",
             "message": "The calculation was canceled.",
         }
-        job.finished_at = utc_now()
+        self.queue.discard(job.id)
         if job.process and job.process.returncode is None:
             await self._terminate_process(job.process)
+        if not job.executing:
+            job.finished_at = utc_now()
         return job
 
     async def _worker(self) -> None:
@@ -237,6 +306,7 @@ class JobManager:
 
     async def _run(self, job: Job) -> None:
         job.status = "running"
+        job.executing = True
         job.started_at = utc_now()
         environment = os.environ.copy()
         environment.update(
@@ -258,6 +328,7 @@ class JobManager:
             job.name,
         )
         capture_task: asyncio.Task[None] | None = None
+        deadline = time.monotonic() + self.settings.job_timeout_seconds
         try:
             job.process = await asyncio.create_subprocess_exec(
                 *command,
@@ -268,23 +339,25 @@ class JobManager:
                 start_new_session=True,
             )
             capture_task = asyncio.create_task(self._capture_output(job))
+            if job.status == "canceled":
+                await self._terminate_process(job.process)
             try:
                 await asyncio.wait_for(
-                    job.process.wait(), timeout=self.settings.job_timeout_seconds
+                    asyncio.gather(job.process.wait(), capture_task),
+                    timeout=max(0, deadline - time.monotonic()),
                 )
             except asyncio.TimeoutError:
-                job.status = "timed_out"
-                job.error = {
-                    "code": "MKEF:SolverTimeout",
-                    "message": (
-                        "The calculation exceeded the configured "
-                        f"{self.settings.job_timeout_seconds} second timeout."
-                    ),
-                }
+                if job.status != "canceled":
+                    job.status = "timed_out"
+                    job.error = {
+                        "code": "MKEF:SolverTimeout",
+                        "message": (
+                            "The calculation exceeded the configured "
+                            f"{self.settings.job_timeout_seconds} second timeout."
+                        ),
+                    }
                 await self._terminate_process(job.process)
 
-            if capture_task:
-                await capture_task
             if job.status == "canceled" or job.status == "timed_out":
                 return
             if job.process.returncode != 0:
@@ -292,7 +365,8 @@ class JobManager:
                 job.error = self._process_error(job)
                 return
             await asyncio.to_thread(self._validate_result, job)
-            job.status = "succeeded"
+            if job.status != "canceled":
+                job.status = "succeeded"
         except Exception as exception:
             if job.status not in {"canceled", "timed_out"}:
                 job.status = "failed"
@@ -301,12 +375,14 @@ class JobManager:
                     "message": str(exception),
                 }
         finally:
+            if job.process and job.process.returncode is None:
+                await self._terminate_process(job.process)
             if capture_task and not capture_task.done():
                 capture_task.cancel()
                 await asyncio.gather(capture_task, return_exceptions=True)
             job.process = None
-            if job.finished_at is None:
-                job.finished_at = utc_now()
+            job.executing = False
+            job.finished_at = utc_now()
 
     async def _capture_output(self, job: Job) -> None:
         assert job.process and job.process.stdout
@@ -340,7 +416,7 @@ class JobManager:
             try:
                 os.killpg(process.pid, signal.SIGKILL)
             except ProcessLookupError:
-                return
+                pass
             await process.wait()
 
     def _validate_result(self, job: Job) -> None:
@@ -360,22 +436,31 @@ class JobManager:
         if result.get("format") != "mkef-postprocessor" or result.get("version") not in (1, 2, 3, 4, 5, 6):
             raise RuntimeError("The generated result has an unsupported schema.")
 
+    async def cleanup(self) -> None:
+        threshold = utc_now().timestamp() - self.settings.job_ttl_seconds
+        for job in list(self.jobs.values()):
+            if (
+                job.status in TERMINAL_STATES
+                and job.finished_at
+                and job.finished_at.timestamp() < threshold
+                and not job.executing and not job.readers and not job.deleting
+            ):
+                job.deleting = True
+                try:
+                    await asyncio.to_thread(shutil.rmtree, job.directory)
+                except FileNotFoundError:
+                    pass
+                except OSError:
+                    job.deleting = False
+                    LOGGER.exception("Could not delete expired job %s", job.id)
+                    continue
+                self.jobs.pop(job.id, None)
+
     async def _cleanup_loop(self) -> None:
         interval = min(60, max(1, self.settings.job_ttl_seconds // 4))
         while True:
             await asyncio.sleep(interval)
-            threshold = utc_now().timestamp() - self.settings.job_ttl_seconds
-            expired = [
-                job_id
-                for job_id, job in self.jobs.items()
-                if job.status in TERMINAL_STATES
-                and job.finished_at
-                and job.finished_at.timestamp() < threshold
-            ]
-            for job_id in expired:
-                job = self.jobs.pop(job_id, None)
-                if job:
-                    await asyncio.to_thread(shutil.rmtree, job.directory, True)
+            await self.cleanup()
 
     def public_status(self, job: Job) -> dict[str, Any]:
         end = job.finished_at or utc_now()
@@ -449,14 +534,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @application.get("/api/v1/health")
     async def health():
-        if manager.octave_version:
+        if manager.healthy():
             return {"status": "ready", "octaveVersion": manager.octave_version}
         return JSONResponse(
             status_code=503,
             content={
                 "status": "unavailable",
                 "octaveVersion": None,
-                "error": manager.octave_error or "Octave is unavailable.",
+                "error": manager.octave_error or "The local solver worker is unavailable.",
             },
         )
 
@@ -499,8 +584,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 status_code=409,
                 detail={"status": job.status, "error": job.error},
             )
-        return FileResponse(
-            job.result_path,
+        return LeasedFileResponse(
+            job,
             media_type="application/json",
             filename=safe_download_name(job.name),
         )

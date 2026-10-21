@@ -1,4 +1,6 @@
 import json
+import math
+import re
 import subprocess
 import time
 from pathlib import Path
@@ -10,6 +12,62 @@ from backend.app import Settings, create_app
 
 REPOSITORY_ROOT = Path("/app")
 RUNNER = REPOSITORY_ROOT / "scripts" / "run_solver_job.m"
+
+
+@pytest.mark.parametrize("section_type,invalid_wall", [
+    ("rectangle", False),
+    *[(kind, invalid) for kind in ("square_tube", "rectangular_tube", "circular_tube")
+      for invalid in (False, True)],
+])
+def test_sections_through_real_api(tmp_path, section_type, invalid_wall):
+    if not RUNNER.is_file():
+        pytest.skip("container Octave runner is not available")
+    settings = Settings(jobs_root=tmp_path / "jobs", repository_root=REPOSITORY_ROOT,
+                        runner_script=RUNNER)
+    text = (REPOSITORY_ROOT / "examples/cases/CaseSectionBeam.txt").read_text()
+    dimensions = {"b": .1, "h": .2}
+    area, inertia, extent = .02, .1 * .2**3 / 12, .1
+    if section_type == "circular_tube":
+        dimensions = {"d": .1, "t": .005}
+        area = math.pi * (.1**2 - .09**2) / 4
+        inertia, extent = math.pi * (.1**4 - .09**4) / 64, .05
+    elif section_type in {"square_tube", "rectangular_tube"}:
+        height = .1 if section_type == "square_tube" else .2
+        dimensions = {"b": .1, "t": .005}
+        if section_type == "rectangular_tube":
+            dimensions["h"] = height
+        area = .1 * height - .09 * (height - .01)
+        inertia, extent = (.1 * height**3 - .09 * (height - .01)**3) / 12, height / 2
+    if invalid_wall:
+        dimensions["t"] = .05
+    section = {"id": 1, "name": section_type, "type": section_type, "dimensions": dimensions}
+    text = re.sub(r'\{"id":1[^\r\n]+', lambda _: json.dumps(section), text)
+    with TestClient(create_app(settings)) as client:
+        response = client.post("/api/v1/jobs", json={"name": "Sections", "caseText": text})
+        assert response.status_code == 202, response.text
+        path = "/api/v1/jobs/" + response.json()["id"]
+        deadline = time.monotonic() + 65
+        while time.monotonic() < deadline:
+            job = client.get(path).json()
+            if job["status"] in {"succeeded", "failed", "timed_out", "canceled"}:
+                break
+            time.sleep(0.05)
+        if invalid_wall:
+            assert job["status"] == "failed", job
+            assert job["error"]["code"] == "MKEF:InvalidSection"
+            assert client.get(path + "/result").status_code == 409
+        else:
+            assert job["status"] == "succeeded", job
+            result = client.get(path + "/result").json()
+            assert result["version"] == 6
+            assert result["model"]["sections"] == [section]
+            properties = result["model"]["elements"][0]["properties"]
+            assert properties["area"] == pytest.approx(area)
+            assert properties["momentOfInertia"] == pytest.approx(inertia)
+            stress = result["analysis"]["elementResults"][0]["sectionStress"]
+            assert stress["maximum"]["value"] == pytest.approx(500 * extent / inertia)
+            assert stress["minimum"]["value"] == pytest.approx(-500 * extent / inertia)
+            assert stress["maximum"]["xi"] == pytest.approx(.5)
 
 
 @pytest.mark.parametrize("case_name", ["CaseReleaseStatic", "CaseReleaseModal", "CaseReleaseTransient"])
