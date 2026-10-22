@@ -2,3 +2,5 @@
 !/output/.gitkeep
 *.pyc
 __pycache__/
+/BasisFunctions/
+debug.log
