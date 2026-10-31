@@ -23,9 +23,15 @@ for pageIndex = 1:numel(pages)
         if isempty(target) || target(1) == '#'
             continue;
         end
-        targetPath = fullfile(fileparts(page), strrep(target, '/', filesep));
+        parts = strsplit(target, '#');
+        targetPath = fullfile(fileparts(page), strrep(parts{1}, '/', filesep));
         assert(exist(targetPath, 'file') == 2, ...
             ['MKEF:VerificationFailed: unresolved preprocessor asset ' target '.']);
+        if numel(parts) > 1 && ~isempty(parts{2})
+            targetHtml = fileread(targetPath);
+            assert(~isempty(strfind(targetHtml, ['id="' parts{2} '"'])), ...
+                ['MKEF:VerificationFailed: unresolved preprocessor fragment ' target '.']);
+        end
     end
 end
 

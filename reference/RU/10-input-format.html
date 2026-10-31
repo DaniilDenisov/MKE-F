@@ -48,6 +48,7 @@
       <span class="chapter-number">Глава 10</span>
       <h1>Входной файл МКЭ‑Ф</h1>
       <p class="lead">Файл — последовательность именованных текстовых секций. Этот раздел полностью заменяет прежнее корневое руководство и соответствует текущему парсеру <a href="../../src/model/FEMesh.m"><code>FEMesh</code></a>.</p>
+      <p><a href="#all-examples">Все примеры</a></p>
 
       <section aria-labelledby="scope-title">
         <h2 id="scope-title">1. Область применения</h2>
@@ -402,6 +403,50 @@ dynamicResult = problem.RunTransient(1e-4, 1e-2, 3, 2, initial);</code></pre>
 element_sections
 1
 1,1,90</code></pre><p>Каждая строка каталога — JSON; назначение — elementId,sectionId,angle. Блоки необязательны и могут повторяться после элементов. Идентификаторы сечений уникальны, элемент имеет не более одного назначения. Характеристики из геометрии заменяют A/I числовой записи элемента до сборки матриц. Для тавра tf &lt; h, для двутавра и швеллера 2tf &lt; h; всегда tw &lt; b.</p><p><a href="../../postprocessor/schema-v6.md">Полное описание формата v6</a> · <a href="../../examples/cases/CaseSectionBeam.txt">Контрольная балка</a></p></section>
+      <section id="all-examples" aria-labelledby="all-examples-title">
+        <h2 id="all-examples-title">Все примеры</h2>
+        <p>Скачайте TXT-файл и откройте его с диска в <a href="../../preprocessor/index.html">препроцессоре</a> через Open TXT.</p>
+        <p>В старых файлах без секции analysis вид расчёта и, при необходимости, параметры времени задаются в препроцессоре.</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th scope="col">Расчёт</th><th scope="col">Пример</th><th scope="col">Скачать TXT</th></tr></thead>
+            <tbody>
+              <tr><td>Статический</td><td>Консоль с силой на свободном конце</td><td><a href="../../examples/cases/CasePreprocessorStatic.txt" download>CasePreprocessorStatic.txt</a></td></tr>
+              <tr><td>Статический</td><td>Консоль под равномерной нагрузкой</td><td><a href="../../examples/cases/CaseUniformFrame.txt" download>CaseUniformFrame.txt</a></td></tr>
+              <tr><td>Статический</td><td>Консоль под трапециевидной нагрузкой</td><td><a href="../../examples/cases/CaseLinearFrame.txt" download>CaseLinearFrame.txt</a></td></tr>
+              <tr><td>Статический</td><td>Консоль под треугольной нагрузкой</td><td><a href="../../examples/cases/CaseTriangleFrame.txt" download>CaseTriangleFrame.txt</a></td></tr>
+              <tr><td>Статический</td><td>Портальная рама с шарнирными опорами</td><td><a href="../../examples/cases/CasePinnedPortalUniform.txt" download>CasePinnedPortalUniform.txt</a></td></tr>
+              <tr><td>Статический</td><td>Балка с шарнирной и подвижной опорами</td><td><a href="../../examples/cases/CaseRollerFrame.txt" download>CaseRollerFrame.txt</a></td></tr>
+              <tr><td>Статический</td><td>Балка с прямоугольным сечением из каталога</td><td><a href="../../examples/cases/CaseSectionBeam.txt" download>CaseSectionBeam.txt</a></td></tr>
+              <tr><td>Статический</td><td>Треугольная рама с узловой силой</td><td><a href="../../examples/cases/CaseTestPrep01.txt" download>CaseTestPrep01.txt</a></td></tr>
+              <tr><td>Статический</td><td>Рама с многоточечной связью MPC</td><td><a href="../../examples/cases/CaseMPCFrame.txt" download>CaseMPCFrame.txt</a></td></tr>
+              <tr><td>Статический</td><td>Рама с MPC и равномерной нагрузкой</td><td><a href="../../examples/cases/CaseMPCUniform.txt" download>CaseMPCUniform.txt</a></td></tr>
+              <tr><td>Статический</td><td>Рама с MPC и линейной нагрузкой</td><td><a href="../../examples/cases/CaseLinearMPC.txt" download>CaseLinearMPC.txt</a></td></tr>
+              <tr><td>Статический</td><td>Балка с освобождениями Mz под равномерной нагрузкой</td><td><a href="../../examples/cases/CaseReleaseStatic.txt" download>CaseReleaseStatic.txt</a></td></tr>
+              <tr><td>Статический</td><td>Балка с освобождениями Mz под линейной нагрузкой</td><td><a href="../../examples/cases/CaseLinearRelease.txt" download>CaseLinearRelease.txt</a></td></tr>
+              <tr><td>Статический</td><td>NAFEMS 5: статический расчёт рамы</td><td><a href="../../examples/cases/nafems-challenge-5/frame_static_n002.txt" download>frame_static_n002.txt</a></td></tr>
+              <tr><td>Модальный</td><td>Собственные частоты и формы балки</td><td><a href="../../examples/cases/CasePreprocessorModal.txt" download>CasePreprocessorModal.txt</a></td></tr>
+              <tr><td>Модальный</td><td>Собственные колебания рамы с MPC</td><td><a href="../../examples/cases/CaseMPCModal.txt" download>CaseMPCModal.txt</a></td></tr>
+              <tr><td>Модальный</td><td>Собственные колебания фермы с MPC</td><td><a href="../../examples/cases/CaseMPCTruss.txt" download>CaseMPCTruss.txt</a></td></tr>
+              <tr><td>Модальный</td><td>Собственные колебания балки с освобождениями Mz</td><td><a href="../../examples/cases/CaseReleaseModal.txt" download>CaseReleaseModal.txt</a></td></tr>
+              <tr><td>Модальный</td><td>NAFEMS 5: продольные колебания стержня</td><td><a href="../../examples/cases/nafems-challenge-5/axial_n001.txt" download>axial_n001.txt</a><br><a href="../../examples/cases/nafems-challenge-5/axial_n002.txt" download>axial_n002.txt</a><br><a href="../../examples/cases/nafems-challenge-5/axial_n004.txt" download>axial_n004.txt</a><br><a href="../../examples/cases/nafems-challenge-5/axial_n008.txt" download>axial_n008.txt</a><br><a href="../../examples/cases/nafems-challenge-5/axial_n016.txt" download>axial_n016.txt</a></td></tr>
+              <tr><td>Модальный</td><td>NAFEMS 5: изгибные колебания балки</td><td><a href="../../examples/cases/nafems-challenge-5/bending_n002.txt" download>bending_n002.txt</a><br><a href="../../examples/cases/nafems-challenge-5/bending_n004.txt" download>bending_n004.txt</a><br><a href="../../examples/cases/nafems-challenge-5/bending_n008.txt" download>bending_n008.txt</a><br><a href="../../examples/cases/nafems-challenge-5/bending_n016.txt" download>bending_n016.txt</a></td></tr>
+              <tr><td>Модальный</td><td>NAFEMS 5: колебания рамы, разные сетки</td><td><a href="../../examples/cases/nafems-challenge-5/frame_n001.txt" download>frame_n001.txt</a><br><a href="../../examples/cases/nafems-challenge-5/frame_n002.txt" download>frame_n002.txt</a><br><a href="../../examples/cases/nafems-challenge-5/frame_n004.txt" download>frame_n004.txt</a><br><a href="../../examples/cases/nafems-challenge-5/frame_n008.txt" download>frame_n008.txt</a><br><a href="../../examples/cases/nafems-challenge-5/frame_n016.txt" download>frame_n016.txt</a><br><a href="../../examples/cases/nafems-challenge-5/frame_n025.txt" download>frame_n025.txt</a></td></tr>
+              <tr><td>Модальный</td><td>NAFEMS 5: крупные сетки рамы — для локальной версии; превышают стандартные лимиты сайта</td><td><a href="../../examples/cases/nafems-challenge-5/frame_n050.txt" download>frame_n050.txt</a><br><a href="../../examples/cases/nafems-challenge-5/frame_n100.txt" download>frame_n100.txt</a><br><a href="../../examples/cases/nafems-challenge-5/frame_n200.txt" download>frame_n200.txt</a><br><a href="../../examples/cases/nafems-challenge-5/frame_n400.txt" download>frame_n400.txt</a></td></tr>
+              <tr><td>Переходный</td><td>Балка под гармонической нагрузкой, с комментариями</td><td><a href="../../examples/cases/CasePreprocessorTransient.txt" download>CasePreprocessorTransient.txt</a></td></tr>
+              <tr><td>Переходный</td><td>Рама с MPC под ступенчатой нагрузкой</td><td><a href="../../examples/cases/CaseMPCTransient.txt" download>CaseMPCTransient.txt</a></td></tr>
+              <tr><td>Переходный</td><td>Балка с освобождениями Mz под ступенчатой нагрузкой</td><td><a href="../../examples/cases/CaseReleaseTransient.txt" download>CaseReleaseTransient.txt</a></td></tr>
+              <tr><td>Не задан (старый формат)</td><td>Балка для сравнения с ANSYS</td><td><a href="../../examples/cases/ANSYSBeamStatic01.txt" download>ANSYSBeamStatic01.txt</a></td></tr>
+              <tr><td>Не задан (старый формат)</td><td>Балка из одного элемента</td><td><a href="../../examples/cases/Case1ElementBeam.txt" download>Case1ElementBeam.txt</a></td></tr>
+              <tr><td>Не задан (старый формат)</td><td>Балка с узловой силой</td><td><a href="../../examples/cases/CaseBeam.txt" download>CaseBeam.txt</a></td></tr>
+              <tr><td>Не задан (старый формат)</td><td>Балка для переходного расчёта с постоянной силой</td><td><a href="../../examples/cases/CaseBeamDyn.txt" download>CaseBeamDyn.txt</a></td></tr>
+              <tr><td>Не задан (старый формат)</td><td>Балка под гармонической нагрузкой</td><td><a href="../../examples/cases/CaseBeamFreq.txt" download>CaseBeamFreq.txt</a></td></tr>
+              <tr><td>Не задан (старый формат)</td><td>Ферма под гармонической нагрузкой</td><td><a href="../../examples/cases/CaseATransSite.txt" download>CaseATransSite.txt</a></td></tr>
+              <tr><td>Не задан (старый формат)</td><td>Рама из примера Mario Paz</td><td><a href="../../examples/cases/CaseFig11.7p363 MarioPaz.txt" download>CaseFig11.7p363 MarioPaz.txt</a></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
 </main>
   </div>
 
