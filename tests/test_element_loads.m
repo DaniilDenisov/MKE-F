@@ -7,7 +7,7 @@ L = 2; E = 2e11; I = 1e-5; q = -1000;
 near(r.reactions(1:3), [0; -q*L; -q*L^2/2]);
 near(r.displacements(5:6), [q*L^4/(8*E*I); q*L^3/(6*E*I)]);
 near(r.elementResults.localEndForces(4:6), zeros(3, 1));
-[~, recovered] = StressCalc(m, r.displacements);
+recovered = recoverElementResults(m, r.displacements);
 near(recovered.localEndForces, r.elementResults.localEndForces);
 near(r.equilibriumResidual, zeros(3, 1));
 
@@ -99,10 +99,8 @@ truss = strrep(truss, '113,1,2,0.01,200000000000,7800,0.00001', '112,1,2,0.01,20
 parseText(truss, false);
 repeat = parseText([source sprintf('\neload_uniform\n1\n20,1,1,2,0\n')], true);
 assert(numel(repeat.elementLoads) == 2);
-legacy = parseText(strrep(source, sprintf('analysis\nstatic\n'), ''), true);
-legacyModel = createAnalysisModel(m.stiffness, m.mass, legacy);
-near(solveStatic(legacyModel).displacements, r.displacements);
-mustFail(@() solveModal(legacyModel), 'MKEF:AnalysisLoadMismatch');
+parseText(strrep(source, sprintf('analysis\nstatic\n'), ''), false);
+mustFail(@() solveModal(m), 'MKEF:AnalysisLoadMismatch');
 end
 
 function near(actual, expected)

@@ -63,29 +63,29 @@ for name={'CaseSpatialFrame','CaseSpatialFrameModal','CaseSpatialFrameTransient'
     assert(data.model.elements(1).sectionId==s.id);
     if strcmp(r.analysisType,'static'),assert(isstruct(data.analysis.elementResults(1).sectionStress));end
 end
-fprintf('Spatial section TXT / solver / v7 PASS\n');
-% Legacy open-profile models still build and export, but every solver rejects them.
+fprintf('Spatial section TXT / solver / v8 PASS\n');
+% Assigned frame profiles obey the same policy on input and in the solver.
 base=fileread(exampleCasePath('CaseSpatialFrame.txt'));
 for k=1:numel(types)
     s=rows{k}.section;
-    text=[base sprintf('\nsections\n1\n%s\nelement_sections\n1\n1,%d,0\n',jsonencode(s),s.id)];
-    file=fullfile('output',['LegacyFrame-' s.type '.txt']);fid=fopen(file,'w');fprintf(fid,'%s',text);fclose(fid);
+    catalog=[base sprintf('\nsections\n1\n%s\n',jsonencode(s))];
+    file=fullfile('output','frame-section-policy.txt');
+    fid=fopen(file,'w');fprintf(fid,'%s',catalog);fclose(fid);
     problem=StructFEProblem(file);m=problem.GetAnalysisModel();
+    r=solveStatic(m);assert(norm(r.equilibriumResidual,inf)<1e-7);
+    text=[catalog sprintf('element_sections\n1\n1,%d,0\n',s.id)];
+    fid=fopen(file,'w');fprintf(fid,'%s',text);fclose(fid);
     if k<=5
-        r=solveStatic(m); assert(norm(r.equilibriumResidual,inf)<1e-7);
+        problem=StructFEProblem(file);m=problem.GetAnalysisModel();
+        r=solveStatic(m);assert(norm(r.equilibriumResidual,inf)<1e-7);
     else
-        mustReject(@() solveStatic(m)); mustReject(@() solveModal(m));
+        mustReject(@() StructFEProblem(file));
+        m.elementData(1).sectionId=s.id;
+        mustReject(@() solveStatic(m));mustReject(@() solveModal(m));
         mustReject(@() solveTransient(m,struct('timeStep',.001,'duration',.002)));
-        mustReject(@() problem.RunSelected());
-        % Reconstruct a pre-policy result with the same numerical matrices.
-        numerical=m; numerical.elementData(1).sectionId=0;
-        r=solveStatic(numerical);r.elementResults=recoverElementResults(m,r.displacements);
-        exportPostprocessorData(m,r,fullfile('output',['CaseSpatialLegacy-' s.type '.json']));
-        % Unassigned old catalog entries and manual numerical properties remain valid.
-        validateSpatialFrameSections(numerical);
     end
 end
-fprintf('Spatial frame section policy and legacy exports PASS\n');
+fprintf('Spatial frame section assignment policy PASS\n');
 % Released inclined member: compare the actual elastic forces, not condensed ends.
 text=fileread(fullfile('output','CaseSpatialFrameModalSection.txt'));
 text=strrep(text,sprintf('2,0,0'),sprintf('2,1,3'));

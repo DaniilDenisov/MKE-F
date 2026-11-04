@@ -9,11 +9,14 @@ source=sprintf('analysis\nstatic\nnodes\n%d\n%s\nelems_113\n%d\n%s\nbcfix\n1\n1,
     n+1,strjoin(nodes,'\n'),n,strjoin(elements,'\n'),n+1,jsonencode(section),n,strjoin(assignments,'\n'));
 filename=fullfile(directory,'beam.txt');fid=fopen(filename,'w');fprintf(fid,'%s',source);fclose(fid);
 p=StructFEProblem(filename,struct('verbose',false,'plotting',false));m=p.GetAnalysisModel();
-static=solveStatic(m);modal=solveModal(m);transient=solveTransient(m,struct('timeStep',.001,'duration',.02,'initialDisplacement',modal.modeShapes(:,1)*.001));
+static=solveStatic(m);modal=solveModal(m);
+dynamic=m;dynamic.forceBoundaryConditions(:,1)=12;
+transient=solveTransient(dynamic,struct('timeStep',.001,'duration',.02,'initialDisplacement',modal.modeShapes(:,1)*.001));
 rows={};
 for result={static,modal,transient}
     r=result{1};name=['beam-2d-' r.analysisType];started=tic();
-    exportPostprocessorData(m,r,fullfile(directory,[name '.json']));
+    sourceModel=m;if strcmp(r.analysisType,'transient'),sourceModel=dynamic;end
+    exportPostprocessorData(sourceModel,r,fullfile(directory,[name '.json']));
     rows{end+1}=struct('name',name,'elements',n,'exportSeconds',toc(started),'bytes',dir(fullfile(directory,[name '.json'])).bytes);
 end
 p=StructFEProblem(fullfile('output','recovery-pool','grid.txt'),struct('verbose',false,'plotting',false));m=p.GetAnalysisModel();

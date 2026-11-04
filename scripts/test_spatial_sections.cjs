@@ -36,18 +36,18 @@ const vm=require('node:vm'),ctx={window:{MKEFSpatial:{registry:require('../share
 for(const f of ['shared/sections.js','shared/spatial-sections.js','shared/spatial-conditions.js','preprocessor/js/namespace.js','preprocessor/js/case-format.js','preprocessor/js/spatial-format.js','preprocessor/js/spatial-edit.js'])vm.runInContext(fs.readFileSync(f,'utf8'),ctx);
 const M=ctx.window.MKEFPre,F=M.spatialFormat;
 for(const code of [1133,1436]){
- const m=F.empty(code);m.nodes=[{x:0,y:0,z:0},{x:2,y:0,z:0}];
+ const m=F.empty(code);m.analysis.type='static';m.nodes=[{x:0,y:0,z:0},{x:2,y:0,z:0}];
  m.sections=[{id:1,name:'Rectangle',type:'rectangle',dimensions:{b:.1,h:.2}}];
  const h=new M.spatialEdit.History(m),e={code,node1:1,node2:2,sectionId:1,youngsModulus:2e11,density:7850,shearModulus:8e10,referenceY:[0,1,0],angleDegrees:-37.5};
- const before=F.serialize(m);
+ const before=JSON.stringify(m);
  assert.throws(()=>h.member(null,{...e,sectionId:2}),/Unknown section/);
  assert.throws(()=>h.member(null,{...e,density:NaN}),/positive and finite/);
- assert.equal(h.undo.length,0);assert.equal(F.serialize(m),before);
+ assert.equal(h.undo.length,0);assert.equal(JSON.stringify(m),before);
  h.member(null,e);assert.equal(h.undo.length,1);near(m.elements[0].area,.02);
  if(code===1436){near(m.elements[0].Iy,P.properties(m.sections[0]).Iy);near(m.elements[0].torsionConstant,P.properties(m.sections[0]).torsionConstant);assert.equal(m.elements[0].angleDegrees,-37.5);}
  const saved=F.serialize(m);assert.equal(F.parse(saved).elements[0].sectionId,1);
  assert.throws(()=>h.member(null,e),/already/);assert.equal(h.undo.length,1);
- h.travel(true);assert.equal(F.serialize(m),before);h.travel(false);assert.equal(F.serialize(m),saved);
+ h.travel(true);assert.equal(JSON.stringify(m),before);h.travel(false);assert.equal(F.serialize(m),saved);
 }
 console.log('Creation with catalog properties, atomic rejection, TXT and undo/redo PASS');
 for(const name of ['CaseSpatialFrame','CaseSpatialFrameModal','CaseSpatialFrameTransient','CaseSpatialTruss']){
@@ -62,22 +62,14 @@ for(const name of ['CaseSpatialFrame','CaseSpatialFrameModal','CaseSpatialFrameT
 }
 console.log('Spatial catalog assignment, detachment, TXT and delta history PASS');
 for(const type of ['channel','tee','ibeam']){
- const source=fs.readFileSync('output/LegacyFrame-'+type+'.txt','utf8'),m=F.parse(source),h=new M.spatialEdit.History(m),before=F.serialize(m);
- assert.equal(F.validate(m,false).length,0);assert(F.validate(m,true).some(s=>s.includes('1 ('+type+')')));
- assert.equal(F.serialize(F.parse(before)),before);assert.equal(h.text(),source);
- const sid=m.sections[0].id,section=structuredClone(m.sections[0]);
- assert.throws(()=>h.assignSection(0,sid,0),/Frames 1436/);
- assert.throws(()=>h.section(null,{...section,id:99}),/Frames 1436/);
- m.nodes.push({x:4,y:0,z:0});
- assert.throws(()=>h.member(null,{...m.elements[0],node1:2,node2:3}),/Frames 1436/);
- assert.equal(h.undo.length,0);
- // Editing a legacy member and profile is permitted without changing its assignment.
- h.member(0,{...m.elements[0],youngsModulus:210e9});h.travel(true);
- h.section(0,{...section,name:'Legacy renamed'});h.travel(true);
- h.section(0,{...section,type:'rectangle',dimensions:{b:.1,h:.2}});
- assert.equal(F.validate(m,true).length,0);
- h.travel(true);assert(F.validate(m,true).some(s=>s.includes('Frames 1436')));
- h.travel(false);assert.equal(F.validate(m,true).length,0);
+ const m=F.parse(fs.readFileSync('examples/cases/CaseSpatialFrame.txt','utf8')),h=new M.spatialEdit.History(m);
+ const section={id:1,name:type,type,dimensions:{b:.1,h:.2,tw:.008,tf:.012}};
+ h.section(null,section);const before=F.serialize(m),count=h.undo.length;
+ assert.equal(F.parse(before).sections[0].type,type);
+ assert.throws(()=>h.assignSection(0,1,0),/Frames 1436/);
+ assert.equal(F.serialize(m),before);assert.equal(h.undo.length,count);
+ assert.throws(()=>F.parse(before+'element_sections\n1\n1,1,0\n'),/Frames 1436/);
+ m.elements[0].sectionId=1;assert.throws(()=>F.serialize(m),/Frames 1436/);
 }
 // One shared catalog policy leaves every shape usable in trusses and 2D.
 for(const code of [112,113,1133])for(const type of Object.keys(S.types))assert(P.allowedForElement(code,type));
@@ -86,7 +78,7 @@ for(const type of Object.keys(S.types)){
  h.section(null,{id:1,name:type,type,dimensions:{b:.1,h:.2,d:.1,t:.005,tw:.008,tf:.012}});
  h.assignSection(0,1,0);assert.equal(F.validate(m,true).length,0);
 }
-console.log('Frame restrictions, legacy editing, round-trip, atomic rejection, repair and undo PASS');
+console.log('Frame restrictions, catalog round-trip and atomic rejection PASS');
 {
  const m=F.parse(fs.readFileSync('output/CaseSpatialFrameSection.txt','utf8'));m.elements[0].angleDegrees=0;m.loads=[];
  m.releases=[{elementId:1,end:2,component:'My'}];m.mpcs=[{depNode:2,depDOF:6,rhs:0,masters:[{node:1,dof:6,coefficient:1}]}];

@@ -53,7 +53,7 @@ problem = StructFEProblem(fullfile(caseDirectory, ...
     'Case1ElementBeam.txt'), options);
 problem.RunStatic();
 
-problem = StructFEProblem(fullfile(caseDirectory, 'CaseBeam.txt'), options);
+problem = StructFEProblem(fullfile(caseDirectory, 'CaseBeamModal.txt'), options);
 problem.RunModal();
 
 problem = StructFEProblem(fullfile(caseDirectory, 'CaseBeamDyn.txt'), options);

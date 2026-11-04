@@ -25,7 +25,7 @@ runNamedTest('spatial MPC', @test_spatial_mpc);
 runNamedTest('spatial end releases', @test_spatial_releases);
 runNamedTest('spatial modal analysis', @test_spatial_modal);
 runNamedTest('spatial transient analysis', @test_spatial_transient);
-runNamedTest('spatial export v7', @test_spatial_export);
+runNamedTest('spatial export v8', @test_spatial_export);
 runNamedTest('recovery operators export v8', @test_recovery_export);
 runNamedTest('recovery operator pooling', @test_recovery_pool);
 runNamedTest('planar v8 recovery', @test_planar_recovery);
@@ -184,6 +184,7 @@ staticModel.forceBoundaryConditions = ...
     [10, 1, -4,  6,  8; ...
      10, 2, 10, 20, 30; ...
      10, 2,  5, -2,  7];
+assertThrows('MKEF:AnalysisLoadMismatch', @() buildTransientLoad(staticModel,timeStep,stepCount));
 staticLoads = buildStaticLoad(staticModel);
 assertClose(staticLoads, [-4; 6; 8; 15; 18; 37], 0, 1e-12, ...
     'Static Fx, Fy, and Mz loads were not assembled by nodal DOF.');
@@ -193,18 +194,7 @@ assertClose(staticResult.loadVector, staticLoads, 0, 1e-12, ...
 assertClose(staticResult.equilibriumResidual, zeros(3, 1), 0, 1e-8, ...
     'Static nodal loads and reactions are not in equilibrium.');
 
-% Нагрузка типа 10 в динамическом расчёте намеренно действует как прямоугольный
-% импульс длительностью в один шаг для обратной совместимости.
-pulseProblem = StructFEProblem(exampleCasePath('CaseBeamDyn.txt'), options);
-pulseLoads = buildTransientLoad(pulseProblem.GetAnalysisModel(), ...
-    timeStep, stepCount);
-pulseExpected = zeros(size(pulseLoads));
-pulseDOF = pulseProblem.mesh.iMnod(3, 2);
-pulseExpected(pulseDOF, 2) = -1000;
-assertClose(pulseLoads, pulseExpected, 0, 1e-12, ...
-    'Legacy type 10 transient load is not a one-step rectangular pulse.');
-
-% Тип 12 и маркер bcforce_pulse задают тот же импульс явно, включая Mz.
+% Тип 12 и маркер bcforce_pulse задают импульс при t=dt, включая Mz.
 explicitPulseProblem = StructFEProblem(fullfile('tests', 'fixtures', ...
     'CaseExplicitPulseBeam.txt'), options);
 explicitPulseLoads = buildTransientLoad(...
@@ -214,11 +204,6 @@ explicitPulseDOFs = explicitPulseProblem.mesh.iMnod(2, :);
 explicitPulseExpected(explicitPulseDOFs, 2) = [0; -1000; 25];
 assertClose(explicitPulseLoads, explicitPulseExpected, 0, 1e-12, ...
     'Explicit type 12 pulse history is incorrect.');
-explicitPulseProblem.ts = timeStep;
-explicitPulseProblem.tsNum = stepCount;
-explicitPulseProblem.ApplyForceBC();
-assertClose(explicitPulseProblem.F, explicitPulseExpected, 0, 1e-12, ...
-    'ApplyForceBC does not delegate to the complete nodal load builder.');
 
 % Тип 13 и маркер bcforce_step сохраняют нагрузку на всех шагах.
 stepProblem = StructFEProblem(fullfile('tests', 'fixtures', ...
@@ -265,11 +250,10 @@ end
 
 function testFunctionalAnalysisCore()
 options = quietOptions();
-problem = StructFEProblem(exampleCasePath('CaseBeamDyn.txt'), options);
+problem = StructFEProblem(exampleCasePath('CaseBeam.txt'), options);
+dynamicProblem = StructFEProblem(exampleCasePath('CaseBeamDyn.txt'), options);
 originalK = problem.K;
 originalM = problem.M;
-sentinelF = (1:size(problem.K, 1)).';
-problem.F = sentinelF;
 
 % Численное ядро принимает только структуру данных модели и возвращает
 % именованные результаты, не изменяя фасад или переданную структуру.
@@ -277,7 +261,9 @@ model = problem.GetAnalysisModel();
 modelBefore = model;
 directStatic = solveStatic(model);
 directModal = solveModal(model);
-directTransient = solveTransient(model, ...
+dynamicModel = dynamicProblem.GetAnalysisModel();
+dynamicBefore = dynamicModel;
+directTransient = solveTransient(dynamicModel, ...
     struct('timeStep', 1e-4, 'duration', 4e-4));
 assert(isequal(model, modelBefore));
 assert(isfield(directStatic, 'displacements'));
@@ -292,12 +278,12 @@ assert(isfield(directTransient, 'accelerations'));
 assert(isfield(directTransient, 'loadHistory'));
 
 % Повторные вызовы и другой порядок видов анализа должны давать те же
-% результаты. Поля K, M и старое совместимое поле F остаются нетронутыми.
+% результаты. Матрицы K/M обоих экземпляров остаются нетронутыми.
 staticFirst = problem.RunStatic();
 modalFirst = problem.RunModal();
-transientFirst = problem.RunTransient(1e-4, 4e-4, 3, 2);
+transientFirst = dynamicProblem.RunTransient(1e-4, 4e-4, 3, 2);
 
-transientSecond = problem.RunTransient(1e-4, 4e-4, 3, 2);
+transientSecond = dynamicProblem.RunTransient(1e-4, 4e-4, 3, 2);
 staticSecond = problem.RunStatic();
 modalSecond = problem.RunModal();
 
@@ -321,7 +307,9 @@ assertClose(transientFirst.displacements, directTransient.displacements, ...
 
 assert(isequal(problem.K, originalK));
 assert(isequal(problem.M, originalM));
-assert(isequal(problem.F, sentinelF));
+assert(isequal(dynamicModel, dynamicBefore));
+assert(isequal(dynamicProblem.K, originalK));
+assert(isequal(dynamicProblem.M, originalM));
 end
 
 function testFreeDOFReduction()
@@ -335,10 +323,6 @@ model = problem.GetAnalysisModel();
 assert(isequal(fixedDOFs, 1:5));
 assert(isequal(freeDOFs, 6:9));
 
-% Совместимый метод теперь только возвращает разбиение и не редактирует матрицы.
-[facadeFixedDOFs, facadeFreeDOFs] = problem.ApplyFixBC();
-assert(isequal(facadeFixedDOFs, fixedDOFs));
-assert(isequal(facadeFreeDOFs, freeDOFs));
 assert(isequal(problem.K, originalK));
 assert(isequal(problem.M, originalM));
 
@@ -347,7 +331,8 @@ assert(numel(modalResult.frequenciesHz) == numel(freeDOFs));
 assert(all(modalResult.frequenciesHz > 0));
 assert(all(all(modalResult.modeShapes(fixedDOFs, :) == 0)));
 
-transientResult = problem.RunTransient(1e-4, 4e-4, 3, 2);
+dynamicProblem = StructFEProblem(exampleCasePath('CaseBeamDyn.txt'), options);
+transientResult = dynamicProblem.RunTransient(1e-4, 4e-4, 3, 2);
 assert(all(all(transientResult.displacements(fixedDOFs, :) == 0)));
 assert(all(all(transientResult.velocities(fixedDOFs, :) == 0)));
 assert(all(all(transientResult.accelerations(fixedDOFs, :) == 0)));

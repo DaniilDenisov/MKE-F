@@ -5,3 +5,5 @@ nodes
 elems_112
 1
 112,1,3,0.01,2e11,7850
+analysis
+static

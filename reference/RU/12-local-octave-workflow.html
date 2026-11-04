@@ -102,14 +102,14 @@ result.reactions</code></pre>
       </section>
 
       <section aria-labelledby="legacy-title">
-        <h2 id="legacy-title">4. Старые файлы и явные методы</h2>
-        <p>Файлы, созданные до появления секции <code>analysis</code>, остаются допустимыми. Для них вид расчёта задаётся методом, как в историческом интерфейсе программы:</p>
+        <h2 id="legacy-title">4. Явные методы расчёта</h2>
+        <p>Каждый входной TXT содержит секцию <code>analysis</code>. Явные методы остаются доступны для учебных экспериментов; нагрузки должны соответствовать выбранному расчёту:</p>
         <pre><code>staticProblem = StructFEProblem(fullfile( ...
     'examples', 'cases', 'Case1ElementBeam.txt'));
 staticResult = staticProblem.RunStatic();
 
 modalProblem = StructFEProblem(fullfile( ...
-    'examples', 'cases', 'CaseBeam.txt'));
+    'examples', 'cases', 'CaseBeamModal.txt'));
 modalResult = modalProblem.RunModal();
 
 transientProblem = StructFEProblem(fullfile( ...
@@ -131,7 +131,7 @@ model = problem.GetAnalysisModel();
 staticResult = solveStatic(model);
 
 modalProblem = StructFEProblem(fullfile( ...
-    'examples', 'cases', 'CaseBeam.txt'));
+    'examples', 'cases', 'CaseBeamModal.txt'));
 modalModel = modalProblem.GetAnalysisModel();
 modalResult = solveModal(modalModel);
 
@@ -215,7 +215,7 @@ run_octave_tests;</code></pre>
             <thead><tr><th>Сообщение или симптом</th><th>Что проверить</th></tr></thead>
             <tbody>
               <tr><td><code>StructFEProblem undefined</code></td><td>Octave открыт не в корне проекта либо не выполнены <code>addpath(pwd); setup;</code>.</td></tr>
-              <tr><td><code>MKEF:MissingAnalysisConfiguration</code></td><td>Старый файл не содержит <code>analysis</code>. Используйте явный <code>RunStatic</code>, <code>RunModal</code> или <code>RunTransient</code>.</td></tr>
+              <tr><td><code>MKEF:MissingAnalysisConfiguration</code></td><td>Во входном TXT отсутствует обязательная секция <code>analysis</code>.</td></tr>
               <tr><td>Файл не найден</td><td>Проверьте <code>pwd</code> и собирайте путь через <code>fullfile</code>, не полагаясь на разделитель конкретной ОС.</td></tr>
               <tr><td>Механизм или вырожденная система</td><td>Проверьте закрепления, нулевые длины, свойства элементов и наличие массы на свободных СС.</td></tr>
               <tr><td>Появляется окно графика</td><td>Создавайте задачу с <code>struct('verbose', false, 'plotting', false)</code> и запускайте Octave с <code>--no-gui</code>.</td></tr>
@@ -227,7 +227,7 @@ run_octave_tests;</code></pre>
       <section class="source-list" aria-labelledby="sources-title">
         <h2 id="sources-title">Маршрут чтения исходного кода</h2>
         <ol>
-          <li><a href="../../src/model/StructFEProblem.m"><code>StructFEProblem.m</code></a> — совместимый фасад чтения, сборки и запуска;</li>
+          <li><a href="../../src/model/StructFEProblem.m"><code>StructFEProblem.m</code></a> — фасад чтения, сборки и запуска;</li>
           <li><a href="../../src/model/FEMesh.m"><code>FEMesh.m</code></a> — разбор TXT и проверка входа;</li>
           <li><a href="../../src/model/createStructuralElement.m"><code>createStructuralElement.m</code></a> — элементные матрицы;</li>
           <li><a href="../../src/model/assembleGlobalMatrices.m"><code>assembleGlobalMatrices.m</code></a> — глобальная разреженная сборка;</li>

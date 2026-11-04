@@ -86,6 +86,6 @@ const root=path.resolve(__dirname,'..');
     await page.waitForFunction(()=>document.body.dataset.testStatus!=='running');
     assert.equal(await page.locator('body').getAttribute('data-test-status'),'passed',await page.locator('#test-output').textContent());
     assert.deepEqual(errors,[]);
-    console.log('PASS releases editor, warnings, roundtrip, undo/redo, v8 topology, static/modal shapes, internal histories, partial export and legacy browser suites');
+    console.log('PASS releases editor, warnings, roundtrip, undo/redo, v8 topology, static/modal shapes, internal histories, partial export and browser suites');
   } finally {await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

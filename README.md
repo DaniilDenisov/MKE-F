@@ -11,7 +11,9 @@
 - Единая WebGL-сцена: деформации, эпюры, реакции, собственные формы, анимация и графики. Нормальные напряжения и окраска статических результатов по максимальному |σx| от продольной силы и изгиба.
 - Сохранение результатов в JSON v8, сцен 2D — в PNG/SVG, сцен 3D — в PNG; SVG графиков и сечений, CSV численных данных. Просмотр сохранённых JSON v8 без решателя; файлы v1–v7 требуют пересчёта исходного TXT; справочник RU/EN.
 
-Для новых назначений и расчётов пространственных рам доступны сплошной круг, прямоугольник, круглая, квадратная и прямоугольная трубы; старые результаты открытых профилей можно просматривать. Стеснённая депланация и смещение центра сдвига не учитываются.
+Входной TXT содержит обязательный блок `analysis`. Узловая нагрузка 10 — статическая; в transient используются гармоника 11, импульс 12 при t=dt и ступень 13.
+
+Пространственные рамы принимают круг, прямоугольник и круглые, квадратные и прямоугольные трубы при импорте, редактировании, экспорте и расчёте. Депланация и смещение центра сдвига не учитываются.
 
 В Docker Compose [диагностическая страница](reference/section-fem-lab.html) показывает сетку Tri6 и поле напряжений для пяти профилей. Расчёт выполняет Python-сервис с библиотекой `sectionproperties`, включённый в готовый релиз и сборку из исходников. Для статических результатов панель **Member von Mises maxima · static** в постпроцессоре выводит максимум по каждому стержню и его отношение к введённому пределу текучести. [Методика и ограничения](reference/RU/08-result-recovery.html#section-fem-title).
 
@@ -58,7 +60,9 @@ MKE-F is an educational finite element program for planar and spatial trusses an
 - Shared WebGL scene: deformation, force diagrams, reactions, mode shapes, animation and plots. Normal stresses and static result coloring by maximum |σx| from axial force and bending.
 - Save results as JSON v8, 2D scenes as PNG/SVG and 3D scenes as PNG; SVG charts and sections, CSV numerical data. View saved JSON v8 without the solver; v1–v7 files require recalculating the original TXT; RU/EN handbook.
 
-New spatial frame assignments and analyses support solid circles, rectangles, circular tubes, square tubes and rectangular tubes; legacy open-section results remain viewable. Restrained warping and shear-center offsets are not modeled.
+Each input TXT requires an `analysis` block. Nodal load 10 is static only; transient analysis accepts harmonic load 11, pulse 12 at t=dt and step 13.
+
+Spatial frames support solid circles, rectangles, circular tubes, square tubes and rectangular tubes at import, editing, export and calculation. Restrained warping and shear-center offsets are not modeled.
 
 In Docker Compose, the [section diagnostic page](reference/section-fem-lab.html) displays the Tri6 mesh and stresses for five profiles. A Python service runs `sectionproperties` and is included in both the prebuilt release and the source build. In the static postprocessor, **Member von Mises maxima · static** shows the maximum for each member and its ratio to an optional tensile yield strength. [Methods and limits](reference/EN/08-result-recovery.html#section-fem-title).
 

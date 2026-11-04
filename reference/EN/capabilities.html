@@ -57,7 +57,7 @@
 <tr><td>Analyses</td><td colspan="2">Statics, modes and undamped transient response; mixed families are not supported.</td></tr>
 <tr><td>Conditions</td><td>Forces, translational supports, MPC</td><td>Forces and moments, supports, MPC, local Mx/My/Mz releases; uniform/linear loads in statics</td></tr>
 <tr><td>Catalog and stresses</td><td>Profile area A; N/A</td><td>A/Iy/Iz/J, any angle; σx from N/My/Mz</td></tr>
-<tr><td>max |σx|, static 2D/3D</td><td>|N(x)|/A, including manual area</td><td><a href="08-result-recovery.html#normal-stress-title">Absolute normal stress maximum</a>: all valid catalog sections, curve and CSV; legacy open-profile JSON remains viewable. Shear/torsion excluded; member von Mises maxima are available separately, with separate <a href="08-result-recovery.html#section-fem-title">FEM diagnostics</a>.</td></tr>
+<tr><td>max |σx|, static 2D/3D</td><td>|N(x)|/A, including manual area</td><td><a href="08-result-recovery.html#normal-stress-title">Absolute normal stress maximum</a>: all valid catalog sections, curve and CSV. Shear/torsion excluded; member von Mises maxima are available separately, with separate <a href="08-result-recovery.html#section-fem-title">FEM diagnostics</a>.</td></tr>
 <tr><td>Interface and results</td><td colspan="2">XYZ editing, work planes, undo/redo, API runs, a separate result tab, contours and JSON v8.</td></tr>
 </tbody></table></div><p>First steps, an example and model limitations: <a href="3d-quick-start.html">3D quick start</a>. The detailed tables below describe planar types 112/113.</p></section>
 <section aria-labelledby="capabilities-title">
@@ -96,7 +96,7 @@
 <section aria-labelledby="notes-title">
 <h2 id="notes-title">Notation and limitations</h2>
 <p><strong>Notation:</strong> X and Y are the global in-plane axes; θ<sub>z</sub> is nodal rotation; N is axial force; V is shear force; M is bending moment. A free degree of freedom means that the translation or rotation is not prescribed by a support and is determined by analysis; it does not imply motion without elastic resistance.</p>
-<p><strong>Load conventions:</strong> no loads are specified in modal analysis. In transient analysis, type 10 is also interpreted as a one-step pulse, not a constant load; use type 13 for a constant action. Self-weight is not added automatically.</p>
+<p><strong>Load conventions:</strong> no loads are specified in modal analysis. In transient analysis, type 12 is a pulse at t=dt and type 13 is a constant action; type 10 is static only. Self-weight is not added automatically.</p>
 <p><strong>Scope:</strong> types 112 and 113 cannot be mixed in one model. Analysis is linear, with small displacements and a linear elastic material. Plasticity, geometric nonlinearity and damping are not included; the frame element neglects shear deformation. Uniform and linear distributed loads are supported on frame elements in static analysis only. Frame supports of types 2 and 3 restrain rotation: they are not conventional roller supports.</p>
 <p>See <a href="10-input-format.html">Input file format</a> for input records and <a href="04-boundary-loads.html">Boundary conditions and loads</a> for sign and load conventions.</p>
 </section>

@@ -106,7 +106,7 @@ near(r90.elementResults.sectionStress.maximum.value,2*st.maximum.value);
 % Explicit properties are overridden by geometry, including mass.
 pOther=fromText(strrep(text,'0.02,200000000000,7800,0.00006666666666666667','1,200000000000,7800,1'));
 near(full(pOther.K),full(p.K));near(full(pOther.M),full(p.M));
-% V6 must compose with every existing schema feature and analysis mode.
+% V8 must compose with every existing schema feature and analysis mode.
 for name={'CaseLinearFrame','CaseLinearRelease','CaseLinearMPC','CaseReleaseModal','CaseReleaseTransient','CaseMPCModal','CaseMPCTransient'}
     source=fileread(exampleCasePath([name{1} '.txt']));
     source=[source sprintf('\nsections\n1\n{"id":1,"name":"T","type":"tee","dimensions":{"b":0.1,"h":0.2,"tw":0.008,"tf":0.012}}\nelement_sections\n1\n1,1,270\n')];

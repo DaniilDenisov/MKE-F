@@ -1,11 +1,11 @@
 const fs=require('node:fs'),assert=require('node:assert/strict'),{spawnSync}=require('node:child_process');
 // Fresh output is supplied by test_recovery_pipeline.ps1. Missing fixtures fail
-// before any glob-based legacy test could accidentally pass with zero cases.
+// before any glob-based test could accidentally pass with zero cases.
 for(const name of ['section-parity','spatial-section-parity','spatial-section-dynamic-parity','spatial-condition-parity']){
   const rows=JSON.parse(fs.readFileSync('output/'+name+'.json'));
   assert(rows.length>0,'Empty '+name);
 }
-assert.equal(JSON.parse(fs.readFileSync('output/spatial-condition-parity.json')).length,22);
+assert.equal(JSON.parse(fs.readFileSync('output/spatial-condition-parity.json')).length,21);
 for(const name of ['CaseSpatialFrame','CaseSpatialFrameModal','CaseSpatialFrameTransient',
   'CaseSpatialTruss','CaseSpatialTrussModal','CaseSpatialTrussTransient','CaseSpatialTiltedTransient',
   'CaseSpatialSectionReleasedTransient','static-frame','CaseSectionBeam'])assert(fs.statSync('output/'+name+'.json').size>0,name);

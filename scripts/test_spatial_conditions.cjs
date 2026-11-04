@@ -9,8 +9,11 @@ assert.throws(()=>h.condition('releases',null,{elementId:1,end:2,component:'Mx'}
 assert.equal(F.serialize(m),before);assert.equal(h.undo.length,0);
 h.condition('releases',null,{elementId:1,end:2,component:'Mz'});assert.equal(m.releases.length,1);h.travel(true);assert.equal(F.serialize(m),before);
 assert.throws(()=>h.setAnalysis({...m.analysis,type:'modal'}),/loads/);
-assert.throws(()=>h.setAnalysis({...m.analysis,type:'transient'}),/Confirm/);
-h.setAnalysis({...m.analysis,type:'transient'},true);h.travel(true);assert.equal(F.serialize(m),before);
+assert.throws(()=>h.setAnalysis({...m.analysis,type:'transient'}),/Load law/);
+const transientText=fs.readFileSync('examples/cases/CaseSpatialFrameTransient.txt','utf8'),dynamic=F.parse(transientText);
+assert.throws(()=>F.parse(transientText.replace(/^transient,[^\r\n]+/m,'transient,1,0.5,2,2')),/Invalid transient settings/);
+assert.throws(()=>new E.History(dynamic).setAnalysis({...dynamic.analysis,duration:dynamic.analysis.timeStep/2}),/invalid time settings/);
+assert.equal(F.serialize(m),before);assert.equal(h.undo.length,0);
 const mp={depNode:2,depDOF:2,rhs:0,masters:[{node:2,dof:3,coefficient:2}]};h.condition('mpcs',null,mp);
 assert.throws(()=>h.condition('mpcs',null,{depNode:2,depDOF:3,rhs:0,masters:[{node:2,dof:2,coefficient:1}]}),/Cycle/);
 assert.throws(()=>h.condition('supports',null,{node:2,mask:[0,1,0,0,0,0]}),/restrained/);
@@ -21,11 +24,7 @@ for(const epsilon of [0,1e-12,1e-8]) {
 }
 const r=frame();r.loads=[];r.releases=['Mx','My','Mz'].map(component=>({elementId:1,end:1,component}));
 assert.equal(C.validate(r).warnings.length,3);
-for(const type of [10,11,12,13]) {
-  const record={type,frequency:2};const actual=[0,.1,.2].map(t=>C.law(record,'transient',t,.1));
-  const expected=type===11?[0,Math.sin(.4*Math.PI),Math.sin(.8*Math.PI)]:type===13?[1,1,1]:[0,1,0];
-  assert(actual.every((v,i)=>Math.abs(v-expected[i])<1e-12));
-}
+
 const rotated=frame();rotated.nodes[1]={x:2,y:3,z:4};rotated.elements[0].angleDegrees=37;
 const q={type:21,elementId:1,coordinateSystem:1,components:[1,2,-3,-4,5,6]},globalQ=C.convertLoadAxes(rotated,q,2),backQ=C.convertLoadAxes(rotated,globalQ,1);
 assert(backQ.components.every((x,i)=>Math.abs(x-q.components[i])<1e-12));assert.throws(()=>C.convertLoadType(q,20,false),/Confirm/);

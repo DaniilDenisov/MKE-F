@@ -87,7 +87,7 @@
 
       <section aria-labelledby="syntax-title">
         <h2 id="syntax-title">3. Общие правила синтаксиса</h2>
-        <p>Парсер читает файл до конца. Пустые строки и строки, первый непробельный символ которых <code>#</code>, пропускаются. После обычного маркера секции идёт целое число записей, затем ровно столько непустых строк данных. Необязательная секция <code>analysis</code> является исключением и содержит одну конфигурационную запись.</p>
+        <p>Парсер читает файл до конца. Пустые строки и строки, первый непробельный символ которых <code>#</code>, пропускаются. После обычного маркера секции идёт целое число записей, затем ровно столько непустых строк данных. Обязательная секция <code>analysis</code> является исключением и содержит одну конфигурационную запись.</p>
         <pre><code>section_marker
 record_count
 comma,separated,record
@@ -97,7 +97,7 @@ comma,separated,record
           <table>
             <thead><tr><th>Секция</th><th>Можно повторять</th><th>Правило</th></tr></thead>
             <tbody>
-              <tr><td><code>analysis</code></td><td>Нет</td><td>Необязательная конфигурация для <code>RunSelected</code>.</td></tr>
+              <tr><td><code>analysis</code></td><td>Нет</td><td>Обязательная конфигурация для <code>RunSelected</code>.</td></tr>
               <tr><td><code>nodes</code></td><td>Нет</td><td>Ровно одна непустая секция.</td></tr>
               <tr><td><code>elems_112</code> или <code>elems_113</code></td><td>Да</td><td>Записи добавляются; тип во всех секциях должен совпадать.</td></tr>
               <tr><td><code>bcfix</code></td><td>Да</td><td>Записи добавляются; допустимо ноль записей.</td></tr>
@@ -116,8 +116,8 @@ static</code></pre>
 modal</code></pre>
         <pre><code>analysis
 transient,timeStep,duration,monitorNode,monitorDOF</code></pre>
-        <p>Секция необязательна для обратной совместимости и может появиться только один раз. Для переходного расчёта шаг времени положителен, длительность покрывает хотя бы один шаг, а контрольный узел и локальная СС находятся в диапазоне модели. <code>RunSelected</code> запускает указанный расчёт; без секции следует использовать прежние явные методы.</p>
-        <p>Статика допускает узловые нагрузки типа 10 и равномерные и линейные элементные нагрузки типов 20 и 21, модальный расчёт — ни одной нагрузки, переходный расчёт — типы 10–13. Тип 10 в переходной задаче сохраняет историческую семантику одношагового импульса.</p>
+        <p>Секция обязательна и должна появиться ровно один раз. Для переходного расчёта шаг времени положителен, длительность покрывает хотя бы один шаг, а контрольный узел и локальная СС находятся в диапазоне модели. <code>RunSelected</code> запускает указанный расчёт. TXT без секции отклоняется при чтении.</p>
+        <p>Статика допускает узловые нагрузки типа 10 и равномерные и линейные элементные нагрузки типов 20 и 21, модальный расчёт — ни одной нагрузки, переходный расчёт — типы 11–13. Одношаговый импульс при t=dt задаётся типом 12.</p>
       </section>
 
       <section aria-labelledby="nodes-title">
@@ -173,7 +173,7 @@ type,node,0,0,0</code></pre>
           <table>
             <thead><tr><th>Секция / тип</th><th>Запись</th><th><code>RunStatic</code></th><th><code>RunTransient</code></th></tr></thead>
             <tbody>
-              <tr><td><code>bcforce_stat</code> / 10</td><td><code>10,node,Fx,Fy,Mz</code></td><td>Постоянная статическая нагрузка.</td><td>Исторически совместимый прямоугольный импульс только при <em>t=dt</em>; дискретный импульс <em>F0·dt</em>.</td></tr>
+              <tr><td><code>bcforce_stat</code> / 10</td><td><code>10,node,Fx,Fy,Mz</code></td><td>Постоянная статическая нагрузка.</td><td>Не поддерживается.</td></tr>
               <tr><td><code>bcforce_harm</code> / 11</td><td><code>11,node,Fx,Fy,Mz,frequencyHz</code></td><td>Не поддерживается.</td><td><em>F(t)=F0·sin(2πft)</em>; <em>f</em> строго положительна.</td></tr>
               <tr><td><code>bcforce_pulse</code> / 12</td><td><code>12,node,Fx,Fy,Mz</code></td><td>Не поддерживается.</td><td>Явный одношаговый импульс при <em>t=dt</em>.</td></tr>
               <tr><td><code>bcforce_step</code> / 13</td><td><code>13,node,Fx,Fy,Mz</code></td><td>Не поддерживается.</td><td>Постоянная ступень во всех столбцах, включая <em>t=0</em>.</td></tr>
@@ -186,6 +186,9 @@ type,node,0,0,0</code></pre>
       <section aria-labelledby="example-title">
         <h2 id="example-title">8. Полный пример рамы</h2>
         <pre><code># Консоль длиной 0,5 м с силой +100 Н по Y
+analysis
+static
+
 nodes
 2
 0,0,0
@@ -294,7 +297,7 @@ result.displacementAmplitudeSpectrum</code></pre>
       <section aria-labelledby="dynamic-title">
         <h2 id="dynamic-title">10. Модальный и переходный расчёты</h2>
         <pre><code>problem = StructFEProblem(fullfile( ...
-    "examples", "cases", "CaseBeam.txt"));
+    "examples", "cases", "CaseBeamModal.txt"));
 modalResult = problem.RunModal();
 modalResult.frequenciesHz
 
@@ -311,7 +314,7 @@ dynamicResult = problem.RunTransient(1e-4, 1e-2, 3, 2, initial);</code></pre>
         <p>Если файл содержит секцию <code>analysis</code>, тот же расчёт запускается как <code>result = problem.RunSelected()</code>. Настроенный переходный запуск использует нулевые начальные перемещения и скорости.</p>
         <div class="callout callout--inspect">
           <span class="callout__title">Запуск файла через GUI</span>
-          <p>Выполните из корня репозитория <code>docker compose up --build</code> (или <code>docker-compose up --build</code>), откройте <a href="http://127.0.0.1:8080/preprocessor/">http://127.0.0.1:8080/preprocessor/</a> и загрузите TXT-файл кнопкой <strong>Open TXT</strong>. Для старого файла без секции <code>analysis</code> сначала выберите вид расчёта и, при необходимости, параметры переходного процесса. Кнопка <strong>Run analysis</strong> сериализует проверенную модель, вызывает <code>RunSelected()</code> в контейнере Octave. После статуса <strong>Completed</strong> кнопка <strong>Open result</strong> открывает результат в отдельной вкладке без ручного переноса файлов.</p>
+          <p>Выполните из корня репозитория <code>docker compose up --build</code> (или <code>docker-compose up --build</code>), откройте <a href="http://127.0.0.1:8080/preprocessor/">http://127.0.0.1:8080/preprocessor/</a> и загрузите TXT-файл кнопкой <strong>Open TXT</strong>. TXT должен содержать секцию <code>analysis</code> с корректными настройками. Кнопка <strong>Run analysis</strong> сериализует проверенную модель, вызывает <code>RunSelected()</code> в контейнере Octave. После статуса <strong>Completed</strong> кнопка <strong>Open result</strong> открывает результат в отдельной вкладке без ручного переноса файлов.</p>
         </div>
       </section>
 
@@ -349,7 +352,7 @@ dynamicResult = problem.RunTransient(1e-4, 1e-2, 3, 2, initial);</code></pre>
               <tr><td><code>MKEF:UnsupportedConstraintValue</code></td><td>В последних трёх полях <code>bcfix</code> есть ненулевое заданное перемещение.</td></tr>
               <tr><td><code>MKEF:UnsupportedLoadComponent</code></td><td>Для ферменного узла задан ненулевой <code>Mz</code>.</td></tr>
               <tr><td><code>MKEF:AnalysisLoadMismatch</code></td><td>Тип нагрузки несовместим с настроенным видом расчёта.</td></tr>
-              <tr><td><code>MKEF:MissingAnalysisConfiguration</code></td><td><code>RunSelected</code> вызван для старого файла без секции <code>analysis</code>.</td></tr>
+              <tr><td><code>MKEF:MissingAnalysisConfiguration</code></td><td>Во входном TXT отсутствует обязательная секция <code>analysis</code>.</td></tr>
             </tbody>
           </table>
         </div>
@@ -406,7 +409,7 @@ element_sections
       <section id="all-examples" aria-labelledby="all-examples-title">
         <h2 id="all-examples-title">Все примеры</h2>
         <p>Скачайте TXT-файл и откройте его с диска в <a href="../../preprocessor/index.html">препроцессоре</a> через Open TXT.</p>
-        <p>В старых файлах без секции analysis вид расчёта и, при необходимости, параметры времени задаются в препроцессоре.</p>
+        <p>Все примеры содержат явный вид расчёта в секции analysis; динамические импульсы используют тип 12.</p>
         <div class="table-wrap">
           <table>
             <thead><tr><th scope="col">Расчёт</th><th scope="col">Пример</th><th scope="col">Скачать TXT</th></tr></thead>
@@ -436,13 +439,15 @@ element_sections
               <tr><td>Переходный</td><td>Балка под гармонической нагрузкой, с комментариями</td><td><a href="../../examples/cases/CasePreprocessorTransient.txt" download>CasePreprocessorTransient.txt</a></td></tr>
               <tr><td>Переходный</td><td>Рама с MPC под ступенчатой нагрузкой</td><td><a href="../../examples/cases/CaseMPCTransient.txt" download>CaseMPCTransient.txt</a></td></tr>
               <tr><td>Переходный</td><td>Балка с освобождениями Mz под ступенчатой нагрузкой</td><td><a href="../../examples/cases/CaseReleaseTransient.txt" download>CaseReleaseTransient.txt</a></td></tr>
-              <tr><td>Не задан (старый формат)</td><td>Балка для сравнения с ANSYS</td><td><a href="../../examples/cases/ANSYSBeamStatic01.txt" download>ANSYSBeamStatic01.txt</a></td></tr>
-              <tr><td>Не задан (старый формат)</td><td>Балка из одного элемента</td><td><a href="../../examples/cases/Case1ElementBeam.txt" download>Case1ElementBeam.txt</a></td></tr>
-              <tr><td>Не задан (старый формат)</td><td>Балка с узловой силой</td><td><a href="../../examples/cases/CaseBeam.txt" download>CaseBeam.txt</a></td></tr>
-              <tr><td>Не задан (старый формат)</td><td>Балка для переходного расчёта с постоянной силой</td><td><a href="../../examples/cases/CaseBeamDyn.txt" download>CaseBeamDyn.txt</a></td></tr>
-              <tr><td>Не задан (старый формат)</td><td>Балка под гармонической нагрузкой</td><td><a href="../../examples/cases/CaseBeamFreq.txt" download>CaseBeamFreq.txt</a></td></tr>
-              <tr><td>Не задан (старый формат)</td><td>Ферма под гармонической нагрузкой</td><td><a href="../../examples/cases/CaseATransSite.txt" download>CaseATransSite.txt</a></td></tr>
-              <tr><td>Не задан (старый формат)</td><td>Рама из примера Mario Paz</td><td><a href="../../examples/cases/CaseFig11.7p363 MarioPaz.txt" download>CaseFig11.7p363 MarioPaz.txt</a></td></tr>
+              <tr><td>static</td><td>Балка для сравнения с ANSYS</td><td><a href="../../examples/cases/ANSYSBeamStatic01.txt" download>ANSYSBeamStatic01.txt</a></td></tr>
+              <tr><td>static</td><td>Балка из одного элемента</td><td><a href="../../examples/cases/Case1ElementBeam.txt" download>Case1ElementBeam.txt</a></td></tr>
+              <tr><td>static</td><td>Балка с узловой силой</td><td><a href="../../examples/cases/CaseBeam.txt" download>CaseBeam.txt</a></td></tr>
+              <tr><td>modal</td><td>Свободные колебания балки</td><td><a href="../../examples/cases/CaseBeamModal.txt" download>CaseBeamModal.txt</a></td></tr>
+              <tr><td>transient</td><td>Одноэлементная балка под импульсом</td><td><a href="../../examples/cases/Case1ElementBeamTransient.txt" download>Case1ElementBeamTransient.txt</a></td></tr>
+              <tr><td>transient</td><td>Балка под одношаговым импульсом</td><td><a href="../../examples/cases/CaseBeamDyn.txt" download>CaseBeamDyn.txt</a></td></tr>
+              <tr><td>transient</td><td>Балка под гармонической нагрузкой</td><td><a href="../../examples/cases/CaseBeamFreq.txt" download>CaseBeamFreq.txt</a></td></tr>
+              <tr><td>transient</td><td>Ферма под гармонической нагрузкой</td><td><a href="../../examples/cases/CaseATransSite.txt" download>CaseATransSite.txt</a></td></tr>
+              <tr><td>modal</td><td>Рама из примера Mario Paz</td><td><a href="../../examples/cases/CaseFig11.7p363 MarioPaz.txt" download>CaseFig11.7p363 MarioPaz.txt</a></td></tr>
             </tbody>
           </table>
         </div>
@@ -467,7 +472,7 @@ element_sections
 1
 1,1,0</code></pre>
 <p>Отсутствие <code>torsion</code> означает автоматический J. Необязательные варианты: <code>"torsion":{"mode":"auto"}</code> или <code>"torsion":{"mode":"manual","value":0.00001}</code>. У назначенной рамы угол назначения <strong>заменяет</strong> угол численной строки. Нормализованный экспорт согласует оба угла и A/Iy/Iz/J с каталогом.</p>
-<p>До правок импортированная модель скачивается исходным TXT; после правок — нормализованным. Оригинал остаётся отдельной командой. Геометрический черновик можно сохранить, но для расчёта нужны элементы, анализ и допустимые условия. <a href="3d-quick-start.html">Рабочий сценарий и ограничения 3D</a> · <a href="../../examples/cases/CaseSpatialQuickStart.txt" download>полный пример TXT</a>.</p></section>
+<p>До правок импортированная модель скачивается исходным TXT; после правок — нормализованным. Оригинал остаётся отдельной командой. Незавершённую геометрию можно редактировать в памяти. Для сохранения TXT и расчёта нужны элементы, анализ и допустимые условия. <a href="3d-quick-start.html">Рабочий сценарий и ограничения 3D</a> · <a href="../../examples/cases/CaseSpatialQuickStart.txt" download>полный пример TXT</a>.</p></section>
 </main>
   </div>
 

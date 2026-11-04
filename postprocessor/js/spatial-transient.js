@@ -31,8 +31,8 @@
     if(this.index===this.analysis.time.length-1)this.index=0;const started=performance.now(),first=this.index;this.playButton.textContent='Pause';
     const tick=now=>{const f=M.transientView.playbackFrame(this.analysis.time,first,now-started,Number(this.speed.value),stride,5000);if(this.index!==f.index){this.index=f.index;this.update();}if(f.complete)this.stop();else this.animation=requestAnimationFrame(tick);};this.animation=requestAnimationFrame(tick);
   };
-  P.conditions=function(){const data=conditions.call(this);if(this.analysis.type!=='transient')return data;const a=this.analysis,t=a.time[this.index],dt=a.timeStep||(a.time[a.time.length-1]-a.time[0])/(a.sampling.originalSampleCount-1);
-    data.loads.forEach(r=>{if(r.kind)return;const factor=r.type===11?Math.sin(2*Math.PI*r.frequency*t):r.type===13?1:Math.abs(t-dt)<=Number.EPSILON*Math.max(Number.MIN_VALUE,Math.abs(t),Math.abs(dt))*8?1:0;r.components=r.components.map(v=>v*factor);});return data;
+  P.conditions=function(){const data=conditions.call(this);if(this.analysis.type!=='transient')return data;const a=this.analysis,t=a.time[this.index],dt=a.timeStep;
+    data.loads.forEach(r=>{if(r.kind)return;const factor=S.transientLoadFactor(r,t,dt);r.components=r.components.map(v=>v*factor);});return data;
   };
   P.select=function(s){if(this.historyNode&&s){if(s.kind==='node')this.historyNode.value=s.index+1;if(s.kind==='element')this.historyElement.value=s.index+1;if(s.kind==='mpcs')this.historyMPC.value=s.index+1;}select.call(this,s);};
   P.drawChart=function(){

@@ -70,11 +70,11 @@ assert(mm.elementData(2).dofs(3)==mm.dofMap(2,3));
 % Repeatable sections and the empty-release compatibility path.
 p=fromText(strrep(text,sprintf('releases\n2\n1,1,Mz\n1,2,Mz'),sprintf('releases\n1\n1,1,Mz\nreleases\n1\n1,2,Mz')));
 assert(isequal(p.mesh.iMnod,m.dofMap));
-legacy=fileread(exampleCasePath('CaseBeam.txt'));
-p=fromText(legacy); q=fromText([legacy sprintf('\nreleases\n0\n')]);
+source=fileread(exampleCasePath('CaseBeam.txt'));
+p=fromText(source); q=fromText([source sprintf('\nreleases\n0\n')]);
 assert(isequal(p.K,q.K) && isequal(p.M,q.M) && isequal(p.mesh.iMnod,q.mesh.iMnod));
 
-% Combined v4 + MPC + element loads, including one mode and one selected DOF.
+% Combined v8 + MPC + element loads, including one mode and one selected DOF.
 combined=[text sprintf('\nmpc\n1\n2,1,0,1,1,1,1\n')];
 p=fromText(combined); cm=p.GetAnalysisModel(); cr=p.RunStatic();
 exportPostprocessorData(cm,cr,fullfile('output','CaseReleaseMPCStatic.json'));
@@ -101,7 +101,7 @@ mustFail(@() fromText([text sprintf('\nreleases\n1\n1,NaN,Mz\n')]));
 mechanism=strrep(text,sprintf('bcfix\n2\n4,1,0,0,0\n6,2,0,0,0'),sprintf('bcfix\n1\n4,1,0,0,0'));
 q=fromText(mechanism); mustFail(@() q.RunStatic());
 
-% v4 roundtrip, all analyses and sparse selection including internal rotations.
+% v8 roundtrip, all analyses and sparse selection including internal rotations.
 for name={'CaseReleaseStatic','CaseReleaseModal','CaseReleaseTransient'}
     p=StructFEProblem(exampleCasePath([name{1} '.txt'])); result=p.RunSelected(); model=p.GetAnalysisModel();
     data=exportPostprocessorData(model,result,fullfile('output',[name{1} '.json']));

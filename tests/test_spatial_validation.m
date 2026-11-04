@@ -16,11 +16,11 @@ cases={strrep(frame,'2,0,0','0,0,0'), ...
  [frame sprintf('\neload_uniform\n1\n20,1,1,0,1000\n')], ...
  [truss sprintf('\neload_uniform_3d\n1\n20,1,1,0,0,1000\n')]};
 for i=1:numel(cases), mustFail(@() fromText(cases{i})); end
-% Non-zero Z in legacy input never silently changes its historical meaning.
+% Non-zero Z in planar input never silently changes the element dimension.
 map=reshape(1:6,3,2).';
 flat=createStructuralElement(113,[0 0 0;2 0 0],[1 2],[.01 2e11 7850 2e-6],map);
-legacy=createStructuralElement(113,[0 0 10;2 0 -17],[1 2],[.01 2e11 7850 2e-6],map);
-assert(isequal(flat.stiffness,legacy.stiffness) && isequal(flat.mass,legacy.mass));
+nonzeroZ=createStructuralElement(113,[0 0 10;2 0 -17],[1 2],[.01 2e11 7850 2e-6],map);
+assert(isequal(flat.stiffness,nonzeroZ.stiffness) && isequal(flat.mass,nonzeroZ.mass));
 % All-fixed spatial static model is valid, with no free unknowns.
 p=fromText([frame sprintf('\nbcfix_3d\n1\n2,1,1,1,1,1,1\n')]); r=p.RunStatic();
 assert(norm(r.displacements)==0 && norm(r.equilibriumResidual)<1e-10);

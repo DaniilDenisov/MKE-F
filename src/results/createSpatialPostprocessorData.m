@@ -42,6 +42,7 @@ for i=1:numel(rebuilt)
         invalid('Inconsistent spatial element mapping.');
     end
 end
+validateSpatialFrameSections(m);
 c=buildConstraintTransform(m); getElementLoadData(m);
 model=struct('dimension',3,'dofPerNode',d,'dofLabels',{m.dofLabels},'numberOfDOFs',n, ...
     'dofMap',m.dofMap,'dofMapMeaning','active nodal basis slots; use nodeKinematics for physical components', ...
@@ -102,7 +103,7 @@ for f={'supportReactions','mpcForces','mpcMultipliers'}
     ids=selected; if strcmp(name,'mpcMultipliers'), ids=1:rows; end
     a.(name)=r.(name)(ids,indices);
 end
-if ~strcmp(a.type,'transient') && isfield(r,'nodalSupportReactions')
+if ~strcmp(a.type,'transient') && code==1436
     for f={'nodalSupportReactions','nodalMPCForces'}
         shape(r.(f{1}),[nn*d columns],f{1}); a.(f{1})=r.(f{1});
     end
@@ -114,7 +115,7 @@ if strcmp(a.type,'transient')
     a.physicalDOFIds=physical(:).';
     for pair={{'supportReactions','nodalSupportReactions'},{'mpcForces','nodalMPCForces'}}
         names=pair{1};if ~ismember(names{1},settings.transientFields),continue;end
-        if isfield(r,names{2}),values=r.(names{2});else,values=r.(names{1});end
+        if code==1436,values=r.(names{2});else,values=r.(names{1});end
         shape(values,[nn*d columns],names{2});a.(names{2})=values(physical,indices);
     end
     if ismember('spectrum',settings.transientFields)

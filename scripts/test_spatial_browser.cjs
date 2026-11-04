@@ -110,7 +110,7 @@ const root = path.resolve(__dirname,'..');
     });
     assert(dense.objects <= 5 && dense.labels <= 200 && dense.drawCalls <= 5 && dense.picked && dense.disposed,JSON.stringify(dense));
     console.log('100000 node/member scene: '+JSON.stringify(dense));
-    const rows = ['nodes','100000'];
+    const rows = ['analysis','static','nodes','100000'];
     for (let i=0;i<100000;i++) rows.push([i%100,Math.floor(i/100)%100,Math.floor(i/10000)].join(','));
     rows.push('elems_1133','100000');
     for (let i=0;i<100000;i++) rows.push('1133,'+(i+1)+','+((i+1)%100000+1)+',1,2e11,7800');

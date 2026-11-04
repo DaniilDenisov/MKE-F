@@ -75,7 +75,7 @@
     });
     m.loads.forEach(function (r,i) {
       if (!validNode(r.node)||!finiteArray(r.components,6)||[10,11,12,13].indexOf(r.type)<0||r.type===11&&(!Number.isFinite(r.frequency)||r.frequency<=0)) { fail('loads',i,'Invalid node, components, law or frequency.');return; }
-      if (m.analysis.type==='modal'||m.analysis.type==='static'&&r.type!==10) fail('loads',i,'Load law conflicts with analysis '+m.analysis.type+'.');
+      if (m.analysis.type==='modal'||m.analysis.type==='static'&&r.type!==10||m.analysis.type==='transient'&&r.type===10) fail('loads',i,'Load law conflicts with analysis '+m.analysis.type+'.');
       var moment=r.components.slice(3),projected=[0,0,0]; active[r.node-1].forEach(function (q) { projected=add(projected,q,dot(moment,q)); });
       if (!frame&&moment.some(Boolean)||norm(add(moment,projected,-1))>1e-10*norm(moment)) fail('loads',i,'Moment at node '+r.node+' acts in an inactive rotation direction.');
     });
@@ -134,12 +134,11 @@
     var analysis=m.analysis;
     if (['','static','modal','transient'].indexOf(analysis.type)<0) errors.push('analysis: unsupported type.');
     if (analysis.type==='transient') {
-      if (!Number.isFinite(analysis.timeStep)||analysis.timeStep<=0||!Number.isFinite(analysis.duration)||analysis.duration<=0||!validNode(analysis.monitorNode)||!validDOF(analysis.monitorDOF)) errors.push('analysis: invalid time settings or monitor component.');
+      if (!Number.isFinite(analysis.timeStep)||analysis.timeStep<=0||!Number.isFinite(analysis.duration)||analysis.duration<analysis.timeStep||!validNode(analysis.monitorNode)||!validDOF(analysis.monitorDOF)) errors.push('analysis: invalid time settings or monitor component.');
       else if (rowNorm(physical(analysis.monitorNode,analysis.monitorDOF))<1e-12) errors.push('analysis: monitor rotation is inactive.');
     }
     return {errors:errors,warnings:warnings,bases:bases,active:active,inactiveSupports:inactiveSupports};
   };
-  C.law = function (r,analysis,t,dt) { return r.type===11 ? Math.sin(2*Math.PI*r.frequency*t) : r.type===13 ? 1 : analysis==='static' ? 1 : Math.abs(t-dt)<=Number.EPSILON*Math.max(1,Math.abs(t),Math.abs(dt))*4 ? 1 : 0; };
   C.equalComponents=function(m,dependent,master,components){
     if(!components.length)throw new Error('Choose at least one component.');
     var rows=components.map(function(d){return {depNode:dependent,depDOF:d,rhs:0,masters:[{node:master,dof:d,coefficient:1}]};});

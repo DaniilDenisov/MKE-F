@@ -54,15 +54,6 @@
   History.prototype.apply = function (patches,selection) {
     patches = patches.filter(function (p) { return !same(p.before,p.after); }); if (!patches.length) return false;
     var next = candidate(this.model,patches,false); var errors=F.validate(next,false);if(errors.length)throw Error(errors.join("\n"));
-    const sections=global.MKEFSpatialSections;
-    if(sections&&next.elementType===1436)for(const p of patches){
-      if(!p.after)continue;
-      if(p.key==='sections'&&!sections.allowedForElement(1436,p.after.type)&&(!p.before||p.before.type!==p.after.type))throw Error(sections.frameRestriction);
-      if(p.key==='elements'&&p.after.sectionId&&(!p.before||p.before.sectionId!==p.after.sectionId)){
-        const s=next.sections.find(s=>s.id===p.after.sectionId);
-        if(s&&!sections.allowedForElement(1436,s.type))throw Error(sections.frameRestriction);
-      }
-    }
     var command = {patches:patches,beforeSelection:this.selection,afterSelection:selection,beforeRevision:this.revision,afterRevision:this.next++};
     keys.concat('analysis','name').forEach(function (key) { this.model[key] = next[key]; },this);
     this.undo.push(command); if (this.undo.length > 100) this.undo.shift(); this.redo = [];
@@ -95,14 +86,12 @@
     if (index!==null&&!old) throw new Error('Condition no longer exists.');
     if(value&&key==='loads'){
       if(!['static','transient'].includes(this.model.analysis.type))throw new Error('Choose a static or transient analysis before assigning loads.');
-      if(this.model.analysis.type==='transient'&&value.type===10&&(!old||old.type!==10))throw new Error('Transient type 10 is preserved from import/static models; create type 11, 12 or 13.');
     }
     if(value&&key==='elementLoads'&&this.model.analysis.type!=='static')throw new Error('Distributed loads require static analysis.');
     return this.apply([patch(key,at,old,value===null ? null : clone(value))],value===null ? null : {kind:key,index:at});
   };
   History.prototype.rename = function(name){return this.apply([patch('name',0,this.model.name,name)],this.selection);};
-  History.prototype.setAnalysis = function (analysis,confirmed) {
-    if (this.model.analysis.type==='static'&&analysis.type==='transient'&&this.model.loads.some(function (r) { return r.type===10; })&&!confirmed) throw new Error('Confirm: type 10 becomes a one-step load in transient analysis.');
+  History.prototype.setAnalysis = function (analysis) {
     return this.apply([patch('analysis',0,this.model.analysis,clone(analysis))],this.selection);
   };
   History.prototype.addMPCs=function(rows){

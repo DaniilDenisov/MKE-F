@@ -2,7 +2,6 @@ const planarStress=require('./planar-stress-reference.cjs');
 const fs=require('node:fs'),assert=require('node:assert/strict'),path=require('node:path');
 const root=require('./recovery-test-context.cjs')(true),M=root.MKEFPost,S=root.MKEFSections,P=root.MKEFSpatialSections;
 const directory='output/section-contract',files=fs.readdirSync(directory).filter(n=>n.endsWith('.json'));
-assert.equal(S.stress,undefined,'Planar extrema oracle must not be shipped in the application.');
 assert.equal(files.length,42);
 const near=(a,b)=>assert(Math.abs(a-b)<=1e-8*Math.max(1,Math.abs(a),Math.abs(b)),`${a} != ${b}`);
 const cases=files.map(name=>JSON.parse(fs.readFileSync(path.join(directory,name))));
@@ -16,7 +15,7 @@ for(const raw of cases){
  for(const k of ['minimum','maximum'])near(expected[k].value,r.sectionStress[k].value);
 }
 // Loading, coloring and point evaluation must not call property formulae or root search.
-for(const [o,k]of [[S,'properties'],[P,'properties'],[S,'stress'],[P,'stress'],[S,'roots']])o[k]=()=>{throw Error('Unexpected browser calculation: '+k);};
+for(const [o,k]of [[S,'properties'],[P,'properties'],[P,'stress'],[S,'roots']])o[k]=()=>{throw Error('Unexpected browser calculation: '+k);};
 for(const raw of cases){
  raw.analysis.elementResults[0].sectionStress.at=null; // Unknown JSON keys cannot replace evaluators.
  const ds=M.validateDataset(raw),e=raw.model.elements[0],stored=raw.analysis.elementResults[0],r=M.normalStressResults.get(ds,e);

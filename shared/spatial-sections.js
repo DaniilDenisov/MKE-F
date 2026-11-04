@@ -1,7 +1,7 @@
 (function(root){
   'use strict';
   var S=root.MKEFSections, P={};
-  // Calculation/assignment policy only: legacy geometry and results remain readable.
+  // One assignment policy for imported models, edits, calculations and results.
   P.allowedForElement=(code,type)=>code!==1436||['rectangle','circle','square_tube','rectangular_tube','circular_tube'].includes(type);
   P.frameRestriction='Frames 1436 support only rectangles, solid circles and square, rectangular or circular tubes. Open profiles require shear-center offsets and restrained warping that this model does not include.';
   P.manualNote='Without section geometry, profile applicability is not checked.';
@@ -64,7 +64,7 @@
     const sections=model.sections||[],map=new Map();if(sections.length>100000)throw Error('Maximum 100000 sections.');
     const errors=S.validate(model);if(errors.length)throw Error(errors[0]);
     sections.forEach(s=>map.set(s.id,{section:s,properties:null}));
-    for(const e of model.elements)if(e.sectionId){const item=map.get(e.sectionId);if(!item)throw Error('Unknown section.');const p=P.decorate(item.section,S.resultProperties(item.section,e));if(!item.properties)item.properties=p;}
+    for(const e of model.elements)if(e.sectionId){const item=map.get(e.sectionId);if(!item)throw Error('Unknown section.');if(!P.allowedForElement(e.type,item.section.type))throw Error(P.frameRestriction);const p=P.decorate(item.section,S.resultProperties(item.section,e));if(!item.properties)item.properties=p;}
     return map;
   };
   // Editor catalog: calculate properties from editable geometry.

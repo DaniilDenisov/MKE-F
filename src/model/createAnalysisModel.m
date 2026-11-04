@@ -37,6 +37,7 @@ model.multiPointConstraints = mesh.multiPointConstraints;
 model.nodeCoordinates = mesh.allNodes(:, 1:mesh.dimension);
 model.elementData = mesh.allMeshElems;
 model.sections = mesh.sections;
+validateSpatialFrameSections(model);
 model.numberOfNodes = mesh.numberOfNodes;
 model.dofPerNode = mesh.dofPerNode;
 model.numberOfDOFs = numberOfDOFs;

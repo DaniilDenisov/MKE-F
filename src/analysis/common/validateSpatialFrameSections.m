@@ -1,5 +1,5 @@
 function validateSpatialFrameSections(model)
-%VALIDATESPATIALFRAMESECTIONS Calculation policy; never restrict legacy import/export.
+%VALIDATESPATIALFRAMESECTIONS Assignment policy for imported models and all calculation paths.
 if ~isfield(model,'elementData') || ~isfield(model,'sections'), return; end
 allowed={'rectangle','circle','square_tube','rectangular_tube','circular_tube'};
 members={};

@@ -121,7 +121,7 @@ a3 = 1/(2*beta) - 1;</code></pre>
 setup;
 
 problem = StructFEProblem(fullfile( ...
-    'examples', 'cases', 'CaseBeam.txt'));
+    'examples', 'cases', 'CaseBeamDyn.txt'));
 model = problem.GetAnalysisModel();
 result = problem.RunTransient(1e-4, 1e-2, 3, 2);
 

@@ -3,7 +3,7 @@ const {chromium}=require(process.env.MKEF_PLAYWRIGHT_MODULE||'playwright'),asser
  const page=await browser.newPage({viewport:{width:1450,height:1050}}),errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('dialog',d=>d.accept());
  await page.goto('file://'+path.resolve('preprocessor/index.html'));await page.locator('#file-input').setInputFiles(path.resolve('examples/cases/CaseSpatialFrame.txt'));await page.locator('#spatial-catalog-toggle').click();
  const original=await page.locator('#spatial-current').inputValue();await page.locator('#spatial-section-new').click();await page.locator('#spatial-section-name').fill('Общее сечение');await page.locator('#spatial-section-type').selectOption('rectangle');
- assert.equal(await page.locator('#spatial-section-type option').count(),5);
+ assert.equal(await page.locator('#spatial-section-type option').count(),8);
  assert.equal(await page.locator('#spatial-current').inputValue(),original);assert.match(await page.locator('#spatial-section-properties').innerText(),/Saint-Venant/);await page.locator('#spatial-section-apply').click();
  await page.locator('#spatial-catalog-close').click();await page.locator('#spatial-element-rows tr').first().click();await page.locator('#spatial-catalog-toggle').click();await page.locator('#spatial-section-id').fill('1');await page.locator('#spatial-section-angle').fill('-37.5');await page.locator('#spatial-section-assign').click();
  assert.match(await page.locator('#spatial-current').inputValue(),/1,1,-37.5/);assert(await page.locator('#spatial-member-area').evaluate(e=>e.readOnly));
@@ -12,29 +12,7 @@ const {chromium}=require(process.env.MKEF_PLAYWRIGHT_MODULE||'playwright'),asser
  await page.locator('#spatial-catalog-toggle').click();await page.locator('#spatial-section-id').fill('0');await page.locator('#spatial-section-assign').click();assert(!(await page.locator('#spatial-member-area').evaluate(e=>e.readOnly)));await page.locator('#spatial-catalog-close').click();await page.locator('#undo').click();assert.equal(await page.locator('#spatial-current').inputValue(),assigned);
  assert.equal(await page.locator('#spatial-source').inputValue(),original);assert.deepEqual(errors,[]);console.log('Spatial catalog forms, orientation, assignment, immutable source and undo PASS');
  await page.locator('#spatial-section-view summary').click();await page.locator('#spatial-sections-contours').check();await page.locator('#spatial-sections-count').fill('7');await page.locator('#spatial-sections-count').dispatchEvent('change');assert.equal(await page.locator('#spatial-current').inputValue(),assigned);
- for(const type of ['channel','tee','ibeam']){
-  await page.locator('#file-input').setInputFiles(path.resolve('output/LegacyFrame-'+type+'.txt'));
-  await page.waitForFunction(type=>document.getElementById('spatial-current').value.includes('"type":"'+type+'"'),type);
-  assert.match(await page.locator('#validation-status').innerText(),/Unsupported sections on members 1/);
-  const legacy=await page.locator('#spatial-current').inputValue();
-  await page.locator('#spatial-element-rows tr').first().click();await page.locator('#spatial-catalog-toggle').click();
-  const id=String({channel:6,tee:7,ibeam:8}[type]);await page.locator('#spatial-section-id').fill(id);
-  await page.locator('#spatial-section-sequence').click();assert.match(await page.locator('#spatial-catalog-message').innerText(),/Frames 1436/);
-  await page.locator('#spatial-section-assign').click();assert.equal(await page.locator('#spatial-current').inputValue(),legacy);
-  await page.locator('#spatial-catalog button').getByText('Edit',{exact:true}).click();
-  assert(await page.locator('#spatial-section-type option[value="'+type+'"]').evaluate(o=>o.disabled),await page.locator('#spatial-section-type').evaluate(o=>o.outerHTML));
-  await page.locator('#spatial-section-type').selectOption('rectangle');await page.locator('#spatial-section-apply').click();
-  assert.equal(await page.locator('#validation-status').innerText(),'Model is ready to run');
-  await page.locator('#spatial-catalog-close').click();await page.locator('#undo').click();assert.equal(await page.locator('#spatial-current').inputValue(),legacy);
-  await page.locator('[data-spatial-tool="member"]').click();assert.equal(await page.locator('#spatial-member-sectionId option:not([disabled])').count(),1);
- }
- console.log('Legacy open profiles: import, assignment rejection, repair, undo and member picker PASS');
  await page.goto('file://'+path.resolve('postprocessor/index.html'));await page.evaluate(()=>{MKEFPost.SpatialPost=new Proxy(MKEFPost.SpatialPost,{construct(T,args){window.viewer=Reflect.construct(T,args);return viewer;}});});
- for(const type of ['channel','tee','ibeam']){
-  await page.locator('#file-input').setInputFiles(path.resolve('output/CaseSpatialLegacy-'+type+'.json'));
-  await page.waitForFunction(type=>window.viewer&&viewer.model.sections[0].type===type,type);
-  await page.locator('#spatial-result-table').selectOption('element');await page.locator('#spatial-result-rows tr').first().click();assert(await page.locator('#spatial-section-svg path').count());
- }
  await page.locator('#file-input').setInputFiles(path.resolve('output/CaseSpatialFrameSection.json'));await page.waitForFunction(()=>viewer.model.sections[0].type==='rectangle');await page.locator('#spatial-result-table').selectOption('element');await page.locator('#spatial-result-rows tr').first().click();
  await page.locator('#spatial-result-quantity').selectOption('sigmaMax');assert(await page.locator('#spatial-section-svg path').count());assert.match(await page.locator('#spatial-section-cut').innerText(),/σmax=/);assert(await page.locator('#spatial-result-chart').isVisible());
  await page.locator('#spatial-result-section-contours').check();await page.locator('#spatial-result-section-count').fill('10');await page.locator('#spatial-result-section-count').dispatchEvent('change');

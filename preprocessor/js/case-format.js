@@ -194,7 +194,7 @@
     if (!hasNodes) throw new Error('The input file contains no nodes section.');
     if (!hasElements) throw new Error('The input file contains no element section.');
     global.MKEFSections.sync(model);
-    var errors = validateModel(model, { requireAnalysis: false });
+    var errors = validateModel(model);
     if (errors.length) throw new Error(errors[0]);
     return model;
   }
@@ -243,6 +243,7 @@
       if (model.elementType === 112 && load.mz !== 0) add(label + ' gives Mz to a truss node.');
       if (load.type === 11 && (!finite(load.frequency) || load.frequency <= 0)) add(label + ' harmonic frequency must be positive and finite.');
       if (model.analysis.type === 'static' && load.type !== 10) add(label + ' is not valid for static analysis.');
+      if (model.analysis.type === 'transient' && load.type === 10) add(label + ' is not valid for transient analysis; use type 11, 12 or 13.');
       if (model.analysis.type === 'modal') add(label + ' is not valid for modal analysis.');
     });
     (model.elementLoads || []).forEach(function (load, index) {

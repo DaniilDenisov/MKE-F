@@ -6,7 +6,7 @@ try{const page=await browser.newPage({viewport:{width:1450,height:1100}}),errors
 await page.goto('file://'+root+'/preprocessor/index.html');await captureEditor(page);await page.locator('#file-input').setInputFiles(root+'/examples/cases/CaseSpatialFrame.txt');await page.waitForFunction(()=>document.querySelector('#case-status').textContent.includes('CaseSpatialFrame'));
 const original=await page.locator('#spatial-current').inputValue();
 await page.locator('#analysis-type').selectOption('transient');
-assert.match(await page.locator('#spatial-current').inputValue(),/transient/);await page.locator('#undo').click();assert.equal(await page.locator('#spatial-current').inputValue(),original);
+assert.equal(await page.locator('#analysis-type').inputValue(),'static');assert.equal(await page.locator('#spatial-current').inputValue(),original);assert.match(await page.locator('#spatial-edit-status').innerText(),/Load law/);
 await page.locator('[data-condition-tool="supports"]').click();await page.locator('#condition-node').fill('2');await page.locator('#condition-uz').check();await page.locator('#condition-apply').click();assert.equal(await page.locator('#condition-supports-rows tr').count(),2);
 await page.locator('#condition-supports-rows tr').nth(1).click();await page.locator('#condition-uz').uncheck();await page.locator('#condition-uy').check();await page.locator('#condition-apply').click();assert.match(await page.locator('#condition-supports-rows tr').nth(1).innerText(),/uy/);
 await page.locator('#condition-delete').click();assert.equal(await page.locator('#condition-supports-rows tr').count(),1);await page.locator('#undo').click();assert.equal(await page.locator('#condition-supports-rows tr').count(),2);await page.locator('#redo').click();
@@ -22,7 +22,9 @@ await page.locator('[data-condition-tool="releases"]').click();await page.locato
 await page.locator('#condition-Mx').uncheck();await page.locator('#condition-My').check();await page.locator('#condition-Mz').check();await page.locator('#condition-apply').click();assert.equal(await page.locator('#condition-releases-rows tr').count(),2);await page.locator('#undo').click();assert.equal(await page.locator('#condition-releases-rows tr').count(),0);await page.locator('#redo').click();assert.equal(await page.locator('#condition-releases-rows tr').count(),2);
 await page.locator('#condition-releases-rows tr').first().click();await page.locator('#condition-delete').click();assert.equal(await page.locator('#condition-releases-rows tr').count(),0);
 await page.locator('#analysis-type').selectOption('modal');assert.match(await page.locator('#spatial-edit-status').innerText(),/loads/);
+await page.locator('#condition-loads-rows tr').first().click();await page.locator('#condition-delete').click();
 await page.locator('#analysis-type').selectOption('transient');
+await page.locator('[data-condition-tool="loads"]').click();await page.locator('#condition-node').fill('2');await page.locator('#condition-type').selectOption('12');await page.locator('#condition-Fz').fill('100');await page.locator('#condition-apply').click();
 for(const type of ['11','12','13']){
   await page.locator('[data-condition-tool="loads"]').click();await page.locator('#condition-type').selectOption(type);await page.locator('#condition-Fx').fill('50');
   await pickNode(page,1);assert.equal(await page.locator('#condition-Fx').inputValue(),'50');assert.equal(await page.locator('#condition-node').inputValue(),'2');

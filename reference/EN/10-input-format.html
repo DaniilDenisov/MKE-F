@@ -87,7 +87,7 @@
 
       <section aria-labelledby="syntax-title">
         <h2 id="syntax-title">3. General syntax rules</h2>
-        <p>The parser reads to EOF. Blank lines and lines whose first non-whitespace character is <code>#</code> are skipped. A normal section marker is followed by an integer record count and exactly that many nonempty data lines. The optional section <code>analysis</code> is an exception and contains a single configuration record.</p>
+        <p>The parser reads to EOF. Blank lines and lines whose first non-whitespace character is <code>#</code> are skipped. A normal section marker is followed by an integer record count and exactly that many nonempty data lines. The required section <code>analysis</code> is an exception and contains a single configuration record.</p>
         <pre><code>section_marker
 record_count
 comma,separated,record
@@ -97,7 +97,7 @@ comma,separated,record
           <table>
             <thead><tr><th>Section</th><th>Repeatable</th><th>Rule</th></tr></thead>
             <tbody>
-              <tr><td><code>analysis</code></td><td>No</td><td>Optional configuration for <code>RunSelected</code>.</td></tr>
+              <tr><td><code>analysis</code></td><td>No</td><td>Required configuration for <code>RunSelected</code>.</td></tr>
               <tr><td><code>nodes</code></td><td>No</td><td>Exactly one nonempty section.</td></tr>
               <tr><td><code>elems_112</code> or <code>elems_113</code></td><td>Yes</td><td>Records are appended; the type must be identical across all sections.</td></tr>
               <tr><td><code>bcfix</code></td><td>Yes</td><td>Records are appended; zero records are allowed.</td></tr>
@@ -116,8 +116,8 @@ static</code></pre>
 modal</code></pre>
         <pre><code>analysis
 transient,timeStep,duration,monitorNode,monitorDOF</code></pre>
-        <p>This section is optional for backward compatibility and may appear only once. For transient analysis, the step must be positive, duration must span at least one step, and the monitoring node and local DOF must be within model bounds. <code>RunSelected</code> runs the specified analysis; without the section, use the original explicit methods.</p>
-        <p>Static analysis allows type 10 nodal loads and type 20 uniform and type 21 linear element loads; modal analysis allows no loads; transient analysis allows types 10–13. Type 10 retains its historical single-step pulse meaning in transient analysis.</p>
+        <p>This section is required and must appear exactly once. For transient analysis, the step must be positive, duration must span at least one step, and the monitoring node and local DOF must be within model bounds. <code>RunSelected</code> runs the specified analysis. TXT without this section is rejected on input.</p>
+        <p>Static analysis allows type 10 nodal loads and type 20 uniform and type 21 linear element loads; modal analysis allows no loads; transient analysis allows types 11–13. Type 12 specifies a one-step pulse at t=dt.</p>
       </section>
 
       <section aria-labelledby="nodes-title">
@@ -173,7 +173,7 @@ type,node,0,0,0</code></pre>
           <table>
             <thead><tr><th>Section / type</th><th>Record</th><th><code>RunStatic</code></th><th><code>RunTransient</code></th></tr></thead>
             <tbody>
-              <tr><td><code>bcforce_stat</code> / 10</td><td><code>10,node,Fx,Fy,Mz</code></td><td>Constant static load.</td><td>Backward-compatible rectangular pulse only at <em>t=dt</em>; discrete impulse <em>F0·dt</em>.</td></tr>
+              <tr><td><code>bcforce_stat</code> / 10</td><td><code>10,node,Fx,Fy,Mz</code></td><td>Constant static load.</td><td>Not supported.</td></tr>
               <tr><td><code>bcforce_harm</code> / 11</td><td><code>11,node,Fx,Fy,Mz,frequencyHz</code></td><td>Not supported.</td><td><em>F(t)=F0·sin(2πft)</em>; <em>f</em> must be strictly positive.</td></tr>
               <tr><td><code>bcforce_pulse</code> / 12</td><td><code>12,node,Fx,Fy,Mz</code></td><td>Not supported.</td><td>Explicit single-step pulse at <em>t=dt</em>.</td></tr>
               <tr><td><code>bcforce_step</code> / 13</td><td><code>13,node,Fx,Fy,Mz</code></td><td>Not supported.</td><td>Constant step in every column, including <em>t=0</em>.</td></tr>
@@ -186,6 +186,9 @@ type,node,0,0,0</code></pre>
       <section aria-labelledby="example-title">
         <h2 id="example-title">8. Complete frame example</h2>
         <pre><code># A 0.5 m cantilever with a +100 N force along Y
+analysis
+static
+
 nodes
 2
 0,0,0
@@ -294,7 +297,7 @@ result.displacementAmplitudeSpectrum</code></pre>
       <section aria-labelledby="dynamic-title">
         <h2 id="dynamic-title">10. Modal and transient analyses</h2>
         <pre><code>problem = StructFEProblem(fullfile( ...
-    "examples", "cases", "CaseBeam.txt"));
+    "examples", "cases", "CaseBeamModal.txt"));
 modalResult = problem.RunModal();
 modalResult.frequenciesHz
 
@@ -311,7 +314,7 @@ dynamicResult = problem.RunTransient(1e-4, 1e-2, 3, 2, initial);</code></pre>
         <p>If the file contains section <code>analysis</code>, run the same analysis as <code>result = problem.RunSelected()</code>. A configured transient run uses zero initial displacements and velocities.</p>
         <div class="callout callout--inspect">
           <span class="callout__title">Running a file through the GUI</span>
-          <p>From the repository root, run <code>docker compose up --build</code> (or <code>docker-compose up --build</code>), open <a href="http://127.0.0.1:8080/preprocessor/">http://127.0.0.1:8080/preprocessor/</a> and load the TXT file with <strong>Open TXT</strong>. For an old file without section <code>analysis</code> first select the analysis type and, if needed, transient parameters. The button <strong>Run analysis</strong> serializes the validated model and calls <code>RunSelected()</code> in the Octave container. After <strong>Completed</strong>, click <strong>Open result</strong> to open a separate postprocessor tab without manual file transfer.</p>
+          <p>From the repository root, run <code>docker compose up --build</code> (or <code>docker-compose up --build</code>), open <a href="http://127.0.0.1:8080/preprocessor/">http://127.0.0.1:8080/preprocessor/</a> and load the TXT file with <strong>Open TXT</strong>. The TXT must include an <code>analysis</code> section with valid settings. The button <strong>Run analysis</strong> serializes the validated model and calls <code>RunSelected()</code> in the Octave container. After <strong>Completed</strong>, click <strong>Open result</strong> to open a separate postprocessor tab without manual file transfer.</p>
         </div>
       </section>
 
@@ -349,7 +352,7 @@ dynamicResult = problem.RunTransient(1e-4, 1e-2, 3, 2, initial);</code></pre>
               <tr><td><code>MKEF:UnsupportedConstraintValue</code></td><td>The final three fields of <code>bcfix</code> contain a nonzero prescribed displacement.</td></tr>
               <tr><td><code>MKEF:UnsupportedLoadComponent</code></td><td>A truss node specifies nonzero <code>Mz</code>.</td></tr>
               <tr><td><code>MKEF:AnalysisLoadMismatch</code></td><td>Load type is incompatible with the configured analysis.</td></tr>
-              <tr><td><code>MKEF:MissingAnalysisConfiguration</code></td><td><code>RunSelected</code> was called for an old file without section <code>analysis</code>.</td></tr>
+              <tr><td><code>MKEF:MissingAnalysisConfiguration</code></td><td>The input TXT is missing its required <code>analysis</code> section.</td></tr>
             </tbody>
           </table>
         </div>
@@ -406,7 +409,7 @@ element_sections
       <section id="all-examples" aria-labelledby="all-examples-title">
         <h2 id="all-examples-title">All examples</h2>
         <p>Download a TXT file and open it from disk in the <a href="../../preprocessor/index.html">preprocessor</a> using Open TXT.</p>
-        <p>For legacy files without an analysis section, select the analysis type and, if needed, time parameters in the preprocessor.</p>
+        <p>All examples contain an explicit analysis section; transient pulses use type 12.</p>
         <div class="table-wrap">
           <table>
             <thead><tr><th scope="col">Analysis</th><th scope="col">Example</th><th scope="col">Download TXT</th></tr></thead>
@@ -436,13 +439,15 @@ element_sections
               <tr><td>Transient</td><td>Beam under harmonic loading, with comments</td><td><a href="../../examples/cases/CasePreprocessorTransient.txt" download>CasePreprocessorTransient.txt</a></td></tr>
               <tr><td>Transient</td><td>Frame with MPC under a step load</td><td><a href="../../examples/cases/CaseMPCTransient.txt" download>CaseMPCTransient.txt</a></td></tr>
               <tr><td>Transient</td><td>Beam with Mz releases under a step load</td><td><a href="../../examples/cases/CaseReleaseTransient.txt" download>CaseReleaseTransient.txt</a></td></tr>
-              <tr><td>Not set (legacy format)</td><td>Beam for comparison with ANSYS</td><td><a href="../../examples/cases/ANSYSBeamStatic01.txt" download>ANSYSBeamStatic01.txt</a></td></tr>
-              <tr><td>Not set (legacy format)</td><td>Single-element beam</td><td><a href="../../examples/cases/Case1ElementBeam.txt" download>Case1ElementBeam.txt</a></td></tr>
-              <tr><td>Not set (legacy format)</td><td>Beam with a nodal force</td><td><a href="../../examples/cases/CaseBeam.txt" download>CaseBeam.txt</a></td></tr>
-              <tr><td>Not set (legacy format)</td><td>Beam for transient analysis with a constant force</td><td><a href="../../examples/cases/CaseBeamDyn.txt" download>CaseBeamDyn.txt</a></td></tr>
-              <tr><td>Not set (legacy format)</td><td>Beam under harmonic loading</td><td><a href="../../examples/cases/CaseBeamFreq.txt" download>CaseBeamFreq.txt</a></td></tr>
-              <tr><td>Not set (legacy format)</td><td>Truss under harmonic loading</td><td><a href="../../examples/cases/CaseATransSite.txt" download>CaseATransSite.txt</a></td></tr>
-              <tr><td>Not set (legacy format)</td><td>Frame from the Mario Paz example</td><td><a href="../../examples/cases/CaseFig11.7p363 MarioPaz.txt" download>CaseFig11.7p363 MarioPaz.txt</a></td></tr>
+              <tr><td>static</td><td>Beam for comparison with ANSYS</td><td><a href="../../examples/cases/ANSYSBeamStatic01.txt" download>ANSYSBeamStatic01.txt</a></td></tr>
+              <tr><td>static</td><td>Single-element beam</td><td><a href="../../examples/cases/Case1ElementBeam.txt" download>Case1ElementBeam.txt</a></td></tr>
+              <tr><td>static</td><td>Beam with a nodal force</td><td><a href="../../examples/cases/CaseBeam.txt" download>CaseBeam.txt</a></td></tr>
+              <tr><td>modal</td><td>Free beam vibration</td><td><a href="../../examples/cases/CaseBeamModal.txt" download>CaseBeamModal.txt</a></td></tr>
+              <tr><td>transient</td><td>Single-element beam under a pulse</td><td><a href="../../examples/cases/Case1ElementBeamTransient.txt" download>Case1ElementBeamTransient.txt</a></td></tr>
+              <tr><td>transient</td><td>Beam under a one-step pulse</td><td><a href="../../examples/cases/CaseBeamDyn.txt" download>CaseBeamDyn.txt</a></td></tr>
+              <tr><td>transient</td><td>Beam under harmonic loading</td><td><a href="../../examples/cases/CaseBeamFreq.txt" download>CaseBeamFreq.txt</a></td></tr>
+              <tr><td>transient</td><td>Truss under harmonic loading</td><td><a href="../../examples/cases/CaseATransSite.txt" download>CaseATransSite.txt</a></td></tr>
+              <tr><td>modal</td><td>Frame from the Mario Paz example</td><td><a href="../../examples/cases/CaseFig11.7p363 MarioPaz.txt" download>CaseFig11.7p363 MarioPaz.txt</a></td></tr>
             </tbody>
           </table>
         </div>
@@ -467,7 +472,7 @@ element_sections
 1
 1,1,0</code></pre>
 <p>Missing <code>torsion</code> means automatic J. Optional forms are <code>"torsion":{"mode":"auto"}</code> and <code>"torsion":{"mode":"manual","value":0.00001}</code>. An assigned frame's assignment angle <strong>replaces</strong> the angle in its numerical row. Normalized export makes both angles and A/Iy/Iz/J consistent with the catalog.</p>
-<p>Before edits, downloading an imported model returns the source TXT; after edits it returns normalized TXT. The original remains separately downloadable. Geometry drafts can be saved, but calculation requires elements, an analysis and valid conditions. <a href="3d-quick-start.html">3D workflow and limitations</a> · <a href="../../examples/cases/CaseSpatialQuickStart.txt" download>complete TXT example</a>.</p></section>
+<p>Before edits, downloading an imported model returns the source TXT; after edits it returns normalized TXT. The original remains separately downloadable. Incomplete geometry can be edited in memory. Saving TXT and running a calculation require elements, an analysis and valid conditions. <a href="3d-quick-start.html">3D workflow and limitations</a> · <a href="../../examples/cases/CaseSpatialQuickStart.txt" download>complete TXT example</a>.</p></section>
 </main>
   </div>
 

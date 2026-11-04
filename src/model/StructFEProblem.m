@@ -8,16 +8,8 @@ classdef StructFEProblem < handle
         K
         % Матрица масс.
         M
-        % Вектор правой части.
-        F
         % Сетка с ГУ.
         mesh
-        % Шаг по времени (def=0).
-        ts=0
-        % Число шагов по времени (def=0).
-        tsNum=0
-        % Время задачи (def=0).
-        tDur=0
         % Вывод диагностической информации в командное окно.
         verbose=false
         % Построение сетки и графиков результатов.
@@ -71,8 +63,6 @@ classdef StructFEProblem < handle
             if obj.verbose
                 obj.mesh.DispIM();
             end
-            % Создание глобальной матрицы жесткости, вектора F и матрицы
-            % масс в зависимости от кол-ва СС на узел.
             % Определение общего числа степеней свободы в системе
             % и сборка разреженных глобальных матриц из элементных триплетов.
             systemDOF = obj.mesh.numberOfDOFs;
@@ -80,27 +70,6 @@ classdef StructFEProblem < handle
                 obj.mesh.allMeshElems, systemDOF);
             obj.K = GlobK;
             obj.M = GlobM;
-            % Вектор правой части (сил). Преаллокация без ГУ.
-            obj.F = zeros(systemDOF,1);
-
-        end
-        % Совместимый метод возвращает разбиение СС, не изменяя МЖ и ММ.
-        function [fixedDOFs, freeDOFs] = ApplyFixBC(this)
-            model = this.GetAnalysisModel();
-            [fixedDOFs, freeDOFs] = partitionDOFs(model);
-        end
-        % Совместимый метод собирает свежий вектор или историю нагрузок.
-        function ApplyForceBC(this)
-            model = this.GetAnalysisModel();
-            if this.ts == 0
-                this.F = buildStaticLoad(model);
-            else
-                if this.tsNum < 1
-                    error('MKEF:InvalidTransientOptions', ...
-                        'A positive tsNum is required to build a load history.');
-                end
-                this.F = buildTransientLoad(model, this.ts, this.tsNum);
-            end
         end
         % Возвращает копию данных модели для чистого численного ядра.
         function model = GetAnalysisModel(this)
@@ -126,13 +95,12 @@ classdef StructFEProblem < handle
                 disp(result.frequenciesHz);
             end
         end
-        % Запуск расчёта, выбранного в необязательной секции analysis.
+        % Запуск расчёта, выбранного в обязательной секции analysis.
         function result = RunSelected(this)
             configuration = this.mesh.analysisConfiguration;
             if isempty(fieldnames(configuration))
                 error('MKEF:MissingAnalysisConfiguration', ...
-                    ['The input file has no analysis section. Use RunStatic, ' ...
-                     'RunModal, or RunTransient explicitly.']);
+                    'The input TXT requires an analysis section.');
             end
             switch configuration.type
                 case 'static'

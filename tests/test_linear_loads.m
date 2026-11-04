@@ -68,7 +68,7 @@ bad=t; bad.elementData.type=112; mustFail(@() buildStaticLoad(bad));
 mixed = fromText([source sprintf('\neload_uniform\n1\n20,1,1,2,0\neload_linear\n1\n21,1,1,0,1,0,0\n')]);
 assert(numel(mixed.mesh.elementLoads)==3);
 
-% Export fixtures also exercise v5 with optional MPC and private rotations.
+% Export fixtures also exercise v8 with optional MPC and private rotations.
 for name = {'CaseLinearFrame','CaseTriangleFrame','CaseLinearRelease','CaseLinearMPC'}
     p = StructFEProblem(exampleCasePath([name{1} '.txt']));
     model = p.GetAnalysisModel(); r = p.RunStatic();

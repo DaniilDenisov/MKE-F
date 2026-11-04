@@ -7,7 +7,7 @@ const near=(a,b)=>assert(Math.abs(a-b)<=1e-9*Math.max(1,Math.abs(b)),`${a} != ${
 const read=name=>JSON.parse(fs.readFileSync('output/'+name+'.json'));
 const load=name=>M.validateDataset(read(name));
 let cases=0;
-for(const name of fs.readdirSync('output').filter(s=>/^(SectionCase|Mises[23]D_|CaseSpatialLegacy-|CaseSectionBeam|CaseSpatialFrameSection|CaseSpatialTrussSection).*\.json$/.test(s))){
+for(const name of fs.readdirSync('output').filter(s=>/^(SectionCase|Mises[23]D_|CaseSectionBeam|CaseSpatialFrameSection|CaseSpatialTrussSection).*\.json$/.test(s))){
  const raw=JSON.parse(fs.readFileSync('output/'+name));if(raw.analysis?.type!=='static')continue;
  const ds=M.validateDataset(raw);
  for(const e of raw.model.elements){

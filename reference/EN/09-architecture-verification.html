@@ -197,7 +197,7 @@ modalResult = solveModal(model);</code></pre>
         <ol>
           <li>Indexed DOF assembly is performed by <a href="../../src/analysis/common/getNodalLoadComponents.m"><code>getNodalLoadComponents.m</code></a> together with the load builders; multiple records are checked by <code>testNodalLoadSemantics</code>.</li>
           <li>The third frame component is treated as <em>Mz</em>, and rejected for a truss; the code and test are the same.</li>
-          <li>Historical type 10 produces one rectangular step in <code>buildTransientLoad.m</code>; the exact sample is checked by <code>testNodalLoadSemantics</code>.</li>
+          <li>Type 12 produces a pulse at t=dt in <code>buildTransientLoad.m</code>; the exact sample is checked by <code>testNodalLoadSemantics</code>.</li>
           <li>Explicit <code>bcforce_pulse</code>/type 12 is read by <code>FEMesh.m</code>; input file <a href="../../tests/fixtures/CaseExplicitPulseBeam.txt"><code>CaseExplicitPulseBeam.txt</code></a> is checked in the load test.</li>
           <li><code>bcforce_step</code>/type 13 is implemented by the same files; input file <a href="../../tests/fixtures/CaseStepBeam.txt"><code>CaseStepBeam.txt</code></a> checks a constant history.</li>
           <li>Summation of multiple loads at the same and different nodes is checked by <code>testNodalLoadSemantics</code>.</li>
@@ -217,7 +217,7 @@ modalResult = solveModal(model);</code></pre>
 
         <h3>8. Result recovery</h3>
         <ol>
-          <li>The compatibility name <a href="../../src/results/StressCalc.m"><code>StressCalc.m</code></a> delegates to the new implementation <a href="../../src/results/recoverElementResults.m"><code>recoverElementResults.m</code></a>; the interface is checked by <a href="../../tests/test_result_recovery.m"><code>tests/test_result_recovery.m</code></a>.</li>
+          <li><a href="../../src/results/recoverElementResults.m"><code>recoverElementResults.m</code></a> recovers element results; <a href="../../tests/test_result_recovery.m"><code>tests/test_result_recovery.m</code></a> checks axial forces and stresses.</li>
           <li>Truss strain, stress and axial force are calculated by <code>recoverElementResults.m</code>; straight and rotated members are checked there.</li>
           <li>The same function returns local frame end forces; diagrams were initially deferred until distributed loads were available, and the cantilever is checked by <code>testCantileverEndForces</code>.</li>
           <li>Single-member and cantilever references are in <code>tests/test_result_recovery.m</code>.</li>
@@ -255,7 +255,7 @@ modalResult = solveModal(model);</code></pre>
               <tr><td><code>MKEF:SingularStiffness</code></td><td>A mechanism, disconnected node or insufficient supports.</td><td>Connectivity, element lengths, <code>fixedDOFs</code>; do not “fix” a mechanism by adding ones to <strong>K</strong>.</td></tr>
               <tr><td><code>MKEF:SingularMass</code> or an invalid modal problem</td><td>Nonpositive or singular reduced mass.</td><td><em>ρ</em>, <em>A</em>, <em>I</em>, free DOFs and connectivity.</td></tr>
               <tr><td>Unexpected reaction or force sign</td><td>Global and local systems, or forces on the structure and on an element, have been confused.</td><td><code>element.transformation</code>, the order of <code>localEndForces</code> and chapter 8.</td></tr>
-              <tr><td>Unexpected dynamic impulse</td><td>Type 10 was mistaken for a constant step.</td><td>Use type 12 for an explicit pulse and type 13 for a step; see chapter 4.</td></tr>
+              <tr><td>Unexpected dynamic impulse</td><td>Type 12 was mistaken for a constant step.</td><td>Use type 12 for an explicit pulse and type 13 for a step; see chapter 4.</td></tr>
               <tr><td>Error with filename and line number</td><td>A section format rule was violated.</td><td>Compare the record with chapter 10; retain the line number in any error report.</td></tr>
             </tbody>
           </table>
@@ -266,7 +266,7 @@ modalResult = solveModal(model);</code></pre>
         <h2 id="sources-title">Chapter source code</h2>
         <ul>
           <li><a href="../../src/model/FEMesh.m"><code>FEMesh.m</code></a> — parser, validation and mesh data;</li>
-          <li><a href="../../src/model/createAnalysisModel.m"><code>createAnalysisModel.m</code></a> and <a href="../../src/model/StructFEProblem.m"><code>StructFEProblem.m</code></a> — model boundary and compatibility facade;</li>
+          <li><a href="../../src/model/createAnalysisModel.m"><code>createAnalysisModel.m</code></a> and <a href="../../src/model/StructFEProblem.m"><code>StructFEProblem.m</code></a> — model boundary and execution facade;</li>
           <li><a href="../../src/model/assembleGlobalMatrices.m"><code>assembleGlobalMatrices.m</code></a> — sparse assembly;</li>
           <li><a href="../../scripts/run_octave_tests.m"><code>run_octave_tests.m</code></a> and <a href="../../tests/run_verification_tests.m"><code>tests/run_verification_tests.m</code></a> — common verification entry points.</li>
         </ul>

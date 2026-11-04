@@ -46,7 +46,7 @@ export class ConditionLayer {
       const owner={kind:r.kind||'loads',index:r.ownerIndex===undefined?index:r.ownerIndex},p=baseFor(s.model.nodes[r.node-1],owner);if(!p)return;
       r.components.forEach((value,j)=>{if(!value)return;const dir=v(axes[j%3]),color=r.kind==='supportReactions'?0x7b3fa1:r.kind==='mpcForces'?0xb66a13:palette[j%3];if(j<3)arrow(p,dir.multiplyScalar(Math.sign(value)),pixel*36,color,owner);else arc(p,dir,Math.sign(value),false,color,owner);});
       if(!r.components.some(Boolean)){line(p.clone().addScalar(-pixel*3),p.clone().addScalar(pixel*3),0x787f88,owner);}
-      badge(p,r.kind?(r.kind==='supportReactions'?'Rsupport · N':'RMPC · N')+r.node:'F'+(index+1)+' · '+(r.type===10?(this.data.analysisType==='transient'?'pulse 10':'static'):r.type===11?'sin '+r.frequency+' Hz':r.type===12?'pulse':'step'),owner);
+      badge(p,r.kind?(r.kind==='supportReactions'?'Rsupport · N':'RMPC · N')+r.node:'F'+(index+1)+' · '+(r.type===10?'static':r.type===11?'sin '+r.frequency+' Hz':r.type===12?'pulse':'step'),owner);
     });
     if(this.layers.loads)(this.data.elementLoads||[]).forEach((r,index)=>{
       const owner={kind:'elementLoads',index},e=s.model.elements[r.elementId-1],a=local(s.model.nodes[e.node1-1]),b=local(s.model.nodes[e.node2-1]);

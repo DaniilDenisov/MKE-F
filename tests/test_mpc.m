@@ -31,8 +31,8 @@ for name = {'displacements','velocities','accelerations'}
 end
 assert(norm(t.reactions-t.supportReactions-t.mpcForces,inf) < 1e-6);
 bad = zeros(m.numberOfDOFs,1); bad(8) = 1;
-expect('MKEF:InvalidInitialConditions',@() solveTransient(m,struct('timeStep',1e-4,'duration',.001,'initialDisplacement',bad)));
-expect('MKEF:InvalidInitialConditions',@() solveTransient(m,struct('timeStep',1e-4,'duration',.001,'initialVelocity',bad)));
+expect('MKEF:InvalidInitialConditions',@() solveTransient(dynamic,struct('timeStep',1e-4,'duration',.001,'initialDisplacement',bad)));
+expect('MKEF:InvalidInitialConditions',@() solveTransient(dynamic,struct('timeStep',1e-4,'duration',.001,'initialVelocity',bad)));
 chain = m;
 chain.multiPointConstraints(2) = equation(2,2,[1 2 .25;3 1 .1]);
 chain.multiPointConstraints(3) = equation(3,1,[2 1 .8]);

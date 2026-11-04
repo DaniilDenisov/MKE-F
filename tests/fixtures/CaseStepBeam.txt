@@ -11,3 +11,5 @@ bcfix
 bcforce_step
 1
 13,2,0,-1000,25
+analysis
+transient,0.0001,0.01,2,2

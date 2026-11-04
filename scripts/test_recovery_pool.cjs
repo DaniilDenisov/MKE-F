@@ -2,7 +2,6 @@ const fs=require('node:fs'),assert=require('node:assert/strict'),path=require('n
 const {chromium}=require(process.env.MKEF_PLAYWRIGHT_MODULE||'playwright'),context=require('./recovery-test-context.cjs');
 const root=path.resolve(__dirname,'..'),directory=root+'/output/recovery-pool',read=file=>JSON.parse(fs.readFileSync(file));
 const M=context(),S=M.spatialResults;
-M.legacySpatialOperators=()=>{throw Error('Table recovery called legacy formulas');};
 function compare(inline,table){
   const before=JSON.stringify(table),a=M.validateDataset(inline),b=M.validateDataset(table);
   const count=inline.analysis.type==='modal'?inline.analysis.frequenciesHz.length:inline.analysis.type==='transient'?inline.analysis.time.length:1;
@@ -65,7 +64,6 @@ console.log('Pool recovery: 12 paired cases, solved grids, 6000 synthetic member
     page.on('pageerror',e=>errors.push(e.message));
     await page.goto('file://'+root+'/postprocessor/index.html');
     await page.evaluate(()=>{
-      MKEFPost.legacySpatialOperators=()=>{throw Error('Legacy recovery called');};
       MKEFPost.SpatialPost=new Proxy(MKEFPost.SpatialPost,{construct(T,args){window.viewer=Reflect.construct(T,args);return viewer;}});
     });
     for(const name of ['solved-grid-modal','solved-grid-transient']){
