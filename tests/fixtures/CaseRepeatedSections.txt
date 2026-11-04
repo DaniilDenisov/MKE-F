@@ -32,3 +32,5 @@ bcforce_stat
 bcforce_stat
 1
 10,2,10,0,0
+analysis
+static

@@ -95,7 +95,6 @@
   P.conditionEditors.loads=function(form,value,creating){
     var analysis=this.model.analysis.type;
     var options=analysis==='static'?[[10,'10 · static']]:analysis==='transient'?[[11,'11 · harmonic'],[12,'12 · pulse'],[13,'13 · step']]:[];
-    if(!creating&&value.type===10&&analysis==='transient')options.unshift([10,'10 · imported pulse']);
     if(!options.length)el('p','Choose static or transient analysis first.',form);
     var node=field(form,'node','Node',value.node),type=field(form,'type','Law',options.some(function(o){return o[0]===value.type;})?value.type:options[0]?.[0],options),freq=field(form,'frequency','Frequency, Hz',value.frequency||1);
     var ids=M.editorAdapter.physicalDOFs(this.model),inputs=ids.map(function(i){var name=['Fx','Fy','Fz','Mx','My','Mz'][i];return field(form,name,name,(value.components||[])[i]||0);});

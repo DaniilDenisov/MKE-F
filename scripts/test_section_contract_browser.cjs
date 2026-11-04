@@ -7,7 +7,7 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
    const file=path.resolve('output/section-contract/'+name+'.json'),raw=JSON.parse(fs.readFileSync(file)),spatial=raw.model.dimension===3;
    await page.goto('file://'+path.resolve('postprocessor/index.html'));
    await page.evaluate(()=>{
-    for(const [o,k]of [[MKEFSections,'properties'],[MKEFSpatialSections,'properties'],[MKEFSections,'stress'],[MKEFSpatialSections,'stress'],[MKEFSections,'roots']])o[k]=()=>{throw Error('Unexpected browser calculation: '+k);};
+    for(const [o,k]of [[MKEFSections,'properties'],[MKEFSpatialSections,'properties'],[MKEFSpatialSections,'stress'],[MKEFSections,'roots']])o[k]=()=>{throw Error('Unexpected browser calculation: '+k);};
    });
    await page.locator('#file-input').setInputFiles(file);
    await page.waitForFunction(()=>!document.querySelector('#download-json').disabled);

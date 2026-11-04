@@ -1,5 +1,5 @@
 function test_analysis_configuration()
-%TEST_ANALYSIS_CONFIGURATION Verify configured and legacy case execution.
+%TEST_ANALYSIS_CONFIGURATION Verify configured case execution.
 
 staticProblem = StructFEProblem(exampleCasePath( ...
     'CasePreprocessorStatic.txt'));
@@ -30,11 +30,6 @@ explicitTransient = transientProblem.RunTransient(1e-4, 1e-3, 3, 2);
 assertClose(selectedTransient.displacements, ...
     explicitTransient.displacements, ...
     'Configured transient result differs from RunTransient.');
-
-legacyProblem = StructFEProblem(exampleCasePath('Case1ElementBeam.txt'));
-assert(isempty(fieldnames(legacyProblem.mesh.analysisConfiguration)));
-assertThrows('MKEF:MissingAnalysisConfiguration', ...
-    @() legacyProblem.RunSelected());
 
 fixtures = fullfile('tests', 'fixtures');
 assertThrows('MKEF:DuplicateInputSection', ...

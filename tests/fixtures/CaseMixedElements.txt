@@ -9,3 +9,5 @@ elems_112
 elems_113
 1
 113,2,3,0.01,2e11,7850,1e-5
+analysis
+static

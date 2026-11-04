@@ -12,3 +12,5 @@ bcfix
 bcforce_stat
 1
 10,2,1000,0,0
+analysis
+static

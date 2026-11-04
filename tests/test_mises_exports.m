@@ -21,5 +21,5 @@ for i=1:numel(types)
         if dimension==3, assert(isequal(size(result.elementResults(1).sectionForceCoefficients),[6 4])); end
     end
 end
-fprintf('Static Mises input fixtures: five shapes, existing 2D/v6 and 3D/v7 contracts PASS\n');
+fprintf('Static Mises input fixtures: five shapes, existing 2D/v8 and 3D/v8 contracts PASS\n');
 end

@@ -8,7 +8,7 @@ from the original TXT model; there is no downgrade mode or converter.
 exportPostprocessorData(model, result, 'result.json', struct('formatVersion', 8));
 ```
 
-V8 is the default. Explicit `formatVersion=8` is accepted; `'legacy'` and all
+V8 is the default. Explicit `formatVersion=8` is accepted; all
 other version values are errors. The viewer rejects old versions before scene
 creation and the backend does not publish results from an old solver.
 
@@ -18,9 +18,8 @@ works with the default or explicit v8. Static results omit operators in every mo
 
 ## Compatibility and provenance
 
-`version` is 8; `model.dimension` is explicitly 2 or 3. Spatial data retains
-the v7 coordinate conventions and analysis arrays. Planar data follows the
-contract below. Older viewers reject v8. The exporter adds:
+`version` is 8; `model.dimension` is explicitly 2 or 3. Both coordinate and
+analysis contracts are described below. The exporter adds:
 
 ```json
 {
@@ -156,6 +155,62 @@ Missing required snapshots or static summaries are errors. Development v8
 files exported before this contract change must be regenerated from TXT;
 the viewer never silently reconstructs missing properties or static extrema.
 
+## Spatial data (dimension 3)
+
+Element families are 1133 (truss, `dofPerNode=3`) and 1436 (frame,
+`dofPerNode=6`). Physical nodal order is ux, uy, uz, thetaX, thetaY, thetaZ,
+with translations only for a truss. Node and element IDs are contiguous and
+one-based. `numberOfDOFs`, `dofRegistry`, `dofMap`, `nodes`, `elements`,
+`supports`, `nodalLoads`, `elementLoads`, `mpcs`, `releases`, `warnings`,
+`dependentDOFs` and `independentDOFs` describe the assembled model.
+
+Frame rotational system coordinates may be a mixed active basis; released
+element-end rotations have private coordinates. `dofMap` columns 4–6 therefore
+are basis slots, not necessarily physical thetaX/Y/Z. `nodeKinematics` is COO
+`{rows, columns, entries}` with one-based `[physicalRow, systemDOF, coefficient]`
+entries. It maps signed system displacements to physical nodal components; it
+is not a transformation for constrained reaction forces. Each element carries
+`globalDOFs`, `localFromSystem`, `localBasis` (axes as rows), `referenceY` and
+`sectionAngle`. Private rotations do not become shared nodal components.
+
+For assigned frame sections, only `rectangle`, `circle`, `square_tube`,
+`rectangular_tube` and `circular_tube` are accepted. The same policy applies at
+TXT import, editing, export and solving. Unassigned catalog entries do not
+restrict a model; all catalog profiles remain available to trusses and 2D.
+
+| Analysis | Required data | Optional data |
+| --- | --- | --- |
+| static | `displacements`, `loadVector`, `reactions`, `elementResults`, `equilibriumResidual`, `supportReactions`, `mpcForces`, `mpcMultipliers` | Section extrema depend on section geometry as described above. |
+| modal | `modeShapes`, `eigenvalues`, `frequenciesHz`, `angularFrequenciesRadPerSec`, `supportReactions`, `mpcForces`, `mpcMultipliers` | No transient histories. |
+| transient | `time`, positive `timeStep`, `globalDOFIds`, `physicalDOFIds`, `sampling` | Selected histories and spectra. |
+
+Static frame force coefficients are 6×4, rows N, Vy, Vz, Mx, My, Mz, ascending
+powers of xi=x/L; positive N is tension. Static element results contain local
+displacements, end forces, equivalent local load, and mean axial quantities.
+Modal matrices use system DOF × mode; mode amplitude is arbitrary.
+
+Transient matrices use selected system DOF × saved sample. `globalDOFIds`
+gives their row order. `physicalDOFIds` is always present, including when empty;
+it lists physical rows whose required system coordinates are selected.
+`sampling` contains `originalSampleCount`, `exportedSampleCount`, `timeStride`.
+The last original sample is retained even if it falls between stride positions.
+`timeStep` is the solver step, not the spacing of the exported frames.
+
+For frames, static/modal results also require `nodalSupportReactions` and
+`nodalMPCForces`, physical nodal row × mode (vectors in statics). Truss
+static/modal system forces already use physical coordinates. Transient export
+of `supportReactions` or `mpcForces` also exports its corresponding physical
+array, for both families, in `physicalDOFIds` order. Selecting `spectrum`
+exports `spectrumFrequencyHz`, `displacementAmplitudeSpectrum` (system rows)
+and `nodalDisplacementAmplitudeSpectrum` (physical rows). The latter comes
+from FFT of transformed signed histories, never from transforming unsigned
+amplitudes. Missing physical representations are invalid, not reconstructed.
+
+Unselected histories are unavailable, not zero. This includes acceleration,
+reactions and spectra; partial exports still support their available charts.
+The two coordinate representations and distinct support/MPC forces must not
+be conflated. JSON retains array dimensions for singleton and empty arrays.
+
 ## Planar data (dimension 2)
 
 The initial planar v8 implementation retains the existing planar geometry,
@@ -211,11 +266,11 @@ export, so file interpretation does not depend on which field a UI opens first.
   with a suggestion to rescale model units.
 - For each row, require `sum(abs(A[i][j]-A[j][i])) <= 1e-12*max(abs(A))`.
 - Do not require positive definiteness of K: rigid modes make it singular.
-- Retain v7 checks of IDs, DOF mappings, releases, bases and history dimensions.
+- Validate IDs, DOF mappings, releases, bases and history dimensions.
 - Require operators for modal/transient; reject them for static results.
 - For contract 2, validate the table length, all IDs/references, absence of
   inline operators and absence of unreferenced entries; validate each K/M once.
-- Never fall back to the v7 formulas for a missing or invalid v8 operator.
+- Never reconstruct a missing or invalid operator from geometry.
 
 Validation establishes structural consistency, not authenticity or proof that
 an arbitrary imported matrix matches material properties. Numerical agreement
@@ -236,8 +291,8 @@ independent solver references. It covers both families, all analyses, rotated
 geometry, uniform/linear/global loads, releases, MPC, one mode and partial
 histories. Tests include a closed-form pinned-beam moment, 22 invalid contracts,
 operator provenance, static coefficient consumers, section extrema, file opening,
-JSON downloads, SVG and the member-Mises request payload. The browser test disables
-old K/M formulas, load-coefficient reconstruction and old section-extrema search.
+JSON downloads, SVG and the member-Mises request payload. The browser checks
+operator provenance and uses an independent stress reference.
 
 `recovery/browser-measurements.json` records JSON size, parse/validation time
 and browser heap measurements for static/modal/transient files with 1 and

@@ -107,7 +107,7 @@
   byId('spatial-viewport').hidden=false;
   spatialPanel.render(state,selection);
   const errors=F.validate(state,true);elements.run.disabled=!apiReady||!!activeJobId||submitting||!!errors.length||spatialPanel.analysisInvalid;
-  elements.download.disabled=state.dimension===2&&!!errors.length;
+  elements.download.disabled=!!errors.length||spatialPanel.analysisInvalid;
   elements.undo.disabled=!spatialPanel.history.undo.length;elements.redo.disabled=!spatialPanel.history.redo.length;
   dirty=spatialPanel.history.dirty();elements.caseStatus.textContent=state.name+' · '+state.dimension+'D'+(dirty?' · modified':'');
   elements.validationStatus.textContent=errors.length?'Draft: '+errors[0]:'Model is ready to run';
@@ -142,7 +142,7 @@
   elements.caseName.onchange=()=>spatialPanel.execute(h=>h.rename(elements.caseName.value.trim()||'Case'));
   elements.undo.onclick=()=>spatialPanel.travel(true);elements.redo.onclick=()=>spatialPanel.travel(false);
   byId('reset-view').onclick=()=>spatialPanel.scene&&spatialPanel.scene.fitModel();
-  elements.download.onclick=()=>{try{const text=spatialPanel.history.text(),url=URL.createObjectURL(new Blob([text],{type:'text/plain;charset=utf-8'})),a=document.createElement('a');a.href=url;a.download=state.name.replace(/[^A-Za-z0-9._ -]/g,'_')+'.txt';a.click();setTimeout(()=>URL.revokeObjectURL(url),0);spatialPanel.history.saved=spatialPanel.history.revision;render();}catch(e){setError(e.message);}};
+  elements.download.onclick=()=>{try{const errors=F.validate(state,true);if(errors.length)throw new Error(errors.join('\n'));const text=spatialPanel.history.text(),url=URL.createObjectURL(new Blob([text],{type:'text/plain;charset=utf-8'})),a=document.createElement('a');a.href=url;a.download=state.name.replace(/[^A-Za-z0-9._ -]/g,'_')+'.txt';a.click();setTimeout(()=>URL.revokeObjectURL(url),0);spatialPanel.history.saved=spatialPanel.history.revision;render();}catch(e){setError(e.message);}};
   elements.run.onclick=submitCurrentCase;elements.cancelRun.onclick=cancelActiveJob;
   document.addEventListener('keydown',event=>{if(event.isComposing||document.querySelector('dialog[open]'))return;const typing=event.target.closest('input,textarea,select,[contenteditable="true"]');if(!typing&&(event.ctrlKey||event.metaKey)&&['z','y'].includes(event.key.toLowerCase())){event.preventDefault();spatialPanel.travel(event.key.toLowerCase()==='z'&&!event.shiftKey);}else if(!typing&&event.key==='Delete'&&!event.ctrlKey&&!event.metaKey&&!event.altKey){event.preventDefault();spatialPanel.confirmDelete();}else if(event.key==='Escape'){event.preventDefault();spatialPanel.setTool('select');selection=null;render();}});
   const drop=byId('drop-zone');drop.addEventListener('dragover',e=>e.preventDefault());drop.addEventListener('drop',e=>{e.preventDefault();openFile(e.dataTransfer.files[0]);});

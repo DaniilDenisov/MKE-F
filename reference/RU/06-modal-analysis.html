@@ -98,7 +98,7 @@ modeShapes(freeDOFs, :) = reducedModeShapes;</code></pre>
 setup;
 
 problem = StructFEProblem(fullfile( ...
-    'examples', 'cases', 'CaseBeam.txt'));
+    'examples', 'cases', 'CaseBeamModal.txt'));
 model = problem.GetAnalysisModel();
 result = problem.RunModal();
 
@@ -143,7 +143,7 @@ exportPostprocessorData(model, result, ...
         <p>Цель — связать свободные СС с компонентами собственных форм и проверить частоты через модальную жёсткость и массу.</p>
         <figure class="model-figure lab-figure">
           <img src="assets/lab-modal-beam.svg" alt="Балка длиной 2 м, заделка слева, шарнирная неподвижная опора в середине, свободный конец справа.">
-          <figcaption>Два рамных элемента 113 из CaseBeam.txt. Балка непрерывна в узле 2: опора допускает поворот, внутренний шарнир в балку не вводится.</figcaption>
+          <figcaption>Два рамных элемента 113 из CaseBeamModal.txt. Балка непрерывна в узле 2: опора допускает поворот, внутренний шарнир в балку не вводится.</figcaption>
         </figure>
         <h3>Исходные данные и обозначения</h3>
         <p>Каждый пролёт имеет длину 1 м. <em>A = 4·10⁻⁴ м²</em>, <em>E = 200 ГПа</em>, <em>ρ = 7800 кг/м³</em>, <em>I = 5,33·10⁻⁸ м⁴</em>. Порядок полных компонент: <code>[u₁x; u₁y; θ₁; u₂x; u₂y; θ₂; u₃x; u₃y; θ₃]</code>. В модальном расчёте внешняя сила из входного файла не используется.</p>

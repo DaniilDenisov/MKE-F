@@ -8,8 +8,8 @@ for (const file of fs.readdirSync('examples/cases').filter(f=>/^CaseSpatial.*\.t
   const m = F.parse(fs.readFileSync('examples/cases/'+file,'utf8')), text = F.serialize(m), round = F.parse(text);
   for (const key of ['nodes','elements','supports','loads','elementLoads','mpcs','releases','analysis']) assert.equal(json(round[key]),json(m[key]),file+' '+key);
 }
-const source = 'analysis\ntransient,0.01,1,2,2\nnodes\n4\n0,0,0\n2,0,0\n4,0,0\n6,0,0\nelems_1436\n3\n'+[1,2,3].map(i=>`1436,${i},${i+1},1,2e11,7800,8e10,1,2,3,0,1,0,0`).join('\n')+'\nbcfix_3d\n2\n1,1,1,1,1,1,1\n2,1,0,0,0,0,0\nbcforce_stat_3d\n2\n10,2,1,2,3,4,5,6\n10,4,6,5,4,3,2,1\nmpc\n2\n2,1,0,1,1,1,1\n4,2,0,1,3,2,1\nreleases\n2\n1,2,Mx\n3,2,Mz\n';
-const validSource=source.replace('2,1,0,0,0,0,0','2,0,0,1,0,0,0').replace('10,4,6,5,4,3,2,1','10,4,6,5,4,0,0,0');
+const source = 'analysis\ntransient,0.01,1,2,2\nnodes\n4\n0,0,0\n2,0,0\n4,0,0\n6,0,0\nelems_1436\n3\n'+[1,2,3].map(i=>`1436,${i},${i+1},1,2e11,7800,8e10,1,2,3,0,1,0,0`).join('\n')+'\nbcfix_3d\n2\n1,1,1,1,1,1,1\n2,1,0,0,0,0,0\nbcforce_pulse_3d\n2\n12,2,1,2,3,4,5,6\n12,4,6,5,4,3,2,1\nmpc\n2\n2,1,0,1,1,1,1\n4,2,0,1,3,2,1\nreleases\n2\n1,2,Mx\n3,2,Mz\n';
+const validSource=source.replace('2,1,0,0,0,0,0','2,0,0,1,0,0,0').replace('12,4,6,5,4,3,2,1','12,4,6,5,4,0,0,0');
 const m = F.parse(validSource), h = new E.History(m), original = F.serialize(m);
 assert.equal(h.text(),validSource); assert(!h.dirty());
 assert.equal(h.member(0,Object.fromEntries(Object.entries(m.elements[0]).reverse())),false); assert.equal(h.undo.length,0);
@@ -25,7 +25,7 @@ assert.throws(()=>h.moveNode(1,{x:0,y:0,z:0}),/occupies/);
 assert.throws(()=>h.moveNode(1,{x:0,y:2,z:0}),/Reference Y/);
 assert.equal(F.serialize(m),before); assert.equal(h.undo.length,undoCount);
 assert.equal(h.moveNode(3,{x:7,y:0,z:1}),false);
-const draft = F.empty(1133), dh = new E.History(draft); dh.addNode({x:0,y:0,z:0}); assert.equal(F.parse(dh.text()).nodes.length,1);
+const draft = F.empty(1133), dh = new E.History(draft); dh.addNode({x:0,y:0,z:0}); assert.equal(draft.nodes.length,1);assert.throws(()=>dh.text(),/analysis configuration/);
 dh.addNode({x:1,y:0,z:0}); dh.member(null,{code:1133,node1:1,node2:2,area:1,youngsModulus:2e11,density:7800});
 assert.throws(()=>dh.member(null,{...draft.elements[0],node1:2,node2:1}),/already/);
 dh.travel(true); dh.travel(false); assert.equal(draft.elements.length,1);
@@ -33,12 +33,12 @@ for (let i=1;i<=120;i++) dh.moveNode(1,{x:1+i,y:0,z:0});
 assert.equal(dh.undo.length,100); assert(dh.undo.every(c=>c.patches.length===1 && c.patches[0].key==='nodes'));
 assert.equal(json(E.autoReference({nodes:[{x:0,y:0,z:0},{x:1,y:1,z:1}]},1,2)),'[0,1,0]');
 // Two adjacent removals followed by a remapped survivor must restore in original order.
-const stat = F.parse(validSource.replace('transient,0.01,1,2,2','static')+'eload_linear_3d\n2\n21,1,1,0,1,2,3,4,5\n21,3,2,5,4,3,2,1,0\n');
+const stat = F.parse(validSource.replace('transient,0.01,1,2,2','static').replace('bcforce_pulse_3d','bcforce_stat_3d').replaceAll('12,2,','10,2,').replaceAll('12,4,','10,4,')+'eload_linear_3d\n2\n21,1,1,0,1,2,3,4,5\n21,3,2,5,4,3,2,1,0\n');
 const sh = new E.History(stat), statText = F.serialize(stat); sh.remove({kind:'node',index:1}); assert.equal(stat.elementLoads[0].elementId,1); sh.travel(true); assert.equal(F.serialize(stat),statText);
 // Keep a solver-readable edited fixture for Octave validation.
 const solver = F.parse(fs.readFileSync('examples/cases/CaseSpatialFrame.txt','utf8')), solverHistory = new E.History(solver);
 solverHistory.moveNode(1,{x:3,y:0,z:0}); fs.writeFileSync('output/spatial-edited-frame.txt',solverHistory.text());
-const large = F.empty(1133);
+const large = F.empty(1133);large.analysis.type='static';
 large.nodes = Array.from({length:100000},(_,i)=>({x:i,y:0,z:0}));
 large.elements = large.nodes.map((_,i)=>({code:1133,node1:i+1,node2:(i+1)%100000+1,area:1,youngsModulus:2e11,density:7800}));
 const lh = new E.History(large), start = Date.now();

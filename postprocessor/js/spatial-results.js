@@ -2,6 +2,12 @@
   'use strict';
   const S=M.spatialResults={},dot=(a,b)=>a.reduce((s,v,i)=>s+v*b[i],0),mul=(A,v)=>A.map(r=>dot(r,v));
   S.global=(R,v)=>[0,1,2].map(j=>R.reduce((s,r,i)=>s+r[j]*v[i],0));
+  S.transientLoadFactor=function(r,t,dt){
+    if(r.type===11)return Math.sin(2*Math.PI*r.frequency*t);
+    if(r.type===12)return Math.abs(t-dt)<=Number.EPSILON*Math.max(Number.MIN_VALUE,Math.abs(t),Math.abs(dt))*8?1:0;
+    if(r.type===13)return 1;
+    throw Error('Transient analysis accepts only load types 11, 12 and 13.');
+  };
   S.vector=function(ds,field,index=0,phase=1){
     const a=ds.raw.analysis,n=ds.raw.model.numberOfDOFs,out=Array(n).fill(null);
     if(a.type==='modal'&&field==='accelerations'){const u=S.vector(ds,'displacements',index,phase);return u.map(v=>-a.eigenvalues[index]*v);}
@@ -13,7 +19,7 @@
   S.reaction=function(ds,field,row,index=0,phase=1){const a=ds.raw.analysis,key=field==='supportReactions'?'nodalSupportReactions':'nodalMPCForces',values=a[key];
     if(values){const i=a.type==='transient'?ds.physicalIndex.get(row):row;if(i===undefined)return null;return a.type==='static'?values[i]:values[i][index]*phase;}
     // Truss coordinates are already physical. Frames require exported physical forces.
-    if(ds.raw.model.dofPerNode===3){const v=S.vector(ds,field,index,phase);return v&&v[row]!==undefined?v[row]:null;}return null;
+    if(ds.raw.model.dofPerNode===3&&a.type!=='transient'){const v=S.vector(ds,field,index,phase);return v&&v[row]!==undefined?v[row]:null;}return null;
   };
   S.local=function(e,vector){if(!vector)return null;return e.localFromSystem.map(row=>{let sum=0;for(let j=0;j<row.length;j++)if(row[j]){const v=vector[e.globalDOFs[j]-1];if(v===null||v===undefined)return null;sum+=row[j]*v;}return sum;});};
   S.operators=function(e,version,model){
@@ -52,7 +58,7 @@
   S.coefficient=function(e,result,quantity){const names=['N','Vy','Vz','Mx','My','Mz'];return quantity==='stress'?result.coeff[0].map(v=>v/e.properties.area):result.coeff[names.indexOf(quantity)];};
   S.bounds=function(e,u){const p=S.polynomials(e,u),bound=rows=>Math.hypot(...rows.map(c=>Math.max(...S.extrema(c).map(t=>Math.abs(S.value(c,t))))));return {translation:bound(p.u),rotation:bound(p.r)};};
   S.spectrum=function(ds,row){const a=ds.raw.analysis;if(!a.spectrumFrequencyHz)return null;const i=ds.physicalIndex.get(row);if(a.nodalDisplacementAmplitudeSpectrum&&i!==undefined)return {x:a.spectrumFrequencyHz,y:a.nodalDisplacementAmplitudeSpectrum[i]};
-    const terms=ds.physicalRows[row];if(terms.length!==1||!a.displacementAmplitudeSpectrum)return null;const index=ds.systemRows.get(terms[0][0]);if(index===undefined)return null;return {x:a.spectrumFrequencyHz,y:a.displacementAmplitudeSpectrum[index].map(v=>v*Math.abs(terms[0][1]))};
+    return null;
   };
   S.full=ds=>{const a=ds.raw.analysis;return a.type!=='transient'||!!a.displacements&&a.globalDOFIds.length===ds.raw.model.numberOfDOFs;};
 }(window.MKEFPost));

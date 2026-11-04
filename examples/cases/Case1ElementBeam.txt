@@ -1,3 +1,5 @@
+analysis
+static
 nodes
 2
 0,0,0

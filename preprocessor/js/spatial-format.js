@@ -37,7 +37,7 @@
         m.analysis.type = p[0];
         if (p[0] === 'transient') {
           v = nums({text:p.slice(1).join(','), line:r.line},4);
-          if (v[0] <= 0 || v[1] <= 0 || !Number.isInteger(v[2]) || v[2] < 1 || !Number.isInteger(v[3]) || v[3] < 1) fail(r.line,'Invalid transient settings.');
+          if (v[0] <= 0 || v[1] < v[0] || !Number.isInteger(v[2]) || v[2] < 1 || !Number.isInteger(v[3]) || v[3] < 1) fail(r.line,'Invalid transient settings.');
           m.analysis = {type:p[0],timeStep:v[0],duration:v[1],monitorNode:v[2],monitorDOF:v[3]};
           m.analysisLine = r.line;
         }
@@ -106,9 +106,10 @@
         }
       }
     }
+    if (!seen.analysis) fail(cursor,'Missing analysis configuration.');
     if (!seen.nodes || !info) fail(cursor,'Missing nodes or spatial element block.');
     if (m.analysis.type === 'transient') { r = {line:m.analysisLine}; node(m.analysis.monitorNode,r); dof(m.analysis.monitorDOF,r); }
-    if (m.elementLoads.length && m.analysis.type && m.analysis.type !== 'static') fail(cursor,'Distributed loads are static only.');
+    if (m.elementLoads.length && m.analysis.type !== 'static') fail(cursor,'Distributed loads are static only.');
     if ((m.analysis.type === 'static' && m.loads.some(function (v) { return v.type !== 10; })) || (m.analysis.type === 'modal' && m.loads.length)) fail(cursor,'Nodal loads do not match the analysis type.');
     var assigned=new Set();assignments.forEach(function(row){var v=row.values,id=v[0],sid=v[1];if(!Number.isInteger(id)||!m.elements[id-1]||assigned.has(id)||!Number.isInteger(sid)||sid<0||(sid===0&&m.elementType!==1133))fail(row.line,'Invalid or duplicate section assignment.');assigned.add(id);var e=m.elements[id-1];e.sectionId=sid;if(m.elementType===1436)e.angleDegrees=v[2];else e.sectionAngle=v[2];});
     if(global.MKEFSpatialSections){try{m.elements=global.MKEFSpatialSections.resolve(m);}catch(error){fail(cursor,error.message);}}
@@ -139,16 +140,14 @@
     m.elements.forEach(function (e,i) { var error = memberError(m,e); if (error) errors.push('Member '+(i+1)+': '+error); });
     if (!errors.length) errors=errors.concat(global.MKEFSpatialConditions.validate(m).errors);
     if (forCalculation && (!m.nodes.length || !m.elements.length || !m.analysis.type)) errors.push('Geometry draft: nodes, members and an analysis configuration are required for calculation.');
-    if(forCalculation&&global.MKEFSpatialSections){var sectionError=global.MKEFSpatialSections.calculationError(m);if(sectionError)errors.push(sectionError);}
+    if(global.MKEFSpatialSections){var sectionError=global.MKEFSpatialSections.calculationError(m);if(sectionError)errors.push(sectionError);}
     return errors;
   }
   function serialize(m) {
-    var errors = validate(m,false); if (errors.length) throw new Error(errors.slice(0,20).join('\n')+(errors.length>20?'\n… '+errors.length+' diagnostics.':''));
+    var errors = validate(m,true); if (errors.length) throw new Error(errors.slice(0,20).join('\n')+(errors.length>20?'\n… '+errors.length+' diagnostics.':''));
     var out = [], info = typeInfo(m.elementType);
     function block(name,rows,always) { if (rows.length || always) { out.push(name,String(rows.length)); rows.forEach(function (r) { out.push(r.join(',')); }); } }
-    if (m.analysis.type) {
-      out.push('analysis',m.analysis.type === 'transient' ? ['transient',m.analysis.timeStep,m.analysis.duration,m.analysis.monitorNode,m.analysis.monitorDOF].join(',') : m.analysis.type);
-    }
+    out.push('analysis',m.analysis.type === 'transient' ? ['transient',m.analysis.timeStep,m.analysis.duration,m.analysis.monitorNode,m.analysis.monitorDOF].join(',') : m.analysis.type);
     block('nodes',m.nodes.map(function (n) { return [n.x,n.y,n.z]; }),true);
     block('elems_'+m.elementType,m.elements.map(function (e) { return [m.elementType,e.node1,e.node2].concat(info.properties.map(function (k) { return e[k]; }),info.family === 'frame' ? e.referenceY.concat(e.angleDegrees) : []); }),true);
     if(m.sections.length){out.push('sections',String(m.sections.length));m.sections.forEach(function(s){out.push(JSON.stringify(s));});}

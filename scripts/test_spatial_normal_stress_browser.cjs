@@ -16,7 +16,7 @@ const {chromium}=require(process.env.MKEF_PLAYWRIGHT_MODULE||'playwright'),asser
   await page.locator('[data-result-view="fit"]').click();await page.evaluate(()=>{if(viewer.normalStress.results.get(1)!==savedResult)throw Error('Camera recomputed recovery');});
   await page.locator('#normal-stress-chart').press('ArrowRight');assert.match(await page.locator('#normal-stress-sample').innerText(),/σmin=.*σmax=.*max \|σx\|=/);
   await page.locator('#spatial-result-scale-mode').selectOption('auto');await page.locator('[data-result-view="fit"]').click();await page.evaluate(()=>{document.getElementById('result-sidebar').scrollTop=0;viewer.scene.setSelection(null);});await page.screenshot({path:path.resolve('output/normal-stress-spatial.png')});
-  for(const name of ['CaseSpatialLegacy-channel','CaseSpatialLegacy-tee','CaseSpatialLegacy-ibeam','CaseSpatialTrussSection','CaseSpatialTruss',...['circle','circular_tube','rectangle','square_tube','rectangular_tube'].map(s=>'Mises3D_'+s)]){
+  for(const name of ['CaseSpatialTrussSection','CaseSpatialTruss',...['circle','circular_tube','rectangle','square_tube','rectangular_tube'].map(s=>'Mises3D_'+s)]){
    await load(name);assert(await page.locator('#normal-stress-panel').isHidden());await activate();await select();
    await page.evaluate(()=>{const s=viewer.normalStress;if([...s.results.values()].some(r=>r.status!=='ok'))throw Error(JSON.stringify([...s.results]));viewer.frame.deformed.owners.forEach((owner,i)=>{const r=s.results.get(viewer.model.elements[owner].id);for(let j=0;j<2;j++){const t=viewer.frame.deformed.parameters[2*i+j],expected=MKEFPost.normalStressResults.rgb(r.at(t).sigmaAbsMax,s.maximum),actual=viewer.frame.deformed.colors.slice(6*i+3*j,6*i+3*j+3);if(actual.some((v,k)=>v!==expected[k]))throw Error('Color disagrees with section');}});});
   }
@@ -30,6 +30,6 @@ const {chromium}=require(process.env.MKEF_PLAYWRIGHT_MODULE||'playwright'),asser
   const offline=await browser.newPage({viewport:{width:1450,height:1050}});offline.on('pageerror',e=>errors.push(e.message));
   await offline.addInitScript(()=>{const get=HTMLCanvasElement.prototype.getContext;HTMLCanvasElement.prototype.getContext=function(kind,...args){return kind==='webgl2'?null:get.call(this,kind,...args);};});
   await offline.goto('file://'+path.resolve('postprocessor/index.html'));await offline.locator('#file-input').setInputFiles(path.resolve('output/CaseSpatialFrameSection.json'));await offline.locator('#spatial-result-color').selectOption('normalStress');await offline.locator('#spatial-result-table').selectOption('element');await offline.locator('#spatial-result-rows tr').first().click();assert(await offline.locator('#normal-stress-chart').isVisible());
-  assert.deepEqual(errors,[]);console.log('Spatial normal stress: five shapes, legacy open profiles, manual trusses, exact color values, cache, pure torsion, unavailable data, reset and no WebGL PASS');
+  assert.deepEqual(errors,[]);console.log('Spatial normal stress: five shapes, manual trusses, exact color values, cache, pure torsion, unavailable data, reset and no WebGL PASS');
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exit(1);});

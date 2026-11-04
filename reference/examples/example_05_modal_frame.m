@@ -12,7 +12,7 @@ repositoryRoot = addRepositoryRoot();
 
 options = struct('verbose', false, 'plotting', false);
 problem = StructFEProblem(fullfile(repositoryRoot, 'examples', 'cases', ...
-    'CaseBeam.txt'), options);
+    'CaseBeamModal.txt'), options);
 model = problem.GetAnalysisModel();
 analysis = solveModal(model);
 

@@ -39,7 +39,6 @@ const hosted=process.env.MKEF_POST_BASE_URL;
       const truss=await load('CaseSpatialTrussSection'),t=await run();
       const expected=Math.abs(truss.analysis.elementResults[0].localEndForces[0])/truss.model.elements[0].properties.area;
       assert.equal(t[4],'OK');assert.ok(Math.abs(Number(t[1])-expected)<=1e-5*Math.max(1,expected));
-      await load('CaseSpatialLegacy-channel');const u=await run();assert.match(u[4],/Unsupported profile/);assert.equal(u[1],'—');
       await load('Mises2D_square_tube');const sharp=await run();
       assert.match(sharp[4],/Sharp corner/);assert.match(sharp[1],/\(mesh\)/);
       assert.ok(parseFloat(sharp[1])>0 && Number(sharp[2])>=0 && Number(sharp[2])<=1);

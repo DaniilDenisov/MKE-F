@@ -25,7 +25,12 @@ for i=1:numel(cases)
             end
             if strcmp(p.mesh.analysisConfiguration.type,'transient')
                 dt=p.mesh.analysisConfiguration.timeStep;force=buildTransientLoad(m,dt,3);type=m.forceBoundaryConditions(1,1);
-                if type==11,expected=1000*sin(2*pi*10*(0:3)*dt);elseif type==13,expected=1000*ones(1,4);else,expected=[0 1000 0 0];end
+                switch type
+                    case 11, expected=1000*sin(2*pi*10*(0:3)*dt);
+                    case 12, expected=[0 1000 0 0];
+                    case 13, expected=1000*ones(1,4);
+                    otherwise, error('Unexpected transient load law: %d',type);
+                end
                 assert(norm(force(8,:)-expected,inf)<1e-9);
             end
         end

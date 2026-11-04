@@ -128,6 +128,7 @@ classdef FEMesh < handle
 
             obj.validateCompleteModel();
             obj.applySections();
+            validateSpatialFrameSections(struct('elementData',obj.allMeshElems,'sections',obj.sections));
             if obj.elementType==1436
                 [obj.iMnod,obj.dofRegistry,obj.allMeshElems,obj.nodalKinematics,obj.rigidMotionMap]= ...
                     buildSpatialDOFs(obj.numberOfNodes,obj.allMeshElems,obj.releases,obj.allNodes);
@@ -654,7 +655,8 @@ classdef FEMesh < handle
 
         function validateAnalysisConfiguration(this)
             if isempty(fieldnames(this.analysisConfiguration))
-                return;
+                this.fail('MKEF:MissingAnalysisConfiguration',max(this.sourceLineNumber,1), ...
+                    'The input TXT requires an analysis section.');
             end
 
             configuration = this.analysisConfiguration;
@@ -689,6 +691,9 @@ classdef FEMesh < handle
                 this.fail('MKEF:AnalysisLoadMismatch', ...
                     this.analysisSourceLine, ...
                     'Static analysis accepts only load type 10.');
+            elseif strcmp(configuration.type, 'transient') && any(loadTypes == 10)
+                this.fail('MKEF:AnalysisLoadMismatch',this.analysisSourceLine, ...
+                    'Transient analysis accepts only load types 11, 12 and 13.');
             elseif strcmp(configuration.type, 'modal') && ...
                     ~isempty(loadTypes)
                 this.fail('MKEF:AnalysisLoadMismatch', ...

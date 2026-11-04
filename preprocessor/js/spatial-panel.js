@@ -55,10 +55,9 @@
   // Pointer hints must not replace a rejected operation's diagnostic.
   M.SpatialPanel.prototype.previewStatus = function (text) { if (!this.operationError) this.status(text); };
   M.SpatialPanel.prototype.changeAnalysis = function(type) {
-    const old=this.model.analysis,confirmed=!(old.type==='static'&&type==='transient'&&this.model.loads.some(r=>r.type===10))||global.confirm('Type 10 loads will act on the first step only in transient analysis. Continue?');
-    if(!confirmed){document.getElementById('analysis-type').value=old.type;return;}
+    const old=this.model.analysis;
     this.analysisInvalid=false;
-    if(!this.execute(h=>h.setAnalysis({...old,type},confirmed))){document.getElementById('analysis-type').value=old.type;this.analysisError.textContent=this.operationError;}
+    if(!this.execute(h=>h.setAnalysis({...old,type}))){document.getElementById('analysis-type').value=old.type;this.analysisError.textContent=this.operationError;}
   };
   M.SpatialPanel.prototype.renderAnalysis = function () {
     const self=this,analysis=this.model.analysis;this.analysisForm.replaceChildren();this.analysisForm.hidden=false;this.analysisInvalid=false;
@@ -70,7 +69,7 @@
     form.onchange=function(){const next={...analysis};for(const key in inputs)next[key]=inputs[key].value.trim()?Number(inputs[key].value):NaN;
       const errors=M.editorAdapter.validate({...self.model,analysis:next},false);self.analysisInvalid=!!errors.length;
       if(errors.length){self.analysisError.textContent=errors[0];self.changed();return;}
-      self.execute(h=>h.setAnalysis(next,true));
+      self.execute(h=>h.setAnalysis(next));
     };
   };
   M.SpatialPanel.prototype.setTool = function (tool) {

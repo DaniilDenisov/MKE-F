@@ -1,5 +1,5 @@
 const {captureEditor,capturePost,pickNode}=require('./browser-test-helpers.cjs');
-// First run setup; run_nafems_challenge5('quick') in Octave.
+// First run setup; run_nafems_challenge5('quick'); run_nafems_challenge5('full') in Octave.
 const {chromium}=require(process.env.MKEF_PLAYWRIGHT_MODULE || 'playwright');
 const assert=require('node:assert/strict'), fs=require('node:fs'), path=require('node:path');
 const {pathToFileURL}=require('node:url');

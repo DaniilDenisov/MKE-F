@@ -3,8 +3,6 @@ const {chromium}=require(process.env.MKEF_PLAYWRIGHT_MODULE||'playwright');
 const context=require('./recovery-test-context.cjs'),root=path.resolve(__dirname,'..'),directory=root+'/output/planar-recovery';
 const read=name=>JSON.parse(fs.readFileSync(directory+'/'+name+'.json'));
 const M=context(),S=M.spatialResults,manifest=read('manifest');assert.equal(manifest.length,23);
-M.legacySpatialOperators=()=>{throw Error('Planar v8 used legacy operators');};
-M.staticResults.elementIntensities=()=>{throw Error('Planar v8 reconstructed load coefficients');};
 const plain=x=>JSON.parse(JSON.stringify(x));
 function close(actual,expected,label){
   assert.equal(actual.length,expected.length,label);
@@ -92,9 +90,6 @@ console.log(`Planar recovery: 23 cases, ${frames} element frames, exact storage 
     await page.evaluate(()=>{
       const mount=MKEFPost.WebGLRenderer.prototype.mount;
       MKEFPost.WebGLRenderer.prototype.mount=function(...args){window.resultRenderer=this;return mount.apply(this,args);};
-      MKEFPost.legacySpatialOperators=()=>{throw Error('Legacy K/M called');};
-      MKEFPost.staticResults.elementIntensities=()=>{throw Error('Legacy coefficient reconstruction called');};
-      MKEFSections.stress=()=>{throw Error('Legacy stress extrema called');};
     });
     for(const name of ['CaseReleaseStatic','CaseLinearFrame','inclined-static','CaseSectionBeam','CaseMPCModal','inclined-single','inclined-transient','inclined-partial','inclined-acceleration','truss-modal','truss-transient']){
       const source=read(name+'-auto');
@@ -143,6 +138,6 @@ console.log(`Planar recovery: 23 cases, ${frames} element frames, exact storage 
       }
     }
     assert.deepEqual(errors,[]);
-    console.log('Planar browser: static diagrams, sections, modes, transient/partial data, JSON round-trip and SVG without legacy formulas PASS');
+    console.log('Planar browser: static diagrams, sections, modes, transient/partial data, JSON round-trip and SVG with solver recovery data PASS');
   }finally{await browser.close();}
 })().catch(error=>{console.error(error);process.exitCode=1;});

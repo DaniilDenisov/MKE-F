@@ -36,14 +36,6 @@ expectedPulseHistory(loadedDOFs, 2) = components;
 assertClose(pulseHistory, expectedPulseHistory, 0, 1e-12, ...
     'The explicit one-step pulse is incorrect.');
 
-legacyPulseModel = model;
-legacyPulseModel.forceBoundaryConditions = ...
-    [10 loadedNode components.' 0];
-legacyPulseHistory = buildTransientLoad( ...
-    legacyPulseModel, timeStep, stepCount);
-assertClose(legacyPulseHistory, expectedPulseHistory, 0, 1e-12, ...
-    'The backward-compatible type 10 pulse is incorrect.');
-
 stepModel = model;
 stepModel.forceBoundaryConditions = ...
     [13 loadedNode components.' 0];
@@ -94,7 +86,6 @@ result.time = time;
 result.loadedDOFs = loadedDOFs;
 result.staticLoad = staticLoad;
 result.pulseHistory = pulseHistory;
-result.legacyPulseHistory = legacyPulseHistory;
 result.stepHistory = stepHistory;
 result.harmonicHistory = harmonicHistory;
 result.pulseImpulse = components * timeStep;

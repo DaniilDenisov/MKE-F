@@ -50,10 +50,8 @@ r=solveStatic(base);
 inline=createPostprocessorData(base,r,struct('formatVersion',8,'operatorStorage','inline'));
 table=createPostprocessorData(base,r,struct('formatVersion',8,'operatorStorage','table'));
 assert(isequal(inline.model,table.model));
-for options={struct('formatVersion','legacy'),struct('operatorStorage','bad')}
-    try,createPostprocessorData(base,r,options{1});error('Test:ExpectedFailure','Invalid storage accepted');
-    catch err,assert(strcmp(err.identifier,'MKEF:PostprocessorInvalidOptions'));end
-end
+try,createPostprocessorData(base,r,struct('operatorStorage','bad'));error('Test:ExpectedFailure','Invalid storage accepted');
+catch err,assert(strcmp(err.identifier,'MKEF:PostprocessorInvalidOptions'));end
 fid=fopen(fullfile(directory,'measurements.json'),'w');fprintf(fid,'%s',jsonencode(report));fclose(fid);
 fprintf('  Operator pooling: exact K/M pairs, adjacent doubles, actual grids and six storage measurements PASS\n');
 end

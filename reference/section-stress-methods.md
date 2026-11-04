@@ -185,7 +185,7 @@ node scripts/test_spatial_normal_stress_browser.cjs
 The tests also consume existing section fixtures from `run_octave_tests`.
 Browser tests use the project Playwright environment (`MKEF_PLAYWRIGHT_MODULE`
 where needed). Active normal-stress tests cover both dimensions, all eight planar
-shapes and orientations, legacy open profiles, thick tubes, manual trusses,
+shapes and orientations, thick tubes, manual trusses,
 interior extrema, cache/reset, scale invariance, CSV, missing inputs, pure torsion
 and operation without WebGL. The Mises browser test verifies absence of its UI,
 scripts and Worker. Retained Mises mathematical checks include independent

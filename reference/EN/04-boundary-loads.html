@@ -103,7 +103,7 @@
           <table>
             <thead><tr><th>Section / type</th><th>Value</th><th>Supported analysis</th></tr></thead>
             <tbody>
-              <tr><td><code>bcforce_stat</code> / 10</td><td>constant vector in statics; in dynamics, a compatible single-step pulse at <em>t = Δt</em></td><td>static and transient</td></tr>
+              <tr><td><code>bcforce_stat</code> / 10</td><td>constant vector in statics</td><td>static</td></tr>
               <tr><td><code>bcforce_harm</code> / 11</td><td><strong>F</strong>(t) = <strong>F</strong><sub>0</sub> sin(2πft)</td><td>transient</td></tr>
               <tr><td><code>bcforce_pulse</code> / 12</td><td><strong>F</strong><sub>0</sub> only at <em>t = Δt</em></td><td>transient</td></tr>
               <tr><td><code>bcforce_step</code> / 13</td><td><strong>F</strong><sub>0</sub> in every column, including <em>t = 0</em></td><td>transient</td></tr>

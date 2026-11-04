@@ -98,7 +98,7 @@ modeShapes(freeDOFs, :) = reducedModeShapes;</code></pre>
 setup;
 
 problem = StructFEProblem(fullfile( ...
-    'examples', 'cases', 'CaseBeam.txt'));
+    'examples', 'cases', 'CaseBeamModal.txt'));
 model = problem.GetAnalysisModel();
 result = problem.RunModal();
 
@@ -143,7 +143,7 @@ exportPostprocessorData(model, result, ...
         <p>The aim is to connect free DOFs to mode-shape components and verify frequencies through modal stiffness and mass.</p>
         <figure class="model-figure lab-figure">
           <img src="assets/lab-modal-beam.svg" alt="A 2 m beam, fixed at the left, with a pin support at the middle and a free right end.">
-          <figcaption>Two type 113 frame elements from CaseBeam.txt. The beam is continuous at node 2: the support allows rotation but does not introduce an internal hinge.</figcaption>
+          <figcaption>Two type 113 frame elements from CaseBeamModal.txt. The beam is continuous at node 2: the support allows rotation but does not introduce an internal hinge.</figcaption>
         </figure>
         <h3>Input data and notation</h3>
         <p>Each span is 1 m long. <em>A = 4·10⁻⁴ m²</em>, <em>E = 200 GPa</em>, <em>ρ = 7800 kg/m³</em>, <em>I = 5.33·10⁻⁸ m⁴</em>. Full component order: <code>[u₁x; u₁y; θ₁; u₂x; u₂y; θ₂; u₃x; u₃y; θ₃]</code>. Modal analysis does not use the external force in the input file.</p>
