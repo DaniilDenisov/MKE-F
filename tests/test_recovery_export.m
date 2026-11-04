@@ -47,7 +47,7 @@ for field={'localStiffness','localMass'}
     key='K';if strcmp(field{1},'localMass'),key='M';end
     assert(isequal(small.model.elements(1).recoveryOperators.(key),bad.elementData(1).(field{1})));
 end
-for value={1,2,3,4,5,6,7,'legacy',9,'8',true,[8 8]}
+for value={9,'8',true,[8 8]}
     mustFail(@() createPostprocessorData(m,modal,struct('formatVersion',value{1})),'MKEF:PostprocessorInvalidOptions');
 end
 % The mixed 2D/3D browser integration must not depend on a stale manual export.

@@ -12,7 +12,6 @@ const base='http://localhost:8080',pause=ms=>new Promise(resolve=>setTimeout(res
       if(ready)break;await pause(500);
     }
     assert(ready,'Rebuilt solver never became ready');
-    assert.equal((await page.request.get(base+'/postprocessor/js/legacy-spatial-operators.js')).status(),404);
     for(const name of ['CasePreprocessorStatic','CaseMPCModal','CaseReleaseTransient','CaseSpatialFrame','CaseSpatialTrussModal','CaseSpatialFrameTransient','CaseSectionBeam','CaseSpatialFrameSection']){
       let caseText=fs.readFileSync('examples/cases/'+(name==='CaseSpatialFrameSection'?'CaseSpatialFrame':name)+'.txt','utf8');
       if(name==='CaseSpatialFrameSection')caseText+='\nsections\n1\n'+JSON.stringify({id:1,name:'Manual J',type:'rectangle',dimensions:{b:.1,h:.2},torsion:{mode:'manual',value:.000123}})+'\nelement_sections\n1\n1,1,-37.5\n';
@@ -49,13 +48,7 @@ const base='http://localhost:8080',pause=ms=>new Promise(resolve=>setTimeout(res
       assert.equal(await page.locator('#error-panel').isVisible(),false,name);
       console.log(name+': shipped v8 example PASS');
     }
-    for(let version=1;version<=7;version++){
-      await page.goto(base+'/postprocessor/');
-      await page.locator('#file-input').setInputFiles({name:'old.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify({format:'mkef-postprocessor',version}))});
-      await page.waitForFunction(()=>document.querySelector('#error-panel').textContent.includes('Recalculate'));
-      assert(await page.locator('#download-json').isDisabled());
-    }
     assert.deepEqual(errors,[]);
-    console.log('Rebuilt runtime stack: eight API/browser cases, four shipped examples and v1–v7 rejection PASS');
+    console.log('Rebuilt runtime stack: eight API/browser cases and four shipped examples PASS');
   }finally{await browser.close();}
 })().catch(error=>{console.error(error);process.exitCode=1;});

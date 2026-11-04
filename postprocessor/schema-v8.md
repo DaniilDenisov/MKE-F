@@ -226,8 +226,8 @@ references. No new matrix formula is implemented in the v8 reader.
 
 Run `./scripts/test_recovery_pipeline.ps1`. It mounts current source read-only
 in Docker and writes to a new `output/recovery-runs/<run-id>/` directory.
-It generates model inputs, runs Octave, checks fresh numerical references,
-rejects frozen v1–v7 files and exercises the browser offline. Numerical input
+It generates model inputs, runs Octave, checks fresh numerical references
+and exercises the browser offline. Numerical input
 cases are retained and exported afresh as v8. The pipeline also runs browser
 unit tests and the backend suite with the real Octave runner.
 

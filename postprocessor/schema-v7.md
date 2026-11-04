@@ -58,7 +58,5 @@ Missing fields in a partial export mean unavailable, not zero. JSON arrays keep
 their array shape even with one element, one DOF or one sample. Empty arrays are
 arrays, and all exported numeric values must be finite.
 
-The authoritative implementations are `createSpatialPostprocessorData.m`,
-`prepareSpatialJsonData.m` and `postprocessor/js/spatial-data.js`. Fixed examples
-are checked into `tests/fixtures/postprocessor-legacy/` and must not be regenerated
-as part of a compatibility test.
+This document is archival. Current implementations and numerical tests use
+[v8](schema-v8.md); saved v7 fixtures are no longer retained.

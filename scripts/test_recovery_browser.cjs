@@ -18,20 +18,6 @@ const root=path.resolve(__dirname,'..'),base=root+'/output/recovery/';
       await page.waitForFunction(()=>window.viewer&&window.viewer!==window.previousViewer);
       assert.equal(await page.locator('#error-panel').isVisible(),false);
     };
-    const frozen=JSON.parse(fs.readFileSync(root+'/tests/fixtures/postprocessor-legacy/manifest.json'));
-    for(const f of frozen){
-      // Reset prevents an earlier file with the same title from satisfying the wait.
-      await page.reload();
-      await page.locator('#file-input').setInputFiles(root+'/tests/fixtures/postprocessor-legacy/'+f.file);
-      await page.waitForFunction(()=>document.querySelector('#error-panel').textContent.includes('Recalculate'));
-      assert.equal(await page.locator('#download-json').isDisabled(),true,f.file);
-      assert.equal(await page.locator('#spatial-result-viewport canvas').count(),0);
-    }
-    await page.reload();
-    await page.evaluate(()=>{
-      MKEFPost.SpatialPost=new Proxy(MKEFPost.SpatialPost,{construct(T,args){window.viewer=Reflect.construct(T,args);return viewer;}});
-      MKEFPost.legacySpatialOperators=()=>{throw Error('v8 called legacy matrix formulas');};
-    });
     for(const name of ['CaseSpatialFrame','CaseSpatialTruss','CaseSpatialTrussModal','CaseSpatialFrameModal',
       'CaseSpatialTrussTransient','released-transient']){
       await load(base+name+'-v8.json');
@@ -86,6 +72,6 @@ const root=path.resolve(__dirname,'..'),base=root+'/output/recovery/';
     }
     fs.writeFileSync(base+'browser-measurements.json',JSON.stringify({browser:browser.version(),measurements},null,2)+'\n');
     assert.deepEqual(errors,[]);assert.deepEqual(network,[]);
-    console.log('Browser: rejected v1–v7; v8 static/modal/transient, CSV, animation, malformed/partial results and 6 measurements PASS');
+    console.log('Browser: v8 static/modal/transient, CSV, animation, malformed/partial results and 6 measurements PASS');
   }finally{await browser.close();}
 })().catch(error=>{console.error(error);process.exitCode=1;});

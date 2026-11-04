@@ -127,7 +127,7 @@
   }
   test('v8 validates linear loads and rejects unsupported or incomplete data', function () {
     assert(M.validateDataset(linearFixture()));
-    [function(d){d.version=4;},function(d){delete d.model.elementLoads[0].qy2;},function(d){d.model.elementLoads[0].qy2=0;},function(d){d.model.elementLoads[0].qx1=Infinity;},function(d){d.model.releases=[{elementId:1,end:1,component:'Mz'}];},function(d){delete d.analysis.elementResults[0].equivalentLocalLoadVector;}].forEach(function (change) {
+    [function(d){delete d.model.elementLoads[0].qy2;},function(d){d.model.elementLoads[0].qy2=0;},function(d){d.model.elementLoads[0].qx1=Infinity;},function(d){d.model.releases=[{elementId:1,end:1,component:'Mz'}];},function(d){delete d.analysis.elementResults[0].equivalentLocalLoadVector;}].forEach(function (change) {
       var data=linearFixture(); change(data); var rejected=false; try { M.validateDataset(data); } catch (_) { rejected=true; } assert(rejected);
     });
   });

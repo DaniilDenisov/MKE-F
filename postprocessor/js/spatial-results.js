@@ -17,7 +17,7 @@
   };
   S.local=function(e,vector){if(!vector)return null;return e.localFromSystem.map(row=>{let sum=0;for(let j=0;j<row.length;j++)if(row[j]){const v=vector[e.globalDOFs[j]-1];if(v===null||v===undefined)return null;sum+=row[j]*v;}return sum;});};
   S.operators=function(e,version,model){
-    if(version!==8)throw new Error('Only result format v8 is supported.');
+    if(version!==8)throw new Error('Unsupported format. Recalculate.');
     if(model?.recovery?.version===2){
       const op=model.recoveryOperators?.[e.recoveryOperatorId-1];
       if(!op||op.id!==e.recoveryOperatorId)throw new Error('Missing v8 recovery operator ID.');

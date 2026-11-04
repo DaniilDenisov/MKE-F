@@ -10,7 +10,7 @@
   function ids(a,n,p){arr(a,p);const seen=new Set();a.forEach(x=>{integer(x,1,n,p);if(seen.has(x))fail(p,'duplicate ID');seen.add(x);});return seen;}
   const dot=(a,b)=>a.reduce((s,x,i)=>s+x*b[i],0);
   M.spatialData={validate:function(data){
-    if(!data||data.format!=='mkef-postprocessor'||data.version!==8)fail('$','Only result format v8 is supported. Recalculate the original TXT model.');
+    if(!data||data.format!=='mkef-postprocessor'||data.version!==8)throw Error('Unsupported format. Recalculate.');
     const m=data.model,a=data.analysis;if(!m||!a||m.dimension!==3)fail('model','expected spatial model');
     if(!data.metadata||typeof data.metadata.title!=='string'||!data.metadata.units)fail('metadata','missing title/units');
     const nodes=arr(m.nodes,'nodes'),elements=arr(m.elements,'elements'),d=m.dofPerNode,n=m.numberOfDOFs;

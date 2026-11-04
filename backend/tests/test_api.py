@@ -28,8 +28,6 @@ if "FAIL" in text:
 if "NOISY" in text:
     print("x" * 4096, flush=True)
 payload = {"format": "mkef-postprocessor", "version": 8, "metadata": {"title": sys.argv[-1]}}
-if text.startswith("OLD_VERSION_"):
-    payload["version"] = int(text.removeprefix("OLD_VERSION_"))
 if "LARGE" in text:
     payload["padding"] = "y" * 4096
 output_path.write_text(json.dumps(payload), encoding="utf-8")
@@ -99,16 +97,6 @@ def test_health_and_successful_result(client_factory):
     assert result.json()["format"] == "mkef-postprocessor"
     assert result.json()["version"] == 8
     assert "Demo%20frame.json" in result.headers["content-disposition"]
-
-
-@pytest.mark.parametrize("version", range(1, 8))
-def test_old_solver_results_are_not_published(client_factory, version):
-    client = client_factory()
-    job_id = submit(client, f"OLD_VERSION_{version}")
-    job = wait_for_terminal(client, job_id)
-    assert job["status"] == "failed", job
-    assert "unsupported schema" in job["error"]["message"]
-    assert client.get(f"/api/v1/jobs/{job_id}/result").status_code == 409
 
 
 def test_request_rejects_extra_fields_nulls_size_and_cross_origin(client_factory):

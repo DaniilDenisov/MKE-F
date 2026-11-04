@@ -214,8 +214,7 @@
 
   M.validateDataset = function (data) {
     objectAt(data, '$');
-    if (data.format !== 'mkef-postprocessor') fail('$.format', 'expected "mkef-postprocessor"');
-    if(data.version!==8)fail('$.version','Only result format v8 is supported. Recalculate the original TXT model to open an older result.');
+    if(data.format!=='mkef-postprocessor'||data.version!==8)throw Error('Unsupported format. Recalculate.');
     if(data.model?.dimension===3){if(M.spatialData)return M.spatialData.validate(data);fail('$.model.dimension','Spatial viewer is not loaded.');}
     var metadata = objectAt(data.metadata, '$.metadata');
     if (typeof metadata.title !== 'string') fail('$.metadata.title', 'expected a string');

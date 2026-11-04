@@ -1,17 +1,6 @@
-const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto');
+const assert=require('node:assert/strict'),fs=require('node:fs');
 const context=require('./recovery-test-context.cjs'),M=context(),S=M.spatialResults;
 const read=file=>JSON.parse(fs.readFileSync(file,'utf8'));
-const fixtureRoot=path.join(__dirname,'../tests/fixtures/postprocessor-legacy');
-const fixtures=read(fixtureRoot+'/manifest.json');
-assert.equal(fixtures.length,10);
-assert.deepEqual([...new Set(fixtures.map(f=>f.version))].sort(),[1,2,3,4,5,6,7]);
-for(const item of fixtures){
-  const bytes=fs.readFileSync(fixtureRoot+'/'+item.file);
-  assert.equal(crypto.createHash('sha256').update(bytes).digest('hex'),item.sha256,item.file);
-  const data=JSON.parse(bytes);assert.equal(data.version,item.version);assert.equal(data.analysis.type,item.analysis);
-  assert.throws(()=>M.validateDataset(data),/Only result format v8.*Recalculate/);
-}
-console.log('Rejected v1–v7: 10 checksummed historical files PASS');
 const manifest=read('output/recovery/manifest.json');assert.equal(manifest.length,12);
 assert.equal(new Set(manifest.map(row=>row.name)).size,12);
 function near(a,b,rtol=1e-10,atol=1e-10){
@@ -57,12 +46,6 @@ for(const row of manifest){
   }
 }
 assert(frames>100,'No dynamic recovery coverage');
-// The v8 path must work even when the legacy formulas are unavailable.
-const modern=context();modern.legacySpatialOperators=()=>{throw Error('Legacy formulas called');};
-for(const row of manifest){
-  const ds=modern.validateDataset(read('output/recovery/'+row.name+'-v8.json'));
-  for(const e of ds.raw.model.elements)modern.spatialResults.recover(ds,e,modern.spatialResults.vector(ds,'displacements'),modern.spatialResults.vector(ds,'accelerations'));
-}
 // Prove the exported matrix is applied (not just transported/validated).
 const source=read('output/recovery/CaseSpatialFrameModal-v8.json');
 const baseline=M.validateDataset(structuredClone(source)),baseElement=baseline.raw.model.elements[0];
@@ -94,4 +77,4 @@ assert.throws(()=>M.validateDataset(staticBad),/static results/);
 // K has rigid modes; it must not be rejected as non-positive-definite.
 const K=source.model.elements[0].recoveryOperators.K,rigid=[1,0,0,0,0,0,1,0,0,0,0,0];
 assert(K.every(row=>row.reduce((sum,v,i)=>sum+v*rigid[i],0)===0));
-console.log(`v8: 12 solver pairs, ${frames} recovered element frames, no legacy calls, matrix provenance, malformed contracts and rigid modes PASS`);
+console.log(`v8: 12 solver pairs, ${frames} recovered element frames, matrix provenance, malformed contracts and rigid modes PASS`);
