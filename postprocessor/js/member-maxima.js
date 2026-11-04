@@ -14,10 +14,10 @@
       coeff=result.sectionForceCoefficients;
       axial=coeff?.[0]??[-result.localEndForces?.[0]];
     }else{
-      const q=M.staticResults.elementIntensities(ds,e),L=q.length,f=result.localEndForces;
-      axial=[-f[0],-q.x*L,-q.dx*L/2];
+      const planar=result.sectionForceCoefficients;
+      axial=planar[0];
       if(!truss){
-        const v=[-f[1],-q.y*L,-q.dy*L/2],m=[-f[2],f[1]*L,q.y*L*L/2,q.dy*L*L/6];
+        const v=planar[1],m=planar[2];
         const {c,s}=sections.rotation(e.sectionAngle??0);
         coeff=[axial,v.map(x=>c*x),v.map(x=>-s*x),[0],m.map(x=>s*x),m.map(x=>c*x)];
       }

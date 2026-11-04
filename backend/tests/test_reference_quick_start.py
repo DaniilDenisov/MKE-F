@@ -26,7 +26,7 @@ def test_reference_quick_start_api(tmp_path):
             time.sleep(.05)
         assert job['status'] == 'succeeded', job
         data = client.get(url + '/result').json()
-        assert data['version'] == 7
+        assert data['version'] == 8
         assert data['model']['elements'][0]['sectionId'] == 1
         result = data['analysis']
         assert result['displacements'][7] == pytest.approx(-.0002)

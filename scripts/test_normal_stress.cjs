@@ -1,3 +1,4 @@
+const planarStress=require('./planar-stress-reference.cjs');
 const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 const ctx={window:{MKEFSpatial:{registry:require('../shared/element-types.json')}},TextEncoder};vm.createContext(ctx);
 for(const file of ['shared/sections.js','shared/spatial-sections.js','shared/support-catalog.js','shared/support-semantics.js','shared/mpc.js','shared/releases.js',...['namespace','data-model','spatial-data','spatial-results','spatial-stress','geometry','static-view','section-view','normal-stress-results'].map(s=>'postprocessor/js/'+s+'.js')])vm.runInContext(fs.readFileSync(file,'utf8'),ctx);
@@ -24,6 +25,7 @@ for(const name of fs.readdirSync('output').filter(s=>/^(SectionCase|Mises[23]D_|
 for(const forces of [[100,0,0],[-100,0,0],[0,30,0],[0,0,40],[-100,30,40],[0,0,0]]){
  const ds=load('Mises3D_rectangle'),e=ds.raw.model.elements[0],p=M.spatialResults.sectionProfile(e),stored=ds.resultsByElementId.get(e.id);
  stored.sectionForceCoefficients=Array.from({length:6},()=>[0,0,0,0]);[0,4,5].forEach((k,i)=>stored.sectionForceCoefficients[k][0]=forces[i]);stored.sectionForceCoefficients[3][0]=999;
+ stored.sectionStress=P.stress(p,stored.sectionForceCoefficients);
  const r=V.get(ds,e),bend=Math.abs(forces[1])*Math.max(...p.vertices.map(v=>Math.abs(v.z)))/p.Iy+Math.abs(forces[2])*Math.max(...p.vertices.map(v=>Math.abs(v.y)))/p.Iz;
  near(r.sigmaAbsMax,Math.abs(forces[0])/p.area+bend);near(r.peak.sigmaX,forces[0]<0?r.sigmaMin:r.sigmaMax);
  // Changing orientation/global geometry cannot apply the section angle twice.
@@ -33,15 +35,19 @@ for(const forces of [[100,0,0],[-100,0,0],[0,30,0],[0,0,40],[-100,30,40],[0,0,0]
 for(const spatial of [false,true]){
  const ds=load(spatial?'CaseSpatialTrussSection':'CaseSectionBeam'),e=ds.raw.model.elements[0],stored=ds.resultsByElementId.get(e.id);e.type=spatial?1133:112;e.sectionId=0;e.properties.area=2;
  stored.axialStress=999;stored.localEndForces[0]=2;
- if(spatial){stored.sectionForceCoefficients=Array.from({length:6},()=>[0,0,0,0]);stored.sectionForceCoefficients[0]=[-2,-6,6,0];}
- else {ds.raw.model.elementLoads=[{type:21,elementId:e.id,coordinateSystem:1,qx1:3,qx2:-3,qy1:0,qy2:0}];}
+ stored.sectionForceCoefficients=Array.from({length:spatial?6:3},()=>[0,0,0,0]);stored.sectionForceCoefficients[0]=[-2,-6,6,0];
+ stored.sectionStress={minimum:{value:-1.75,xi:.5},maximum:{value:-1,xi:0},positions:[0,.5,1]};
  const r=V.get(ds,e);assert.equal(r.status,'ok');near(r.peak.xi,.5);near(r.sigmaAbsMax,1.75);assert.equal(r.peak.eta,null);assert.equal(r.peak.y,null);
- V.clear(ds);stored.localEndForces[0]=NaN;if(spatial)stored.sectionForceCoefficients[0][1]=NaN;assert.equal(V.get(ds,e).status,'unavailable');
+ V.clear(ds);stored.localEndForces[0]=NaN;stored.sectionForceCoefficients[0][1]=NaN;assert.equal(V.get(ds,e).status,'unavailable');
 }
 // Equivalent rotated planar and spatial states for all eight shapes.
 for(const type of Object.keys(S.types))for(const angle of [0,90,180,270]){
  const ds=load('CaseSectionBeam'),e=ds.raw.model.elements[0],shape={id:1,name:type,type,dimensions:{b:.1,h:.2,d:.1,t:.005,tw:.008,tf:.012}};
- ds.raw.model.sections=[shape];e.sectionAngle=angle;const p=S.properties(shape,angle);e.properties.area=p.area;
+ ds.raw.model.sections=[shape];e.sectionAngle=angle;const p=S.properties(shape,angle);e.properties.area=p.area;e.properties.momentOfInertia=p.momentOfInertia;e.sectionProperties=p;
+ const stored=ds.resultsByElementId.get(e.id),length=e.length;
+ // This synthetic comparison changes the section after loading: supply its
+ // matching extrema explicitly, as a new solver export would do.
+ stored.sectionStress=planarStress(S,p,e.type,length,stored.localEndForces,[0,-1000,0,-1000]);
  const r=V.get(ds,e),data=M.sectionResults.get(ds,e),a=angle*Math.PI/180,c=Math.round(Math.cos(a)),s=Math.round(Math.sin(a)),coeff=Array.from({length:6},()=>[0,0,0,0]);
  coeff[0]=data.stress.axial;coeff[4]=data.stress.moment.map(v=>v*s);coeff[5]=data.stress.moment.map(v=>v*c);
  const spatial=P.stress(P.properties(shape),coeff);near(r.sigmaAbsMax,Math.max(Math.abs(spatial.minimum.value),Math.abs(spatial.maximum.value)));

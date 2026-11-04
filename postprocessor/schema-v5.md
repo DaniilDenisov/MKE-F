@@ -1,3 +1,5 @@
+> Historical schema, no longer supported. Recalculate the original TXT model and use [v8](schema-v8.md).
+
 # MKE-F postprocessor JSON format, version 5
 
 Version 5 is emitted when at least one full-span linear distributed load is

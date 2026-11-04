@@ -24,7 +24,7 @@ try
     % must remain arrays.  Convert only the JSON-facing copy to cells so the
     % array and matrix dimensions are explicit even when a dimension is one.
     jsonData = prepareJsonData(data);
-    json = jsonencode(jsonData, 'PrettyPrint', prettyPrint);
+    json = encodeResultJson(jsonData, prettyPrint);
 catch exception
     error('MKEF:PostprocessorEncodingFailed', ...
         'Could not encode postprocessor JSON: %s', exception.message);
@@ -104,7 +104,7 @@ clear cleanup;
 end
 
 function output = prepareJsonData(data)
-if data.version==7, output=prepareSpatialJsonData(data); return; end
+if data.model.dimension==3, output=prepareSpatialJsonData(data); return; end
 output = data;
 
 output.model.nodes = recordArray(data.model.nodes);
@@ -195,6 +195,33 @@ if isfield(data.model,'mpcs')
             else
                 output.analysis.(name) = numericMatrix(data.analysis.(name));
             end
+        end
+    end
+end
+if data.version==8
+    for i=1:numel(data.model.elements)
+        e=data.model.elements(i);
+        output.model.elements{i}.globalDOFs=numericArray(e.globalDOFs);
+        output.model.elements{i}.localFromSystem=numericMatrix(e.localFromSystem);
+        if isfield(e,'recoveryOperators')
+            output.model.elements{i}.recoveryOperators.K=numericMatrix(e.recoveryOperators.K);
+            output.model.elements{i}.recoveryOperators.M=numericMatrix(e.recoveryOperators.M);
+        end
+    end
+    if isfield(data.model,'recoveryOperators')
+        output.model.recoveryOperators=recordArray(data.model.recoveryOperators);
+        for i=1:numel(output.model.recoveryOperators)
+            output.model.recoveryOperators{i}.K=numericMatrix(data.model.recoveryOperators(i).K);
+            output.model.recoveryOperators{i}.M=numericMatrix(data.model.recoveryOperators(i).M);
+        end
+    end
+    if strcmp(data.analysis.type,'modal'),output.analysis.eigenvalues=numericArray(data.analysis.eigenvalues);end
+    if strcmp(data.analysis.type,'static')
+        for i=1:numel(data.analysis.elementResults)
+            e=data.analysis.elementResults(i);
+            output.analysis.elementResults{i}.sectionForceCoefficients=numericMatrix(e.sectionForceCoefficients);
+            output.analysis.elementResults{i}.localDisplacements=numericArray(e.localDisplacements);
+            output.analysis.elementResults{i}.equivalentLocalLoadVector=numericArray(e.equivalentLocalLoadVector);
         end
     end
 end

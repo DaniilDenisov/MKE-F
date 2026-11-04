@@ -1,2 +1,4 @@
 # Octave verification constructs variants of these multiline input records.
 examples/cases/*.txt text eol=lf
+# Frozen result hashes cover the exact bytes on Windows and Linux.
+tests/fixtures/postprocessor-legacy/*.json -text

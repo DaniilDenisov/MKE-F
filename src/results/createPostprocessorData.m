@@ -1,7 +1,6 @@
 function data = createPostprocessorData(model, result, options)
-%CREATEPOSTPROCESSORDATA Convert an analysis model/result to schema v1-v6.
-% The returned struct contains only postprocessing data; assembled and
-% element matrices are deliberately excluded.
+%CREATEPOSTPROCESSORDATA Convert model/result to JSON, including planar/spatial v8.
+% V8 is the only result format. Global matrices are excluded.
 
 if nargin < 3
     options = struct();
@@ -15,13 +14,14 @@ if isfield(model,'dimension') && model.dimension==3
     if strcmp(analysisType,'transient'), analysis=createTransientData(result,info,settings); end
     data=createSpatialPostprocessorData(model,result,settings,analysis);
     data.metadata=createMetadata(settings,analysisType);
+    data.metadata.exporter=struct('name','mkef-octave','contractVersion',1);
     return;
 end
 modelInfo = validateModel(model);
 
 data = struct();
 data.format = 'mkef-postprocessor';
-data.version = 1;
+data.version = 8;
 data.metadata = createMetadata(settings, analysisType);
 data.model = createModelData(model, modelInfo);
 if isfield(model, 'elementLoads') && ~isempty(model.elementLoads)
@@ -29,14 +29,13 @@ if isfield(model, 'elementLoads') && ~isempty(model.elementLoads)
         rejectElementLoads(model);
     end
     getElementLoadData(model);
-    data.version = 2;
     data.model.elementLoads = model.elementLoads;
     records = model.forceBoundaryConditions;
     validateNumeric(records, 'model.forceBoundaryConditions');
     if size(records, 2) < 5 || any(records(:, 1) ~= 10) || ...
             any(records(:, 2) ~= fix(records(:, 2))) || ...
             any(records(:, 2) < 1 | records(:, 2) > model.numberOfNodes)
-        invalidModel('Version 2 requires finite static nodal loads on existing nodes.');
+        invalidModel('Element loads require finite static nodal loads on existing nodes.');
     end
     nodalLoads = repmat(struct('type', 10, 'nodeId', 0, 'fx', 0, 'fy', 0, 'mz', 0), size(records, 1), 1);
     for i = 1:size(records, 1)
@@ -58,7 +57,7 @@ switch analysisType
             'Unsupported analysis type %s.', analysisType);
 end
 
-if data.version == 2
+if isfield(data.model,'elementLoads')
     for i = 1:numel(data.analysis.elementResults)
         source = result.elementResults(i);
         requireFields(source, {'equivalentLocalLoadVector'}, 'element result');
@@ -68,7 +67,6 @@ if data.version == 2
     end
 end
 if isfield(model,'multiPointConstraints') && ~isempty(model.multiPointConstraints)
-    data.version = 3;
     constraints = buildConstraintTransform(model);
     equations = model.multiPointConstraints;
     outputMPC = repmat(struct('id',0,'depNode',0,'depDOF',0,'rhs',0,'masters',[]),numel(equations),1);
@@ -110,7 +108,6 @@ if isfield(model,'multiPointConstraints') && ~isempty(model.multiPointConstraint
     end
 end
 if isfield(model,'releases') && ~isempty(model.releases)
-    data.version = 4;
     data.model.numberOfDOFs = model.numberOfDOFs;
     data.model.dofRegistry = model.dofRegistry;
     data.model.releases = model.releases;
@@ -120,23 +117,21 @@ if isfield(model,'releases') && ~isempty(model.releases)
         data.model.elements(i).globalDOFs = model.elementData(i).dofs(:).';
     end
 end
-if isfield(model, 'elementLoads') && ~isempty(model.elementLoads) && any([model.elementLoads.type] == 21)
-    data.version = 5;
-end
 if isfield(model,'sections') && ~isempty(model.sections)
-    data.version=6;
     data.model.sections=model.sections;
-    % v6 remains the historical 2D contract; torsion belongs to spatial v7.
+    % Planar sections carry bending data; torsion belongs to spatial elements.
     if isfield(data.model.sections,'torsion'), data.model.sections=rmfield(data.model.sections,'torsion'); end
     for i=1:numel(model.elementData)
         e=model.elementData(i);
         data.model.elements(i).sectionId=e.sectionId;
         data.model.elements(i).sectionAngle=e.sectionAngle;
+        data.model.elements(i).sectionProperties=exportSectionProperties(e);
         if strcmp(analysisType,'static')
             data.analysis.elementResults(i).sectionStress=result.elementResults(i).sectionStress;
         end
     end
 end
+data=addPlanarRecoveryData(data,model,result,settings);
 end
 
 function analysisType = validateAnalysisType(result)
@@ -162,7 +157,7 @@ end
 
 allowed = {'title', 'lengthUnit', 'forceUnit', 'momentUnit', ...
     'stressUnit', 'timeUnit', 'transientFields', 'timeStride', ...
-    'selectedGlobalDOFs', 'prettyPrint'};
+    'selectedGlobalDOFs', 'prettyPrint', 'formatVersion', 'operatorStorage'};
 supplied = fieldnames(options).';
 unknown = setdiff(supplied, allowed);
 if ~isempty(unknown)
@@ -192,6 +187,22 @@ settings.transientFields = {'displacements', 'velocities', ...
 settings.timeStride = 1;
 settings.selectedGlobalDOFs = [];
 settings.prettyPrint = false;
+% Explicit 8 remains accepted for callers; no downgrade/export compatibility mode.
+if isfield(options,'formatVersion')
+    value=options.formatVersion;
+    if ~(isnumeric(value) && isreal(value) && isscalar(value) && value==8)
+        error('MKEF:PostprocessorInvalidOptions','Only result format v8 is supported.');
+    end
+end
+settings.operatorStorage='auto';
+if isfield(options,'operatorStorage')
+    value=scalarText(options.operatorStorage,'operatorStorage');
+    if ~ismember(value,{'auto','inline','table'})
+        error('MKEF:PostprocessorInvalidOptions', ...
+            'operatorStorage must be auto, inline or table.');
+    end
+    settings.operatorStorage=value;
+end
 
 textFields = {'title', 'lengthUnit', 'forceUnit', 'momentUnit', ...
     'stressUnit', 'timeUnit'};

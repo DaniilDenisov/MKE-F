@@ -33,9 +33,9 @@
       }else{var nf=s.type==='tee'?1:2;J=(nf*d.b*d.tf**3+(d.h-nf*d.tf)*d.tw**3)/3;p.torsionMethod='thin-wall open';}
     }
     if(!Number.isFinite(J)||J<=0)throw Error('J must be positive and finite.');
-    p.torsionConstant=J;p.radius=p.rectangles.length?0:d.d/2;p.innerRadius=s.type==='circular_tube'?d.d/2-d.t:0;
-    p.loops=P.loops(p);p.extremeVertices=P.hull(p.vertices);return p;
+    p.torsionConstant=J;return P.decorate(s,p);
   };
+  P.decorate=function(s,p){const d=s.dimensions;p.radius=p.rectangles.length?0:d.d/2;p.innerRadius=s.type==='circular_tube'?d.d/2-d.t:0;p.loops=P.loops(p);p.extremeVertices=P.hull(p.vertices);return p;};
   P.hull=function(vertices){
     const points=vertices.slice().sort((a,b)=>a.z-b.z||a.y-b.y).filter((v,i,a)=>!i||v.z!==a[i-1].z||v.y!==a[i-1].y),cross=(a,b,c)=>(b.z-a.z)*(c.y-a.y)-(b.y-a.y)*(c.z-a.z);
     function chain(rows){const out=[];for(const v of rows){while(out.length>1&&cross(out[out.length-2],out[out.length-1],v)<=0)out.pop();out.push(v);}out.pop();return out;}
@@ -60,6 +60,14 @@
     if(p.radius){var r=Math.hypot(y,z),eps=1e-12*p.radius;return r<=p.radius+eps&&r>=p.innerRadius-eps;}
     return p.rectangles.some(r=>y>=r.y&&y<=r.y+r.h&&z>=r.z&&z<=r.z+r.b);
   };
+  P.resultCatalog=function(model){
+    const sections=model.sections||[],map=new Map();if(sections.length>100000)throw Error('Maximum 100000 sections.');
+    const errors=S.validate(model);if(errors.length)throw Error(errors[0]);
+    sections.forEach(s=>map.set(s.id,{section:s,properties:null}));
+    for(const e of model.elements)if(e.sectionId){const item=map.get(e.sectionId);if(!item)throw Error('Unknown section.');const p=P.decorate(item.section,S.resultProperties(item.section,e));if(!item.properties)item.properties=p;}
+    return map;
+  };
+  // Editor catalog: calculate properties from editable geometry.
   P.catalog=function(model){
     var sections=model.sections||[],map=new Map();if(sections.length>100000)throw Error('Maximum 100000 sections.');
     sections.forEach(s=>{if(!Number.isInteger(s.id)||s.id<1||map.has(s.id)||typeof s.name!=='string'||!s.name.trim())throw Error('Section IDs must be unique and names nonempty.');map.set(s.id,{section:s,properties:P.properties(s)});});return map;
@@ -74,13 +82,18 @@
       return Object.keys(values).every(k=>values[k]===e[k])?e:Object.assign({},e,values);
     });
   };
-  P.stress=function(p,coeff){
-    const a=coeff[0].map(v=>v/p.area),b=coeff[5].map(v=>-v/p.Iz),c=coeff[4].map(v=>v/p.Iy),deriv=p=>p.slice(1).map((v,i)=>v*(i+1));
-    const mul=(a,b)=>{const r=Array(a.length+b.length-1).fill(0);a.forEach((v,i)=>b.forEach((w,j)=>r[i+j]+=v*w));return r;},add=(a,b)=>Array.from({length:Math.max(a.length,b.length)},(_,i)=>(a[i]||0)+(b[i]||0));
+  P.stressField=function(p,coeff){
+    const a=coeff[0].map(v=>v/p.area),b=coeff[5].map(v=>-v/p.Iz),c=coeff[4].map(v=>v/p.Iy);
     const point=(xi,y,z)=>({value:S.evaluate(a,xi)+S.evaluate(b,xi)*y+S.evaluate(c,xi)*z,xi,y,z});
     const vertices=p.extremeVertices||p.vertices;
     const at=xi=>{let points=vertices;if(p.radius||p.roundedTube){const bv=S.evaluate(b,xi),cv=S.evaluate(c,xi),r=Math.hypot(bv,cv),radius=p.radius||p.roundedTube.ro;let y=r?radius*bv/r:radius,z=r?radius*cv/r:0;if(p.roundedTube){y+=Math.sign(bv)*(p.roundedTube.h/2-radius);z+=Math.sign(cv)*(p.roundedTube.b/2-radius);if(!r)y=p.roundedTube.h/2;}points=[{y,z},{y:-y,z:-z}];}
       let minimum={value:Infinity},maximum={value:-Infinity};for(const v of points){const q=point(xi,v.y,v.z);if(q.value<minimum.value)minimum=q;if(q.value>maximum.value)maximum=q;}return {minimum,maximum};};
+    return {point,at,a,b,c};
+  };
+  P.stress=function(p,coeff){
+    const field=P.stressField(p,coeff),{a,b,c,point,at}=field,vertices=p.extremeVertices||p.vertices;
+    const deriv=p=>p.slice(1).map((v,i)=>v*(i+1));
+    const mul=(a,b)=>{const r=Array(a.length+b.length-1).fill(0);a.forEach((v,i)=>b.forEach((w,j)=>r[i+j]+=v*w));return r;},add=(a,b)=>Array.from({length:Math.max(a.length,b.length)},(_,i)=>(a[i]||0)+(b[i]||0));
     let positions=[0,1];
     if(p.radius||p.roundedTube){const D=add(mul(b,b),mul(c,c)),dD=deriv(D),radius=p.radius||p.roundedTube.ro;
       // Squaring generates extraneous candidates: evaluate actual branches at every

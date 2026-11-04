@@ -105,7 +105,7 @@ q=fromText(mechanism); mustFail(@() q.RunStatic());
 for name={'CaseReleaseStatic','CaseReleaseModal','CaseReleaseTransient'}
     p=StructFEProblem(exampleCasePath([name{1} '.txt'])); result=p.RunSelected(); model=p.GetAnalysisModel();
     data=exportPostprocessorData(model,result,fullfile('output',[name{1} '.json']));
-    assert(data.version==4);
+    assert(data.version == 8);
     decoded=jsondecode(fileread(fullfile('output',[name{1} '.json'])));
     assert(numel(decoded.model.dofRegistry)==model.numberOfDOFs);
     if strcmp(result.analysisType,'transient')

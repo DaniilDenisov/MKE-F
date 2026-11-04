@@ -77,7 +77,7 @@ for name = {'CaseLinearFrame','CaseTriangleFrame','CaseLinearRelease','CaseLinea
         near(r.elementResults.localEndForces([3 6]),[0;0]);
     end
     data = exportPostprocessorData(model,r,fullfile('output',[name{1} '.json']));
-    assert(data.version==5);
+    assert(data.version == 8);
     json = fileread(fullfile('output',[name{1} '.json']));
     assert(isempty(strfind(json,'"qx":')) && ~isempty(strfind(json,'"qx1":')));
 end

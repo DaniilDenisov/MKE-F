@@ -1,5 +1,5 @@
 const {captureEditor,capturePost,pickNode}=require('./browser-test-helpers.cjs');
-// Generate v4 fixtures with setup; addpath('tests'); test_releases in Octave.
+// Generate v8 fixtures with setup; addpath('tests'); test_releases in Octave.
 const {chromium}=require(process.env.MKEF_PLAYWRIGHT_MODULE || 'playwright');
 const {pathToFileURL}=require('url');
 const path=require('path'), fs=require('fs'), assert=require('assert/strict');
@@ -86,6 +86,6 @@ const root=path.resolve(__dirname,'..');
     await page.waitForFunction(()=>document.body.dataset.testStatus!=='running');
     assert.equal(await page.locator('body').getAttribute('data-test-status'),'passed',await page.locator('#test-output').textContent());
     assert.deepEqual(errors,[]);
-    console.log('PASS releases editor, warnings, roundtrip, undo/redo, v4 topology, static/modal shapes, internal histories, partial export and legacy browser suites');
+    console.log('PASS releases editor, warnings, roundtrip, undo/redo, v8 topology, static/modal shapes, internal histories, partial export and legacy browser suites');
   } finally {await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

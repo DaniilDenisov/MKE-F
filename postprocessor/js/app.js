@@ -204,7 +204,7 @@
     M.memberMaxima.load(next);
     // The scene needs the visible viewport dimensions before its initial fit.
     elements.dropZone.classList.add('has-data');
-    if(parsed.version===7){renderer.dispose();dataset=null;spatialViewer=new M.SpatialPost(next);elements.title.textContent=parsed.metadata.title||'3D';elements.dropZone.classList.add('has-data');elements.reset.disabled=false;elements.downloadJson.disabled=false;elements.exportSvg.disabled=true;elements.exportPng.disabled=!spatialViewer.scene;return;}
+    if(parsed.model.dimension===3){renderer.dispose();dataset=null;spatialViewer=new M.SpatialPost(next);elements.title.textContent=parsed.metadata.title||'3D';elements.dropZone.classList.add('has-data');elements.reset.disabled=false;elements.downloadJson.disabled=false;elements.exportSvg.disabled=true;elements.exportPng.disabled=!spatialViewer.scene;return;}
     dataset = next;
     elements.title.textContent = parsed.metadata.title || 'Untitled dataset'; elements.dropZone.classList.add('has-data');
     elements.reset.disabled = false; elements.exportSvg.disabled = false; elements.exportPng.disabled = false; elements.downloadJson.disabled = false;

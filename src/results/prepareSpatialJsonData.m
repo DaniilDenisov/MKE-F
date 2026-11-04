@@ -1,6 +1,13 @@
 function out = prepareSpatialJsonData(data)
-%PREPARESPATIALJSONDATA Preserve singleton/empty array dimensions in v7 JSON.
+%PREPARESPATIALJSONDATA Preserve singleton/empty array dimensions in v8 JSON.
 out=data; m=data.model;
+if isfield(m,'recoveryOperators')
+    out.model.recoveryOperators=cell(1,numel(m.recoveryOperators));
+    for i=1:numel(m.recoveryOperators)
+        op=m.recoveryOperators(i);
+        out.model.recoveryOperators{i}=struct('id',op.id,'K',{matrix(op.K)},'M',{matrix(op.M)});
+    end
+end
 for f={'nodes','elements','supports','elementLoads','releases','mpcs','dofRegistry','sections'}
     name=f{1}; out.model.(name)=arrayfun(@(x) x,m.(name),'UniformOutput',false); out.model.(name)=reshape(out.model.(name),1,[]);
 end
@@ -10,6 +17,10 @@ out.model.dependentDOFs=vector(m.dependentDOFs); out.model.independentDOFs=vecto
 for i=1:numel(m.elements)
     for f={'nodeIds','globalDOFs','referenceY'}, out.model.elements{i}.(f{1})=vector(m.elements(i).(f{1})); end
     for f={'localBasis','localFromSystem'}, out.model.elements{i}.(f{1})=matrix(m.elements(i).(f{1})); end
+    if isfield(m.elements(i),'recoveryOperators')
+        out.model.elements{i}.recoveryOperators.K=matrix(m.elements(i).recoveryOperators.K);
+        out.model.elements{i}.recoveryOperators.M=matrix(m.elements(i).recoveryOperators.M);
+    end
 end
 for i=1:numel(m.elementLoads), out.model.elementLoads{i}.ends=matrix(m.elementLoads(i).ends); end
 for i=1:numel(m.mpcs), out.model.mpcs{i}.masters=matrix(m.mpcs(i).masters); end
@@ -30,6 +41,7 @@ if isfield(a,'elementResults')
         e=a.elementResults(i);
         for f={'localEndForces','localDisplacements','equivalentLocalLoadVector'}, e.(f{1})=vector(e.(f{1})); end
         if isfield(e,'sectionForceCoefficients'), e.sectionForceCoefficients=matrix(e.sectionForceCoefficients); end
+        if isstruct(e.sectionStress), e.sectionStress.positions=vector(e.sectionStress.positions); end
         out.analysis.elementResults{i}=e;
     end
 end

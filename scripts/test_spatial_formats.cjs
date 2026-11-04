@@ -1,4 +1,4 @@
-// Spatial TXT is viewable; v7 results remain unsupported by the planar postprocessor.
+// Spatial TXT is viewable; spatial v8 results require the spatial viewer module.
 const fs = require('fs'), path = require('path'), vm = require('vm'), assert = require('assert/strict');
 const root = path.resolve(__dirname, '..');
 const context = {window:{MKEFSpatial:{registry:require('../shared/element-types.json')}}, console, Set, Map, TextEncoder}; vm.createContext(context);

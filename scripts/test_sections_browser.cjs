@@ -82,10 +82,11 @@ const server=http.createServer((req,res)=>{
     const unassigned=JSON.parse(fs.readFileSync(path.join(root,'output/CaseSectionBeam.json'),'utf8'));
     unassigned.model.elements[0].sectionId=0;
     unassigned.analysis.elementResults[0].sectionStress=[];
-    unassigned.model.nodes[1].y=1;
+    unassigned.metadata.title='Unassigned section';
     await page.locator('#file-input').setInputFiles({name:'unassigned.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(unassigned))});
     await page.locator('#show-loads').uncheck();
-    await page.waitForTimeout(100);
+    await page.waitForFunction(()=>document.querySelector('#dataset-title').textContent==='Unassigned section');
+    assert(await page.locator('#error-panel').isHidden());
     await page.locator('#planar-result-objects select').selectOption('element');await page.locator('#planar-result-rows tr').first().click();
     assert.match(await page.locator('#selection-details').innerText(),/Element 1/);
     assert(await page.locator('#section-result-panel').isHidden());
@@ -126,6 +127,6 @@ const server=http.createServer((req,res)=>{
       if(app==='preprocessor') {await page.waitForFunction(()=>document.querySelector('#test-status').dataset.status);assert.equal(await page.locator('#test-status').getAttribute('data-status'),'passed',await page.locator('#test-output').innerText());}
       else {await page.waitForFunction(()=>document.body.dataset.testStatus!=='running');assert.equal(await page.locator('body').getAttribute('data-test-status'),'passed',await page.locator('#test-output').innerText());}
     }
-    assert.deepEqual(errors,[]);console.log('Sections browser: catalog, undo/redo, roundtrip, axes, stress map, v6 variants, SVG and existing suites PASS');
+    assert.deepEqual(errors,[]);console.log('Sections browser: catalog, undo/redo, roundtrip, axes, stress map, v8 variants, SVG and existing suites PASS');
   } finally {await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;}).finally(()=>server.close());

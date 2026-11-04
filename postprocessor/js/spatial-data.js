@@ -10,12 +10,13 @@
   function ids(a,n,p){arr(a,p);const seen=new Set();a.forEach(x=>{integer(x,1,n,p);if(seen.has(x))fail(p,'duplicate ID');seen.add(x);});return seen;}
   const dot=(a,b)=>a.reduce((s,x,i)=>s+x*b[i],0);
   M.spatialData={validate:function(data){
-    if(!data||data.format!=='mkef-postprocessor'||data.version!==7)fail('$','expected v7 result');
+    if(!data||data.format!=='mkef-postprocessor'||data.version!==8)fail('$','Only result format v8 is supported. Recalculate the original TXT model.');
     const m=data.model,a=data.analysis;if(!m||!a||m.dimension!==3)fail('model','expected spatial model');
     if(!data.metadata||typeof data.metadata.title!=='string'||!data.metadata.units)fail('metadata','missing title/units');
     const nodes=arr(m.nodes,'nodes'),elements=arr(m.elements,'elements'),d=m.dofPerNode,n=m.numberOfDOFs;
     integer(nodes.length,1,100000,'nodes');integer(elements.length,1,100000,'elements');integer(n,1,1800000,'numberOfDOFs');
     if(![3,6].includes(d)||JSON.stringify(m.dofLabels)!==JSON.stringify(labels.slice(0,d)))fail('dofLabels','incorrect components');
+    M.validateRecoveryData(data,d);
     nodes.forEach((node,i)=>{if(node.id!==i+1)fail('nodes','IDs must follow physical row order');vec([node.x,node.y,node.z],3,'XYZ');});
     mat(m.dofMap,nodes.length,d,'dofMap');const used=new Set();m.dofMap.forEach(row=>row.forEach((id,j)=>{integer(id,j<3?1:0,n,'dofMap');if(id&&used.has(id))fail('dofMap','duplicate');if(id)used.add(id);}));
     const registry=arr(m.dofRegistry,'dofRegistry');if(registry.length!==n)fail('dofRegistry','wrong count');
@@ -27,7 +28,7 @@
     const expected=Array.from({length:rows.length},()=>new Map());
     m.dofMap.forEach((row,i)=>row.forEach((id,j)=>{if(!id)return;const r=registry[id-1];if(r.kind!=='node'||r.nodeId!==i+1)fail('dofMap','registry ownership mismatch');if(j<3)expected[i*d+j].set(id-1,1);else {vec(r.direction,3,'rotation direction');r.direction.forEach((v,k)=>{if(v)expected[i*d+3+k].set(id-1,v);});}}));
     rows.forEach((row,i)=>{const actual=new Map(row),keys=new Set([...actual.keys(),...expected[i].keys()]);keys.forEach(k=>{if(Math.abs((actual.get(k)||0)-(expected[i].get(k)||0))>1e-10)fail('nodeKinematics','registry mismatch');});});
-    const sectionCatalog=window.MKEFSpatialSections?window.MKEFSpatialSections.catalog(m):new Map();
+    const sectionCatalog=window.MKEFSpatialSections?window.MKEFSpatialSections.resultCatalog(m):new Map();
     elements.forEach((e,i)=>{
       if(e.sectionId){const entry=sectionCatalog.get(e.sectionId);if(!entry)fail('sectionId','unknown section');for(const k of d===6?['area','Iy','Iz','torsionConstant']:['area'])if(Math.abs(e.properties[k]-entry.properties[k])>1e-10*entry.properties[k])fail('section','catalog property mismatch');num(e.sectionAngle,'sectionAngle');}
       if(e.id!==i+1||e.type!==(d===3?1133:1436))fail('elements','inconsistent family or ID');vec(e.nodeIds,2,'nodeIds');e.nodeIds.forEach(id=>integer(id,1,nodes.length,'node'));if(e.nodeIds[0]===e.nodeIds[1])fail('element','same endpoints');

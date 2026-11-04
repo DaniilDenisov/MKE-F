@@ -73,9 +73,9 @@ bad = m; bad.elementLoads.elementId = 3;
 mustFail(@() buildStaticLoad(bad), 'MKEF:InvalidElementLoad');
 
 data = createPostprocessorData(m, r);
-assert(data.version == 2 && numel(data.model.elementLoads) == 1);
+assert(data.version == 8 && numel(data.model.elementLoads) == 1);
 near(data.analysis.elementResults.equivalentLocalLoadVector(:), [0; -1000; -1000/3; 0; -1000; 1000/3]);
-assert(createPostprocessorData(z, rz).version == 1);
+assert(createPostprocessorData(z, rz).version == 8);
 filename = [tempname() '.json']; cleanup = onCleanup(@() delete(filename));
 exportPostprocessorData(m, r, filename);
 json = fileread(filename);

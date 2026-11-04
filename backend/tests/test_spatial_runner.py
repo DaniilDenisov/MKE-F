@@ -41,7 +41,7 @@ def test_spatial_api(tmp_path, name, with_section):
         response = client.get(path + '/result')
         assert response.status_code == 200
         data = response.json()
-        assert data['version'] == 7
+        assert data['version'] == 8
         m, a = data['model'], data['analysis']
         assert m['dimension'] == 3
         assert len(m['nodes']) == 2 and len(m['elements']) == 1

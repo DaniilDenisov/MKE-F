@@ -66,6 +66,17 @@ for elementNumber = 1:numel(model.elementData)
     elementResults(elementNumber).axialStrain = axialStrain;
     elementResults(elementNumber).axialStress = axialStress;
     elementResults(elementNumber).axialForce = data.properties(1) * axialStress;
+    if data.type<1000
+        % Planar rows N,V,M; ascending powers of xi=x/L, same cut convention.
+        f=localEndForces; q=intensities(elementNumber,:); L=data.length;
+        coeff=zeros(3,4);
+        coeff(1,:)=[-f(1) -q(1)*L -(q(3)-q(1))*L/2 0];
+        if data.type==113
+            coeff(2,:)=[-f(2) -q(2)*L -(q(4)-q(2))*L/2 0];
+            coeff(3,:)=[-f(3) f(2)*L q(2)*L^2/2 (q(4)-q(2))*L^2/6];
+        end
+        elementResults(elementNumber).sectionForceCoefficients=coeff;
+    end
     if data.type==1436
         % Rows N,Vy,Vz,Mx,My,Mz; columns coefficients of xi^0..xi^3.
         % Section actions balance the portion on the node-1 side of the cut.
@@ -86,6 +97,10 @@ for elementNumber = 1:numel(model.elementData)
     if isfield(data,'sectionId') && data.sectionId>0 && data.type<1000
         elementResults(elementNumber).sectionStress = recoverSectionStress( ...
             data.sectionProperties,data.type,data.length,localEndForces,intensities(elementNumber,:));
+    end
+    if ismember(data.type,[112 1133]) && ~data.sectionId
+        point=struct('value',-localEndForces(1)/data.properties(1),'xi',0);
+        elementResults(elementNumber).sectionStress=struct('minimum',point,'maximum',point,'positions',[0 1]);
     end
 end
 end

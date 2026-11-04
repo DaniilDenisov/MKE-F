@@ -59,7 +59,7 @@ def test_sections_through_real_api(tmp_path, section_type, invalid_wall):
         else:
             assert job["status"] == "succeeded", job
             result = client.get(path + "/result").json()
-            assert result["version"] == 6
+            assert result["version"] == 8
             assert result["model"]["sections"] == [section]
             properties = result["model"]["elements"][0]["properties"]
             assert properties["area"] == pytest.approx(area)
@@ -89,7 +89,7 @@ def test_releases_through_real_api(tmp_path, case_name):
             time.sleep(0.05)
         assert job["status"] == "succeeded", job
         result = client.get(f"/api/v1/jobs/{job_id}/result").json()
-        assert result["version"] == 4
+        assert result["version"] == 8
         model = result["model"]
         assert len(model["dofRegistry"]) == model["numberOfDOFs"]
         assert len(model["releases"]) == 2
@@ -117,7 +117,7 @@ def test_mpc_through_real_api(tmp_path, case_name):
             time.sleep(0.05)
         assert job["status"] == "succeeded", job
         result = client.get(f"/api/v1/jobs/{job_id}/result").json()
-        assert result["version"] == 3
+        assert result["version"] == 8
         assert len(result["model"]["mpcs"]) == 1
         assert isinstance(result["analysis"]["mpcMultipliers"], list)
         assert "supportReactions" in result["analysis"]
@@ -159,20 +159,20 @@ def test_fixed_octave_runner_exports_each_analysis(tmp_path, case_name, analysis
     assert completed.returncode == 0, completed.stdout + completed.stderr
     result = json.loads(result_path.read_text(encoding="utf-8"))
     assert result["format"] == "mkef-postprocessor"
-    assert result["version"] == 1
+    assert result["version"] == 8
     assert result["analysis"]["type"] == analysis_type
     assert result["metadata"]["title"] == f"Integration {analysis_type}"
 
 
-@pytest.mark.parametrize(("case_name", "version", "reactions"), [
-    ("CaseUniformFrame", 2, [0, 2000, 2000]),
-    ("CaseLinearFrame", 5, [0, 1200, 1400]),
-    ("CaseTriangleFrame", 5, [0, 1000, 4000/3]),
-    ("CaseLinearRelease", 5, None),
-    ("CaseLinearMPC", 5, None),
-    ("CaseSectionBeam", 6, None),
+@pytest.mark.parametrize(("case_name", "reactions"), [
+    ("CaseUniformFrame", [0, 2000, 2000]),
+    ("CaseLinearFrame", [0, 1200, 1400]),
+    ("CaseTriangleFrame", [0, 1000, 4000/3]),
+    ("CaseLinearRelease", None),
+    ("CaseLinearMPC", None),
+    ("CaseSectionBeam", None),
 ])
-def test_distributed_load_through_real_api(tmp_path, case_name, version, reactions):
+def test_distributed_load_through_real_api(tmp_path, case_name, reactions):
     if not RUNNER.is_file():
         pytest.skip("container Octave runner is not available")
     settings = Settings(jobs_root=tmp_path / "jobs", repository_root=REPOSITORY_ROOT,
@@ -190,8 +190,8 @@ def test_distributed_load_through_real_api(tmp_path, case_name, version, reactio
             time.sleep(0.05)
         assert job["status"] == "succeeded", job
         result = client.get(f"/api/v1/jobs/{job_id}/result").json()
-        assert result["version"] == version
-        if version == 6:
+        assert result["version"] == 8
+        if case_name == "CaseSectionBeam":
             assert result["model"]["sections"][0]["type"] == "rectangle"
             stress = result["analysis"]["elementResults"][0]["sectionStress"]
             assert stress["maximum"]["value"] == pytest.approx(750000)
@@ -204,7 +204,7 @@ def test_distributed_load_through_real_api(tmp_path, case_name, version, reactio
         if reactions is not None:
             assert result["analysis"]["reactions"][:3] == pytest.approx(reactions)
             assert result["analysis"]["elementResults"][0]["localEndForces"][3:] == pytest.approx([0, 0, 0], abs=1e-8)
-        if version == 5:
+        if case_name in {"CaseLinearFrame", "CaseTriangleFrame", "CaseLinearRelease", "CaseLinearMPC"}:
             assert "qx" not in result["model"]["elementLoads"][0]
             assert "qy2" in result["model"]["elementLoads"][0]
         if case_name == "CaseLinearRelease":

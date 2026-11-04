@@ -128,7 +128,7 @@ step  = [F0, F0, F0, F0, F0];</code></pre>
         <p>Для локальных концевых векторов a и b точное интегрирование функций формы даёт:</p>
         <p class="equation">fₑ = [L(2aₓ+bₓ)/6, L(7aᵧ+3bᵧ)/20, L²(3aᵧ+2bᵧ)/60, L(aₓ+2bₓ)/6, L(3aᵧ+7bᵧ)/20, −L²(2aᵧ+3bᵧ)/60]ᵀ</p>
         <p>Эпюры N и V квадратичны, M — кубическая; внутренние экстремумы учитываются при отображении. Нагрузки обоих типов суммируются и совместимы с MPC и освобождениями Mz. В редакторе выберите Linear и задайте компоненты на концах; Local/Global преобразует оба вектора. Переход к Uniform берёт средние компоненты, сохраняя силу, но в общем случае меняя её момент.</p>
-        <p><a href="../../examples/cases/CaseTriangleFrame.txt">Треугольная нагрузка</a> · <a href="../../examples/cases/CaseLinearFrame.txt">Трапециевидная нагрузка</a> · <a href="../../postprocessor/schema-v5.md">JSON v5</a></p>
+        <p><a href="../../examples/cases/CaseTriangleFrame.txt">Треугольная нагрузка</a> · <a href="../../examples/cases/CaseLinearFrame.txt">Трапециевидная нагрузка</a> · <a href="../../postprocessor/schema-v8.md">JSON v8</a></p>
       </section>
 
       <section aria-labelledby="practice-title">
@@ -180,7 +180,7 @@ r = example_04_load_histories();</code></pre>
         </ul>
       </section>
 <p id="mpc-title" class="callout">Связи между перемещениями нескольких узлов описаны отдельно в <a href="04a-mpc.html">главе 4a: MPC</a>. Там рассматриваются зависимые СС, помощник оси и силы связей.</p>
-<section aria-labelledby="end-releases-title"><h2 id="end-releases-title">Концевые освобождения Mz</h2><p><a href="04b-end-releases.html">Подробное описание: глава 4b</a></p><p>Освобождение Mz разрывает передачу момента конкретным концом и не закрепляет перемещения узла. SPC отсутствующего thetaZ пропускается с предупреждением. Ненулевой узловой момент, MPC и монитор на отсутствующий поворот запрещены. Эквивалентные распределённые нагрузки действуют и на внутренние вращательные СС.</p><p><a href="../../postprocessor/schema-v4.md">JSON v4</a> · <a href="../../examples/cases/CaseReleaseStatic.txt">CaseReleaseStatic</a> · <a href="../../examples/cases/CaseReleaseModal.txt">CaseReleaseModal</a> · <a href="../../examples/cases/CaseReleaseTransient.txt">CaseReleaseTransient</a></p></section>
+<section aria-labelledby="end-releases-title"><h2 id="end-releases-title">Концевые освобождения Mz</h2><p><a href="04b-end-releases.html">Подробное описание: глава 4b</a></p><p>Освобождение Mz разрывает передачу момента конкретным концом и не закрепляет перемещения узла. SPC отсутствующего thetaZ пропускается с предупреждением. Ненулевой узловой момент, MPC и монитор на отсутствующий поворот запрещены. Эквивалентные распределённые нагрузки действуют и на внутренние вращательные СС.</p><p><a href="../../postprocessor/schema-v8.md">JSON v8</a> · <a href="../../examples/cases/CaseReleaseStatic.txt">CaseReleaseStatic</a> · <a href="../../examples/cases/CaseReleaseModal.txt">CaseReleaseModal</a> · <a href="../../examples/cases/CaseReleaseTransient.txt">CaseReleaseTransient</a></p></section>
 </main>
   </div>
 

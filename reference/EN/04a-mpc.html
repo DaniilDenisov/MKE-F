@@ -102,7 +102,7 @@ mpc
         <p class="equation">r = supportReactions + Cᵀλ<br>mpcForces = Cᵀλ, &nbsp; mpcMultipliers = λ</p>
         <p>Use <code>r = Ku − F</code> in statics, <code>r = Ma + Ku − F</code> in the undamped transient analysis, and <code>r = Kφ − ω²Mφ</code> for a mode. Positive λ acts positively on the dependent DOF and contributes <code>−c·λ</code> to each master. For the averaging equation and λ = 10 N, the MPC forces are +10 N at node 3 and −5 N at nodes 1 and 2.</p>
         <p>At a fixed master, the support reaction is the residual minus the MPC force. The legacy <code>reactions</code> field stores the full residual and must not be interpreted as support reactions alone. The postprocessor provides separate force layers, an equation selector and a transient λ history. Modal values use the stored eigenvector amplitude, not the visual deformation scale.</p>
-        <p>MPC data starts with <a href="../../postprocessor/schema-v3.md">JSON v3</a>. The version reflects all model features: releases require v4, linear loads v5, section catalogs v6; spatial analyses use v7. Time decimation applies to all histories; selected-DOF export filters nodal forces while retaining every equation multiplier.</p>
+        <p>MPC data is included in <a href="../../postprocessor/schema-v8.md">JSON v8</a>. V8 covers releases, linear loads, section catalogs and both dimensions. Time decimation applies to all histories; selected-DOF export filters nodal forces while retaining every equation multiplier.</p>
       </section>
 
       <section aria-labelledby="examples-title">

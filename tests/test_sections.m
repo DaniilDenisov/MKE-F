@@ -112,7 +112,7 @@ for name={'CaseLinearFrame','CaseLinearRelease','CaseLinearMPC','CaseReleaseModa
     source=[source sprintf('\nsections\n1\n{"id":1,"name":"T","type":"tee","dimensions":{"b":0.1,"h":0.2,"tw":0.008,"tf":0.012}}\nelement_sections\n1\n1,1,270\n')];
     t=fromText(source);model=t.GetAnalysisModel();
     result=t.RunSelected();
-    data=exportPostprocessorData(model,result,fullfile('output',['Section' name{1} '.json']));assert(data.version==6);
+    data=exportPostprocessorData(model,result,fullfile('output',['Section' name{1} '.json']));assert(data.version == 8);
 end
 bad=struct('type','tee','dimensions',struct('b',.1,'h',.2,'tw',.1,'tf',.01));mustFail(@() sectionProperties(bad));
 mustFail(@() fromText(strrep(text,'1,1,0','1,1,45')));

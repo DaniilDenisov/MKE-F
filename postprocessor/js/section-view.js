@@ -6,9 +6,10 @@
     if(!element.sectionId) return null;
     if(!dataset.sectionStressCache) dataset.sectionStressCache=new Map();
     if(dataset.sectionStressCache.has(element.id)) return dataset.sectionStressCache.get(element.id);
-    var section=dataset.raw.model.sections.find(function (s) {return s.id===element.sectionId;}), p=S.properties(section,element.sectionAngle);
-    var a=dataset.nodesById.get(element.nodeIds[0]),b=dataset.nodesById.get(element.nodeIds[1]),L=Math.hypot(b.x-a.x,b.y-a.y),q=M.staticResults.elementIntensities(dataset,element);
-    var stress=S.stress(p,element.type,L,dataset.resultsByElementId.get(element.id).localEndForces,[q.x,q.y,q.x+q.dx,q.y+q.dy]);
+    var section=dataset.raw.model.sections.find(function (s) {return s.id===element.sectionId;}), p=S.resultProperties(section,element);
+    var a=dataset.nodesById.get(element.nodeIds[0]),b=dataset.nodesById.get(element.nodeIds[1]),L=Math.hypot(b.x-a.x,b.y-a.y),stress;
+    var r=dataset.resultsByElementId.get(element.id),c=r.sectionForceCoefficients;
+    stress={...r.sectionStress,axial:c[0],moment:c[2],fibers:[p.etaMin,p.etaMax].map(eta=>c[0].map((v,i)=>v/p.area-c[2][i]*eta/p.momentOfInertia))};
     var result={section:section,properties:p,stress:stress,length:L};dataset.sectionStressCache.set(element.id,result);return result;
   };
   V.value=function (data,mode,xi) {var v=data.stress.fibers.map(function (p) {return S.evaluate(p,xi);});return mode==='sigmaMin' ? Math.min.apply(null,v) : Math.max.apply(null,v);};
@@ -45,7 +46,7 @@
     if(!data) {info.textContent='Assign a section in the preprocessor and rerun to view bending stresses.';return;}
     function draw() {
       range.value=input.value=String(position);
-      window.MKEFSectionDrawing.preview(svg,data.section,element.sectionAngle,data.stress,position,dataset.raw.metadata.units.stress);
+      window.MKEFSectionDrawing.previewResult(svg,data.section,element.sectionAngle,data.stress,position,dataset.raw.metadata.units.stress,data.properties);
       var a=V.value(data,'sigmaMin',position),b=V.value(data,'sigmaMax',position),u=dataset.raw.metadata.units.stress || '';
       var limit=Math.max(Math.abs(data.stress.minimum.value),Math.abs(data.stress.maximum.value));
       info.textContent=data.section.name+' · '+element.sectionAngle+'° · x/L='+M.staticResults.format(position)+'\nσmin='+M.staticResults.withUnit(a,u)+' · σmax='+M.staticResults.withUnit(b,u)+'\nScale: '+M.staticResults.withUnit(-limit,u)+' … '+M.staticResults.withUnit(limit,u)+'\nRed: tension (+) · blue: compression (−). Scale fixed over this element.';

@@ -9,7 +9,7 @@
 - Статический, модальный и переходный расчёты на GNU Octave.
 - Браузерный редактор 2D/3D: геометрия, нагрузки, опоры, многоточечные связи (MPC), концевые освобождения, каталог сечений и Undo/Redo.
 - Единая WebGL-сцена: деформации, эпюры, реакции, собственные формы, анимация и графики. Нормальные напряжения и окраска статических результатов по максимальному |σx| от продольной силы и изгиба.
-- Сохранение результатов в JSON, сцен 2D — в PNG/SVG, сцен 3D — в PNG; SVG графиков и сечений, CSV численных данных. Просмотр сохранённых JSON без решателя; справочник RU/EN.
+- Сохранение результатов в JSON v8, сцен 2D — в PNG/SVG, сцен 3D — в PNG; SVG графиков и сечений, CSV численных данных. Просмотр сохранённых JSON v8 без решателя; файлы v1–v7 требуют пересчёта исходного TXT; справочник RU/EN.
 
 Для новых назначений и расчётов пространственных рам доступны сплошной круг, прямоугольник, круглая, квадратная и прямоугольная трубы; старые результаты открытых профилей можно просматривать. Стеснённая депланация и смещение центра сдвига не учитываются.
 
@@ -56,7 +56,7 @@ MKE-F is an educational finite element program for planar and spatial trusses an
 - Static, modal and transient analysis using GNU Octave.
 - Browser-based 2D/3D editor: geometry, loads, supports, multipoint constraints (MPC), end releases, section catalog and undo/redo.
 - Shared WebGL scene: deformation, force diagrams, reactions, mode shapes, animation and plots. Normal stresses and static result coloring by maximum |σx| from axial force and bending.
-- Save results as JSON, 2D scenes as PNG/SVG and 3D scenes as PNG; SVG charts and sections, CSV numerical data. View saved JSON without the solver; RU/EN handbook.
+- Save results as JSON v8, 2D scenes as PNG/SVG and 3D scenes as PNG; SVG charts and sections, CSV numerical data. View saved JSON v8 without the solver; v1–v7 files require recalculating the original TXT; RU/EN handbook.
 
 New spatial frame assignments and analyses support solid circles, rectangles, circular tubes, square tubes and rectangular tubes; legacy open-section results remain viewable. Restrained warping and shear-center offsets are not modeled.
 

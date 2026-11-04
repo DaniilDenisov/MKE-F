@@ -20,10 +20,10 @@ foreach ($asset in @('/preprocessor/', '/preprocessor/js/case-format.js', '/post
 Write-Host 'PASS static assets require cache revalidation'
 
 $cases = @(
-    @{ File = 'CasePreprocessorStatic.txt'; Type = 'static'; Version = 1 },
-    @{ File = 'CasePreprocessorModal.txt'; Type = 'modal'; Version = 1 },
-    @{ File = 'CasePreprocessorTransient.txt'; Type = 'transient'; Version = 1 },
-    @{ File = 'CaseUniformFrame.txt'; Type = 'static'; Version = 2 }
+    @{ File = 'CasePreprocessorStatic.txt'; Type = 'static'; Version = 8 },
+    @{ File = 'CasePreprocessorModal.txt'; Type = 'modal'; Version = 8 },
+    @{ File = 'CasePreprocessorTransient.txt'; Type = 'transient'; Version = 8 },
+    @{ File = 'CaseUniformFrame.txt'; Type = 'static'; Version = 8 }
 )
 
 foreach ($case in $cases) {

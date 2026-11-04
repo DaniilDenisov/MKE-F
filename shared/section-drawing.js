@@ -2,7 +2,12 @@
   'use strict';
   var D=root.MKEFSectionDrawing={}, S=root.MKEFSections;
   function el(tag,attrs,text) { var n=document.createElementNS('http://www.w3.org/2000/svg',tag); Object.keys(attrs || {}).forEach(function (k) { n.setAttribute(k,attrs[k]); }); if(text!==undefined) n.textContent=text; return n; }
-  D.preview=function (svg,section,angle,stress,xi,unit) {
+  D.preview=function(svg,section,angle,stress,xi,unit){return preview(svg,section,angle,stress,xi,unit,S.properties(section,angle));};
+  D.previewResult=function(svg,section,angle,stress,xi,unit,properties){
+    if(!properties)throw Error('Solver section properties are required.');
+    return preview(svg,section,angle,stress,xi,unit,properties);
+  };
+  function preview(svg,section,angle,stress,xi,unit,p) {
     svg.replaceChildren();
     // Keep result labels in screen units so small sections cannot shrink the text.
     var canvas=svg, canvasHeight=0;
@@ -14,7 +19,7 @@
       svg=el('svg',{id:canvas.id+'-geometry',width:'100%',height:Math.max(80,canvasHeight-84)});
       canvas.appendChild(svg);
     }
-    var p=S.properties(section,angle), r=S.rotation(angle), vertices=p.vertices;
+    var r=S.rotation(angle), vertices=p.vertices;
     function point(z,y) { return {x:z*r.c+y*r.s,y:-(y*r.c-z*r.s)}; }
     var points=vertices.map(function (v) { return point(v.z,v.y); });
     var radius=section.type==='circle' || section.type==='circular_tube' ? section.dimensions.d/2 : 0;

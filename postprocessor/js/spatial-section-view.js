@@ -1,6 +1,6 @@
 (function(M,P){
  'use strict';const proto=M.SpatialPost.prototype,S=M.spatialResults,U=M.spatialUI;
- const controls=proto.makeControls;proto.makeControls=function(){controls.call(this);this.sectionCatalog=P.catalog(this.model);
+ const controls=proto.makeControls;proto.makeControls=function(){controls.call(this);this.sectionCatalog=P.resultCatalog(this.model);
   this.sectionContours=U.check(this.settings,'section-contours','Section outlines',false);this.sectionCount=U.field(this.settings,'section-count','Positions per member (1–10)',1);this.sectionCount.step=1;
   this.sectionScale=U.field(this.settings,'section-scale','Outline scale',1);this.sectionNote=U.el('p','',this.settings);
   for(const e of [this.sectionContours,this.sectionCount,this.sectionScale])e.onchange=()=>this.update();

@@ -56,7 +56,7 @@ for i=1:numel(badRecords)
 end
 badModel=m; badModel.multiPointConstraints.rhs=1; expect('MKEF:InvalidMPC',@() buildConstraintTransform(badModel));
 % Export shape, selected DOFs and time decimation.
-data = createPostprocessorData(m,s); assert(data.version == 3 && numel(data.model.mpcs) == 1);
+data = createPostprocessorData(m,s); assert(data.version == 8 && numel(data.model.mpcs) == 1);
 data = createPostprocessorData(dynamic,t,struct('timeStride',3,'selectedGlobalDOFs',[2 8]));
 assert(size(data.analysis.mpcForces,1) == 2);
 assert(size(data.analysis.mpcMultipliers,1) == 1);

@@ -38,7 +38,7 @@
   applyResult(ds,mode,count){const r=P.result(ds,mode,count);this.colors=r.colors;this.extra.diagrams=r.diagrams;this.extra.diagramFill=r.diagramFill;this.layers.diagrams.style.display=mode==='none'?'none':'';this.request();return r.legend;}
   setForces(key,vector,color,restrained){this.extra[this.layerKey(key)]=P.forces(this.dataset,vector,color,restrained);this.request();}
   setDistributedLoads(scale,original,deformed){this.extra.distributed=P.distributed(this.dataset,scale,original,deformed);this.request();}
-  updateSectionAxes(){if(!this.scene||!this.dataset)return;const m=this.dataset.raw.model,catalog=window.MKEFSpatialSections.catalog(m),bases=P.conditions(this.dataset).bases;
+  updateSectionAxes(){if(!this.scene||!this.dataset)return;const m=this.dataset.raw.model,catalog=window.MKEFSpatialSections.resultCatalog(m),bases=P.conditions(this.dataset).bases;
    this.scene.setSectionFrame({contours:false,axes:document.getElementById('show-section-axes')?.checked!==false,count:1,scale:1,poses:m.elements.slice(0,600).map((e,i)=>{const a=this.dataset.nodesById.get(e.nodeIds[0]),b=this.dataset.nodesById.get(e.nodeIds[1]),section=catalog.get(e.sectionId);return {element:i,center:[(a.x+b.x)/2,(a.y+b.y)/2,0],basis:window.MKEFSpatialSections.roll(bases[i],e.sectionAngle||0),loops:section&&section.properties.loops};})});}
   fit(){this.flush();if(this.scene)this.scene.fitModel();}
   sceneNodeCount(){return this.scene?this.scene.scene.children.length:0;}

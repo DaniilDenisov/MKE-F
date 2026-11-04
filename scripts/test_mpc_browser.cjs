@@ -47,11 +47,11 @@ const root=path.resolve(__dirname,'..');
       }
       if (name==='CaseMPCFrame') await page.screenshot({path:path.join(root,'output/mpc-postprocessor.png'),fullPage:true});
     }
-    // Reopening a legacy file must reset the MPC panel.
+    // Reopening a model without MPC must reset the MPC panel.
     await page.locator('#file-input').setInputFiles(path.join(root,'examples/results/static-frame.json'));
     await page.waitForFunction(()=>document.getElementById('mpc-results').hidden);
     assert.equal(await page.locator('#mpc-results').isVisible(),false);
     assert.deepEqual(errors,[]);
-    console.log('PASS MPC offline editor, helper, cascade, undo/redo, six Octave v3 exports, forces, histories and legacy reopening');
+    console.log('PASS MPC offline editor, helper, cascade, undo/redo, six Octave v8 exports, forces, histories and non-MPC reopening');
   } finally {await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

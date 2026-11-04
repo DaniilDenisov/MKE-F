@@ -60,7 +60,7 @@ const close=(actual,expected)=>assert(Math.abs(actual-expected)<1e-7*Math.max(1,
       assert.equal(await page.evaluate(()=>{resultRenderer.flush();return resultRenderer.frame.distributed.positions.length;}),both/2);
       await page.locator('#show-original').check();
       await page.screenshot({path:path.join(root,'output',name+'-browser.png'),fullPage:true});
-      console.log(name+': PASS (v5 import, end forces, diagrams, original/deformed loads)');
+      console.log(name+': PASS (v8 import, end forces, diagrams, original/deformed loads)');
     }
     assert.deepEqual(errors,[]);
   } finally { await browser.close(); }

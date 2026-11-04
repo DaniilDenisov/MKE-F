@@ -1,3 +1,5 @@
+> Historical schema, no longer supported. Recalculate the original TXT model and use [v8](schema-v8.md).
+
 # MKE-F postprocessor JSON format, version 6
 
 Version 6 is emitted when the model has a nonempty section catalog, for static,

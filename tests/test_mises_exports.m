@@ -15,7 +15,7 @@ for i=1:numel(types)
         file=fullfile('output',[name '.txt']); fid=fopen(file,'w');fprintf(fid,'%s',texts{dimension-1});fclose(fid);
         problem=StructFEProblem(file);model=problem.GetAnalysisModel();result=problem.RunSelected();
         data=exportPostprocessorData(model,result,fullfile('output',[name '.json']));
-        assert(data.version==dimension+4);
+        assert(data.version == 8);
         assert(strcmp(data.model.sections(1).type,types{i}));
         assert(norm(result.equilibriumResidual,inf)<1e-7);
         if dimension==3, assert(isequal(size(result.elementResults(1).sectionForceCoefficients),[6 4])); end

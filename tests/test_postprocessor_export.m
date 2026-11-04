@@ -1,5 +1,5 @@
 function test_postprocessor_export()
-%TEST_POSTPROCESSOR_EXPORT Verify schema-v1 conversion and safe file output.
+%TEST_POSTPROCESSOR_EXPORT Verify schema-v8 conversion and safe file output.
 
 options = struct('verbose', false, 'plotting', false);
 problem = StructFEProblem(exampleCasePath('Case1ElementBeam.txt'), options);
@@ -12,7 +12,7 @@ data = createPostprocessorData(model, staticResult, ...
     struct('title', 'Cantilever', 'lengthUnit', 'm', ...
            'forceUnit', 'N', 'momentUnit', 'N*m', 'stressUnit', 'Pa'));
 assert(strcmp(data.format, 'mkef-postprocessor'));
-assert(data.version == 1);
+assert(data.version == 8);
 assert(strcmp(data.analysis.type, 'static'));
 assert(strcmp(data.metadata.title, 'Cantilever'));
 assert(strcmp(data.metadata.units.length, 'm'));
@@ -78,7 +78,7 @@ writtenData = exportPostprocessorData(model, staticResult, filename, ...
     struct('prettyPrint', true));
 decoded = jsondecode(fileread(filename));
 assert(strcmp(decoded.format, 'mkef-postprocessor'));
-assert(decoded.version == 1);
+assert(decoded.version == 8);
 assertClose(decoded.analysis.displacements, staticResult.displacements);
 assert(isequal(writtenData.analysis.displacements, data.analysis.displacements));
 jsonText = fileread(filename);
@@ -97,7 +97,7 @@ exportPostprocessorData(frameProblem.GetAnalysisModel(), ...
 frameJson = fileread(frameFilename);
 assertJsonArray(frameJson, 'supports');
 
-singleModeResult = modalResult;
+singleModeResult = modalResult; singleModeResult.eigenvalues=modalResult.eigenvalues(1);
 singleModeResult.frequenciesHz = modalResult.frequenciesHz(1);
 singleModeResult.angularFrequenciesRadPerSec = ...
     modalResult.angularFrequenciesRadPerSec(1);

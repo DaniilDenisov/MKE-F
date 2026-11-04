@@ -130,7 +130,7 @@ exportPostprocessorData(model, result, fullfile('output', 'static-frame.json'), 
           <span class="callout__title">The same analysis through the GUI</span>
           <p>From the repository root, run <code>docker compose up --build</code> (or, with the older standalone command, <code>docker-compose up --build</code>) and open the <a href="http://127.0.0.1:8080/preprocessor/">preprocessor</a>. Select <strong>Open TXT</strong>, load <code>examples/cases/CasePreprocessorStatic.txt</code> and click <strong>Run analysis</strong>. After <strong>Completed</strong>, click <strong>Open result</strong> to open a separate postprocessor tab; the <strong>Download JSON</strong> button saves it outside the temporary container session.</p>
         </div>
-        <p><a href="../../src/results/exportPostprocessorData.m"><code>exportPostprocessorData</code></a> checks dimensions and finiteness, excludes global and element matrices, and writes versioned UTF-8 JSON. Unit fields are labels only: numerical values are not converted. For this SI export, the postprocessor displays coordinates and displacements in meters, forces, loads and reactions in newtons, moments in N·m, and stresses in Pa.</p>
+        <p><a href="../../src/results/exportPostprocessorData.m"><code>exportPostprocessorData</code></a> checks dimensions and finiteness, excludes global matrices; modal and transient results include local K/M, and writes versioned UTF-8 JSON. Unit fields are labels only: numerical values are not converted. For this SI export, the postprocessor displays coordinates and displacements in meters, forces, loads and reactions in newtons, moments in N·m, and stresses in Pa.</p>
 
         <h3>2. Open and adjust the view</h3>
         <ol>
@@ -256,7 +256,7 @@ r = example_03_static_bar();</code></pre>
         </ul>
       </section>
       <section><h2>Checking distributed loads</h2><p>Consistent element loads enter the full F before solving and calculating R=Ku−F. For a uniform load, the resultant is qL and acts at the midpoint of the original element; global equilibrium is also checked using these original resultants. For a cantilever, |v(L)|=|q|L⁴/(8EI), |θ(L)|=|q|L³/(6EI); free-end forces are zero.</p></section>
-    <section aria-labelledby="mpc-title"><h2 id="mpc-title">MPC</h2><p>MPC analysis solves Kr q = Fr and reconstructs full u = Tq. Forces are recovered from the original system, including loads on dependent and fixed DOFs. Global static equilibrium includes both support reactions and MPC forces.</p><p><a href="04a-mpc.html">Complete MPC guide</a> · <a href="../../postprocessor/schema-v3.md">JSON v3</a> · <a href="../../examples/cases/CaseMPCFrame.txt">CaseMPCFrame.txt</a> · <a href="../../examples/cases/CaseMPCTruss.txt">CaseMPCTruss.txt</a></p></section>
+    <section aria-labelledby="mpc-title"><h2 id="mpc-title">MPC</h2><p>MPC analysis solves Kr q = Fr and reconstructs full u = Tq. Forces are recovered from the original system, including loads on dependent and fixed DOFs. Global static equilibrium includes both support reactions and MPC forces.</p><p><a href="04a-mpc.html">Complete MPC guide</a> · <a href="../../postprocessor/schema-v8.md">JSON v8</a> · <a href="../../examples/cases/CaseMPCFrame.txt">CaseMPCFrame.txt</a> · <a href="../../examples/cases/CaseMPCTruss.txt">CaseMPCTruss.txt</a></p></section>
 </main>
   </div>
 

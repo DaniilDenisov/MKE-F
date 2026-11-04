@@ -34,7 +34,7 @@ fs.mkdirSync(output,{recursive:true});
     await page.goto(pathToFileURL(path.join(root,'postprocessor/index.html')).href);await capturePost(page);
     const json=path.join(root,'output/nafems-challenge-5/quick/frame_n016.json');
     const raw=JSON.parse(fs.readFileSync(json,'utf8'));
-    assert.equal(raw.version,4);
+    assert.equal(raw.version,8);
     assert.equal(raw.model.dofRegistry.filter(d=>d.kind==='elementEnd').length,4);
     await page.locator('#file-input').setInputFiles(json);
     await page.waitForFunction(()=>document.querySelectorAll('#mode-number option').length>3);
@@ -66,6 +66,6 @@ fs.mkdirSync(output,{recursive:true});
       await page.screenshot({path:path.join(output,plot+'.png')});
     }
     assert.deepEqual(errors,[]);
-    console.log('PASS NAFEMS saved-case download/reimport, releases, v4 modes and RU/EN instructions');
+    console.log('PASS NAFEMS saved-case download/reimport, releases, v8 modes and RU/EN instructions');
   } finally {await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

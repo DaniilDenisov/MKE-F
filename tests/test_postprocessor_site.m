@@ -76,6 +76,6 @@ for i = 1:numel(assets)
     end
 end
 
-assert(exist(fullfile(postDir, 'schema-v1.md'), 'file') == 2, ...
+assert(exist(fullfile(postDir, 'schema-v8.md'), 'file') == 2, ...
     'MKEF:VerificationFailed: postprocessor schema documentation is missing.');
 end

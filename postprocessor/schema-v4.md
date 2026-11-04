@@ -1,3 +1,5 @@
+> Historical schema, no longer supported. Recalculate the original TXT model and use [v8](schema-v8.md).
+
 # MKE-F postprocessor JSON format, version 4
 
 Version 4 is emitted for a model with at least one frame-end Mz release.

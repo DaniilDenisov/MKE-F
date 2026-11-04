@@ -3,7 +3,7 @@ function element = createStructuralElement(type, nodeCoordinates, ...
 %CREATESTRUCTURALELEMENT Build the common immutable element-data interface.
 % Fields used by assembly and result recovery are:
 %   type, nodeNumbers, nodeCoordinates, properties, dofs, length,
-%   transformation, localStiffness, stiffness, and mass.
+%   transformation, localStiffness, localMass, stiffness, and mass.
 
 if ismember(type,[1133 1436])
     element = createSpatialElement(type,nodeCoordinates,nodeNumbers,properties,dofMap);
@@ -51,6 +51,7 @@ element.dofs = reshape(dofMap(nodeNumbers, :).', [], 1);
 element.length = length;
 element.transformation = transformation;
 element.localStiffness = localStiffness;
+element.localMass = localMass;
 element.stiffness = transformation.' * localStiffness * transformation;
 element.mass = transformation.' * localMass * transformation;
 element.sectionId = 0;

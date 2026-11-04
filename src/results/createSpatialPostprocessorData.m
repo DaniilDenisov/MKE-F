@@ -1,5 +1,5 @@
 function data = createSpatialPostprocessorData(m,r,settings,a)
-%CREATESPATIALPOSTPROCESSORDATA v7; system coordinates may be rotational bases.
+%CREATESPATIALPOSTPROCESSORDATA v8; system coordinates may be rotational bases.
 % nodeKinematics is sparse COO, one-based [physicalRow,systemDOF,coefficient].
 % dofMap columns 4..6 are active-basis slots, NOT necessarily thetaX/Y/Z.
 % element.localFromSystem maps its globalDOFs into physical local end DOFs.
@@ -58,7 +58,8 @@ for i=1:numel(m.elementData)
     for j=1:numel(spec.properties), properties.(spec.properties{j})=e.properties(j); end
     item=struct('id',i,'type',code,'nodeIds',e.nodeNumbers,'properties',properties,'length',e.length, ...
         'localBasis',e.localBasis,'referenceY',e.referenceY,'sectionAngle',e.sectionAngle, ...
-        'globalDOFs',e.dofs(:).','localFromSystem',e.transformation,'sectionId',e.sectionId);
+        'globalDOFs',e.dofs(:).','localFromSystem',e.transformation,'sectionId',e.sectionId, ...
+        'sectionProperties',exportSectionProperties(e));
     if e.sectionId>0
         s=m.sections(find([m.sections.id]==e.sectionId,1)); p=spatialSectionProperties(s);
         expected=p.area; actual=e.properties(1);
@@ -122,7 +123,14 @@ if strcmp(a.type,'transient')
         a.nodalDisplacementAmplitudeSpectrum=amplitude;
     end
 end
-data=struct('format','mkef-postprocessor','version',7,'model',model,'analysis',a);
+data=struct('format','mkef-postprocessor','version',8,'model',model,'analysis',a);
+data.model.recovery=struct('version',1,'coordinates','local-physical-end', ...
+    'stiffnessFormulation',spec.formulation,'massFormulation','consistent-v1');
+% Static forces are already exported. Dynamic recovery uses the exact
+% uncondensed local operators used by the solver, once per element.
+if ~strcmp(a.type,'static')
+    data.model=addRecoveryOperators(data.model,m,settings.operatorStorage);
+end
 finiteTree(data);
 end
 function s=stripSource(s)

@@ -1,3 +1,5 @@
+> Historical schema, no longer supported. Recalculate the original TXT model and use [v8](schema-v8.md).
+
 # MKE-F postprocessor JSON format, version 1
 
 Results containing uniform element loads use [version 2](schema-v2.md).

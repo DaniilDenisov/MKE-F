@@ -1,15 +1,16 @@
+const planarStress=require('./planar-stress-reference.cjs');
 // Run after tests/test_sections.m to compare the two independent runtimes.
 const fs=require('fs'),path=require('path'),vm=require('vm'),assert=require('assert/strict');
 const root=path.resolve(__dirname,'..'),S=require('../shared/sections.js');
 function near(a,b) {assert(Math.abs(a-b)<=1e-8*Math.max(Math.abs(b),1e-14),`${a} != ${b}`);}
 for(const row of JSON.parse(fs.readFileSync(path.join(root,'output/section-parity.json'),'utf8'))) {
-  const p=S.properties(row.section,row.angle),stress=S.stress(p,113,2,[-40,150,-30,0,0,0],[20,-300,100,200]);
+  const p=S.properties(row.section,row.angle),stress=planarStress(S,p,113,2,[-40,150,-30,0,0,0],[20,-300,100,200]);
   for(const key of Object.keys(row.properties))near(p[key],row.properties[key]);
   for(const bound of ['minimum','maximum'])for(const key of ['value','xi','eta'])near(stress[bound][key],row.stress[bound][key]);
 }
 const rect={type:'rectangle',dimensions:{b:2,h:4}},p=S.properties(rect);
 for(const root of [1e-12,1-1e-12,0,1]) {
-  const endpointStress=S.stress(p,113,1,[0,1,root,0,0,0],[0,0,0,0]);
+  const endpointStress=planarStress(S,p,113,1,[0,1,root,0,0,0],[0,0,0,0]);
   assert.deepEqual(endpointStress.positions,[0,1],'Near-endpoint roots must preserve exact endpoints');
 }
 assert.deepEqual(S.unique([0,1,1-1e-12,.5,1e-12]),[0,.5,1]);
@@ -27,8 +28,8 @@ for(const type of ['square_tube','rectangular_tube','circular_tube']) {
 assert.throws(()=>S.properties({type:'rectangular_tube',dimensions:{b:4,h:2,t:1}}));
 assert.throws(()=>S.properties(rect,45));assert.throws(()=>S.properties({type:'angle',dimensions:{}}));
 // Pure axial and pure bending signs; no sampled approximation of interior extrema.
-let stress=S.stress(p,112,2,[-80,0,80,0]);near(stress.minimum.value,10);near(stress.maximum.value,10);
-stress=S.stress(p,113,2,[0,0,-32,0,0,32]);near(S.evaluate(stress.fibers[1],0),-6);near(S.evaluate(stress.fibers[0],0),6);
+let stress=planarStress(S,p,112,2,[-80,0,80,0]);near(stress.minimum.value,10);near(stress.maximum.value,10);
+stress=planarStress(S,p,113,2,[0,0,-32,0,0,32]);near(S.evaluate(stress.fibers[1],0),-6);near(S.evaluate(stress.fibers[0],0),6);
 const tee={type:'tee',dimensions:{b:2,h:4,tw:.2,tf:.4}},t0=S.properties(tee),t180=S.properties(tee,180);
 near(t180.etaMin,-t0.etaMax);near(t180.etaMax,-t0.etaMin);near(t180.momentOfInertia,t0.momentOfInertia);
 const context={window:{},console,Set,Map};vm.createContext(context);
@@ -56,4 +57,4 @@ for(const name of fs.readdirSync(path.join(root,'output')).filter(n=>/^SectionCa
     const badAngle=structuredClone(data);badAngle.model.elements[0].sectionAngle=45;assert.throws(()=>context.window.MKEFPost.validateDataset(badAngle));
   }
 }
-console.log('Sections: geometry, stress parity, signs, orientations, TXT roundtrip, v6 combinations PASS');
+console.log('Sections: geometry, stress parity, signs, orientations, TXT roundtrip, v8 combinations PASS');

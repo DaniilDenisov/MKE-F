@@ -16,18 +16,13 @@
     let stress,at;
     if(truss){
       let n;
-      if(spatial){
         if(r.sectionForceCoefficients){if(!finiteRow(r.sectionForceCoefficients[0]))return unavailable('Axial force coefficients are missing or non-finite.');n=r.sectionForceCoefficients[0];}
         else {if(!Number.isFinite(r.localEndForces?.[0]))return unavailable('Axial end force is missing or non-finite.');n=[-r.localEndForces[0],0,0,0];}
-      }else{
-        const q=M.staticResults.elementIntensities(ds,e);
-        if(![r.localEndForces?.[0],q.length,q.x,q.dx].every(Number.isFinite))return unavailable('Axial force or distributed load data are missing or non-finite.');
-        n=[-r.localEndForces[0],-q.x*q.length,-q.dx*q.length/2,0];
-      }
-      const poly=n.map(v=>v/e.properties.area),positions=S.unique([0,1,...S.roots(poly.slice(1).map((v,i)=>v*(i+1)))]);
+      const poly=n.map(v=>v/e.properties.area);
       // Uniform axial stress has no unique critical fiber. Geometry is optional.
-      const point=xi=>({xi,value:S.evaluate(poly,xi)}),points=positions.map(point);
-      stress={positions,minimum:points.reduce((a,b)=>b.value<a.value?b:a),maximum:points.reduce((a,b)=>b.value>a.value?b:a)};
+      const point=xi=>({xi,value:S.evaluate(poly,xi)});
+      stress=r.sectionStress;
+      if(!stress?.minimum||!stress?.maximum||!Array.isArray(stress.positions))return unavailable('Static normal stress summary was not exported.');
       at=xi=>{const p=point(xi);return section(p,p);};
     }else if(spatial){
       const c=r.sectionForceCoefficients;
@@ -37,8 +32,6 @@
       at=xi=>{const p=stress.at(xi);return section(p.minimum,p.maximum);};
     }else{
       if(!e.sectionId)return unavailable('Section geometry is required for axial and bending normal stresses.');
-      const q=M.staticResults.elementIntensities(ds,e);
-      if(![r.localEndForces?.[0],r.localEndForces?.[1],r.localEndForces?.[2],q.length,q.x,q.y,q.dx,q.dy].every(Number.isFinite))return unavailable('Normal force, bending or distributed load data are missing or non-finite.');
       const data=M.sectionResults.get(ds,e);stress=data.stress;
       at=xi=>{const points=stress.fibers.map((poly,i)=>({xi,value:S.evaluate(poly,xi),eta:i?data.properties.etaMax:data.properties.etaMin}));return section(points.reduce((a,b)=>b.value<a.value?b:a),points.reduce((a,b)=>b.value>a.value?b:a));};
     }

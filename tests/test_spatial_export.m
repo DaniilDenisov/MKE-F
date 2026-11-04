@@ -4,7 +4,7 @@ names={'CaseSpatialTruss','CaseSpatialFrame','CaseSpatialTrussModal','CaseSpatia
 for i=1:numel(names)
     name=names{i}; p=StructFEProblem(exampleCasePath([name '.txt'])); m=p.GetAnalysisModel(); r=p.RunSelected();
     data=exportPostprocessorData(m,r,fullfile('output',[name '.json']));
-    assert(data.version==7 && data.model.dimension==3);
+    assert(data.version == 8 && data.model.dimension==3);
     assert(~isfield(data.model,'stiffness') && ~isfield(data.model.elements,'localMass'));
     q=jsondecode(fileread(fullfile('output',[name '.json'])));
     entries=q.model.nodeKinematics.entries;
@@ -27,6 +27,8 @@ for i=1:numel(names)
     end
 end
 p=StructFEProblem(exampleCasePath('CaseSpatialFrame.txt')); m=p.GetAnalysisModel(); r=p.RunStatic();
+fid=fopen(fullfile('output','spatial-frame-operators.json'),'w');
+fprintf(fid,'%s',jsonencode(struct('K',m.elementData.localStiffness,'M',m.elementData.localMass)));fclose(fid);
 bad=r; bad.displacements(1)=NaN; mustFail(@() createPostprocessorData(m,bad));
 bad=m; bad.nodeCoordinates(1,1)=inf; mustFail(@() createPostprocessorData(bad,r));
 bad=m; bad.elementData.transformation(1,1)=2; mustFail(@() createPostprocessorData(bad,r));

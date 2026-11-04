@@ -27,10 +27,13 @@ const {chromium}=require(process.env.MKEF_PLAYWRIGHT_MODULE||'playwright'),asser
    await page.evaluate(()=>{if([...dataset.normalStress.results.values()].some(r=>r.status!=='ok'))throw Error(JSON.stringify([...dataset.normalStress.results]));renderer.flush();if(!renderer.frame.deformed.colors.every(Number.isFinite))throw Error('Non-finite colors');});
   }
   const manual=JSON.parse(fs.readFileSync('output/CaseSectionBeam.json'));
-  manual.version=1;delete manual.model.sections;delete manual.model.elementLoads;delete manual.model.nodalLoads;
+  delete manual.model.sections;delete manual.model.elementLoads;delete manual.model.nodalLoads;
+  manual.model.numberOfDOFs=4;manual.model.recovery.stiffnessFormulation='linear-bar';
   manual.model.dofPerNode=2;manual.model.dofLabels=['ux','uy'];manual.model.dofMap=[[1,2],[3,4]];manual.model.supports=[];
   const member=manual.model.elements[0];member.type=112;delete member.sectionId;member.properties.area=2;
+  member.globalDOFs=[1,2,3,4];member.localFromSystem=[0,1,3,4].map(i=>[0,1,3,4].map(j=>member.localFromSystem[i][j]));
   Object.assign(manual.analysis,{displacements:[0,0,.01,0],loadVector:[0,0,100,0],reactions:[-100,0,0,0],equilibriumResidual:[0,0,0],elementResults:[{elementId:1,type:112,localEndForces:[-100,0,100,0],axialStrain:.005,axialStress:50,axialForce:100}]});
+  Object.assign(manual.analysis.elementResults[0],{localDisplacements:[0,0,.01,0],equivalentLocalLoadVector:[0,0,0,0],sectionStress:{minimum:{value:50,xi:0},maximum:{value:50,xi:0},positions:[0,1]},sectionForceCoefficients:[[100,0,0,0],[0,0,0,0],[0,0,0,0]]});
   await page.evaluate(()=>window.previousDataset=window.dataset);await page.locator('#file-input').setInputFiles({name:'manual-truss.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(manual))});await page.waitForFunction(()=>dataset!==previousDataset&&!!dataset.normalStress);await activate();await select();
   assert.match(await page.locator('#normal-stress-details').innerText(),/max \|σx\|=50/);assert.match(await page.locator('#normal-stress-details').innerText(),/Uniform axial stress/);
   // A mixed model uses only supported members for the model-wide scale.

@@ -20,9 +20,18 @@ else
         r=p.rectangles(k,:); vertices=[vertices;r(2) r(1);r(2) r(1)+r(3);r(2)+r(4) r(1);r(2)+r(4) r(1)+r(3)];
     end
     for k=1:size(vertices,1), positions=[positions realRoots(deriv(a+b*vertices(k,1)+c*vertices(k,2)))]; end
+    % Include changes of the supporting corner for exact envelope sampling.
+    for k=1:size(vertices,1)
+        for j=k+1:size(vertices,1)
+            delta=vertices(k,:)-vertices(j,:);
+            positions=[positions realRoots(b*delta(1)+c*delta(2))];
+        end
+    end
 end
+positions(abs(positions)<=1e-10)=0; positions(abs(positions-1)<=1e-10)=1;
+positions=sort(positions); positions=positions([true diff(positions)>1e-10]);
 minimum=struct('value',inf,'xi',0,'y',0,'z',0); maximum=minimum; maximum.value=-inf;
-for x=unique(positions)
+for x=positions
     av=polyval(fliplr(a),x); bv=polyval(fliplr(b),x); cv=polyval(fliplr(c),x);
     points=vertices;
     if isempty(points)
@@ -37,7 +46,7 @@ for x=unique(positions)
         if v.value>maximum.value, maximum=v; end
     end
 end
-result=struct('minimum',minimum,'maximum',maximum);
+result=struct('minimum',minimum,'maximum',maximum,'positions',positions);
 end
 function d=deriv(p), d=p(2:end).*(1:numel(p)-1); if isempty(d), d=0; end; end
 function v=add(a,b), v=zeros(1,max(numel(a),numel(b))); v(1:numel(a))=a;v(1:numel(b))=v(1:numel(b))+b; end

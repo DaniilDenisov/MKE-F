@@ -1,9 +1,6 @@
 (function(M){
   'use strict';
   const S=M.spatialResults={},dot=(a,b)=>a.reduce((s,v,i)=>s+v*b[i],0),mul=(A,v)=>A.map(r=>dot(r,v));
-  // Bounded local-operator cache; never assemble or retain a global K/M.
-  const operators=new Map();
-  function remember(e,value){if(operators.size>=2048)operators.delete(operators.keys().next().value);operators.set(e,value);return value;}
   S.global=(R,v)=>[0,1,2].map(j=>R.reduce((s,r,i)=>s+r[j]*v[i],0));
   S.vector=function(ds,field,index=0,phase=1){
     const a=ds.raw.analysis,n=ds.raw.model.numberOfDOFs,out=Array(n).fill(null);
@@ -19,27 +16,25 @@
     if(ds.raw.model.dofPerNode===3){const v=S.vector(ds,field,index,phase);return v&&v[row]!==undefined?v[row]:null;}return null;
   };
   S.local=function(e,vector){if(!vector)return null;return e.localFromSystem.map(row=>{let sum=0;for(let j=0;j<row.length;j++)if(row[j]){const v=vector[e.globalDOFs[j]-1];if(v===null||v===undefined)return null;sum+=row[j]*v;}return sum;});};
-  S.operators=function(e){
-    if(operators.has(e))return operators.get(e);
-    const d=e.type===1133?3:6,n=2*d,K=Array.from({length:n},()=>Array(n).fill(0)),mass=K.map(r=>r.slice()),p=e.properties,L=e.length;
-    const block=(A,ids,B,factor=1)=>ids.forEach((i,r)=>ids.forEach((j,c)=>A[i][j]=B[r][c]*factor));
-    block(K,[0,d],[[1,-1],[-1,1]],p.area*p.youngsModulus/L);
-    if(d===3){for(let j=0;j<3;j++)block(mass,[j,j+3],[[2,1],[1,2]],p.density*p.area*L/6);return remember(e,{K,M:mass});}
-    block(K,[3,9],[[1,-1],[-1,1]],p.shearModulus*p.torsionConstant/L);
-    const B=[[12,6*L,-12,6*L],[6*L,4*L*L,-6*L,2*L*L],[-12,-6*L,12,-6*L],[6*L,2*L*L,-6*L,4*L*L]],sign=[1,-1,1,-1];
-    block(K,[1,5,7,11],B,p.youngsModulus*p.Iz/L**3);block(K,[2,4,8,10],B.map((r,i)=>r.map((v,j)=>v*sign[i]*sign[j])),p.youngsModulus*p.Iy/L**3);
-    block(mass,[0,6],[[2,1],[1,2]],p.density*p.area*L/6);block(mass,[3,9],[[2,1],[1,2]],p.density*(p.Iy+p.Iz)*L/6);
-    const BM=[[156,22*L,54,-13*L],[22*L,4*L*L,13*L,-3*L*L],[54,13*L,156,-22*L],[-13*L,-3*L*L,-22*L,4*L*L]];
-    block(mass,[1,5,7,11],BM,p.density*p.area*L/420);block(mass,[2,4,8,10],BM.map((r,i)=>r.map((v,j)=>v*sign[i]*sign[j])),p.density*p.area*L/420);return remember(e,{K,M:mass});
+  S.operators=function(e,version,model){
+    if(version!==8)throw new Error('Only result format v8 is supported.');
+    if(model?.recovery?.version===2){
+      const op=model.recoveryOperators?.[e.recoveryOperatorId-1];
+      if(!op||op.id!==e.recoveryOperatorId)throw new Error('Missing v8 recovery operator ID.');
+      return op;
+    }
+    if(!e.recoveryOperators)throw new Error('Missing v8 recovery operators.');
+    return e.recoveryOperators;
   };
   S.recover=function(ds,e,vector,acceleration){
     const u=S.local(e,vector);if(!u||u.some(v=>v===null))return null;
     const stored=ds.raw.analysis.type==='static'?ds.resultsByElementId.get(e.id):null;
-    const op=!stored||acceleration?S.operators(e):null;
-    let end=stored?stored.localEndForces.slice():mul(op.K,u),coeff=Array.from({length:6},()=>[0,0,0,0]);
+    const op=stored?null:S.operators(e,ds.raw.version,ds.raw.model),planar=ds.raw.model.dimension===2;
+    let end=stored?stored.localEndForces.slice():mul(op.K,u),coeff=Array.from({length:planar?3:6},()=>[0,0,0,0]);
     if(stored){end=stored.localEndForces.slice();if(stored.sectionForceCoefficients)coeff=stored.sectionForceCoefficients.map(r=>r.slice());else coeff[0][0]=-end[0];}
+    else if(planar){coeff[0][0]=-end[0];if(e.type===113){coeff[1][0]=-end[1];coeff[2][0]=-end[2];coeff[2][1]=e.length*end[1];}}
     else {if(e.type===1133)coeff[0][0]=-end[0];else {for(let i=0;i<6;i++)coeff[i][0]=-end[i];coeff[4][1]=-e.length*end[2];coeff[5][1]=e.length*end[1];}}
-    const localA=S.local(e,acceleration),inertia=localA&&!localA.some(v=>v===null)?mul(op.M,localA):null;
+    const localA=stored?null:S.local(e,acceleration),inertia=localA&&!localA.some(v=>v===null)?mul(op.M,localA):null;
     return {u,end,coeff,inertia,total:inertia?end.map((v,i)=>v+inertia[i]):null};
   };
   S.polynomials=function(e,u){

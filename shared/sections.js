@@ -13,20 +13,19 @@
     if (i < 0) throw new Error('Section orientation must be 0, 90, 180 or 270 degrees.');
     return {c:[1,0,-1,0][i],s:[0,1,0,-1][i]};
   };
-  S.properties = function (section, angle) {
+  // Geometry primitives in the input profile axes, without area/inertia integration.
+  S.geometry = function (section) {
     if (!section || !Object.prototype.hasOwnProperty.call(S.types,section.type)) throw new Error('Unsupported section type.');
-    var d=section.dimensions, r=S.rotation(angle === undefined ? 0 : angle);
+    var d=section.dimensions;
     if (!d || !S.fields(section.type).filter(k=>k!=='inner_radius').every(function (k) { return Number.isFinite(d[k]) && d[k]>0; })) throw new Error('Section dimensions must be positive finite numbers.');
     var ri=d.inner_radius===undefined?0:d.inner_radius;
     if (!Number.isFinite(ri) || ri<0 || ri>0 && !['square_tube','rectangular_tube'].includes(section.type)) throw new Error('Inside corner radius must be finite, nonnegative and used only for rectangular tubes.');
-    var rects=[], A=0, cy=0, cz=0, Iy=0, Iz=0;
+    var rects=[];
     function rect(z,y,b,h) { rects.push({z:z,y:y,b:b,h:h}); }
     if (section.type==='circular_tube') {
       if (2*d.t>=d.d) throw new Error('Section wall thickness leaves no clear space.');
-      var inner=d.d-2*d.t;
-      A=Math.PI*d.t*(d.d-d.t); Iy=Iz=A*(d.d*d.d+inner*inner)/16;
     }
-    else if (section.type==='circle') { A=Math.PI*d.d*d.d/4; Iy=Iz=Math.PI*Math.pow(d.d,4)/64; }
+    else if (section.type==='circle') { /* Analytic circular boundary. */ }
     else {
       if (section.type==='rectangle') rect(0,0,d.b,d.h);
       else if (section.type==='square_tube' || section.type==='rectangular_tube') {
@@ -42,31 +41,58 @@
         if (doubleFlange) rect(0,0,d.b,d.tf);
         rect(section.type==='channel' ? 0 : (d.b-d.tw)/2,doubleFlange ? d.tf : 0,d.tw,d.h-(doubleFlange ? 2 : 1)*d.tf);
       }
-      rects.forEach(function (p) { var a=p.b*p.h; A+=a; cy+=a*(p.y+p.h/2); cz+=a*(p.z+p.b/2); });
-      cy/=A; cz/=A;
-      rects.forEach(function (p) { p.y-=cy; p.z-=cz; Iy+=p.h*Math.pow(p.b,3)/12+p.b*p.h*Math.pow(p.z+p.b/2,2); Iz+=p.b*Math.pow(p.h,3)/12+p.b*p.h*Math.pow(p.y+p.h/2,2); });
     }
     var roundedTube=null;
     if(ri>0){
       var height=section.type==='square_tube'?d.b:d.h,ro=ri+d.t;
       if(ro>=Math.min(height,d.b)/2*(1-1e-14))throw new Error('Inside radius + wall thickness must be less than half the smaller outside dimension.');
-      function rounded(h,b,r){
-        var cut=(1-Math.PI/4)*r*r;
-        function inertia(span,width){var a=span/2-r;return width*span**3/12-4*(a*a*cut+a*r**3/3+(1/3-Math.PI/16)*r**4);}
-        return [h*b-4*cut,inertia(b,h),inertia(h,b)];
-      }
-      var outer=rounded(height,d.b,ro),inner=rounded(height-2*d.t,d.b-2*d.t,ri);
-      A=outer[0]-inner[0];Iy=outer[1]-inner[1];Iz=outer[2]-inner[2];
       roundedTube={h:height,b:d.b,ri:ri,ro:ro,t:d.t};
     }
+    return {rectangles:rects,roundedTube,radius:rects.length?0:d.d/2,innerRadius:section.type==='circular_tube'?d.d/2-d.t:0};
+  };
+  // Contours use an explicit centroid, from the editor or the solver snapshot.
+  S.contours = function (geometry, centroid, angle) {
+    var r=S.rotation(angle===undefined?0:angle),roundedTube=geometry.roundedTube;
+    var rects=geometry.rectangles.map(p=>({...p,y:p.y-centroid.centroidY,z:p.z-centroid.centroidZ}));
     var vertices=[];
     rects.forEach(function (p) { [[p.z,p.y],[p.z+p.b,p.y],[p.z+p.b,p.y+p.h],[p.z,p.y+p.h]].forEach(function (v) { vertices.push({z:v[0],y:v[1]}); }); });
     if(roundedTube)vertices=S.roundedLoop(roundedTube.h,roundedTube.b,roundedTube.ro);
     var eta=vertices.map(function (p) { return p.y*r.c-p.z*r.s; });
-    var result={area:A,centroidY:cy,centroidZ:cz,Iy:Iy,Iz:Iz,momentOfInertia:Iz*r.c*r.c+Iy*r.s*r.s,rectangles:rects,vertices:vertices,
-      etaMin:eta.length ? Math.min.apply(null,eta) : -d.d/2,etaMax:eta.length ? Math.max.apply(null,eta) : d.d/2,roundedTube:roundedTube};
-    if (![A,Iy,Iz,result.etaMin,result.etaMax].every(Number.isFinite) || A<=0 || Iy<=0 || Iz<=0) throw new Error('Section dimensions overflow or underflow the numerical range.');
-    return result;
+    return {...geometry,rectangles:rects,vertices,etaMin:eta.length?Math.min(...eta):-geometry.radius,etaMax:eta.length?Math.max(...eta):geometry.radius};
+  };
+  // Editor preview only. Result readers call resultProperties, never this calculator.
+  S.properties=function(section,angle){
+    const geometry=S.geometry(section),d=section.dimensions,r=S.rotation(angle===undefined?0:angle);
+    let A=0,cy=0,cz=0,Iy=0,Iz=0;
+    if(geometry.radius){
+      A=section.type==='circle'?Math.PI*d.d*d.d/4:Math.PI*d.t*(d.d-d.t);
+      Iy=Iz=A*(d.d*d.d+4*geometry.innerRadius**2)/16;
+    }else{
+      for(const p of geometry.rectangles){const a=p.b*p.h;A+=a;cy+=a*(p.y+p.h/2);cz+=a*(p.z+p.b/2);}
+      cy/=A;cz/=A;
+      for(const p of geometry.rectangles){Iy+=p.h*p.b**3/12+p.b*p.h*(p.z+p.b/2-cz)**2;Iz+=p.b*p.h**3/12+p.b*p.h*(p.y+p.h/2-cy)**2;}
+      if(geometry.roundedTube){
+        function rounded(h,b,r){const cut=(1-Math.PI/4)*r*r,inertia=(span,width)=>width*span**3/12-4*((span/2-r)**2*cut+(span/2-r)*r**3/3+(1/3-Math.PI/16)*r**4);return [h*b-4*cut,inertia(b,h),inertia(h,b)];}
+        const t=geometry.roundedTube,outer=rounded(t.h,t.b,t.ro),inner=rounded(t.h-2*t.t,t.b-2*t.t,t.ri);
+        [A,Iy,Iz]=outer.map((v,i)=>v-inner[i]);
+      }
+    }
+    const p={area:A,centroidY:cy,centroidZ:cz,Iy,Iz,momentOfInertia:Iz*r.c*r.c+Iy*r.s*r.s},shape=S.contours(geometry,p,angle);
+    if(![A,Iy,Iz,shape.etaMin,shape.etaMax].every(Number.isFinite)||A<=0||Iy<=0||Iz<=0)throw Error('Section dimensions overflow or underflow the numerical range.');
+    return {...p,...shape};
+  };
+  // Result consumers use solver values; only drawing geometry is constructed here.
+  S.resultProperties=function(section,element){
+    const p=element.sectionProperties,spatial=element.type>=1000;
+    if(!p||Array.isArray(p))throw Error('Missing solver sectionProperties. Recalculate the original TXT model.');
+    for(const key of ['area','centroidY','centroidZ','Iy','Iz','momentOfInertia','etaMin','etaMax'])if(!Number.isFinite(p[key]))throw Error('Invalid section property '+key);
+    if(['area','Iy','Iz','momentOfInertia'].some(k=>p[k]<=0)||p.etaMin>=p.etaMax)throw Error('Invalid positive section properties or fiber bounds.');
+    const keys=element.type===1436?['area','Iy','Iz','torsionConstant']:element.type===113?['area','momentOfInertia']:['area'];
+    for(const k of keys)if(!Number.isFinite(p[k])||p[k]<=0||!Number.isFinite(element.properties[k])||Math.abs(p[k]-element.properties[k])>1e-10*p[k])throw Error('Solver section property mismatch: '+k);
+    if(spatial&&(!Number.isFinite(p.torsionConstant)||p.torsionConstant<=0||typeof p.torsionMethod!=='string'||typeof p.approximate!=='boolean'||typeof p.open!=='boolean'))throw Error('Invalid solver torsion properties.');
+    const shape=S.contours(S.geometry(section),p,spatial?0:element.sectionAngle),scale=Math.max(Math.abs(shape.etaMin),Math.abs(shape.etaMax));
+    if(![shape.etaMin,shape.etaMax].every(Number.isFinite)||Math.abs(shape.etaMin-p.etaMin)>1e-10*scale||Math.abs(shape.etaMax-p.etaMax)>1e-10*scale)throw Error('Section fiber bounds disagree with drawing geometry.');
+    return {...p,...shape,etaMin:p.etaMin,etaMax:p.etaMax};
   };
   // Display contours only; areas, inertias and stress extrema use analytic geometry.
   S.roundedLoop=function(h,b,r){
@@ -84,13 +110,13 @@
         if (!Number.isInteger(s.id) || s.id<1 || ids.has(s.id)) throw new Error('Section IDs must be unique positive integers.');
         ids.add(s.id);
         if (typeof s.name!=='string' || !s.name.trim()) throw new Error('Section name is required.');
-        S.properties(s);
+        S.geometry(s);
       } catch (e) { errors.push('Section '+s.id+': '+e.message); }
     });
     model.elements.forEach(function (e,i) {
       if (e.sectionId===undefined || e.sectionId===null || e.sectionId===0) return;
       if (!ids.has(e.sectionId)) errors.push('Element '+(e.id || i+1)+': unknown section.');
-      try { S.rotation(e.sectionAngle); } catch (err) { errors.push('Element '+(e.id || i+1)+': '+err.message); }
+      try { if(model.dimension===3){if(!Number.isFinite(e.sectionAngle))throw Error('Section angle must be finite.');}else S.rotation(e.sectionAngle); } catch (err) { errors.push('Element '+(e.id || i+1)+': '+err.message); }
     });
     return errors;
   };
@@ -99,6 +125,18 @@
     model.elements.forEach(function (e) { if (!e.sectionId) return; var s=model.sections.find(function (s) { return s.id===e.sectionId; }), p=S.properties(s,e.sectionAngle); e.area=p.area; if (model.elementType===113) e.momentOfInertia=p.momentOfInertia; });
   };
   S.evaluate = function (p,x) { return p.reduceRight(function (v,c) { return v*x+c; },0); };
+  S.validateStress=function(stress,pointValue,contains){
+    if(!stress||!Array.isArray(stress.positions)||stress.positions.length<2)throw Error('Missing static section stress summary. Recalculate the original TXT model.');
+    const positions=stress.positions;
+    if(positions[0]!==0||positions.at(-1)!==1||positions.some((x,i)=>!Number.isFinite(x)||x<0||x>1||i&&x<=positions[i-1]))throw Error('Invalid stress sampling positions.');
+    for(const key of ['minimum','maximum']){
+      const p=stress[key];
+      if(!p||!Number.isFinite(p.value)||!Number.isFinite(p.xi)||p.xi<0||p.xi>1||!positions.some(x=>Math.abs(x-p.xi)<=1e-10)||!contains(p))throw Error('Invalid section stress critical point.');
+      const value=pointValue(p);
+      if(!Number.isFinite(value)||Math.abs(value-p.value)>1e-8*Math.max(1,Math.abs(value),Math.abs(p.value)))throw Error('Inconsistent section stress critical value.');
+    }
+    if(stress.minimum.value>stress.maximum.value)throw Error('Inverted section stress extrema.');
+  };
   // Derivative partitioning isolates all real roots in [0,1], including double roots.
   S.roots = function (input) {
     var scale=Math.max.apply(null,input.map(Math.abs)); if (!scale) return [];
@@ -120,18 +158,6 @@
   S.unique = function (values) {
     return values.map(function (v) { return Math.abs(v)<=1e-10 ? 0 : Math.abs(v-1)<=1e-10 ? 1 : v; })
       .sort(function (a,b) { return a-b; }).filter(function (v,i,a) { return i===0 || v-a[i-1]>1e-10; });
-  };
-  S.stress = function (p,type,L,f,q) {
-    q=q || [0,0,0,0];
-    var n=[-f[0],-q[0]*L,-(q[2]-q[0])*L/2,0];
-    var m=type===112 ? [0,0,0,0] : [-f[2],f[1]*L,q[1]*L*L/2,(q[3]-q[1])*L*L/6];
-    var fibers=[p.etaMin,p.etaMax].map(function (eta) { return n.map(function (v,i) { return v/p.area-m[i]*eta/p.momentOfInertia; }); });
-    var positions=[0,1].concat(S.roots(m));
-    fibers.forEach(function (poly) { positions=positions.concat(S.roots(poly.slice(1).map(function (v,i) { return v*(i+1); }))); });
-    positions=S.unique(positions);
-    var minimum={value:Infinity}, maximum={value:-Infinity};
-    positions.forEach(function (xi) { fibers.forEach(function (poly,i) { var value=S.evaluate(poly,xi), point={value:value,xi:xi,eta:i ? p.etaMax : p.etaMin}; if(value<minimum.value) minimum=point; if(value>maximum.value) maximum=point; }); });
-    return {minimum:minimum,maximum:maximum,positions:positions,axial:n,moment:m,fibers:fibers};
   };
   if (typeof module!=='undefined' && module.exports) module.exports=S;
   root.MKEFSections=S;

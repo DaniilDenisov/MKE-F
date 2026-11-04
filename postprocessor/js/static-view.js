@@ -123,36 +123,10 @@
     return lines;
   };
 
-  S.frameDiagram = function (q, quantity, xi) {
-    if (quantity === 'N') return -q[0];
-    if (quantity === 'V') return -q[1];
-    if (quantity === 'M') return (1 - xi) * (-q[2]) + xi * q[5];
-    throw new Error('Unsupported frame diagram ' + quantity + '.');
-  };
-
-  function loadEnds(load) {
-    return load.type===21 ? [{x:load.qx1,y:load.qy1},{x:load.qx2,y:load.qy2}] : [{x:load.qx,y:load.qy},{x:load.qx,y:load.qy}];
-  }
-  S.elementIntensities = function (dataset, element) {
-    var a=dataset.nodesById.get(element.nodeIds[0]), b=dataset.nodesById.get(element.nodeIds[1]);
-    var basis=M.geometry.elementBasis(a,b), ends=[{x:0,y:0},{x:0,y:0}];
-    (dataset.raw.model.elementLoads || []).forEach(function (load) {
-      if (load.elementId!==element.id) return;
-      loadEnds(load).forEach(function (q,i) {
-        ends[i].x+=load.coordinateSystem===1 ? q.x : basis.c*q.x+basis.s*q.y;
-        ends[i].y+=load.coordinateSystem===1 ? q.y : -basis.s*q.x+basis.c*q.y;
-      });
-    });
-    return {x:ends[0].x,y:ends[0].y,dx:ends[1].x-ends[0].x,dy:ends[1].y-ends[0].y,length:basis.length};
-  };
   S.elementDiagram = function (dataset, element, quantity, xi) {
-    var f=dataset.resultsByElementId.get(element.id).localEndForces;
-    if (!dataset.raw.model.elementLoads) return S.frameDiagram(f,quantity,xi);
-    var q=S.elementIntensities(dataset,element), x=xi*q.length;
-    if (quantity==='N') return -f[0]-q.x*x-q.dx*x*xi/2;
-    if (quantity==='V') return -f[1]-q.y*x-q.dy*x*xi/2;
-    if (quantity==='M') return -f[2]+f[1]*x+q.y*x*x/2+q.dy*x*x*xi/6;
-    throw new Error('Unsupported frame diagram '+quantity+'.');
+    var row={N:0,V:1,M:2}[quantity];
+    if(row===undefined)throw new Error('Unsupported frame diagram '+quantity+'.');
+    return window.MKEFSections.evaluate(dataset.resultsByElementId.get(element.id).sectionForceCoefficients[row],xi);
   };
   // Scaled, cancellation-resistant roots; linear/uniform cases are exact limits.
   function quadraticRoots(a,b,c) {
@@ -169,13 +143,8 @@
     if(M.sectionResults.isStress(quantity))return M.sectionResults.samples(dataset,element,quantity,count);
     var positions=[], n=Math.max(5,count || M.config.defaultFrameSamples);
     for (var i=0;i<n;i++) positions.push(i/(n-1));
-    if (dataset.raw.model.elementLoads) {
-      var q=S.elementIntensities(dataset,element), f=dataset.resultsByElementId.get(element.id).localEndForces, roots=[];
-      if (quantity==='M') roots=quadraticRoots(q.dy*q.length/2,q.y*q.length,f[1]);
-      else if (quantity==='N' && q.dx) roots=[-q.x/q.dx];
-      else if (quantity==='V' && q.dy) roots=[-q.y/q.dy];
-      roots.forEach(function (xi) { if (xi>0 && xi<1) positions.push(xi); });
-    }
+    var c=dataset.resultsByElementId.get(element.id).sectionForceCoefficients[{N:0,V:1,M:2}[quantity]];
+    quadraticRoots(3*c[3],2*c[2],c[1]).forEach(function(xi){if(xi>0&&xi<1)positions.push(xi);});
     return Array.from(new Set(positions)).sort(function (a,b) { return a-b; }).map(function (xi) { return {xi:xi,value:S.elementDiagram(dataset,element,quantity,xi)}; });
   };
 

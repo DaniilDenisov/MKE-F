@@ -40,7 +40,7 @@
     return value;
   }
 
-  function validateModel(model, version) {
+  function validateModel(model) {
     objectAt(model, '$.model');
     if (model.dimension !== 2) fail('$.model.dimension', 'only two-dimensional models are supported');
     if (model.dofPerNode !== 2 && model.dofPerNode !== 3) fail('$.model.dofPerNode', 'expected 2 or 3');
@@ -59,7 +59,7 @@
       numberAt(node.x, path + '.x'); numberAt(node.y, path + '.y');
     });
 
-    var hasReleases = version === 4 || (version >= 5 && (Object.prototype.hasOwnProperty.call(model,'releases') || Object.prototype.hasOwnProperty.call(model,'dofRegistry')));
+    var hasReleases = Object.prototype.hasOwnProperty.call(model,'releases') || Object.prototype.hasOwnProperty.call(model,'dofRegistry');
     var dofCount = hasReleases ? positiveInteger(model.numberOfDOFs,'$.model.numberOfDOFs') : nodes.length * model.dofPerNode;
     matrix(model.dofMap, nodes.length, model.dofPerNode, '$.model.dofMap');
     var dofs = new Set();
@@ -215,21 +215,21 @@
   M.validateDataset = function (data) {
     objectAt(data, '$');
     if (data.format !== 'mkef-postprocessor') fail('$.format', 'expected "mkef-postprocessor"');
-    if (data.version === 7) { if(M.spatialData)return M.spatialData.validate(data);fail('$.version','Spatial viewer is not loaded.'); }
-    if ([1,2,3,4,5,6].indexOf(data.version) < 0) fail('$.version', 'unsupported format version ' + String(data.version));
-    if (data.version === 5 && (!Array.isArray(data.model && data.model.elementLoads) || !data.model.elementLoads.some(function (load) { return load && load.type === 21; }))) fail('$.model.elementLoads','version 5 requires a linear load');
+    if(data.version!==8)fail('$.version','Only result format v8 is supported. Recalculate the original TXT model to open an older result.');
+    if(data.model?.dimension===3){if(M.spatialData)return M.spatialData.validate(data);fail('$.model.dimension','Spatial viewer is not loaded.');}
     var metadata = objectAt(data.metadata, '$.metadata');
     if (typeof metadata.title !== 'string') fail('$.metadata.title', 'expected a string');
     objectAt(metadata.units, '$.metadata.units');
-    var context = validateModel(data.model,data.version);
+    var context = validateModel(data.model);
     var analysis = objectAt(data.analysis, '$.analysis');
     if (analysis.type === 'static') validateStatic(analysis, context);
     else if (analysis.type === 'modal') validateModal(analysis, context);
     else if (analysis.type === 'transient') validateTransient(analysis, context);
     else fail('$.analysis.type', 'unsupported analysis type');
-    if(data.version===6) {
+    validatePlanarRecovery(data,context);
+    if(data.model.sections) {
       var sections=arrayAt(data.model.sections,'$.model.sections');
-      if(!sections.length) fail('$.model.sections','version 6 requires a section catalog');
+      if(!sections.length) fail('$.model.sections','expected a nonempty section catalog');
       sections.forEach(function (s,i) {objectAt(s,'$.model.sections['+i+']');});
       var sectionErrors=window.MKEFSections.validate(data.model);
       if(sectionErrors.length) fail('$.model.sections',sectionErrors[0]);
@@ -238,7 +238,7 @@
         if(!Number.isInteger(e.sectionId) || e.sectionId<0) fail(path+'.sectionId','expected nonnegative integer');
         try {window.MKEFSections.rotation(e.sectionAngle);} catch(err) {fail(path+'.sectionAngle',err.message);}
         if(!e.sectionId)return;
-        var p=window.MKEFSections.properties(sections.find(function (s) {return s.id===e.sectionId;}),e.sectionAngle);
+        var p=window.MKEFSections.resultProperties(sections.find(function (s) {return s.id===e.sectionId;}),e);
         ['area'].concat(e.type===113 ? ['momentOfInertia'] : []).forEach(function (key) {if(Math.abs(e.properties[key]-p[key])>1e-9*Math.max(Math.abs(e.properties[key]),Math.abs(p[key])))fail(path+'.properties.'+key,'does not match section geometry');});
         if(analysis.type==='static') {
           var result=analysis.elementResults.find(function (r) {return r.elementId===e.id;}), stress=objectAt(result && result.sectionStress,path+'.sectionStress');
@@ -251,11 +251,13 @@
           var positions=arrayAt(stress.positions,path+'.sectionStress.positions');
           if(positions.length<2 || positions[0]!==0 || positions[positions.length-1]!==1)fail(path+'.sectionStress.positions','expected endpoints');
           positions.forEach(function (v,j) {numberAt(v,path+'.sectionStress.positions');if(v<0 || v>1 || (j && v<=positions[j-1]))fail(path+'.sectionStress.positions','expected increasing positions');});
+          var coeff=result.sectionForceCoefficients;
+          window.MKEFSections.validateStress(stress,point=>window.MKEFSections.evaluate(coeff[0],point.xi)/p.area-window.MKEFSections.evaluate(coeff[2],point.xi)*point.eta/p.momentOfInertia,point=>Number.isFinite(point.eta)&&point.eta>=p.etaMin-1e-12*Math.abs(p.etaMin)&&point.eta<=p.etaMax+1e-12*Math.abs(p.etaMax));
         }
       });
     }
-    if (data.version === 2 || Object.prototype.hasOwnProperty.call(data.model,'elementLoads')) {
-      if (analysis.type !== 'static') fail('$.analysis.type', 'version 2 element loads require static analysis');
+    if (Object.prototype.hasOwnProperty.call(data.model,'elementLoads')) {
+      if (analysis.type !== 'static') fail('$.analysis.type', 'element loads require static analysis');
       var memberMap = new Map(data.model.elements.map(function (item) { return [item.id, item]; }));
       arrayAt(data.model.nodalLoads, '$.model.nodalLoads').forEach(function (load, index) {
         var path = '$.model.nodalLoads[' + index + ']'; objectAt(load, path);
@@ -265,7 +267,7 @@
       arrayAt(data.model.elementLoads, '$.model.elementLoads').forEach(function (load, index) {
         var path = '$.model.elementLoads[' + index + ']'; objectAt(load, path);
         var member = memberMap.get(load.elementId);
-        if ((load.type !== 20 && !(data.version >= 5 && load.type === 21)) || !member || member.type !== 113 || [1, 2].indexOf(load.coordinateSystem) < 0) fail(path, 'expected a distributed load on a frame in Local/Global coordinates');
+        if (![20,21].includes(load.type) || !member || member.type !== 113 || [1, 2].indexOf(load.coordinateSystem) < 0) fail(path, 'expected a distributed load on a frame in Local/Global coordinates');
         var fields=load.type===21 ? ['qx1','qy1','qx2','qy2'] : ['qx','qy'];
         fields.forEach(function (key) { numberAt(load[key],path+'.'+key); });
         if (fields.every(function (key) { return load[key]===0; })) fail(path, 'intensity cannot be zero');
@@ -273,9 +275,9 @@
       analysis.elementResults.forEach(function (result, index) { vector(result.equivalentLocalLoadVector, result.type === 113 ? 6 : 4, '$.analysis.elementResults[' + index + '].equivalentLocalLoadVector'); });
     }
 
-    if (data.version === 3 || (data.version >= 4 && data.model.mpcs)) {
+    if (data.model.mpcs) {
       var mpcs = arrayAt(data.model.mpcs,'$.model.mpcs');
-      if (!mpcs.length) fail('$.model.mpcs','version 3 requires MPCs');
+      if (!mpcs.length) fail('$.model.mpcs','expected nonempty MPC equations');
       mpcs.forEach(function (m,i) {
         var path='$.model.mpcs['+i+']'; objectAt(m,path);
         if (m.id !== i+1) fail(path+'.id','IDs must follow equation order');
@@ -297,7 +299,7 @@
         if (analysis.type === 'static') vector(analysis[name],rows,'$.analysis.'+name);
         else matrix(analysis[name],rows,analysis.type === 'modal' ? analysis.frequenciesHz.length : analysis.time.length,'$.analysis.'+name);
       });
-    } else if (Object.prototype.hasOwnProperty.call(data.model,'mpcs')) fail('$.version','MPC data requires version 3');
+    }
 
     var nodesById = new Map(data.model.nodes.map(function (node) { return [node.id, node]; }));
     var elementsById = new Map(data.model.elements.map(function (element) { return [element.id, element]; }));
@@ -319,4 +321,94 @@
       nodeIndexById: nodeIndexById, dofById: dofById, resultsByElementId: resultsByElementId };
   };
   M.DataError = DataError;
+
+  // One K/M contract and validator for planar and spatial results.
+  M.validateRecoveryData=function(data,d) {
+    const m=data.model,a=data.analysis,r=m.recovery,exporter=data.metadata?.exporter;
+    const staticResults=new Map((a.elementResults||[]).map(r=>[r.elementId,r]));
+    const formulation=m.dimension===2?(d===2?'linear-bar':'euler-bernoulli'):(d===3?'linear-bar':'euler-bernoulli-saint-venant');
+    if(!exporter||exporter.name!=='mkef-octave'||exporter.contractVersion!==1)fail('metadata.exporter','unsupported exporter contract');
+    if(!r||![1,2].includes(r.version)||r.coordinates!=='local-physical-end'||r.stiffnessFormulation!==formulation||r.massFormulation!=='consistent-v1')fail('model.recovery','unsupported recovery formulation');
+    function pair(op,path){
+      if(!op)fail(path,'missing dynamic recovery operators');
+      objectAt(op,path);
+      for(const key of ['K','M']){
+        const A=matrix(op[key],2*d,2*d,path+'.'+key),scale=Math.max(...A.flat().map(Math.abs));
+        if(A.some((row,j)=>row.reduce((s,v,k)=>s+Math.abs(v-A[k][j]),0)>1e-12*scale))fail(path+'.'+key,'operator must be symmetric');
+      }
+    }
+    const pooled=r.version===2,used=new Set();
+    if(pooled){
+      if(a.type==='static')fail('model.recovery','static results must use exported forces, without operators');
+      const table=arrayAt(m.recoveryOperators,'model.recoveryOperators');
+      if(!table.length||table.length>m.elements.length)fail('model.recoveryOperators','invalid operator count');
+      table.forEach((op,i)=>{
+        if(!op||op.id!==i+1)fail('model.recoveryOperators','IDs must be unique, contiguous and in order');
+        pair(op,'model.recoveryOperators['+i+']');
+      });
+    }else if(m.recoveryOperators!==undefined)fail('model.recoveryOperators','table requires recovery version 2');
+    m.elements.forEach((e,i)=>{
+      const path='elements['+i+'].recoveryOperators';
+      if(a.type==='static'){
+        if(e.recoveryOperators!==undefined||e.recoveryOperatorId!==undefined)fail(path,'static results must use exported forces, without operators');
+        if([112,1133].includes(e.type)){
+          const result=staticResults.get(e.id),c=result?.sectionForceCoefficients?.[0]||[-result?.localEndForces?.[0]];
+          window.MKEFSections.validateStress(result?.sectionStress,p=>window.MKEFSections.evaluate(c,p.xi)/e.properties.area,()=>true);
+        }
+      }else if(pooled){
+        if(e.recoveryOperators!==undefined)fail(path,'inline operators cannot accompany table references');
+        positiveInteger(e.recoveryOperatorId,'recoveryOperatorId');
+        if(e.recoveryOperatorId>m.recoveryOperators.length)fail('recoveryOperatorId','unknown ID');
+        used.add(e.recoveryOperatorId);
+      }else{
+        if(e.recoveryOperatorId!==undefined)fail('recoveryOperatorId','reference requires recovery version 2');
+        pair(e.recoveryOperators,path);
+      }
+    });
+    if(pooled&&used.size!==m.recoveryOperators.length)fail('model.recoveryOperators','unreferenced operator');
+  };
+
+  function validatePlanarRecovery(data,context){
+    const m=data.model,a=data.analysis,d=m.dofPerNode,n=2*d;
+    if(m.numberOfDOFs!==context.dofCount)fail('model.numberOfDOFs','inconsistent DOF count');
+    if(JSON.stringify(m.dofLabels)!==JSON.stringify(d===2?['ux','uy']:['ux','uy','rz']))fail('model.dofLabels','unsupported component order');
+    M.validateRecoveryData(data,d);
+    const rows=new Map(m.nodes.map((node,i)=>[node.id,i]));
+    m.elements.forEach(e=>{
+      vector(e.globalDOFs,n,'element.globalDOFs');
+      if(new Set(e.globalDOFs).size!==n)fail('element.globalDOFs','duplicate DOF');
+      e.globalDOFs.forEach(id=>{positiveInteger(id,'element.globalDOFs');if(id>context.dofCount)fail('element.globalDOFs','unknown DOF');});
+      if(!context.hasReleases){
+        const expected=e.nodeIds.flatMap(id=>m.dofMap[rows.get(id)]);
+        if(JSON.stringify(expected)!==JSON.stringify(e.globalDOFs))fail('element.globalDOFs','inconsistent topology');
+      }
+      const p=m.nodes[rows.get(e.nodeIds[0])],q=m.nodes[rows.get(e.nodeIds[1])],L=Math.hypot(q.x-p.x,q.y-p.y);
+      numberAt(e.length,'element.length');
+      if(!(L>0)||Math.abs(e.length-L)>1e-12*L)fail('element.length','inconsistent geometry');
+      matrix(e.localFromSystem,n,n,'element.localFromSystem');
+      const c=(q.x-p.x)/L,s=(q.y-p.y)/L;
+      const block=d===2?[[c,s],[-s,c]]:[[c,s,0],[-s,c,0],[0,0,1]];
+      e.localFromSystem.forEach((row,i)=>row.forEach((v,j)=>{
+        const expected=Math.floor(i/d)===Math.floor(j/d)?block[i%d][j%d]:0;
+        if(Math.abs(v-expected)>1e-12)fail('element.localFromSystem','inconsistent local mapping');
+      }));
+    });
+    if(a.type==='modal'){
+      vector(a.eigenvalues,a.frequenciesHz.length,'analysis.eigenvalues');
+      a.eigenvalues.forEach((v,i)=>{
+        if(v<0||Math.abs(v-a.angularFrequenciesRadPerSec[i]**2)>1e-9*Math.max(1,v))fail('analysis.eigenvalues','inconsistent modal acceleration');
+      });
+    }
+    if(a.type==='static'){
+      const elementsById=new Map(m.elements.map(e=>[e.id,e]));
+      a.elementResults.forEach(r=>{
+        matrix(r.sectionForceCoefficients,3,4,'elementResult.sectionForceCoefficients');
+        vector(r.localDisplacements,n,'elementResult.localDisplacements');
+        vector(r.equivalentLocalLoadVector,n,'elementResult.equivalentLocalLoadVector');
+        const e=elementsById.get(r.elementId);
+        if(r.type!==e.type)fail('elementResult.type','inconsistent family');
+        if(d===2&&r.sectionForceCoefficients.slice(1).some(row=>row.some(v=>v!==0)))fail('elementResult.sectionForceCoefficients','truss has no bending or shear');
+      });
+    }
+  }
 }(window.MKEFPost));

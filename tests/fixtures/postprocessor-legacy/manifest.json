@@ -1,0 +1,62 @@
+[
+  {
+    "file": "static-frame.json",
+    "version": 1,
+    "analysis": "static",
+    "sha256": "3a0c8ddb8b3f2bdc8b6b54a50252d823c6b37ab95d4d0d80eedabdd0ff6b2bd1"
+  },
+  {
+    "file": "uniform-result.json",
+    "version": 2,
+    "analysis": "static",
+    "sha256": "33955baea0691b45525781adc1db88c1817a6dd0d649f522ed113d27bc5ea285"
+  },
+  {
+    "file": "CaseMPCTruss.json",
+    "version": 3,
+    "analysis": "modal",
+    "sha256": "53b54160f03aa4b02ea672c4a24833f97b5f527620b9f50516946fce670cd676"
+  },
+  {
+    "file": "CaseReleaseModal.json",
+    "version": 4,
+    "analysis": "modal",
+    "sha256": "72d88dd095f6298991ad541b94a3c2f9f318e288b2abd60366a85bc1f3f5ebbc"
+  },
+  {
+    "file": "CaseLinearFrame.json",
+    "version": 5,
+    "analysis": "static",
+    "sha256": "6fa20f8b4c22a8a8210b10046565a76920cde59a286bf53bb14b134607c65bf6"
+  },
+  {
+    "file": "CaseSectionBeam.json",
+    "version": 6,
+    "analysis": "static",
+    "sha256": "f2e09fec88e0f59eeab9292c8c922fc16c57faec53a8a45201c51e7060f922a2"
+  },
+  {
+    "file": "CaseSpatialFrame.json",
+    "version": 7,
+    "analysis": "static",
+    "sha256": "a11d8a7815eeda530444a50510d974f26bd5b10f1ef3b2428b51aee7b0c59b7c"
+  },
+  {
+    "file": "CaseSpatialFrameModal.json",
+    "version": 7,
+    "analysis": "modal",
+    "sha256": "06198f8c3f6c13395e6c4429e1c12ac8ea4fc362faa8593b651c1c290de70080"
+  },
+  {
+    "file": "CaseSpatialTiltedTransient.json",
+    "version": 7,
+    "analysis": "transient",
+    "sha256": "af8cd9e073fde78e33f23168ad08e5919124ee82fe6ae686a01859cb46fd513f"
+  },
+  {
+    "file": "CaseSpatialTiltedPartial.json",
+    "version": 7,
+    "analysis": "transient",
+    "sha256": "978d28c59120754d3120a7a4a7e63e8ab0f3e4b7ba1e5a9afe5f78af37f7d6db"
+  }
+]
