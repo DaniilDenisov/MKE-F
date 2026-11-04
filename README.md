@@ -13,7 +13,7 @@
 
 Для новых назначений и расчётов пространственных рам доступны сплошной круг, прямоугольник, круглая, квадратная и прямоугольная трубы; старые результаты открытых профилей можно просматривать. Стеснённая депланация и смещение центра сдвига не учитываются.
 
-В сборке Docker Compose из исходников [диагностическая страница](reference/section-fem-lab.html) показывает сетку Tri6 и поле напряжений для пяти профилей. Расчёт выполняет Python-сервис с библиотекой `sectionproperties`. Для статических результатов панель **Member von Mises maxima · static** в постпроцессоре выводит максимум по каждому стержню и его отношение к введённому пределу текучести. [Методика и ограничения](reference/RU/08-result-recovery.html#section-fem-title).
+В Docker Compose [диагностическая страница](reference/section-fem-lab.html) показывает сетку Tri6 и поле напряжений для пяти профилей. Расчёт выполняет Python-сервис с библиотекой `sectionproperties`, включённый в готовый релиз и сборку из исходников. Для статических результатов панель **Member von Mises maxima · static** в постпроцессоре выводит максимум по каждому стержню и его отношение к введённому пределу текучести. [Методика и ограничения](reference/RU/08-result-recovery.html#section-fem-title).
 
 ## Запуск
 
@@ -33,7 +33,7 @@ docker compose up --build -d
 docker compose -f compose.release.yaml up -d
 ```
 
-[compose.release.yaml](compose.release.yaml) закреплён на версии **0.8.4** и не включает невыпущенные изменения текущих исходников. Остановка: `docker compose -f compose.release.yaml down`.
+[compose.release.yaml](compose.release.yaml) закреплён на версии **0.8.5** для всех трёх сервисов: решателя, сервиса сечений и веб-интерфейса. Остановка: `docker compose -f compose.release.yaml down`.
 
 ## Документация и лабораторные
 
@@ -60,7 +60,7 @@ MKE-F is an educational finite element program for planar and spatial trusses an
 
 New spatial frame assignments and analyses support solid circles, rectangles, circular tubes, square tubes and rectangular tubes; legacy open-section results remain viewable. Restrained warping and shear-center offsets are not modeled.
 
-In the source-built Docker Compose stack, the [section diagnostic page](reference/section-fem-lab.html) displays the Tri6 mesh and stresses for five profiles. A Python service runs `sectionproperties`. In the static postprocessor, **Member von Mises maxima · static** shows the maximum for each member and its ratio to an optional tensile yield strength. [Methods and limits](reference/EN/08-result-recovery.html#section-fem-title).
+In Docker Compose, the [section diagnostic page](reference/section-fem-lab.html) displays the Tri6 mesh and stresses for five profiles. A Python service runs `sectionproperties` and is included in both the prebuilt release and the source build. In the static postprocessor, **Member von Mises maxima · static** shows the maximum for each member and its ratio to an optional tensile yield strength. [Methods and limits](reference/EN/08-result-recovery.html#section-fem-title).
 
 ## Getting started
 
@@ -80,7 +80,7 @@ For the prebuilt release:
 docker compose -f compose.release.yaml up -d
 ```
 
-[compose.release.yaml](compose.release.yaml) is pinned to **0.8.4** and does not include unreleased changes in the current source. Stop with `docker compose -f compose.release.yaml down`.
+[compose.release.yaml](compose.release.yaml) pins all three services (solver, section solver and web interface) to **0.8.5**. Stop with `docker compose -f compose.release.yaml down`.
 
 ## Documentation and labs
 

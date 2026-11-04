@@ -30,7 +30,7 @@ test_reference_examples;
 
 ## Выпуск новой версии
 
-Релиз состоит из одного Git-коммита, аннотированного Git-тега и двух Docker-
+Релиз состоит из одного Git-коммита, аннотированного Git-тега и трёх Docker-
 образов. Полный SHA исходного коммита записывается в OCI-метку
 `org.opencontainers.image.revision` каждого образа.
 
@@ -42,7 +42,7 @@ test_reference_examples;
 Замените старую версию на новую в следующих местах:
 
 1. Добавьте новую верхнюю секцию `## [X.Y.Z] - YYYY-MM-DD` в `CHANGELOG.md`.
-2. Обновите теги обоих образов в `compose.release.yaml`.
+2. Обновите теги всех трёх образов в `compose.release.yaml`.
 3. Обновите номер релиза и примеры команд `docker image inspect` в `README.md`.
 
 Убедитесь, что старый номер остался только в истории changelog:
@@ -102,7 +102,7 @@ python scripts/release_images.py --dry-run
 
 - номер версии;
 - полный Git SHA;
-- имена `denisovds/mkef-solver` и `denisovds/mkef-web`;
+- имена `denisovds/mkef-solver`, `denisovds/mkef-section-solver` и `denisovds/mkef-web`;
 - теги `X.Y.Z`, `git-<короткий SHA>` и `latest`.
 
 ### 5. Собрать и опубликовать Docker-образы
@@ -122,7 +122,7 @@ python scripts/release_images.py --push
 3. Проверяет эту версию в `compose.release.yaml`.
 4. Проверяет, что `HEAD` уже отправлен в upstream.
 5. Создаёт локальный аннотированный тег `vX.Y.Z`.
-6. Собирает solver- и web-образы с OCI-метками версии и полного Git SHA.
+6. Собирает solver-, section-solver- и web-образы с OCI-метками версии и полного Git SHA.
 7. Проверяет метки собранных образов.
 8. Отправляет для каждого образа теги `X.Y.Z`, `git-<короткий SHA>` и
    `latest`.
@@ -132,7 +132,7 @@ python scripts/release_images.py --push
 
 ### 6. Отправить Git-тег
 
-После успешной публикации обоих Docker-образов отправьте созданный скриптом
+После успешной публикации всех трёх Docker-образов отправьте созданный скриптом
 Git-тег:
 
 ```powershell
@@ -149,17 +149,19 @@ git push origin vX.Y.Z
 ```powershell
 docker pull denisovds/mkef-web:X.Y.Z
 docker pull denisovds/mkef-solver:X.Y.Z
+docker pull denisovds/mkef-section-solver:X.Y.Z
 ```
 
-Сравните SHA в обоих образах с коммитом Git-тега:
+Сравните SHA во всех трёх образах с коммитом Git-тега:
 
 ```powershell
 git rev-list -n 1 vX.Y.Z
 docker image inspect denisovds/mkef-web:X.Y.Z --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}'
 docker image inspect denisovds/mkef-solver:X.Y.Z --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}'
+docker image inspect denisovds/mkef-section-solver:X.Y.Z --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}'
 ```
 
-Все три команды должны вывести один и тот же полный Git SHA. Неизменяемый
+Все четыре команды должны вывести один и тот же полный Git SHA. Неизменяемый
 идентификатор конкретного содержимого Docker-образа — digest `sha256:...`,
 показываемый командой `docker pull`.
 
@@ -201,7 +203,7 @@ docker compose -f compose.release.yaml ps
 `denied: requested access to the resource is denied`
 
 : Выполните `docker login` под учётной записью с доступом к образам
-  `denisovds/mkef-solver` и `denisovds/mkef-web`.
+  `denisovds/mkef-solver`, `denisovds/mkef-section-solver` и `denisovds/mkef-web`.
 
 После обновления видны старые страницы
 

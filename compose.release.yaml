@@ -2,7 +2,7 @@ name: mkef
 
 services:
   solver:
-    image: denisovds/mkef-solver:0.8.4
+    image: denisovds/mkef-solver:0.8.5
     pull_policy: always
     environment:
       MKEF_ALLOWED_ORIGINS: "http://localhost:${MKEF_PORT:-8080},http://127.0.0.1:${MKEF_PORT:-8080}"
@@ -34,8 +34,34 @@ services:
       retries: 6
       start_period: 20s
 
+  section-solver:
+    image: denisovds/mkef-section-solver:0.8.5
+    pull_policy: always
+    environment:
+      SECTION_QUEUE_CAPACITY: "${MKEF_SECTION_QUEUE_CAPACITY:-4}"
+    expose:
+      - "8000"
+    networks:
+      - solver_internal
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m,uid=10001,gid=10001,mode=0700
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 64
+    cpus: "${MKEF_SECTION_CPUS:-2.0}"
+    mem_limit: "${MKEF_SECTION_MEMORY:-2g}"
+    healthcheck:
+      test: ["CMD","python","-c","import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/sections/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 15s
+
   web:
-    image: denisovds/mkef-web:0.8.4
+    image: denisovds/mkef-web:0.8.5
     pull_policy: always
     depends_on:
       solver:

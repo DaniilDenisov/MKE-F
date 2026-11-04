@@ -1,6 +1,6 @@
 """Build and optionally push traceable MKE-F Docker release images.
 
-The release version comes from the newest CHANGELOG.md heading. Both images get
+The release version comes from the newest CHANGELOG.md heading. All images get
 OCI version and revision labels and an additional git-<short SHA> tag.
 """
 
@@ -20,6 +20,7 @@ VERSION_LABEL = "org.opencontainers.image.version"
 
 IMAGES = (
     ("solver", "denisovds/mkef-solver", "docker/solver.Dockerfile", "runtime"),
+    ("section-solver", "denisovds/mkef-section-solver", "docker/section-solver.Dockerfile", "runtime"),
     ("web", "denisovds/mkef-web", "docker/web.Dockerfile", None),
 )
 
@@ -112,7 +113,7 @@ def inspect_label(image: str, label: str) -> str:
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Build traceable solver and web Docker images for the current release."
+        description="Build traceable solver, section-solver and web Docker release images."
     )
     parser.add_argument("--push", action="store_true", help="Push all Docker tags")
     parser.add_argument(
