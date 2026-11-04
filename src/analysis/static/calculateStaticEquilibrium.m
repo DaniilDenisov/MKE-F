@@ -2,6 +2,16 @@ function residual = calculateStaticEquilibrium(model, loads, reactions)
 %CALCULATESTATICEQUILIBRIUM Return global Fx, Fy, and Mz imbalance.
 
 externalForces = loads + reactions;
+if isfield(model,'rigidMotionMap')
+    residual=full(model.rigidMotionMap.'*externalForces); return;
+end
+if isfield(model,'dimension') && model.dimension==3
+    f=reshape(externalForces(model.dofMap(:,1:3)),[],3);
+    moments=cross(model.nodeCoordinates,f,2);
+    if model.dofPerNode==6, moments=moments+reshape(externalForces(model.dofMap(:,4:6)),[],3); end
+    residual=[sum(f,1) sum(moments,1)].';
+    return;
+end
 xDOFs = model.dofMap(:, 1);
 yDOFs = model.dofMap(:, 2);
 forceX = externalForces(xDOFs);

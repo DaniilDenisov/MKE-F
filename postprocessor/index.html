@@ -3,21 +3,28 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="../shared/desktop-ui.css">
   <meta name="description" content="View MKE-F analysis results: displacements, member forces, mode shapes and time histories for 2D truss and frame models.">
   <title>MKE-F — Finite element results viewer</title>
   <link rel="stylesheet" href="assets/postprocessor.css">
   <script defer src="js/namespace.js"></script>
-  <script defer src="../shared/sections.js"></script><script defer src="../shared/section-drawing.js"></script><script defer src="../shared/support-catalog.js"></script><script defer src="../shared/support-semantics.js"></script><script defer src="../shared/mpc.js"></script><script defer src="../shared/releases.js"></script><script defer src="../shared/support-markers.js"></script><script defer src="../shared/moment-symbol.js"></script>
+  <script defer src="../shared/sections.js"></script><script defer src="../shared/spatial-sections.js"></script><script defer src="../shared/section-drawing.js"></script><script defer src="../shared/support-catalog.js"></script><script defer src="../shared/support-semantics.js"></script><script defer src="../shared/mpc.js"></script><script defer src="../shared/releases.js"></script><script defer src="../shared/support-markers.js"></script><script defer src="../shared/moment-symbol.js"></script>
   <script defer src="../shared/api-client.js"></script>
+  <script defer src="js/member-maxima.js"></script>
   <script defer src="js/data-model.js"></script>
+  <script defer src="../shared/vendor/spatial.js"></script><script defer src="js/spatial-data.js"></script><script defer src="js/spatial-results.js"></script><script defer src="js/spatial-stress.js"></script><script defer src="js/spatial-view.js"></script>
   <script defer src="js/geometry.js"></script>
-  <script defer src="js/svg-renderer.js"></script>
+  
   <script defer src="js/static-view.js"></script>
   <script defer src="js/section-view.js"></script><script defer src="js/modal-view.js"></script>
   <script defer src="js/transient-view.js"></script>
   <script defer src="js/charts.js"></script>
-  <script defer src="js/export.js"></script>
-  <script defer src="js/mpc-view.js"></script><script defer src="js/app.js"></script>
+  <script defer src="js/spatial-actions.js"></script>
+  <script defer src="js/spatial-modal.js"></script>
+  <script defer src="js/spatial-transient.js"></script>
+  <script defer src="js/export.js"></script><script defer src="js/scene-export.js"></script>
+  <script defer src="js/spatial-export.js"></script><script defer src="js/spatial-section-view.js"></script>
+  <script defer src="js/mpc-view.js"></script><script defer src="js/planar-presentation.js"></script><script defer src="js/webgl-renderer.js"></script><script defer src="js/normal-stress-results.js"></script><script defer src="js/normal-stress-view.js"></script><script defer src="js/spatial-normal-stress.js"></script><script defer src="js/app.js"></script>
 </head>
 <body class="postprocessor-app">
   <header class="toolbar">
@@ -35,6 +42,7 @@
       <button id="reset-view" type="button" disabled>Reset view</button>
     </div>
   </header>
+  <p class="screen-size-notice" role="note">The interface is designed for a monitor or a wide-screen tablet. Recommended window width: at least 1250 px. Smartphone browsing is not optimized; use an MCP client connected to MKE-F for calculations on a phone.</p>
 
   <main class="app-layout">
     <aside class="settings" aria-label="View settings">
@@ -123,8 +131,18 @@
       <div id="notice-panel" class="message notice" role="status" hidden></div>
       <div id="drop-zone" class="drop-zone" tabindex="0" role="button" aria-label="Open a postprocessor JSON file">
         <div class="drop-copy"><strong>Drop an MKE-F result file here</strong><span>or use Open JSON · maximum file size 100 MiB</span></div>
-        <svg id="viewport" aria-label="Structural result viewport" role="img"></svg>
+        <div id="viewport" aria-label="Structural result viewport"><div id="spatial-result-viewport"></div></div>
       </div>
+      <aside id="result-sidebar">
+      <details id="member-maxima" hidden><summary>Member von Mises maxima · static</summary>
+        <p>Maximum over the section and along each member. A ratio of 1 reaches the entered tensile yield strength. For a model in N and m, enter strength in Pa.</p>
+        <label id="member-nu-label">Poisson’s ratio ν for 2D frames <input id="member-nu" type="number" step="any" value="0.3"></label>
+        <p>Tube corner radii come from the section catalog. Edit them in the preprocessor and rerun the model to update geometry, forces and stresses together.</p>
+        <label>Reference yield strength (<span id="member-stress-unit"></span>) <input id="member-yield" type="number" step="any" min="0" placeholder="Optional"></label>
+        <p><button type="button" id="member-run">Calculate member maxima</button> <button type="button" id="member-cancel" disabled>Cancel</button></p>
+        <p id="member-progress" role="status"></p>
+        <div class="member-table"><table><thead><tr><th>Member</th><th id="member-stress-heading">Max σVM</th><th>x/L</th><th>σVM / yield</th><th>Status</th></tr></thead><tbody id="member-rows"></tbody></table></div>
+      </details><div id="spatial-result-panel" hidden></div>
       <div id="result-legend" class="result-legend" hidden></div>
       <section id="chart-panel" class="chart-panel" hidden aria-label="Selected degree of freedom history">
         <svg id="history-chart" role="img" aria-label="Selected degree of freedom history chart"></svg>
@@ -134,7 +152,7 @@
       <section id="section-result-panel" class="section-result-panel" hidden><h2>Normal stress across section</h2><label>x/L <input id="section-position" type="range" min="0" max="1" step="0.001" value="0.5"><input id="section-position-number" aria-label="Section position x/L" type="number" min="0" max="1" step="any" value="0.5"></label><svg id="section-result-svg" class="section-result-svg" xmlns="http://www.w3.org/2000/svg"></svg><pre id="section-result-info"></pre><button id="export-section-svg" type="button">Export section SVG</button></section>
       <section class="details-panel" aria-live="polite"><h2>Selection</h2><pre id="selection-details">Nothing selected</pre></section>
       </div>
-      <div class="status-bar"><span id="analysis-status">Waiting for a dataset</span></div>
+      <div class="status-bar"><span id="analysis-status">Waiting for a dataset</span></div></aside>
     </section>
   </main>
 </body>

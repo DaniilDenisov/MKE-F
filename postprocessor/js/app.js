@@ -2,6 +2,7 @@
   'use strict';
   var elements = {}, dataset = null, renderer = null, currentVector = null, currentScale = 1, transientScale = 1, playback = null, currentLegend = null;
   var mpcPresentation = null;
+  var spatialViewer = null;
   var modalPresentation = null, modalPhaseAngle = 0, modalPhaseFactor = 1;
   function byId(id) { return document.getElementById(id); }
   function option(value, label) { var item = document.createElement('option'); item.value = value; item.textContent = label; return item; }
@@ -62,6 +63,8 @@
       { value: 'displacementMagnitude', label: 'Deflection |u|' }, { value: 'none', label: 'None' }, { value: 'axialForce', label: 'Mean axial force' }, { value: 'axialStress', label: 'Mean axial stress' }
     ] : [{ value: 'displacementMagnitude', label: 'Deflection |u|' }, { value: 'none', label: 'None' }, { value: 'N', label: 'Axial force N' }, { value: 'V', label: 'Shear force V' }, { value: 'M', label: 'Bending moment M' }]);
     ['sigmaMin','sigmaMax'].forEach(function (mode) {var o=document.createElement('option');o.value=mode;o.textContent=mode==='sigmaMin' ? 'Normal stress σmin' : 'Normal stress σmax';o.disabled=!dataset.raw.model.elements.some(function (e) {return !!e.sectionId;});elements.staticResult.appendChild(o);});
+    elements.staticResult.appendChild(option('normalStress','Maximum absolute normal stress'));
+    dataset.normalStress=new M.normalStressResults.Session(dataset,elements.staticControls,byId('result-sidebar'));
     M.staticResults.mount(renderer, dataset);
     currentVector = dataset.raw.analysis.displacements;
     currentScale = M.geometry.automaticScale(dataset, currentVector, samples()).scale;
@@ -101,7 +104,7 @@
     var index = Number(elements.modeNumber.value), count = dataset.raw.analysis.frequenciesHz.length;
     elements.previousMode.disabled = index <= 0;
     elements.nextMode.disabled = index >= count - 1;
-    elements.modalPlayPause.disabled = modalPresentation.zero;
+    elements.modalPlayPause.disabled = modalPresentation.zero || !renderer.scene;
     elements.modalPhase.disabled = modalPresentation.zero;
   }
 
@@ -176,7 +179,7 @@
     if (sampling.decimated) metadata = 'Warning: the exported time history is decimated. ' + metadata;
     elements.transientMetadata.textContent = metadata;
     elements.transientMetadata.classList.toggle('warning-note', sampling.decimated);
-    elements.playPause.disabled = analysis.time.length < 2;
+    elements.playPause.disabled = analysis.time.length < 2 || !renderer.scene;
     setSection(elements.transientControls, true); setSection(elements.chartControls, quantities.length > 0); elements.chartPanel.hidden = quantities.length === 0;
     document.querySelectorAll('.static-layer').forEach(function (item) { item.hidden = true; });
     elements.showLoads.checked = false; elements.showReactions.checked = false;
@@ -193,19 +196,27 @@
   }
 
   function acceptData(parsed) {
+    var next = M.validateDataset(parsed);
     stopPlayback(); clearError();
-    var next = M.validateDataset(parsed); dataset = next;
+    elements.notice.hidden=true;elements.notice.textContent='';document.querySelector('.settings').scrollTop=0;
+    if(spatialViewer){spatialViewer.dispose();spatialViewer=null;}
+    if(dataset && dataset.normalStress)dataset.normalStress.dispose();
+    M.memberMaxima.load(next);
+    // The scene needs the visible viewport dimensions before its initial fit.
+    elements.dropZone.classList.add('has-data');
+    if(parsed.version===7){renderer.dispose();dataset=null;spatialViewer=new M.SpatialPost(next);elements.title.textContent=parsed.metadata.title||'3D';elements.dropZone.classList.add('has-data');elements.reset.disabled=false;elements.downloadJson.disabled=false;elements.exportSvg.disabled=true;elements.exportPng.disabled=!spatialViewer.scene;return;}
+    dataset = next;
     elements.title.textContent = parsed.metadata.title || 'Untitled dataset'; elements.dropZone.classList.add('has-data');
     elements.reset.disabled = false; elements.exportSvg.disabled = false; elements.exportPng.disabled = false; elements.downloadJson.disabled = false;
     mpcPresentation = null;
-    resetSections(); renderer.mount(dataset);
+    resetSections(); renderer.mount(dataset);elements.exportSvg.disabled=elements.exportPng.disabled=!renderer.scene;
     if (parsed.analysis.type === 'static') configureStatic();
     else if (parsed.analysis.type === 'modal') configureModal();
     else configureTransient();
     mpcPresentation = M.mpcView.mount(dataset,renderer,byId('mpc-results'));
     elements.showReactions.closest('label').style.display = mpcPresentation ? 'none' : '';
     if (mpcPresentation) renderer.clearLayer('reactions');
-    renderer.setVisibility(layerSettings()); updateGeometry(); renderer.setSelection(null);
+    renderer.setVisibility(layerSettings()); updateGeometry(); renderer.setSelection(null);renderer.fit();
     if (parsed.model.elements.length > 2000) notice((elements.notice.hidden ? '' : elements.notice.textContent + '\n') + 'This model exceeds the interactive target of 2,000 elements.');
     updateStatus();
   }
@@ -233,6 +244,9 @@
         if (job.status === 'succeeded') {
           acceptData(await window.MKEFApi.getResult(jobId));
           notice('Results loaded. These results are stored temporarily. Download the JSON file to keep a copy.');
+          // The result notice changes the canvas height after the scene was created.
+          var scene = spatialViewer ? spatialViewer.scene : renderer.scene;
+          if (scene) { scene.resize(); scene.fitModel(); }
           return;
         }
         if (['failed', 'canceled', 'timed_out'].indexOf(job.status) >= 0) {
@@ -245,11 +259,12 @@
   }
 
   function downloadCurrentJson() {
+    if(spatialViewer){window.MKEFApi.downloadJson(spatialViewer.ds.raw,spatialViewer.ds.raw.metadata.title||"MKE-F-3D");return;}
     if (!dataset) return;
     window.MKEFApi.downloadJson(dataset.raw, dataset.raw.metadata.title || 'MKE-F-result');
   }
 
-  function applyStaticResult() { if (!dataset || dataset.raw.analysis.type !== 'static') return; setLegend(M.staticResults.applyResult(renderer, dataset, elements.staticResult.value, samples())); renderer.reapplySelection(); updateDetails(renderer.selection); }
+  function applyStaticResult() { if (!dataset || dataset.raw.analysis.type !== 'static') return; dataset.normalStress.setActive(elements.staticResult.value==='normalStress'); setLegend(M.staticResults.applyResult(renderer, dataset, elements.staticResult.value, samples())); renderer.reapplySelection(); updateDetails(renderer.selection); }
   function changeMode() {
     if (!dataset || dataset.raw.analysis.type !== 'modal') return;
     selectModalMode(Number(elements.modeNumber.value));
@@ -292,6 +307,7 @@
   }
 
   function startModalPlayback() {
+    if (!renderer.scene || renderer.scene.lost) return;
     if (!dataset || dataset.raw.analysis.type !== 'modal' || !modalPresentation || modalPresentation.zero) return;
     if (playback && playback.type === 'modal') { stopPlayback(); return; }
     stopPlayback();
@@ -310,7 +326,7 @@
   }
 
   function startTransientPlayback() {
-    if (!dataset || dataset.raw.analysis.type !== 'transient' || dataset.raw.analysis.time.length < 2) return;
+    if (!renderer.scene || renderer.scene.lost || !dataset || dataset.raw.analysis.type !== 'transient' || dataset.raw.analysis.time.length < 2) return;
     if (playback && playback.type === 'transient') { stopPlayback(); return; }
     stopPlayback();
     var count = dataset.raw.analysis.time.length, startIndex = Number(elements.timeIndex.value);
@@ -356,6 +372,7 @@
     });
   }
   function updateDetails(selection) {
+    if(dataset && dataset.normalStress)dataset.normalStress.select(selection && selection.kind==='element'?selection.id:null);
     M.sectionResults.show(dataset,selection);
     if (!selection || !dataset) { elements.details.textContent = 'Nothing selected'; return; }
     var analysis = dataset.raw.analysis, lines = [];
@@ -465,9 +482,9 @@
     elements.dropZone.addEventListener('drop', function (event) { readFile(event.dataTransfer.files[0]); });
     elements.dropZone.addEventListener('click', function (event) { if (!dataset && event.target === this) elements.fileInput.click(); });
     elements.dropZone.addEventListener('keydown', function (event) { if (!dataset && (event.key === 'Enter' || event.key === ' ')) elements.fileInput.click(); });
-    elements.reset.addEventListener('click', function () { renderer.fit(); });
-    elements.exportSvg.addEventListener('click', function () { if (dataset) M.exporting.downloadSvg(elements.viewport, exportContext(), elements.chartPanel.hidden ? null : elements.chart, currentLegend); });
-    elements.exportPng.addEventListener('click', function () { if (dataset) M.exporting.downloadPng(elements.viewport, exportContext(), Number(elements.pngScale.value), elements.chartPanel.hidden ? null : elements.chart, currentLegend).catch(showError); });
+    elements.reset.addEventListener('click', function () { if(spatialViewer){if(spatialViewer.scene)spatialViewer.scene.fitModel();return;}renderer.fit(); });
+    elements.exportSvg.addEventListener('click', function () { if(dataset&&renderer.scene){renderer.flush();try{M.exporting.downloadSceneSvg(renderer.scene,exportContext(),elements.chartPanel.hidden?null:elements.chart,currentLegend);}catch(e){showError(e);}} });
+    elements.exportPng.addEventListener('click', function () { if(spatialViewer){spatialViewer.exportPNG(Number(elements.pngScale.value)).catch(showError);return;}if(dataset&&renderer.scene){renderer.flush();try{M.exporting.downloadScenePng(renderer.scene,exportContext(),Number(elements.pngScale.value),elements.chartPanel.hidden?null:elements.chart,currentLegend).catch(showError);}catch(e){showError(e);}} });
     ['showOriginal', 'showDeformed', 'showNodes', 'showNodeLabels', 'showElementLabels', 'showSupports', 'showLoads', 'showReactions'].forEach(function (name) { elements[name].addEventListener('change', function () { renderer.setVisibility(layerSettings()); updateGeometry(); }); });
     elements.scaleMode.addEventListener('change', function () { elements.manualScale.disabled = this.value !== 'manual'; updateScale(); updateStatus(); });
     elements.manualScale.addEventListener('change', function () { if (elements.scaleMode.value === 'manual') { updateScale(); updateStatus(); } });
@@ -501,6 +518,6 @@
   document.addEventListener('DOMContentLoaded', function () {
     ['file-input','download-json','reset-view','export-svg','export-png','dataset-title','drop-zone','error-panel','notice-panel','analysis-status','selection-details','viewport','result-legend','chart-panel','history-chart','static-controls','modal-controls','transient-controls','chart-controls','static-result','mode-number','previous-mode','next-mode','modal-play-pause','modal-phase','modal-phase-value','modal-playback-speed','modal-amplitude','mode-frequency','time-index','previous-frame','next-frame','play-pause','playback-speed','frame-stride','time-value','transient-metadata','history-node','history-dof','history-quantity','history-value','show-original','show-deformed','show-nodes','show-node-labels','show-element-labels','show-supports','show-loads','show-reactions','scale-mode','manual-scale','sample-count','png-scale'].forEach(function (id) { var key = id.replace(/-([a-z])/g, function (_, letter) { return letter.toUpperCase(); }); elements[key] = byId(id); });
     elements.title = elements.datasetTitle; elements.reset = elements.resetView; elements.error = elements.errorPanel; elements.notice = elements.noticePanel; elements.status = elements.analysisStatus; elements.details = elements.selectionDetails; elements.legend = elements.resultLegend; elements.chart = elements.historyChart;
-    renderer = new M.Renderer(elements.viewport, updateDetails); bind(); loadJobFromLocation();
+    renderer = new M.WebGLRenderer(byId('spatial-result-viewport'), updateDetails);renderer.onContextLost=stopPlayback; bind(); loadJobFromLocation();
   });
 }(window.MKEFPost));

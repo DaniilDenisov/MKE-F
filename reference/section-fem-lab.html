@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Диагностика сечения · MKE-F</title><link rel="stylesheet" href="assets/reference.css">
+<link rel="stylesheet" href="assets/section-lab.css"></head><body><main class="section-lab">
+<header><a href="RU/08-result-recovery.html">Справочник MKE-F</a><h1>Поле напряжений в сечении</h1>
+<p>Расчёт Сен-Венана по геометрии и усилиям в локальных осях профиля. Используйте согласованные единицы длины и силы.</p></header>
+<form id="inputs"><label>Геометрия профиля, JSON<textarea required id="section" rows="3">{"type":"rectangle","dimensions":{"b":2,"h":1}}</textarea></label>
+<label>Коэффициент Пуассона ν<input required id="nu" type="number" step="any" placeholder="−1 < ν < 0,5"></label>
+<label>Усилия [N, Vy, Vz, T, My, Mz]<input required id="forces" value="[0,1,0,0,0,0]"></label>
+<div><button id="run">Рассчитать</button> <button id="cancel" type="button" disabled>Отменить</button></div></form>
+<p id="progress" role="status">Расчёт не запущен.</p>
+<section id="plot" hidden><h2>Поле на расчётной сетке</h2>
+<label>Величина <select id="component"><option value="3">σVM · Мизес</option><option value="0">σx</option><option value="1">τxy</option><option value="2">τxz</option></select></label>
+<label><input id="mesh" type="checkbox"> Показать сетку Tri6</label>
+<canvas id="field" width="760" height="480" aria-label="Карта напряжений в осях сечения"></canvas>
+<div class="scale"><span id="low"></span><span class="ramp"></span><span id="high"></span></div></section>
+<p id="critical"></p><details id="details" hidden><summary>Сходимость и параметры расчёта</summary><pre id="result"></pre></details>
+<p><a href="section-fem-methods.md">Методика расчёта</a></p></main>
+<script src="section-field.js"></script><script src="section-fem-lab.js"></script></body></html>

@@ -5,6 +5,11 @@ function element = createStructuralElement(type, nodeCoordinates, ...
 %   type, nodeNumbers, nodeCoordinates, properties, dofs, length,
 %   transformation, localStiffness, stiffness, and mass.
 
+if ismember(type,[1133 1436])
+    element = createSpatialElement(type,nodeCoordinates,nodeNumbers,properties,dofMap);
+    return;
+end
+
 validateGeometry(nodeCoordinates, type);
 validateTopology(nodeNumbers, dofMap, type);
 validateProperties(properties, type);
@@ -67,7 +72,8 @@ end
 end
 
 function validateTopology(nodeNumbers, dofMap, type)
-expectedDOFs = 2 + (type == 113);
+info = elementTypeInfo(type);
+expectedDOFs = info.dofPerNode;
 if ~ismember(type, [112 113])
     error('MKEF:UnsupportedElementType', ...
         'Unsupported structural element type %g.', type);
@@ -81,7 +87,8 @@ end
 end
 
 function validateProperties(properties, type)
-propertyCount = 3 + (type == 113);
+info = elementTypeInfo(type);
+propertyCount = numel(info.properties);
 if ~isnumeric(properties) || ~isreal(properties) || ...
         numel(properties) < propertyCount || ...
         any(~isfinite(properties(1:propertyCount))) || ...

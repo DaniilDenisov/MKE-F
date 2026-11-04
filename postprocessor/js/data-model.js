@@ -215,6 +215,7 @@
   M.validateDataset = function (data) {
     objectAt(data, '$');
     if (data.format !== 'mkef-postprocessor') fail('$.format', 'expected "mkef-postprocessor"');
+    if (data.version === 7) { if(M.spatialData)return M.spatialData.validate(data);fail('$.version','Spatial viewer is not loaded.'); }
     if ([1,2,3,4,5,6].indexOf(data.version) < 0) fail('$.version', 'unsupported format version ' + String(data.version));
     if (data.version === 5 && (!Array.isArray(data.model && data.model.elementLoads) || !data.model.elementLoads.some(function (load) { return load && load.type === 21; }))) fail('$.model.elementLoads','version 5 requires a linear load');
     var metadata = objectAt(data.metadata, '$.metadata');

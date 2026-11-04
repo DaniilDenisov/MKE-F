@@ -42,8 +42,10 @@ for elementNumber = 1:numel(model.elementData)
     switch data.type
         case 112
             endAxialDOF = 3;
-        case 113
+        case {113,1133}
             endAxialDOF = 4;
+        case 1436
+            endAxialDOF = 7;
         otherwise
             error('MKEF:UnsupportedElementRecovery', ...
                 'Element %d has unsupported type %g.', elementNumber, data.type);
@@ -64,7 +66,24 @@ for elementNumber = 1:numel(model.elementData)
     elementResults(elementNumber).axialStrain = axialStrain;
     elementResults(elementNumber).axialStress = axialStress;
     elementResults(elementNumber).axialForce = data.properties(1) * axialStress;
-    if isfield(data,'sectionId') && data.sectionId>0
+    if data.type==1436
+        % Rows N,Vy,Vz,Mx,My,Mz; columns coefficients of xi^0..xi^3.
+        % Section actions balance the portion on the node-1 side of the cut.
+        f=localEndForces; q=intensities(elementNumber,:); L=data.length;
+        a=q(1:3).'; delta=q(4:6).'-a; coeff=zeros(6,4);
+        coeff(:,1)=-f(1:6);
+        coeff(1:3,2)=-L*a; coeff(1:3,3)=-L*delta/2;
+        coeff(5,2)=-L*f(3); coeff(6,2)=L*f(2);
+        coeff(5,3:4)=-L^2*[a(3)/2 delta(3)/6];
+        coeff(6,3:4)=L^2*[a(2)/2 delta(2)/6];
+        elementResults(elementNumber).sectionForceCoefficients=coeff;
+    end
+    if isfield(data,'sectionId') && data.sectionId>0 && data.type>=1000
+        coeff=zeros(6,4); coeff(1,1)=-localEndForces(1);
+        if data.type==1436, coeff=elementResults(elementNumber).sectionForceCoefficients; end
+        elementResults(elementNumber).sectionStress=recoverSpatialSectionStress(data.sectionProperties,coeff);
+    end
+    if isfield(data,'sectionId') && data.sectionId>0 && data.type<1000
         elementResults(elementNumber).sectionStress = recoverSectionStress( ...
             data.sectionProperties,data.type,data.length,localEndForces,intensities(elementNumber,:));
     end

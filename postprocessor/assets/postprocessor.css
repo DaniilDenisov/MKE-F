@@ -24,6 +24,14 @@ input[type="number"],input[type="range"],select { width:100%; padding:.4rem .5re
 .app-nav a:hover,.app-nav a[aria-current=page] { color:#fff; background:#294557; }
 .app-layout { min-height:0; height:100%; display:grid; grid-template-columns:16rem minmax(0,1fr); overflow:hidden; }
 .settings { min-height:0; padding:1rem; overflow-y:auto; background:var(--panel); border-right:1px solid var(--line); }
+.spatial-result-mode .settings>section,.spatial-result-mode #result-legend,.spatial-result-mode #chart-panel,.spatial-result-mode .result-inspector,.spatial-result-mode .status-bar,.spatial-result-mode #planar-result-objects{display:none!important}
+#spatial-result-viewport{position:absolute;inset:0;overflow:hidden}
+#spatial-result-viewport>canvas:not(.spatial-overlay){width:100%;height:100%;touch-action:none;display:block}
+#spatial-result-panel{flex:0 1 38%;min-height:100px;overflow:auto;background:white;padding:10px;border:1px solid #d8e1e9;border-radius:8px}
+#spatial-result-panel pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px}
+#spatial-result-panel td{padding:4px 12px;cursor:pointer}
+#spatial-result-settings button{padding:5px;margin:3px;font-size:12px}
+#spatial-result-settings input,#spatial-result-settings select{max-width:100%}
 .settings section+section { border-top:1px solid var(--line); margin-top:1rem; padding-top:.8rem; }
 .settings h2,.details-panel h2 { margin:0 0 .65rem; font-size:.78rem; letter-spacing:.09em; text-transform:uppercase; color:var(--muted); }
 .settings label { display:block; margin:.55rem 0 .25rem; font-size:.9rem; }
@@ -53,39 +61,23 @@ input[type="number"],input[type="range"],select { width:100%; padding:.4rem .5re
 .details-panel pre { margin:0; white-space:pre-wrap; font:.86rem/1.5 ui-monospace,SFMono-Regular,Consolas,monospace; }
 .chart-panel { min-height:17rem; }
 .chart-help { margin:.35rem 0 0; color:var(--muted); font-size:.78rem; }
-#history-chart { display:block; width:100%; height:15rem; }
+:is(#history-chart,#spatial-result-chart,#normal-stress-chart) { display:block; width:100%; height:15rem; }
 #mpc-history-chart { width:100%; height:12rem; }
 #mpc-results table { border-collapse:collapse; font-size:.8rem; }
 #mpc-results td,#mpc-results th { padding:.35rem; border-bottom:1px solid var(--line); text-align:left; }
 .status-bar { flex:none; color:var(--muted); font-size:.82rem; }
-.structural-viewport .viewport-background { fill:#fff; }
-.structural-viewport .original-element { fill:none; stroke:#7b8795; stroke-width:1.5; stroke-dasharray:6 4; vector-effect:non-scaling-stroke; }
-.structural-viewport .deformed-element { fill:none; stroke:#087f9c; stroke-width:2.7; vector-effect:non-scaling-stroke; }
-.structural-viewport .node-hit { fill:none; stroke:transparent; stroke-width:14; vector-effect:non-scaling-stroke; pointer-events:stroke; }
-.structural-viewport .node { fill:#fff; stroke:#263847; stroke-width:1.4; vector-effect:non-scaling-stroke; }
-.structural-viewport .label { fill:#263847; font-family:sans-serif; paint-order:stroke; stroke:#fff; stroke-linejoin:round; }
-.structural-viewport [data-node-id],.structural-viewport [data-element-id] { cursor:pointer; }
-.structural-viewport path.selected,.structural-viewport circle.selected { stroke:#ef7d18!important; stroke-width:4!important; }
 /* Chromium's native SVG focus outline can expand in model coordinates into
    a large black ring. Use the geometry stroke for keyboard focus instead. */
-.structural-viewport [tabindex]:focus { outline:none; }
-.structural-viewport path[tabindex]:focus-visible,.structural-viewport circle[tabindex]:focus-visible { stroke:#176b87!important; stroke-width:4!important; vector-effect:non-scaling-stroke; }
-.structural-viewport .load-symbol { fill:none; stroke:#b63a3f; stroke-width:2; vector-effect:non-scaling-stroke; }
-.structural-viewport .reaction-symbol { fill:none; vector-effect:non-scaling-stroke; }
-.structural-viewport .reaction-force-symbol { stroke:#6d3ca5; stroke-width:2.8; stroke-dasharray:5 2.5; }
-.structural-viewport .reaction-moment-symbol { stroke:#c56a00; stroke-width:3; stroke-dasharray:none; }
-.structural-viewport .diagram-fill { fill:rgba(27,127,154,.16); stroke:none; vector-effect:non-scaling-stroke; }
-.structural-viewport .diagram-line { fill:none; stroke:#176b87; stroke-width:2; vector-effect:non-scaling-stroke; }
-#history-chart .chart-frame,#history-chart .chart-axis { fill:none; stroke:#9aa8b7; stroke-width:1; vector-effect:non-scaling-stroke; }
-#history-chart .chart-series { fill:none; stroke:#087f9c; stroke-width:2; vector-effect:non-scaling-stroke; }
-#history-chart .chart-cursor { stroke:#b63a3f; stroke-width:1.5; vector-effect:non-scaling-stroke; }
-#history-chart .chart-hit-area { fill:transparent; pointer-events:all; cursor:crosshair; }
-#history-chart .chart-sample { fill:#fff; stroke:#b63a3f; stroke-width:2; pointer-events:none; }
-#history-chart .chart-tooltip { pointer-events:none; }
-#history-chart .chart-tooltip rect { fill:#263847; stroke:none; opacity:.94; }
-#history-chart .chart-tooltip text { fill:#fff; font:12px sans-serif; }
-#history-chart [hidden] { display:none; }
-#history-chart text { fill:#354657; font:12px sans-serif; }
+:is(#history-chart,#spatial-result-chart,#normal-stress-chart) .chart-frame,:is(#history-chart,#spatial-result-chart,#normal-stress-chart) .chart-axis { fill:none; stroke:#9aa8b7; stroke-width:1; vector-effect:non-scaling-stroke; }
+:is(#history-chart,#spatial-result-chart,#normal-stress-chart) .chart-series { fill:none; stroke:#087f9c; stroke-width:2; vector-effect:non-scaling-stroke; }
+:is(#history-chart,#spatial-result-chart,#normal-stress-chart) .chart-cursor { stroke:#b63a3f; stroke-width:1.5; vector-effect:non-scaling-stroke; }
+:is(#history-chart,#spatial-result-chart,#normal-stress-chart) .chart-hit-area { fill:transparent; pointer-events:all; cursor:crosshair; }
+:is(#history-chart,#spatial-result-chart,#normal-stress-chart) .chart-sample { fill:#fff; stroke:#b63a3f; stroke-width:2; pointer-events:none; }
+:is(#history-chart,#spatial-result-chart,#normal-stress-chart) .chart-tooltip { pointer-events:none; }
+:is(#history-chart,#spatial-result-chart,#normal-stress-chart) .chart-tooltip rect { fill:#263847; stroke:none; opacity:.94; }
+:is(#history-chart,#spatial-result-chart,#normal-stress-chart) .chart-tooltip text { fill:#fff; font:12px sans-serif; }
+:is(#history-chart,#spatial-result-chart,#normal-stress-chart) [hidden] { display:none; }
+:is(#history-chart,#spatial-result-chart,#normal-stress-chart) text { fill:#354657; font:12px sans-serif; }
 @media (max-width:760px) { body.postprocessor-app{height:auto;display:block;overflow:auto}.toolbar{align-items:flex-start}.toolbar-actions{justify-content:flex-end}.brand small{max-width:42vw}.app-layout{height:auto;min-height:calc(100vh - 4.2rem);display:block;overflow:visible}.settings{overflow:visible;border-right:0;border-bottom:1px solid var(--line);display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1rem}.workspace{overflow:visible}.settings section+section{border-top:0;margin-top:0;padding-top:0}.settings .help{grid-column:1/-1}.drop-zone,#viewport{min-height:24rem}.details-panel{max-height:none} }
 @media (max-width:480px) { .toolbar{flex-direction:column}.toolbar-actions{width:100%;justify-content:flex-start}.brand small{max-width:80vw}.settings{grid-template-columns:1fr}.settings .help{grid-column:auto} }
 .section-result-panel{padding:18px;background:#fff;border:1px solid #d9e0e9;border-radius:8px;margin-top:12px}
@@ -104,3 +96,32 @@ input[type="number"],input[type="range"],select { width:100%; padding:.4rem .5re
 .workspace:has(.section-result-panel:not([hidden])) .drop-zone{min-height:240px}
 @media(max-width:1000px){.result-inspector:has(.section-result-panel:not([hidden])){grid-template-columns:1fr}.workspace:has(.section-result-panel:not([hidden])){overflow:auto}}
 @media(max-width:760px){.result-inspector{max-height:none}.result-inspector .section-result-svg{height:260px}}
+
+#spatial-result-panel .selected-row{background:#fff0d8}
+.postprocessor-app .app-layout{grid-template-columns:270px minmax(980px,1fr)}
+.postprocessor-app .workspace{display:grid;grid-template-columns:minmax(0,1fr) 340px;grid-template-rows:auto auto minmax(0,1fr);min-height:0}
+.workspace>#error-panel{grid-area:1/1/2/3}.workspace>#notice-panel{grid-area:2/1/3/3}
+.workspace>#drop-zone{grid-area:3/1;min-height:260px}
+#result-sidebar{grid-area:3/2;overflow:auto;min-height:0;display:flex;flex-direction:column;gap:10px;background:white;border:1px solid var(--line);border-radius:8px;padding:10px}
+#spatial-result-panel{flex:none;overflow:visible;min-height:0;border:0;padding:0}
+#result-sidebar .result-inspector{display:flex;flex-direction:column;max-height:none;overflow:visible}
+#result-sidebar .details-panel{max-height:none}
+#result-sidebar table{font-size:12px;border-collapse:collapse;width:100%}
+#result-sidebar td{padding:5px 8px;border-bottom:1px solid var(--line);cursor:pointer}
+#planar-result-objects{flex:none;max-height:300px;overflow:auto}
+#planar-result-objects button{font-size:12px;margin:5px 4px 5px 0}
+#result-sidebar [hidden]{display:none!important}
+#member-maxima { flex:none; border-bottom:1px solid var(--line); padding-bottom:8px; }
+#member-maxima summary { cursor:pointer; font-weight:600; }
+#member-maxima label { display:block; margin:6px 0; }
+#member-maxima input { width:100%; }
+#member-maxima input[type=checkbox] { width:auto; }
+#member-maxima .member-table { max-height:300px; overflow:auto; }
+#member-maxima th { text-align:left; position:sticky; top:0; background:white; }
+#result-sidebar #member-maxima td { cursor:auto; padding:4px; font-variant-numeric:tabular-nums; }
+#normal-stress-panel{min-width:0;border-bottom:1px solid var(--line);padding-bottom:12px}
+#normal-stress-panel pre{white-space:pre-wrap;overflow-wrap:anywhere;font:12px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace}
+#normal-stress-panel h2{font-size:1rem;margin:4px 0 8px}
+#normal-stress-chart{min-height:130px}
+.normal-stress-settings p,#normal-stress-status{font-size:12px;line-height:1.5}
+#viewport{position:absolute;inset:0}

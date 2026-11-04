@@ -104,6 +104,7 @@ clear cleanup;
 end
 
 function output = prepareJsonData(data)
+if data.version==7, output=prepareSpatialJsonData(data); return; end
 output = data;
 
 output.model.nodes = recordArray(data.model.nodes);

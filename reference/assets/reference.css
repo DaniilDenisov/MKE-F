@@ -103,6 +103,7 @@ pre code { padding: 0; color: inherit; background: transparent; font-size: inher
 .callout--inspect .callout__title { color: var(--blue); }
 .callout--warning .callout__title { color: var(--amber); }
 .table-wrap { margin: 20px 0; overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; }
+.spatial-type-table th:first-child, .spatial-type-table td:first-child { white-space: nowrap; overflow-wrap: normal; word-break: normal; }
 table { width: 100%; border-collapse: collapse; background: white; font-size: 14px; }
 #all-examples table { min-width: 680px; }
 th, td { padding: 12px 15px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }

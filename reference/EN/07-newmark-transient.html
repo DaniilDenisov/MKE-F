@@ -137,7 +137,7 @@ exportPostprocessorData(model, result, ...
     fullfile('output', 'transient-history.json'), options);</code></pre>
         <div class="callout callout--inspect">
           <span class="callout__title">The same analysis through the GUI</span>
-          <p>From the repository root, run <code>docker compose up --build</code> (or <code>docker-compose up --build</code>) and open the <a href="http://127.0.0.1:8080/preprocessor/">preprocessor</a>. Load <code>examples/cases/CasePreprocessorTransient.txt</code> using <strong>Open TXT</strong> and click <strong>Run analysis</strong>. The interface shows the queue, elapsed time and Octave log, then automatically opens the full history in the postprocessor. To retain the result after stopping Compose, click <strong>Download JSON</strong>.</p>
+          <p>From the repository root, run <code>docker compose up --build</code> (or <code>docker-compose up --build</code>) and open the <a href="http://127.0.0.1:8080/preprocessor/">preprocessor</a>. Load <code>examples/cases/CasePreprocessorTransient.txt</code> using <strong>Open TXT</strong> and click <strong>Run analysis</strong>. The interface shows the queue, elapsed time and Octave log. After <strong>Completed</strong>, click <strong>Open result</strong> to open the full history in a separate postprocessor tab. To retain the result after stopping Compose, click <strong>Download JSON</strong>.</p>
         </div>
         <p>Then open <a href="../../postprocessor/index.html"><code>postprocessor/index.html</code></a>
           by double-clicking in Chrome and drag onto the page <code>output/transient-history.json</code>

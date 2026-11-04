@@ -42,6 +42,11 @@
       function ring(rad) {return 'M '+rad+' 0 A '+rad+' '+rad+' 0 1 0 '+(-rad)+' 0 A '+rad+' '+rad+' 0 1 0 '+rad+' 0 Z ';}
       group.appendChild(el('path',{d:ring(radius)+ring(radius-section.dimensions.t),'fill-rule':'evenodd'}));
     }
+    else if(p.roundedTube){
+      var d=p.roundedTube;
+      var loops=[S.roundedLoop(d.h,d.b,d.ro),S.roundedLoop(d.h-2*d.t,d.b-2*d.t,d.ri)];
+      group.appendChild(el('path',{d:loops.map(loop=>loop.map((v,i)=>{var q=point(v.z,v.y);return (i?'L ':'M ')+q.x+' '+q.y;}).join(' ')+' Z').join(' '),'fill-rule':'evenodd'}));
+    }
     else if(section.type==='square_tube' || section.type==='rectangular_tube') {
       var d=section.dimensions,h=section.type==='square_tube' ? d.b : d.h;
       function box(b,h) {return [[-b/2,-h/2],[b/2,-h/2],[b/2,h/2],[-b/2,h/2]].map(function (a,i) {var q=point(a[0],a[1]);return (i ? 'L ' : 'M ')+q.x+' '+q.y;}).join(' ')+' Z ';}

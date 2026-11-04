@@ -9,6 +9,14 @@ end
 
 analysisType = validateAnalysisType(result);
 [settings, ~] = validateOptions(options, analysisType);
+if isfield(model,'dimension') && model.dimension==3
+    info=struct('numberOfDOFs',model.numberOfDOFs); analysis=struct('type',analysisType);
+    if strcmp(analysisType,'modal'), analysis=createModalData(result,info); end
+    if strcmp(analysisType,'transient'), analysis=createTransientData(result,info,settings); end
+    data=createSpatialPostprocessorData(model,result,settings,analysis);
+    data.metadata=createMetadata(settings,analysisType);
+    return;
+end
 modelInfo = validateModel(model);
 
 data = struct();
@@ -118,6 +126,8 @@ end
 if isfield(model,'sections') && ~isempty(model.sections)
     data.version=6;
     data.model.sections=model.sections;
+    % v6 remains the historical 2D contract; torsion belongs to spatial v7.
+    if isfield(data.model.sections,'torsion'), data.model.sections=rmfield(data.model.sections,'torsion'); end
     for i=1:numel(model.elementData)
         e=model.elementData(i);
         data.model.elements(i).sectionId=e.sectionId;

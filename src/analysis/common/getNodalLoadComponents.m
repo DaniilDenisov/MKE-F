@@ -9,6 +9,9 @@ if numel(boundaryCondition) < requiredColumns
         model.dofPerNode);
 end
 
+if isfield(model,'dimension') && model.dimension==3 && model.dofPerNode==3 && any(boundaryCondition(6:8)~=0)
+    error('MKEF:UnsupportedLoadComponent','Spatial trusses have no moment DOFs.');
+end
 if model.dofPerNode == 2 && numel(boundaryCondition) >= 5 && ...
         boundaryCondition(5) ~= 0
     error('MKEF:UnsupportedLoadComponent', ...

@@ -1,3 +1,4 @@
+const {captureEditor,capturePost,pickNode}=require('./browser-test-helpers.cjs');
 // First run setup; run_nafems_challenge5('quick') in Octave.
 const {chromium}=require(process.env.MKEF_PLAYWRIGHT_MODULE || 'playwright');
 const assert=require('node:assert/strict'), fs=require('node:fs'), path=require('node:path');
@@ -6,18 +7,18 @@ const root=path.resolve(__dirname,'..');
 const output=path.join(root,'output','nafems-challenge-5','browser');
 fs.mkdirSync(output,{recursive:true});
 (async()=>{
-  const browser=await chromium.launch({headless:true});
+  const browser=await chromium.launch({headless:true,args:['--no-sandbox','--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
   try {
     const page=await browser.newPage({viewport:{width:1440,height:1000}}), errors=[];
     page.on('pageerror',e=>errors.push(e.message));
     page.on('dialog',d=>d.accept());
-    await page.goto(pathToFileURL(path.join(root,'preprocessor/index.html')).href);
+    await page.goto(pathToFileURL(path.join(root,'preprocessor/index.html')).href);await captureEditor(page);
     const source=path.join(root,'examples/cases/nafems-challenge-5/frame_n016.txt');
     await page.locator('#file-input').setInputFiles(source);
-    await page.waitForFunction(()=>document.querySelectorAll('.end-release').length===4);
+    await page.waitForFunction(()=>document.querySelectorAll('#condition-releases-rows tr').length===4);
     assert.equal(await page.locator('#error-panel').isVisible(),false);
     const snapshot=()=>page.evaluate(()=>{
-      const f=window.MKEFPre.caseFormat, m=f.parse(document.querySelector('#case-preview').value);
+      const f=window.MKEFPre.caseFormat, m=f.parse(document.querySelector('#spatial-current').value);
       return JSON.parse(JSON.stringify(m,(key,value)=>key==='sourceLine'?undefined:value));
     });
     const before=await snapshot();
@@ -30,7 +31,7 @@ fs.mkdirSync(output,{recursive:true});
     await page.locator('#file-input').setInputFiles(saved);
     assert.deepEqual(await snapshot(),before);
     await page.screenshot({path:path.join(output,'preprocessor.png'),fullPage:true});
-    await page.goto(pathToFileURL(path.join(root,'postprocessor/index.html')).href);
+    await page.goto(pathToFileURL(path.join(root,'postprocessor/index.html')).href);await capturePost(page);
     const json=path.join(root,'output/nafems-challenge-5/quick/frame_n016.json');
     const raw=JSON.parse(fs.readFileSync(json,'utf8'));
     assert.equal(raw.version,4);
@@ -38,7 +39,7 @@ fs.mkdirSync(output,{recursive:true});
     await page.locator('#file-input').setInputFiles(json);
     await page.waitForFunction(()=>document.querySelectorAll('#mode-number option').length>3);
     assert.equal(await page.locator('#error-panel').isVisible(),false);
-    assert.equal(await page.locator('[data-layer="original-geometry"] .end-release').count(),4);
+    assert.equal(await page.evaluate(()=>resultRenderer.scene.conditions.data.releases.length),4);
     for(const index of [0,1,6,7,11,12]) {
       const value=await page.locator('#mode-number option').nth(index).getAttribute('value');
       await page.locator('#mode-number').selectOption(value);

@@ -1,6 +1,7 @@
 function result = solveModal(model)
 %SOLVEMODAL Solve the undamped generalized eigenproblem without side effects.
 
+validateSpatialFrameSections(model);
 rejectElementLoads(model);
 constraints = buildConstraintTransform(model);
 fixedDOFs = constraints.fixedDOFs;
@@ -8,7 +9,7 @@ freeDOFs = constraints.freeDOFs;
 T = constraints.T;
 reducedK = model.stiffness(freeDOFs, freeDOFs);
 reducedM = model.mass(freeDOFs, freeDOFs);
-if constraints.hasMPC
+if constraints.hasTransform
     reducedK = T.' * model.stiffness * T;
     reducedM = T.' * model.mass * T;
 end
@@ -27,6 +28,7 @@ result.frequenciesHz = angularFrequencies / (2 * pi);
 result.angularFrequenciesRadPerSec = angularFrequencies;
 result.eigenvalues = eigenvalues;
 result.modeShapes = modeShapes;
+if isfield(model,'nodalKinematics'), result.nodalModeShapes=full(model.nodalKinematics*modeShapes); end
 result.fixedDOFs = fixedDOFs;
 result.freeDOFs = freeDOFs;
 residual = model.stiffness * modeShapes - model.mass * modeShapes * diag(eigenvalues);

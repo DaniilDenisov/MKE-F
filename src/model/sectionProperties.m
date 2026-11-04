@@ -1,4 +1,4 @@
-function p = sectionProperties(section, angle)
+function [p, rects] = sectionProperties(section, angle)
 %SECTIONPROPERTIES Ideal profiles, centroidal axes y (height), z (width).
 if nargin < 2, angle=0; end
 if ~isscalar(angle) || ~ismember(angle,[0 90 180 270])
@@ -20,6 +20,11 @@ for i=1:numel(fields)
     if ~isstruct(d) || ~isfield(d,k) || ~isnumeric(d.(k)) || ~isreal(d.(k)) || ~isscalar(d.(k)) || ~isfinite(d.(k)) || d.(k)<=0
         error('MKEF:InvalidSection','Section dimensions must be positive finite numbers.');
     end
+end
+ri=0; if isfield(d,'inner_radius'), ri=d.inner_radius; end
+if ~isnumeric(ri) || ~isreal(ri) || ~isscalar(ri) || ~isfinite(ri) || ri<0 || ...
+        (ri>0 && ~ismember(section.type,{'square_tube','rectangular_tube'}))
+    error('MKEF:InvalidSection','Inside corner radius must be finite, nonnegative and used only for rectangular tubes.');
 end
 rects=zeros(0,4); cy=0; cz=0;
 if strcmp(section.type,'circular_tube')
@@ -57,6 +62,14 @@ else
     Iy=sum(rects(:,4).*rects(:,3).^3/12+areas.*(rects(:,1)+rects(:,3)/2).^2);
     Iz=sum(rects(:,3).*rects(:,4).^3/12+areas.*(rects(:,2)+rects(:,4)/2).^2);
 end
+if ri>0
+    h=d.b; if strcmp(section.type,'rectangular_tube'), h=d.h; end
+    if ri+d.t>=min(h,d.b)/2*(1-1e-14)
+        error('MKEF:InvalidSection','Inside radius + wall thickness must be less than half the smaller outside dimension.');
+    end
+    values=rounded(h,d.b,ri+d.t)-rounded(h-2*d.t,d.b-2*d.t,ri);
+    A=values(1); Iy=values(2); Iz=values(3);
+end
 c=[1 0 -1 0]; s=[0 1 0 -1]; k=angle/90+1;
 if isempty(rects), etaMin=-d.d/2; etaMax=d.d/2;
 else
@@ -69,4 +82,10 @@ if any(~isfinite([A Iy Iz etaMin etaMax])) || any([A Iy Iz]<=0)
 end
 p=struct('area',A,'centroidY',cy,'centroidZ',cz,'Iy',Iy,'Iz',Iz, ...
     'momentOfInertia',Iz*c(k)^2+Iy*s(k)^2,'etaMin',etaMin,'etaMax',etaMax);
+if ri>0, p.roundedTube=struct('h',h,'b',d.b,'ri',ri,'ro',ri+d.t,'t',d.t); end
+end
+function values=rounded(h,b,r)
+cut=(1-pi/4)*r^2;
+inertia=@(span,width) width*span^3/12-4*((span/2-r)^2*cut+(span/2-r)*r^3/3+(1/3-pi/16)*r^4);
+values=[h*b-4*cut inertia(b,h) inertia(h,b)];
 end

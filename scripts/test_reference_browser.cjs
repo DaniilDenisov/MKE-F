@@ -4,7 +4,7 @@ const { chromium } = require(process.env.MKEF_PLAYWRIGHT_MODULE || 'playwright')
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { pathToFileURL } = require('node:url');
+const { pathToFileURL, fileURLToPath } = require('node:url');
 const root = path.resolve(__dirname, '..');
 const reference = path.join(root, 'reference');
 const pages = fs.readdirSync(path.join(reference, 'RU')).filter(name => name.endsWith('.html') && name !== '04c-nafems-challenge-5.html');
@@ -101,6 +101,22 @@ async function exercise(page, chapter, english) {
           assert(await page.locator('.language-switch').isVisible());
           if (language === 'EN') assertEnglish(await page.content(), name);
           assert.equal(await page.locator('img').evaluateAll(images => images.filter(img => !img.complete || img.naturalWidth === 0).length), 0, `Broken diagrams: ${name}`);
+          if (mode === 'offline') {
+            const links = await page.locator('a[href]').evaluateAll(anchors => anchors.map(a => a.href));
+            for (const href of new Set(links)) {
+              const url = new URL(href);
+              if (url.protocol !== 'file:') continue;
+              const target = fileURLToPath(url);
+              assert(fs.existsSync(target), `Broken link in ${language}/${name}: ${href}`);
+              if (url.hash && target.endsWith('.html')) {
+                const html = fs.readFileSync(target, 'utf8');
+                // Legacy redirect pages forward the fragment to the localized page.
+                if (/http-equiv=["']refresh["']/i.test(html)) continue;
+                const ids = [...html.matchAll(/\bid=["']([^"']+)["']/g)].map(match => match[1]);
+                assert(ids.includes(decodeURIComponent(url.hash.slice(1))), `Broken bookmark in ${language}/${name}: ${href}`);
+              }
+            }
+          }
           const other = language === 'RU' ? 'EN' : 'RU';
           await page.locator(`.language-switch a[lang="${other.toLowerCase()}"]`).focus();
           await page.keyboard.press('Enter');
@@ -131,7 +147,7 @@ async function exercise(page, chapter, english) {
       }
       for (const width of [1440, 390]) {
         await page.setViewportSize({ width, height: 1000 });
-        for (const name of ['index.html', 'EN/index.html', 'EN/02-element-matrices.html', 'RU/04-boundary-loads.html', 'EN/04-boundary-loads.html', 'RU/04a-mpc.html', 'EN/04a-mpc.html', 'RU/04b-end-releases.html', 'EN/04b-end-releases.html', ...visualizers.map(name => 'EN/' + name)]) {
+        for (const name of ['index.html', 'EN/index.html', ...['capabilities.html', 'project-operations.html', '08-result-recovery.html'].flatMap(name => ['RU/' + name, 'EN/' + name]), 'RU/3d-quick-start.html', 'EN/3d-quick-start.html', 'RU/10-input-format.html', 'EN/10-input-format.html', 'EN/02-element-matrices.html', 'RU/04-boundary-loads.html', 'EN/04-boundary-loads.html', 'RU/04a-mpc.html', 'EN/04a-mpc.html', 'RU/04b-end-releases.html', 'EN/04b-end-releases.html', ...visualizers.map(name => 'EN/' + name)]) {
           await page.goto(base + 'reference/' + name);
           const dimensions = await page.evaluate(() => ({ scroll: document.documentElement.scrollWidth, viewport: innerWidth }));
           assert(dimensions.scroll <= dimensions.viewport + 1, `${mode}/${name} overflows at ${width}: ${JSON.stringify(dimensions)}`);
@@ -145,7 +161,37 @@ async function exercise(page, chapter, english) {
         await page.waitForURL('**/reference/index.html');
         assert.equal(await page.locator('.language-choice').count(), 2);
       }
-      console.log(`PASS ${mode}: ${pages.length * 2} pages, ${pages.length - 1} legacy redirects, keyboard switches, visualizer numerical parity and responsive layouts`);
+      await page.goto(base + 'reference/RU/3d-quick-start.html');
+      let downloadedCase = path.join(root,'examples/cases/CaseSpatialQuickStart.txt');
+      if(mode==='offline') {
+        // Chromium opens file:// TXT links directly; download applies over HTTP.
+        await page.locator('a[download]').click();
+        await page.waitForURL('**/examples/cases/CaseSpatialQuickStart.txt');
+        assert.match(await page.locator('body').innerText(),/elems_1436/);
+      } else {
+        const downloadEvent = page.waitForEvent('download');
+        await page.locator('a[download]').click();
+        const download = await downloadEvent;
+        downloadedCase = path.join(output, 'CaseSpatialQuickStart.txt');
+        await download.saveAs(downloadedCase);
+      }
+      assert.equal(fs.readFileSync(downloadedCase,'utf8'),fs.readFileSync(path.join(root,'examples/cases/CaseSpatialQuickStart.txt'),'utf8'));
+      await page.goto(base + 'preprocessor/index.html');
+      await page.locator('#file-input').setInputFiles(downloadedCase);
+      await page.waitForSelector('#spatial-node-rows tr');
+      assert.equal(await page.locator('#spatial-node-rows tr').count(),2);
+      assert.equal(await page.locator('#spatial-element-rows tr').count(),1);
+      await page.goto(base + 'postprocessor/index.html');
+      await page.locator('#file-input').setInputFiles(path.join(root,'output/CaseSpatialQuickStart.json'));
+      await page.locator('#spatial-result-rows tr').nth(1).click();
+      assert.match(await page.locator('#spatial-result-details').innerText(),/uy = -0.0002/);
+      await page.locator('#spatial-result-table').selectOption('element');
+      await page.locator('#spatial-result-rows tr').click();
+      await page.locator('#spatial-result-position').fill('0');
+      await page.locator('#spatial-result-position').dispatchEvent('change');
+      assert.match(await page.locator('#spatial-section-cut').innerText(),/σmin=-3000000/);
+      assert.match(await page.locator('#spatial-section-cut').innerText(),/σmax=3000000/);
+      console.log(`PASS ${mode}: ${pages.length * 2} pages, ${pages.length - 1} legacy redirects, keyboard switches, visualizer numerical parity, responsive layouts and downloadable 3D example`);
     }
     const noScript = await browser.newContext({ javaScriptEnabled: false });
     const fallback = await noScript.newPage();

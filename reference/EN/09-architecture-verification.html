@@ -87,7 +87,7 @@ modalResult = solveModal(model);</code></pre>
 
       <section aria-labelledby="elements-title">
         <h2 id="elements-title">Elements and sparse assembly</h2>
-        <p>An element is a plain value structure, not a mutable subclass instance. <code>createStructuralElement</code> creates a common contract for types 112 and 113: <code>type</code>, <code>nodeNumbers</code>, <code>properties</code>, a unified vector <code>dofs</code>, matrices and stored <code>length</code> and <code>transformation</code>. The same DOF map is used for assembly and force recovery.</p>
+        <p>An element is a plain value structure, not a mutable subclass instance. <code>createStructuralElement</code> creates a common contract for types 112, 113, 1133 and 1436: <code>type</code>, <code>nodeNumbers</code>, <code>properties</code>, a unified vector <code>dofs</code>, matrices and stored <code>length</code> and <code>transformation</code>. The same DOF map is used for assembly and force recovery.</p>
         <p><code>assembleGlobalMatrices</code> first builds row–column–value triplets, then a single call to <code>sparse</code> creates the global matrices. Octave sums contributions at repeated addresses. Memory depends on the number of element coefficients, not the square of the total DOF count.</p>
         <div class="callout">
           <span class="callout__title">Architectural invariant</span>

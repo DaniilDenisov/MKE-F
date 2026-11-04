@@ -53,6 +53,11 @@
     var includeChart = chart && chart.childNodes.length && !chart.closest('[hidden]');
     var includeLegend = legend && legend.kind === 'color';
     var captionLines = Array.isArray(context.captionLines) ? context.captionLines.map(String) : [];
+    if (legend && legend.kind === 'text' && legend.text) {
+      var limit = Math.max(40, Math.floor((width - 64) / 7.2)), line = '';
+      String(legend.text).split(/\s+/).forEach(function (word) { if (line && line.length + word.length + 1 > limit) { captionLines.push(line); line = ''; } line += (line ? ' ' : '') + word; });
+      if (line) captionLines.push(line);
+    }
     var captionHeight = captionLines.length ? 28 + captionLines.length * 20 : 0;
     var legendHeight = includeLegend ? 92 : 0;
     var chartHeight = includeChart ? Math.max(Math.round(chart.getBoundingClientRect().height), 240) : 0;

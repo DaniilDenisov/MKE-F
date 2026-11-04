@@ -137,7 +137,7 @@ exportPostprocessorData(model, result, ...
     fullfile('output', 'transient-history.json'), options);</code></pre>
         <div class="callout callout--inspect">
           <span class="callout__title">Тот же расчёт через GUI</span>
-          <p>Из корня репозитория выполните <code>docker compose up --build</code> (либо <code>docker-compose up --build</code>) и откройте <a href="http://127.0.0.1:8080/preprocessor/">препроцессор</a>. Загрузите <code>examples/cases/CasePreprocessorTransient.txt</code> через <strong>Open TXT</strong> и нажмите <strong>Run analysis</strong>. Интерфейс покажет очередь, время и журнал Octave, а затем автоматически откроет полную историю в постпроцессоре. Чтобы сохранить результат после остановки Compose, нажмите <strong>Download JSON</strong>.</p>
+          <p>Из корня репозитория выполните <code>docker compose up --build</code> (либо <code>docker-compose up --build</code>) и откройте <a href="http://127.0.0.1:8080/preprocessor/">препроцессор</a>. Загрузите <code>examples/cases/CasePreprocessorTransient.txt</code> через <strong>Open TXT</strong> и нажмите <strong>Run analysis</strong>. Интерфейс покажет очередь, время и журнал Octave. После статуса <strong>Completed</strong> нажмите <strong>Open result</strong>, чтобы открыть полную историю в отдельной вкладке постпроцессора. Чтобы сохранить результат после остановки Compose, нажмите <strong>Download JSON</strong>.</p>
         </div>
         <p>Затем откройте <a href="../../postprocessor/index.html"><code>postprocessor/index.html</code></a>
           двойным щелчком в Chrome и перетащите на страницу <code>output/transient-history.json</code>

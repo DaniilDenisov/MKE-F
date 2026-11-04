@@ -1,0 +1,9 @@
+.section-lab { max-width: 900px; margin: 2rem auto; padding: 0 1rem; }
+.section-lab form, .section-lab #plot { padding: 1.2rem; background: white; border: 1px solid var(--line); border-radius: 8px; }
+.section-lab form { display: grid; gap: .75rem; }
+.section-lab textarea, .section-lab form input { display: block; width: 100%; padding: .4rem; }
+.section-lab button, .section-lab select { padding: .4rem .7rem; }
+.section-lab #progress, .section-lab #critical { margin: 1rem 0; }
+.section-lab canvas { display: block; max-width: 100%; height: auto; margin: .5rem auto; }
+.section-lab .scale { display: flex; align-items: center; gap: .7rem; font-variant-numeric: tabular-nums; }
+.section-lab .ramp { flex: 1; height: .7rem; background: linear-gradient(to right, #204679, #f1efd7, #ae402f); }

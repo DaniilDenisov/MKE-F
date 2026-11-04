@@ -1,165 +1,7 @@
+const {captureEditor,capturePost}=require('./browser-test-helpers.cjs');
 const {chromium}=require(process.env.MKEF_PLAYWRIGHT_MODULE || 'playwright');
 const fs=require('fs'),path=require('path'),http=require('http'),assert=require('assert/strict');
 const root=path.resolve(__dirname,'..');
-async function checkLiteralSectionNames(page) {
-  const source=fs.readFileSync(path.join(root,'examples/cases/CaseSectionBeam.txt'),'utf8');
-  const name='<img src=x onerror="window.sectionInjected=true">';
-  const hostile=source.replace(/\{"id":1[^\r\n]+/,line=>{const section=JSON.parse(line);section.name=name;return JSON.stringify(section);});
-  await page.locator('#file-input').setInputFiles({name:'untrusted.txt',mimeType:'text/plain',buffer:Buffer.from(hostile)});
-  await page.waitForFunction(()=>document.getElementById('case-name').value==='untrusted');
-  assert.equal(await page.getByLabel('Name · section 1',{exact:true}).inputValue(),name);
-  assert.equal(await page.locator('#section-catalog img').count(),0);
-  assert.equal(await page.evaluate(()=>window.sectionInjected),undefined);
-  console.log('Imported section names remain literal text PASS');
-}
-async function checkTubeSections(page) {
-  await page.locator('#file-input').setInputFiles(path.join(root,'examples/cases/CaseSectionBeam.txt'));
-  await page.waitForFunction(()=>document.querySelector('#case-name').value==='CaseSectionBeam');
-  await page.locator('#sections-editor').evaluate(e=>e.open=true);
-  for(const type of ['square_tube','rectangular_tube','circular_tube']) {
-    await page.getByLabel('Shape · section 1',{exact:true}).selectOption(type);
-    const field=page.getByLabel('t · section 1',{exact:true});
-    assert.equal(await field.inputValue(),'0.005');
-    assert.equal(await page.getByLabel('h · section 1',{exact:true}).count(),type==='rectangular_tube' ? 1 : 0);
-    await field.fill('0.01');await field.dispatchEvent('change');
-    const saved=await page.locator('#case-preview').inputValue();
-    const model=await page.evaluate(()=>window.MKEFPre.caseFormat.parse(document.querySelector('#case-preview').value));
-    const expected=type==='square_tube' ? .0036 : type==='rectangular_tube' ? .0056 : Math.PI*.0009;
-    assert(Math.abs(model.elements[0].area-expected)<1e-14);
-    assert.equal(model.sections[0].type,type);assert.equal(model.elementLoads.length,1);
-    assert(await page.locator('#error-panel').isHidden());
-    const shape=page.locator('#section-preview-1 g path');
-    assert.equal(await shape.getAttribute('fill-rule'),'evenodd');
-    assert.deepEqual(await shape.evaluate(e=>[e.isPointInFill(new DOMPoint(0,0)),e.isPointInFill(new DOMPoint(.045,0))]),[false,true]);
-    assert(!/NaN|Infinity/.test(await page.locator('#section-preview-1').getAttribute('viewBox')));
-    await page.locator('#undo').click();assert.equal(await field.inputValue(),'0.005');
-    await page.locator('#redo').click();assert.equal(await field.inputValue(),'0.01');
-    await field.fill('0.05');await field.dispatchEvent('change');
-    assert.match(await page.locator('#error-panel').innerText(),/thickness leaves no clear space/);
-    assert.equal(await page.locator('#case-preview').inputValue(),saved,'Invalid tube must not change assigned geometry');
-    await page.locator('#file-input').setInputFiles({name:type+'.txt',mimeType:'text/plain',buffer:Buffer.from(saved)});
-    assert.equal(await page.getByLabel('Shape · section 1',{exact:true}).inputValue(),type);
-    assert.equal(await field.inputValue(),'0.01');
-    await page.locator('#section-preview-1').screenshot({path:path.join(root,'output/'+type+'-preview.png')});
-  }
-  console.log('Tubes: shape choices, wall dimensions, hollow previews, assignment, validation, undo/redo and TXT roundtrip PASS');
-}
-async function checkManualProperties(page) {
-  await page.locator('#file-input').setInputFiles(path.join(root,'examples/cases/CaseSectionBeam.txt'));
-  await page.waitForFunction(()=>document.querySelector('#case-name').value==='CaseSectionBeam');
-  await page.locator('#elements-body').evaluate(e=>e.closest('details').open=true);
-  await page.locator('#sections-editor').evaluate(e=>e.open=true);
-  const row=page.locator('#elements-body tr').first(),area=row.locator('input').nth(2),inertia=row.locator('input').nth(5);
-  const before=[await area.inputValue(),await inertia.inputValue()];
-  await row.locator('select').first().selectOption('0');
-  assert.deepEqual([await area.inputValue(),await inertia.inputValue()],before,'Detaching a section must preserve A and I');
-  assert(!(await area.isDisabled()));assert(!(await inertia.isDisabled()));
-  await area.fill('0.03');await area.dispatchEvent('change');
-  await inertia.fill('0.00002');await inertia.dispatchEvent('change');
-  await page.getByLabel('h · section 1',{exact:true}).fill('0.4');
-  await page.getByLabel('h · section 1',{exact:true}).dispatchEvent('change');
-  assert.equal(await area.inputValue(),'0.03');assert.equal(await inertia.inputValue(),'0.00002');
-  // An unused catalog can be removed entirely; the member still validates and roundtrips.
-  await page.locator('.section-card').getByRole('button',{name:'Delete',exact:true}).click();
-  assert.equal(await page.locator('.section-card').count(),0);
-  assert(!(await page.locator('#download-case').isDisabled()));
-  const saved=await page.locator('#case-preview').inputValue();
-  assert(!/\n(?:sections|element_sections)\n/.test(saved));
-  await page.locator('#file-input').setInputFiles({name:'manual.txt',mimeType:'text/plain',buffer:Buffer.from(saved)});
-  await page.waitForFunction(()=>document.querySelector('#case-name').value==='manual');
-  assert.equal(await row.locator('select').first().inputValue(),'0');
-  assert.equal(await area.inputValue(),'0.03');assert.equal(await inertia.inputValue(),'0.00002');
-  assert(await page.locator('#error-panel').isHidden());
-  assert.equal(await page.locator('.section-axes').count(),0);
-  console.log('Manual A/I: detach, edit, unused catalog changes/deletion, validation and TXT roundtrip PASS');
-}
-async function checkSectionMode(page) {
-  const preview=()=>page.locator('#case-preview').inputValue();
-  const tool=page.locator('#assign-section');
-  assert.equal(await tool.evaluate(e=>e.previousElementSibling.id),'add-element-load');
-  await tool.click();
-  assert(await page.locator('#section-tool-settings').isVisible());
-  assert(await page.locator('#section-tool-id').isDisabled());
-  assert(await page.locator('#section-tool-empty').isVisible());
-  await page.locator('#sections-editor > summary').click();
-  assert(await page.locator('#sections-editor').evaluate(e=>e.open));
-  await page.locator('#add-section').click();
-  assert(!(await page.locator('#section-tool-id').isDisabled()));
-  await page.locator('#undo').click();
-  assert(await page.locator('#section-tool-id').isDisabled());
-  await page.keyboard.press('Escape');
-  assert.equal(await page.locator('[data-tool="select"]').getAttribute('aria-pressed'),'true');
-  // Two unassigned members, with an existing distributed load.
-  const input=fs.readFileSync(path.join(root,'examples/cases/CaseSectionBeam.txt'),'utf8').replace(/\r/g,'')
-    .replace('nodes\n2\n0,0,0\n2,0,0','nodes\n3\n0,0,0\n2,0,0\n4,0,0')
-    .replace('elems_113\n1\n','elems_113\n2\n113,2,3,0.01,200000000000,7800,0.00001\n')
-    .replace('element_sections\n1\n1,1,0\n','');
-  await page.locator('#file-input').setInputFiles({name:'mode.txt',mimeType:'text/plain',buffer:Buffer.from(input)});
-  await page.waitForFunction(()=>document.querySelector('#case-name').value==='mode');
-  const initial=await preview();
-  await page.locator('.model-element[data-element-id="1"]').dispatchEvent('click');
-  assert.match(await page.locator('#selection-details').innerText(),/Element 1/);
-  await page.locator('#show-section-axes').uncheck();
-  await tool.click();
-  assert.equal(await page.locator('#selection-details').innerText(),'Nothing selected');
-  assert.equal(await page.locator('.model-element.selected, .selected-row').count(),0);
-  await page.locator('#section-tool-angle').selectOption('90');
-  assert.equal(await preview(),initial,'Activating/configuring the tool must not assign anything');
-  await page.locator('.model-node[data-node-id="1"]').dispatchEvent('click');
-  assert.equal(await preview(),initial,'Nodes must not receive sections');
-  async function clickMember(id) {
-    const p=await page.locator('.model-element[data-element-id="'+id+'"]').evaluate(e=>{
-      const r=e.getBoundingClientRect();return {x:r.left+r.width*.65,y:r.top+r.height*.65};
-    });
-    await page.mouse.click(p.x,p.y);
-  }
-  await clickMember(1);
-  assert.match(await preview(),/element_sections\s+1\s+1,1,90/);
-  assert.equal(await page.locator('.section-axes text').count(),3,'Only the assigned member should have section axes');
-  await page.locator('#viewport').hover();await page.mouse.wheel(0,-300);await page.waitForTimeout(150);
-  assert.equal(await page.locator('.section-axes text').count(),3,'Zoom must retain axes in assignment mode');
-  await page.locator('#reset-view').click();
-  const first=await preview();
-  await clickMember(1);
-  assert.equal(await preview(),first);
-  await page.locator('#undo').click();assert.equal(await preview(),initial,'Repeated assignment must not add a duplicate undo entry');
-  await page.locator('#redo').click();assert.equal(await preview(),first);
-  await clickMember(2);
-  assert.match(await preview(),/element_sections\s+2\s+1,1,90\s+2,1,90/);
-  assert.equal(await tool.getAttribute('aria-pressed'),'true');
-  await page.locator('#undo').click();assert.equal(await preview(),first);
-  await page.locator('#redo').click();
-  const assigned=await preview();
-  await page.locator('#section-tool-angle').selectOption('180');assert.equal(await preview(),assigned);
-  await clickMember(2);assert.match(await preview(),/2,1,180/);
-  const model=await page.evaluate(()=>window.MKEFPre.caseFormat.parse(document.querySelector('#case-preview').value));
-  assert.equal(model.elementLoads.length,1);assert.equal(model.elementLoads[0].qy,-1000);
-  assert(Math.abs(model.elements[0].momentOfInertia-model.elements[1].momentOfInertia/4)<1e-12);
-  await page.screenshot({path:path.join(root,'output/section-assignment-mode.png'),fullPage:true});
-  await page.locator('.section-card').first().getByRole('button',{name:'Copy',exact:true}).click();
-  const copied=await preview();
-  await page.locator('#section-tool-id').selectOption('2');
-  assert.equal(await preview(),copied,'Choosing another catalog section must wait for a member click');
-  await clickMember(1);assert.match(await preview(),/1,2,180/);
-  await page.locator('#undo').click();assert.equal(await preview(),copied);
-  await page.locator('#undo').click();
-  assert.equal(await page.locator('#section-tool-id').inputValue(),'1','Removed catalog choices must fall back to an existing section');
-  await page.keyboard.press('Escape');assert(await page.locator('#section-tool-settings').isHidden());
-  assert.equal(await page.locator('.section-axes').count(),0,'Leaving the tool restores the axes visibility preference');
-  const finished=await preview();await clickMember(1);assert.equal(await preview(),finished,'Select mode must not apply the section tool');
-  // Re-entering starts with the selected member's existing assignment.
-  await tool.click();assert.equal(await page.locator('#section-tool-angle').inputValue(),'90');
-  assert.equal(await page.locator('#selection-details').innerText(),'Nothing selected');
-  assert.equal(await page.locator('.model-element.selected, .selected-row').count(),0);
-  assert.equal(await page.locator('.section-axes text').count(),6);
-  await page.keyboard.press('Escape');
-  await page.locator('.model-node[data-node-id="1"]').dispatchEvent('click');
-  await tool.click();assert.equal(await page.locator('#selection-details').innerText(),'Nothing selected');
-  assert.equal(await page.locator('.model-node.selected, .selected-row').count(),0);
-  await page.keyboard.press('Escape');
-  await page.locator('#show-section-axes').check();
-  console.log('Section mode: empty catalog, repeated canvas assignment, orientations, unchanged loads, undo/redo, Escape PASS');
-}
 const server=http.createServer((req,res)=>{
   res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'");
   const file=path.resolve(root,'.'+decodeURIComponent(req.url.split('?')[0]));
@@ -168,71 +10,47 @@ const server=http.createServer((req,res)=>{
 });
 (async()=>{
   await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
-  const base='http://127.0.0.1:'+server.address().port,browser=await chromium.launch({headless:true});
+  const base='http://127.0.0.1:'+server.address().port,browser=await chromium.launch({headless:true,args:['--no-sandbox','--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
   const page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
   page.on('dialog',dialog=>dialog.accept());
   try {
     await page.goto(base+'/preprocessor/index.html');
-    await checkSectionMode(page);
-    await checkManualProperties(page);
-    await checkTubeSections(page);
-    await checkLiteralSectionNames(page);
-    await page.locator('#file-input').setInputFiles(path.join(root,'examples/cases/CaseSectionBeam.txt'));
-    await page.waitForFunction(()=>document.querySelector('#case-name').value==='CaseSectionBeam');
-    await page.locator('#sections-editor').evaluate(e=>e.open=true);
-    await page.locator('#elements-body').evaluate(e=>e.closest('details').open=true);
-    assert.equal(await page.locator('.section-card').count(),1);
-    assert.equal(await page.locator('.section-axes').count(),1);
-    assert.equal(await page.locator('.section-axes text').count(),3);
-    const row=page.locator('#elements-body tr').first();
-    assert(await row.locator('input').nth(2).isDisabled());assert(await row.locator('input').nth(5).isDisabled());
-    assert.equal(await page.getByRole('button',{name:'Assign to selected element',exact:true}).count(),0);
-    await page.locator('.model-element[data-element-id="1"]').dispatchEvent('click');
-    await row.locator('select').first().selectOption('0');
-    await page.locator('#assign-section').click();
-    await page.locator('#section-tool-angle').selectOption('0');
-    await page.locator('.model-element[data-element-id="1"]').dispatchEvent('click');
-    await page.keyboard.press('Escape');
-    assert.equal(await row.locator('select').first().inputValue(),'1');
-    assert.match(await page.locator('.section-assignments').innerText(),/Assigned to: E1/);
-    assert.equal(await page.locator('#element-loads-body tr').count(),1);
-    await page.locator('#undo').click();assert.equal(await row.locator('select').first().inputValue(),'0');
-    await page.locator('#redo').click();assert.equal(await row.locator('select').first().inputValue(),'1');
-    await row.locator('select').last().selectOption('90');
-    assert.equal(await page.locator('#element-loads-body tr').count(),1);
-    await page.getByRole('textbox',{name:'Name · section 1',exact:true}).fill('Сечение, «Т»');await page.getByRole('textbox',{name:'Name · section 1',exact:true}).dispatchEvent('change');
-    await page.getByLabel('Shape · section 1',{exact:true}).selectOption('tee');
-    await page.getByLabel('h · section 1',{exact:true}).fill('0.3');await page.getByLabel('h · section 1',{exact:true}).dispatchEvent('change');
-    assert.equal(await page.locator('#element-loads-body tr').count(),1);
-    await page.locator('.section-card').getByRole('button',{name:'Delete',exact:true}).click();assert.match(await page.locator('#error-panel').innerText(),/assigned to elements 1/);
-    await page.locator('.section-card').getByRole('button',{name:'Copy',exact:true}).click();assert.equal(await page.locator('.section-card').count(),2);
-    await page.locator('#undo').click();assert.equal(await page.locator('.section-card').count(),1);
-    await page.locator('#redo').click();assert.equal(await page.locator('.section-card').count(),2);
-    const saved=await page.locator('#case-preview').inputValue();assert.match(saved,/Сечение/);
-    fs.writeFileSync(path.join(root,'output/SectionEditorRoundtrip.txt'),saved);
-    // Roundtrip preserves named catalog, orientation, and derived properties.
-    await page.locator('#file-input').setInputFiles({name:'saved.txt',mimeType:'text/plain',buffer:Buffer.from(saved)});
-    assert.equal(await page.locator('.section-card').count(),2);
-    assert.equal(await row.locator('select').last().inputValue(),'90');
-    const before=await row.locator('input').nth(2).inputValue();await row.locator('select').first().selectOption('0');
-    assert(!(await row.locator('input').nth(2).isDisabled()));assert.equal(await row.locator('input').nth(2).inputValue(),before);
-    await page.locator('#undo').click();assert(await row.locator('input').nth(2).isDisabled());
-    await page.locator('.tables').evaluate(e=>e.scrollTop=0);await page.locator('#section-catalog').evaluate(e=>e.scrollTop=0);
-    await page.screenshot({path:path.join(root,'output/sections-preprocessor.png'),fullPage:true});
-    // Triads remain constant in screen units during zoom and point correctly on all directions.
-    const axisSize=()=>page.locator('.section-axes text').first().evaluate(e=>e.getBoundingClientRect().height);
-    const size=await axisSize();await page.locator('#viewport').hover();await page.mouse.wheel(0,-600);await page.waitForTimeout(150);assert(Math.abs(await axisSize()-size)<1);
-    await page.locator('#show-section-axes').uncheck();assert.equal(await page.locator('.section-axes').count(),0);
-    await page.setViewportSize({width:640,height:900});await page.screenshot({path:path.join(root,'output/sections-mobile.png'),fullPage:true});
-    await page.setViewportSize({width:1440,height:1000});
-    await page.goto(base+'/postprocessor/index.html');
+    await captureEditor(page);
+    const importCase=async()=>{await page.locator('#file-input').setInputFiles(path.join(root,'examples/cases/CaseSectionBeam.txt'));await page.waitForSelector('#spatial-element-rows tr');await page.locator('#spatial-element-rows tr').first().click();};
+    const openCatalog=async()=>{await page.locator('#spatial-catalog-toggle').click();await page.locator('#spatial-catalog-tab-sections').click();};
+    const editSection=()=>page.locator('#spatial-catalog').getByRole('button',{name:'Edit',exact:true}).first().click();
+    await importCase();const original=await page.evaluate(()=>({...editorPanel.model.elements[0]}));
+    assert(await page.locator('#spatial-member-area').evaluate(e=>e.readOnly));await openCatalog();
+    await page.locator('#spatial-section-id').fill('0');await page.locator('#spatial-section-assign').click();await page.locator('#spatial-catalog-close').click();
+    assert.equal(Number(await page.locator('#spatial-member-area').inputValue()),original.area);assert(!(await page.locator('#spatial-member-area').evaluate(e=>e.readOnly)));
+    await page.locator('#spatial-member-area').fill('0.03');await page.locator('#spatial-member-momentOfInertia').fill('0.00002');await page.locator('#spatial-member-apply').click();
+    await openCatalog();await editSection();await page.locator('#spatial-section-h').fill('0.4');await page.locator('#spatial-section-apply').click();
+    assert.equal(await page.evaluate(()=>editorPanel.model.elements[0].area),.03);await page.locator('#spatial-catalog').getByRole('button',{name:'Delete',exact:true}).click();await page.locator('#spatial-catalog-close').click();
+    assert.equal(await page.evaluate(()=>editorPanel.model.sections.length),0);assert(!(await page.locator('#download-case').isDisabled()));
+    for(const type of ['square_tube','rectangular_tube','circular_tube']){
+      await importCase();await openCatalog();await editSection();await page.locator('#spatial-section-type').selectOption(type);await page.locator('#spatial-section-t').fill('0.01');await page.locator('#spatial-section-t').dispatchEvent('input');await page.locator('#spatial-section-apply').click();
+      const expected=type==='square_tube'?.0036:type==='rectangular_tube'?.0056:Math.PI*.0009;
+      assert(Math.abs(await page.evaluate(()=>editorPanel.model.elements[0].area)-expected)<1e-14);assert.equal(await page.evaluate(()=>editorPanel.model.elementLoads.length),1);
+      await editSection();const shape=page.locator('#spatial-section-preview path');assert.equal(await shape.getAttribute('fill-rule'),'evenodd');assert.equal(await shape.evaluate(e=>e.isPointInFill(new DOMPoint(0,0))),false);
+      const saved=await page.locator('#spatial-current').inputValue();await page.locator('#spatial-section-t').fill('0.05');await page.locator('#spatial-section-apply').click();assert.match(await page.locator('#spatial-catalog-message').innerText(),/thickness leaves no clear space/);assert.equal(await page.locator('#spatial-current').inputValue(),saved);
+      await page.locator('#spatial-catalog-close').click();await page.locator('#undo').click();await page.locator('#redo').click();assert.equal(await page.locator('#spatial-current').inputValue(),saved);
+      await page.locator('#file-input').setInputFiles({name:type+'.txt',mimeType:'text/plain',buffer:Buffer.from(saved)});await page.waitForFunction(type=>editorPanel.model.sections[0].type===type,type);
+    }
+    await importCase();await openCatalog();await editSection();const hostile='<img src=x onerror="window.sectionInjected=true">';await page.locator('#spatial-section-name').fill(hostile);await page.locator('#spatial-section-apply').click();assert.equal(await page.locator('#spatial-catalog img').count(),0);assert.equal(await page.evaluate(()=>window.sectionInjected),undefined);
+    await page.locator('#spatial-catalog').getByRole('button',{name:'Delete',exact:true}).click();assert.match(await page.locator('#spatial-catalog-message').innerText(),/used by members/);
+    await editSection();await page.locator('#spatial-section-name').fill('Сечение, «Т»');await page.locator('#spatial-section-type').selectOption('tee');await page.locator('#spatial-section-h').fill('0.3');await page.locator('#spatial-section-apply').click();
+    await page.locator('#spatial-section-angle').fill('90');await page.locator('#spatial-section-assign').click();await page.locator('#spatial-catalog').getByRole('button',{name:'Copy',exact:true}).click();await page.locator('#spatial-section-apply').click();await page.locator('#spatial-catalog-close').click();
+    const saved=await page.locator('#spatial-current').inputValue();assert.match(saved,/Сечение/);assert.equal(await page.evaluate(()=>editorPanel.model.sections.length),2);assert.equal(await page.evaluate(()=>editorPanel.model.elementLoads.length),1);fs.writeFileSync(path.join(root,'output/SectionEditorRoundtrip.txt'),saved);
+    await page.locator('#file-input').setInputFiles({name:'saved.txt',mimeType:'text/plain',buffer:Buffer.from(saved)});await page.waitForFunction(()=>editorPanel.model.name==='saved');assert.equal(await page.evaluate(()=>editorPanel.model.elements[0].sectionAngle),90);assert.equal(await page.evaluate(()=>editorPanel.model.sections.length),2);
+    await page.screenshot({path:path.join(root,'output/sections-preprocessor.png')});
+    await page.goto(base+'/postprocessor/index.html');await capturePost(page);
     await page.locator('#file-input').setInputFiles(path.join(root,'output/CaseSectionBeam.json'));
     assert(await page.locator('#error-panel').isHidden());
     await page.locator('#static-result').selectOption('sigmaMax');
-    assert.equal(await page.locator('.diagram-line').count(),1);
-    await page.locator('.original-element[data-element-id="1"]').dispatchEvent('click');
+    assert(await page.evaluate(()=>{resultRenderer.flush();return resultRenderer.frame.diagrams.positions.length>0;}));
+    await page.locator('#planar-result-objects select').selectOption('element');await page.locator('#planar-result-rows tr').first().click();
     assert(await page.locator('#section-result-panel').isVisible());
-    assert.equal(await page.locator('.diagram-fill').evaluate(e=>getComputedStyle(e).vectorEffect),'non-scaling-stroke');
+    assert(await page.evaluate(()=>resultRenderer.frame.diagramFill.positions.length>0));
     assert.match(await page.locator('#selection-details').innerText(),/7.5.*e\+5|750000/);
     assert.match(await page.locator('#section-result-info').innerText(),/7.5.*e\+5|750000/);
     await page.locator('#section-position-number').fill('0');await page.locator('#section-position-number').dispatchEvent('input');
@@ -268,29 +86,21 @@ const server=http.createServer((req,res)=>{
     await page.locator('#file-input').setInputFiles({name:'unassigned.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(unassigned))});
     await page.locator('#show-loads').uncheck();
     await page.waitForTimeout(100);
-    const target=page.locator('.deformed-element[data-element-id="1"]');
-    const clickPoint=await target.evaluate(e=>{const q=e.getPointAtLength(e.getTotalLength()*.5),p=new DOMPoint(q.x,q.y).matrixTransform(e.getScreenCTM());return {x:p.x,y:p.y};});
-    await page.mouse.click(clickPoint.x,clickPoint.y);
+    await page.locator('#planar-result-objects select').selectOption('element');await page.locator('#planar-result-rows tr').first().click();
     assert.match(await page.locator('#selection-details').innerText(),/Element 1/);
-    assert.equal(await target.evaluate(e=>e===document.activeElement),true);
-    assert.equal(await target.evaluate(e=>getComputedStyle(e).outlineStyle),'none');
     assert(await page.locator('#section-result-panel').isHidden());
     assert.equal(await page.locator('#section-result-svg').evaluate(e=>e.childNodes.length),0);
     assert(await page.locator('#export-section-svg').isDisabled());
     assert.match(await page.locator('#selection-details').innerText(),/assign a section and rerun/);
     await page.screenshot({path:path.join(root,'output/selection-focus-fixed.png')});
-    await page.keyboard.press('Tab');await page.keyboard.press('Shift+Tab');
-    assert.equal(await target.evaluate(e=>e.matches(':focus-visible')),true);
-    assert.equal(await target.evaluate(e=>getComputedStyle(e).outlineStyle),'none');
-    assert.equal(await target.evaluate(e=>getComputedStyle(e).vectorEffect),'non-scaling-stroke');
-    assert.equal(await target.evaluate(e=>getComputedStyle(e).strokeWidth),'4px');
+    await page.locator('#planar-result-rows tr').first().press('Enter');assert.match(await page.locator('#selection-details').innerText(),/Element 1/);
     for(const file of fs.readdirSync(path.join(root,'output')).filter(n=>/^SectionCase.*\.json$/.test(n))) {
       const data=JSON.parse(fs.readFileSync(path.join(root,'output',file),'utf8'));data.metadata.title=file;
       await page.locator('#file-input').setInputFiles({name:file,mimeType:'application/json',buffer:Buffer.from(JSON.stringify(data))});
       await page.waitForFunction(title=>document.querySelector('#dataset-title').textContent===title,file);
       assert(await page.locator('#error-panel').isHidden(),file+': '+await page.locator('#error-panel').innerText());
       if(file.includes('_tube_')) {
-        await page.locator('.original-element[data-element-id="1"]').dispatchEvent('click');
+        await page.locator('#planar-result-objects select').selectOption('element');await page.locator('#planar-result-rows tr').first().click();
         assert(await page.locator('#section-result-panel').isVisible());
         const shape=page.locator('#section-result-svg g path');
         assert.equal(await shape.getAttribute('fill-rule'),'evenodd');

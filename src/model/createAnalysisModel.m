@@ -18,17 +18,23 @@ if size(K, 1) ~= numberOfDOFs
 end
 
 model = struct();
+model.dimension = mesh.dimension;
+model.dofLabels = mesh.dofLabels;
+if ~isempty(mesh.nodalKinematics)
+    model.nodalKinematics=mesh.nodalKinematics;
+    model.rigidMotionMap=mesh.rigidMotionMap;
+end
 model.stiffness = K;
 model.mass = M;
 model.dofMap = mesh.iMnod;
 model.dofRegistry = mesh.dofRegistry;
 model.releases = mesh.releases;
 model.warnings = mesh.warnings;
-model.fixedBoundaryConditions = normalizeSupports(mesh.allFixBCs, mesh.dofPerNode);
+model.fixedBoundaryConditions = normalizeSupports(mesh.allFixBCs, mesh.dofPerNode,mesh.dimension);
 model.forceBoundaryConditions = mesh.allForceBCs;
 model.elementLoads = mesh.elementLoads;
 model.multiPointConstraints = mesh.multiPointConstraints;
-model.nodeCoordinates = mesh.allNodes(:, 1:2);
+model.nodeCoordinates = mesh.allNodes(:, 1:mesh.dimension);
 model.elementData = mesh.allMeshElems;
 model.sections = mesh.sections;
 model.numberOfNodes = mesh.numberOfNodes;

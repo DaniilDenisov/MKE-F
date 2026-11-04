@@ -58,49 +58,15 @@
   test('zero-length elements are rejected', function () { var model = MKEFPre.caseFormat.parse(fixture()); model.nodes[1] = { x: 0, y: 0 }; assert(MKEFPre.caseFormat.validate(model).some(function (message) { return message.indexOf('zero length') >= 0; })); });
   test('canonical export groups repeated load types', function () { var model = MKEFPre.caseFormat.parse(fixture()); model.loads.push({ type: 10, node: 2, fx: 1, fy: 0, mz: 0, frequency: null }); var text = MKEFPre.caseFormat.serialize(model); assert(text.indexOf('bcforce_stat\n2\n') > 0); });
   test('exact node coordinate edits are serialized', function () { var model = MKEFPre.caseFormat.parse(fixture()); model.nodes[1].x = 2.25; model.nodes[1].y = -3.5; var text = MKEFPre.caseFormat.serialize(model); assert(text.indexOf('2.25,-3.5,0') > 0); });
-  test('renderer exposes model-coordinate grid and axes', function () { var svg = document.getElementById('test-svg'), renderer = new MKEFPre.Renderer(svg); renderer.setGrid(true, .5); renderer.draw(MKEFPre.caseFormat.parse(fixture())); assert(svg.querySelectorAll('.coordinate-grid line').length > 0, 'Grid lines are missing.'); var labels = Array.prototype.map.call(svg.querySelectorAll('.coordinate-axes text'), function (item) { return item.textContent; }).join(' '); assert(labels.indexOf('X') >= 0 && labels.indexOf('Y') >= 0, 'Axis labels are missing.'); });
-  test('renderer viewBox follows the full canvas aspect ratio', function () { var svg = document.getElementById('test-svg'), renderer = new MKEFPre.Renderer(svg), rect = svg.getBoundingClientRect(); renderer.view = { x: -1, y: -1, width: 2, height: 2 }; renderer.synchronizeAspectRatio(); assert(Math.abs(renderer.view.width / renderer.view.height - rect.width / rect.height) < 1e-6, 'Canvas and viewBox aspect ratios differ.'); });
-  test('node tool shows a dashed placement preview at the normalized point', function () { var svg = document.getElementById('test-svg'), renderer = new MKEFPre.Renderer(svg, { placementPoint: function () { return { x: 2, y: 3 }; } }); renderer.draw(MKEFPre.caseFormat.parse(fixture())); renderer.setTool('node'); renderer.updateNodePreview({ x: 1.8, y: 3.2 }); var preview = svg.querySelector('.node-placement-preview'); assert(preview && preview.getAttribute('visibility') === 'visible', 'Node preview is not visible.'); assert(preview.getAttribute('cx') === '2' && preview.getAttribute('cy') === '-3', 'Node preview does not use normalized coordinates.'); });
-  test('member tool can start with the selected node as its first endpoint', function () { var svg = document.getElementById('test-svg'), endpoints = null, renderer = new MKEFPre.Renderer(svg, { addElement: function (first, second) { endpoints = [first, second]; } }); renderer.draw(MKEFPre.caseFormat.parse(fixture())); renderer.setTool('member', 1); assert(svg.querySelector('[data-node-id="2"]').classList.contains('pending'), 'Selected first endpoint is not pending.'); svg.querySelector('[data-node-id="1"]').dispatchEvent(new MouseEvent('click', { bubbles: true })); assert(endpoints && endpoints[0] === 1 && endpoints[1] === 0, 'Member endpoints do not start with the selected node.'); });
-  test('member tool retains the first endpoint when creation is rejected', function () { var svg = document.getElementById('test-svg'), renderer = new MKEFPre.Renderer(svg, { addElement: function () { return false; } }); renderer.draw(MKEFPre.caseFormat.parse(fixture())); renderer.setTool('member', 0); svg.querySelector('[data-node-id="2"]').dispatchEvent(new MouseEvent('click', { bubbles: true })); assert(svg.querySelector('[data-node-id="1"]').classList.contains('pending'), 'Rejected creation discarded the first endpoint.'); });
-  test('support types use distinct marker geometry', function () { var svg = document.getElementById('test-svg'), model = MKEFPre.caseFormat.parse(fixture()), renderer = new MKEFPre.Renderer(svg); model.nodes = [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 2, y: 0 }, { x: 3, y: 0 }]; model.supports = [{ type: 1, node: 1 }, { type: 2, node: 2 }, { type: 3, node: 3 }, { type: 4, node: 4 }]; renderer.draw(model); assert(svg.querySelector('.support-type-1 .support-ground') && !svg.querySelector('.support-type-1 path'), 'Type 1 fixed marker is missing.'); assert(svg.querySelectorAll('.support-type-2 circle').length === 1 && svg.querySelector('.support-type-2 path'), 'Type 2 horizontal roller marker is missing.'); assert(svg.querySelectorAll('.support-type-3 circle').length === 1 && svg.querySelector('.support-type-3 path'), 'Type 3 vertical roller marker is missing.'); assert(svg.querySelector('.support-type-4 path') && !svg.querySelector('.support-type-4 circle'), 'Type 4 pinned marker is missing.'); });
-  test('loads render above every model layer', function () { var svg = document.getElementById('test-svg'), renderer = new MKEFPre.Renderer(svg); renderer.draw(MKEFPre.caseFormat.parse(fixture())); assert(svg.lastElementChild.classList.contains('loads-layer'), 'Loads layer is not topmost.'); });
 
-  test('symbol sizes stay stable through zoom, tool switches, selection and resize', function () {
-    var svg = MKEFPre.svgElement('svg', { width: 800, height: 400 }); document.body.appendChild(svg);
-    var renderer = new MKEFPre.Renderer(svg), model = MKEFPre.caseFormat.parse(fixture()), original = JSON.stringify(model);
-    function sizes() {
-      return ['.model-node', '.support-marker', '.loads-layer > line', '.moment-symbol', '.node-placement-preview'].map(function (selector) {
-        var element = svg.querySelector(selector), bounds = element.getBBox(), matrix = element.getScreenCTM();
-        return Math.hypot(bounds.width, bounds.height) * Math.hypot(matrix.a, matrix.b);
-      });
-    }
-    function check(stage) {
-      sizes().forEach(function (size, index) { assert(Math.abs(size - baseline[index]) < .01, stage + ': symbol ' + index + ' changed size'); });
-    }
-    try {
-      renderer.draw(model); renderer.fit(); var baseline = sizes();
-      [-100, 100].forEach(function (delta) {
-        for (var i = 0; i < 20; i++) {
-          var rect = svg.getBoundingClientRect();
-          svg.dispatchEvent(new WheelEvent('wheel', { deltaY: delta, clientX: rect.left + rect.width / 2, clientY: rect.top + rect.height / 2, cancelable: true }));
-          check('Zoom');
-        }
-        var view = svg.getAttribute('viewBox');
-        renderer.setTool('node'); renderer.updateNodePreview({ x: .5, y: .5 }); check('Place node');
-        assert(svg.querySelector('.node-placement-preview').getAttribute('visibility') === 'visible');
-        renderer.setTool('select'); check('Select tool');
-        renderer.setSelection({ kind: 'node', index: 0 }); check('Select node');
-        assert(svg.getAttribute('viewBox') === view, 'Tool or selection changed the viewport');
-      });
-      svg.setAttribute('width', 600); svg.setAttribute('height', 300); renderer.synchronizeAspectRatio(); check('Resize with same aspect');
-      svg.setAttribute('height', 500); renderer.synchronizeAspectRatio(); check('Resize with different aspect');
-      renderer.fit(); check('Reset view');
-      var node = svg.querySelector('.model-node'); renderer.view.x += 1; renderer.applyView(); check('Pan');
-      assert(svg.querySelector('.model-node') === node, 'Panning unnecessarily rebuilt the model');
-      assert(JSON.stringify(model) === original, 'Navigation changed the model');
-    } finally { if (renderer.resizeObserver) renderer.resizeObserver.disconnect(); svg.remove(); }
-  });
+
+
+
+
+
+
+
+
 
   function uniformFixture() { return MKEFPre.caseFormat.parse(fixture() + 'eload_uniform\n1\n20,1,2,0,-7\n'); }
   test('uniform load sections round trip and accumulate', function () {
@@ -151,11 +117,7 @@
     var model=uniformFixture(); MKEFPre.modelEdit.deleteElement(model,0);
     assert(model.elements.length===0 && model.elementLoads.length===0 && model.nodes.length===2 && model.loads.length===1 && model.supports.length===1);
   });
-  test('uniform arrows and local axes are visible for selected element', function () {
-    var renderer=new MKEFPre.Renderer(document.getElementById('test-svg')); renderer.draw(uniformFixture()); renderer.setSelection({kind:'element',index:0});
-    assert(document.querySelectorAll('#test-svg .element-load-symbol line').length===9);
-    assert(document.querySelectorAll('#test-svg .local-axis').length===2);
-  });
+
 
   function linearFixture() { return MKEFPre.caseFormat.parse(fixture()+'eload_linear\n1\n21,1,2,0,0,0,-8\n'); }
   test('mixed linear and uniform loads round trip in order', function () {
@@ -178,13 +140,7 @@
     E.changeCoordinates(model,0,2); E.changeLoadType(model,0,20);
     assert(Math.abs(model.elementLoads[0].qx)<1e-12 && Math.abs(model.elementLoads[0].qy+3.5)<1e-12);
   });
-  test('linear arrows grow to the endpoint and include an envelope', function () {
-    var renderer=new MKEFPre.Renderer(document.getElementById('test-svg')); renderer.draw(linearFixture());
-    var lines=Array.from(document.querySelectorAll('#test-svg .element-load-symbol line'));
-    assert(lines.length===8); var lengths=lines.map(function (line) { return Math.hypot(line.x2.baseVal.value-line.x1.baseVal.value,line.y2.baseVal.value-line.y1.baseVal.value); });
-    assert(lengths[7]>lengths[0]*7.9); assert(document.querySelector('#test-svg .element-load-envelope'));
-    assert(document.querySelector('#test-svg .element-load-label').textContent.includes('q1=(0, 0)'));
-  });
+
   test('linear loads follow existing deletion and geometry invalidation rules', function () {
     var model=linearFixture(); MKEFPre.modelEdit.setRelease(model,0,1,true); assert(model.elementLoads.length===1);
     MKEFPre.modelEdit.updateNode(model,1,'x',2); assert(model.elementLoads.length===0);

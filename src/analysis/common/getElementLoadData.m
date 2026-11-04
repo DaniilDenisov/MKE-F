@@ -1,10 +1,15 @@
 function [localVectors, intensities, resultant] = getElementLoadData(model)
 %GETELEMENTLOADDATA Integrate full-span uniform/linear frame loads exactly.
 % intensities contains summed local [qx1 qy1 qx2 qy2] for each element.
+if isfield(model,'dimension') && model.dimension==3
+    [localVectors,intensities,resultant]=getSpatialElementLoadData(model);
+    return;
+end
 count = numel(model.elementData);
 localVectors = cell(count, 1);
 intensities = zeros(count, 4);
 resultant = zeros(3, 1);
+if isfield(model,'dimension') && model.dimension==3, resultant=zeros(6,1); end
 for i = 1:count
     localVectors{i} = zeros(numel(model.elementData(i).dofs), 1);
 end

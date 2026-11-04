@@ -42,6 +42,7 @@
         <li><a href="15-sparse-matrix-assembly.html">Sparse matrix assembly</a></li>
       </ol>
       <h2>Appendix</h2>
+      <p><a href="3d-quick-start.html">3D: quick start</a></p>
       <p><a href="capabilities.html">MKE-F capabilities</a></p>
       <p><a href="project-operations.html">Running, configuring and verifying the project</a></p>
       <p class="offline-note">Works offline. Theory, examples and interactive chapters in one reference.</p>
@@ -52,7 +53,8 @@
       <h1>MKE-F: finite element documentation</h1>
       <p class="lead">This reference connects the main finite element ideas to MKE-F project functions. It works without internet access or Octave.</p>
 
-      <section aria-labelledby="route-title">
+      <div class="callout"><p><a href="3d-quick-start.html">3D: quick start</a> — element types, editing, sections, results and limitations. Existing 2D chapters and labs retain their sequence.</p></div>
+<section aria-labelledby="route-title">
         <h2 id="route-title">Learning route</h2>
         <div class="chapter-grid">
           <article class="card">
@@ -150,7 +152,7 @@ results = run_reference_examples();</code></pre>
           <span class="callout__title">Analysis through the GUI</span>
           <p>To create or open a model, run an analysis and view the result immediately in the browser, execute from the repository root:</p>
           <pre><code>docker compose up --build</code></pre>
-          <p>For the older standalone Compose command, use <code>docker-compose up --build</code>. Then open <a href="http://127.0.0.1:8080/preprocessor/">http://127.0.0.1:8080/preprocessor/</a>, prepare the model and click <strong>Run analysis</strong>. GNU Octave runs inside the container, and the resulting JSON opens automatically in the postprocessor.</p>
+          <p>For the older standalone Compose command, use <code>docker-compose up --build</code>. Then open <a href="http://127.0.0.1:8080/preprocessor/">http://127.0.0.1:8080/preprocessor/</a>, prepare the model and click <strong>Run analysis</strong>. GNU Octave runs inside the container. After <strong>Completed</strong>, click <strong>Open result</strong> to open the result in a separate postprocessor tab.</p>
         </div>
 
         <div class="callout">
@@ -206,7 +208,8 @@ results = run_reference_examples();</code></pre>
           <li><a href="../examples/run_reference_examples.m"><code>run_reference_examples.m</code></a> — run every laboratory with one command.</li>
         </ul>
       </section>
-    </main>
+    <section><h2>Current capabilities</h2><p>The web interface provides a shared 2D/3D scene, section catalog and static/modal/transient analyses. See the <a href="capabilities.html">capability table</a> for scope and limitations, and <a href="project-operations.html">project operations</a> for source builds and Docker checks. The separate <a href="08-result-recovery.html#section-fem-title">experimental section FEM</a> is not a main postprocessor mode.</p></section>
+</main>
   </div>
 
   <nav class="page-nav" aria-label="Chapter navigation">

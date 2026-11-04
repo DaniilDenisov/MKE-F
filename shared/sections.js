@@ -3,8 +3,8 @@
   var S = {};
   S.types = {rectangle:'Rectangle',circle:'Solid circle',square_tube:'Square tube',rectangular_tube:'Rectangular tube',circular_tube:'Circular tube',channel:'Channel',tee:'T section',ibeam:'I section'};
   S.fields = function (type) {
-    if (type==='square_tube') return ['b','t'];
-    if (type==='rectangular_tube') return ['b','h','t'];
+    if (type==='square_tube') return ['b','t','inner_radius'];
+    if (type==='rectangular_tube') return ['b','h','t','inner_radius'];
     if (type==='circular_tube') return ['d','t'];
     return type === 'circle' ? ['d'] : type === 'rectangle' ? ['b','h'] : ['b','h','tw','tf'];
   };
@@ -16,7 +16,9 @@
   S.properties = function (section, angle) {
     if (!section || !Object.prototype.hasOwnProperty.call(S.types,section.type)) throw new Error('Unsupported section type.');
     var d=section.dimensions, r=S.rotation(angle === undefined ? 0 : angle);
-    if (!d || !S.fields(section.type).every(function (k) { return Number.isFinite(d[k]) && d[k]>0; })) throw new Error('Section dimensions must be positive finite numbers.');
+    if (!d || !S.fields(section.type).filter(k=>k!=='inner_radius').every(function (k) { return Number.isFinite(d[k]) && d[k]>0; })) throw new Error('Section dimensions must be positive finite numbers.');
+    var ri=d.inner_radius===undefined?0:d.inner_radius;
+    if (!Number.isFinite(ri) || ri<0 || ri>0 && !['square_tube','rectangular_tube'].includes(section.type)) throw new Error('Inside corner radius must be finite, nonnegative and used only for rectangular tubes.');
     var rects=[], A=0, cy=0, cz=0, Iy=0, Iz=0;
     function rect(z,y,b,h) { rects.push({z:z,y:y,b:b,h:h}); }
     if (section.type==='circular_tube') {
@@ -44,13 +46,36 @@
       cy/=A; cz/=A;
       rects.forEach(function (p) { p.y-=cy; p.z-=cz; Iy+=p.h*Math.pow(p.b,3)/12+p.b*p.h*Math.pow(p.z+p.b/2,2); Iz+=p.b*Math.pow(p.h,3)/12+p.b*p.h*Math.pow(p.y+p.h/2,2); });
     }
+    var roundedTube=null;
+    if(ri>0){
+      var height=section.type==='square_tube'?d.b:d.h,ro=ri+d.t;
+      if(ro>=Math.min(height,d.b)/2*(1-1e-14))throw new Error('Inside radius + wall thickness must be less than half the smaller outside dimension.');
+      function rounded(h,b,r){
+        var cut=(1-Math.PI/4)*r*r;
+        function inertia(span,width){var a=span/2-r;return width*span**3/12-4*(a*a*cut+a*r**3/3+(1/3-Math.PI/16)*r**4);}
+        return [h*b-4*cut,inertia(b,h),inertia(h,b)];
+      }
+      var outer=rounded(height,d.b,ro),inner=rounded(height-2*d.t,d.b-2*d.t,ri);
+      A=outer[0]-inner[0];Iy=outer[1]-inner[1];Iz=outer[2]-inner[2];
+      roundedTube={h:height,b:d.b,ri:ri,ro:ro,t:d.t};
+    }
     var vertices=[];
     rects.forEach(function (p) { [[p.z,p.y],[p.z+p.b,p.y],[p.z+p.b,p.y+p.h],[p.z,p.y+p.h]].forEach(function (v) { vertices.push({z:v[0],y:v[1]}); }); });
+    if(roundedTube)vertices=S.roundedLoop(roundedTube.h,roundedTube.b,roundedTube.ro);
     var eta=vertices.map(function (p) { return p.y*r.c-p.z*r.s; });
     var result={area:A,centroidY:cy,centroidZ:cz,Iy:Iy,Iz:Iz,momentOfInertia:Iz*r.c*r.c+Iy*r.s*r.s,rectangles:rects,vertices:vertices,
-      etaMin:eta.length ? Math.min.apply(null,eta) : -d.d/2,etaMax:eta.length ? Math.max.apply(null,eta) : d.d/2};
+      etaMin:eta.length ? Math.min.apply(null,eta) : -d.d/2,etaMax:eta.length ? Math.max.apply(null,eta) : d.d/2,roundedTube:roundedTube};
     if (![A,Iy,Iz,result.etaMin,result.etaMax].every(Number.isFinite) || A<=0 || Iy<=0 || Iz<=0) throw new Error('Section dimensions overflow or underflow the numerical range.');
     return result;
+  };
+  // Display contours only; areas, inertias and stress extrema use analytic geometry.
+  S.roundedLoop=function(h,b,r){
+    var points=[];
+    for(var corner=0;corner<4;corner++)for(var i=0;i<=32;i++){
+      var angle=(corner+i/32)*Math.PI/2;
+      points.push({y:(corner<2?1:-1)*(h/2-r)+r*Math.sin(angle),z:(corner===0||corner===3?1:-1)*(b/2-r)+r*Math.cos(angle)});
+    }
+    return points;
   };
   S.validate = function (model) {
     var errors=[], ids=new Set();

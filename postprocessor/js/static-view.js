@@ -11,32 +11,7 @@
   function unit(dataset, name) { return dataset.raw.metadata.units[name] || ''; }
   function format(value) { if (value === 0) return '0'; var a = Math.abs(value); return a >= 10000 || a < .001 ? value.toExponential(3) : Number(value.toPrecision(5)).toString(); }
   function withUnit(value, suffix) { return format(value) + (suffix ? ' ' + suffix : ''); }
-  function diagonal(dataset) { var b = M.geometry.modelBounds(dataset.raw.model); return Math.max(Math.hypot(b.maxX - b.minX, b.maxY - b.minY), 1e-9); }
-  function elementNormal(dataset, element) { var a = dataset.nodesById.get(element.nodeIds[0]), b = dataset.nodesById.get(element.nodeIds[1]), basis = M.geometry.elementBasis(a, b); return { x: -basis.s, y: basis.c }; }
-  function appendPath(layer, attributes, titleText) { var path = M.svgElement('path', attributes), title = M.svgElement('title'); title.textContent = titleText; path.appendChild(title); layer.appendChild(path); return path; }
-  function arrowPath(node, vector, length) {
-    var magnitude = Math.hypot(vector.x, vector.y), ux = vector.x / magnitude, uy = vector.y / magnitude;
-    var tail = { x: node.x - ux * length, y: node.y - uy * length }, normal = { x: -uy, y: ux }, head = length * .22;
-    var a = M.geometry.svgPoint(tail), b = M.geometry.svgPoint(node);
-    var h1 = M.geometry.svgPoint({ x: node.x - ux * head + normal.x * head * .45, y: node.y - uy * head + normal.y * head * .45 });
-    var h2 = M.geometry.svgPoint({ x: node.x - ux * head - normal.x * head * .45, y: node.y - uy * head - normal.y * head * .45 });
-    return 'M ' + a.x + ' ' + a.y + ' L ' + b.x + ' ' + b.y + ' M ' + h1.x + ' ' + h1.y + ' L ' + b.x + ' ' + b.y + ' L ' + h2.x + ' ' + h2.y;
-  }
-  function momentPath(node, value, maximum, size) {
-    var radius = size * (.32 + .3 * Math.abs(value) / maximum), p = M.geometry.svgPoint(node);
-    return window.MKEFMomentSymbol.path(p.x, p.y, radius, value);
-  }
-  function restrainedDOFs(dataset) {
-    var restrained = new Set(), model = dataset.raw.model;
-    model.supports.forEach(function (support) { var row = model.nodes.findIndex(function (node) { return node.id === support.nodeId; }); M.geometry.restrainedLocalDOFs(support.type, model.dofPerNode).forEach(function (local) { restrained.add(model.dofMap[row][local]); }); });
-    return restrained;
-  }
-  function nodeComponents(dataset, vector, onlyRestrained) {
-    var model = dataset.raw.model, restrained = onlyRestrained ? restrainedDOFs(dataset) : null;
-    return model.nodes.map(function (node, row) { var dofs = model.dofMap[row]; function value(local) { return dofs[local] && (!restrained || restrained.has(dofs[local])) ? vector[dofs[local] - 1] : 0; } return { node: node, x: value(0), y: value(1), moment: dofs.length > 2 ? value(2) : 0 }; });
-  }
   function tolerance(values) { return 1e-10 * Math.max(1, Math.max.apply(null, values.map(Math.abs).concat([0]))); }
-  function textLegend(text) { return text ? { kind: 'text', text: text, summary: text } : { kind: 'none', summary: '' }; }
   function rgb(hex) { return [parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16)]; }
   function colorAt(amount) {
     var value = Math.max(0, Math.min(1, amount));
@@ -68,27 +43,9 @@
     return vector;
   };
 
-  S.mount = function (renderer, dataset) {
-    renderer.clearLayer('loads'); renderer.clearLayer('reactions');
-    var sets = [
-      { layer: renderer.layers.loads, values: nodeComponents(dataset, S.nodalLoadVector(dataset), false), forceClass: 'load-symbol load-force-symbol', momentClass: 'load-symbol load-moment-symbol', prefix: 'Load' },
-      { layer: renderer.layers.reactions, values: nodeComponents(dataset, (dataset.raw.analysis.supportReactions || dataset.raw.analysis.reactions), true), forceClass: 'reaction-symbol reaction-force-symbol', momentClass: 'reaction-symbol reaction-moment-symbol', prefix: 'Reaction' }
-    ];
-    var size = diagonal(dataset) * .13;
-    sets.forEach(function (set) {
-      var forceValues = [], momentValues = [];
-      set.values.forEach(function (item) { forceValues.push(item.x, item.y); momentValues.push(item.moment); });
-      var forceMaximum = Math.max.apply(null, forceValues.map(Math.abs).concat([0])), momentMaximum = Math.max.apply(null, momentValues.map(Math.abs).concat([0]));
-      var forceTolerance = tolerance(forceValues), momentTolerance = tolerance(momentValues);
-      set.values.forEach(function (item) {
-        var vector = { x: Math.abs(item.x) <= forceTolerance ? 0 : item.x, y: Math.abs(item.y) <= forceTolerance ? 0 : item.y }, magnitude = Math.hypot(vector.x, vector.y);
-        if (magnitude) {
-          var length = size * (.35 + .65 * magnitude / (forceMaximum || 1));
-          appendPath(set.layer, { d: arrowPath(item.node, vector, length), class: set.forceClass, 'data-node-id': item.node.id }, set.prefix + ' (' + withUnit(item.x, unit(dataset, 'force')) + ', ' + withUnit(item.y, unit(dataset, 'force')) + ')');
-        }
-        if (Math.abs(item.moment) > momentTolerance) appendPath(set.layer, { d: momentPath(item.node, item.moment, momentMaximum || 1, size), class: set.momentClass, 'data-node-id': item.node.id }, set.prefix + ' Mz ' + withUnit(item.moment, unit(dataset, 'moment')));
-      });
-    });
+  S.mount = function(renderer,dataset) {
+    renderer.setForces('loads',S.nodalLoadVector(dataset),'#b63a3f',false);
+    renderer.setForces('reactions',dataset.raw.analysis.supportReactions||dataset.raw.analysis.reactions,'#6d3ca5',true);
   };
 
   S.displacementMagnitudeField = function (dataset, sampleCount) {
@@ -222,60 +179,7 @@
     return Array.from(new Set(positions)).sort(function (a,b) { return a-b; }).map(function (xi) { return {xi:xi,value:S.elementDiagram(dataset,element,quantity,xi)}; });
   };
 
-  S.drawElementLoads = function (renderer,dataset,scale,showOriginal,showDeformed) {
-    Array.prototype.forEach.call(renderer.layers.loads.querySelectorAll('.element-load-symbol'),function (item) { item.remove(); });
-    (dataset.raw.model.elementLoads || []).forEach(function (load) {
-      var element=dataset.elementsById.get(load.elementId), a=dataset.nodesById.get(element.nodeIds[0]), b=dataset.nodesById.get(element.nodeIds[1]), basis=M.geometry.elementBasis(a,b);
-      var ends=loadEnds(load), vectors=ends.map(function (q) { return load.coordinateSystem===1 ? {x:basis.c*q.x-basis.s*q.y,y:basis.s*q.x+basis.c*q.y} : q; });
-      var maximum=Math.max(Math.hypot(vectors[0].x,vectors[0].y),Math.hypot(vectors[1].x,vectors[1].y));
-      if (!maximum) return;
-      var size=Math.min(diagonal(dataset)*.08,basis.length*.3);
-      var units=unit(dataset,'force') && unit(dataset,'length') ? unit(dataset,'force')+'/'+unit(dataset,'length') : 'force/length';
-      function pair(q) { return '('+format(q.x)+', '+format(q.y)+')'; }
-      var label=(load.coordinateSystem===1 ? 'Local' : 'Global')+(load.type===21 ? ' q1='+pair(ends[0])+' → q2='+pair(ends[1]) : ' q='+pair(ends[0]))+' '+units;
-      [showOriginal ? 0 : null,showDeformed && (scale!==0 || !showOriginal) ? scale : null].forEach(function (factor) {
-        if (factor===null) return;
-        var points=M.geometry.sampleElement(dataset,element,dataset.raw.analysis.displacements,factor,9), tails=[];
-        points.forEach(function (point,i) {
-          var xi=i/(points.length-1), vector={x:vectors[0].x*(1-xi)+vectors[1].x*xi,y:vectors[0].y*(1-xi)+vectors[1].y*xi};
-          var magnitude=Math.hypot(vector.x,vector.y);
-          tails.push({x:point.x-vector.x/maximum*size,y:point.y-vector.y/maximum*size});
-          if (magnitude) appendPath(renderer.layers.loads,{d:arrowPath(point,vector,size*magnitude/maximum),class:'element-load-symbol load-symbol load-force-symbol','data-element-id':element.id},label);
-        });
-        appendPath(renderer.layers.loads,{d:M.geometry.pathData(tails),class:'element-load-symbol element-load-envelope load-symbol load-force-symbol',fill:'none','data-element-id':element.id},label);
-        var anchor=tails[Math.floor(tails.length/2)], position=M.geometry.svgPoint(anchor);
-        position.y=Math.min.apply(null,tails.map(function (point) { return M.geometry.svgPoint(point).y; }));
-        var text=M.svgElement('text',{x:position.x,y:position.y-diagonal(dataset)*.015,'font-size':diagonal(dataset)*.018,'text-anchor':'middle',fill:'#b63a3f',class:'element-load-symbol element-load-label'});
-        text.textContent=label; renderer.layers.loads.appendChild(text);
-      });
-    });
-  };
-  function signedColor(value, maximum) { if (!maximum || value === 0) return '#66788a'; var amount = Math.min(Math.abs(value) / maximum, 1), light = Math.round(68 - amount * 25); return value > 0 ? 'hsl(4 58% ' + light + '%)' : 'hsl(218 55% ' + light + '%)'; }
-
-  S.applyResult = function (renderer, dataset, mode, sampleCount) {
-    renderer.clearLayer('diagrams'); renderer.resetElementColors(); renderer.layers.diagrams.style.display = mode === 'none' ? 'none' : '';
-    if (mode === 'none') return textLegend('');
-    if (mode === 'displacementMagnitude') return S.applyDisplacementMagnitude(renderer, dataset, sampleCount);
-    if (mode === 'axialForce' || mode === 'axialStress') {
-      var values = dataset.raw.model.elements.map(function (element) { return dataset.resultsByElementId.get(element.id)[mode]; });
-      var maximum = Math.max.apply(null, values.map(Math.abs).concat([0]));
-      dataset.raw.model.elements.forEach(function (element, index) { renderer.setElementColor(element.id, signedColor(values[index], maximum)); });
-      return textLegend((mode === 'axialForce' ? 'Mean axial force' : 'Mean axial stress') + ' · max |value| ' + withUnit(maximum, unit(dataset, mode === 'axialForce' ? 'force' : 'stress')) + ' · red tension, blue compression');
-    }
-    var maximumDiagram = 0, samplesByElement = new Map();
-    dataset.raw.model.elements.forEach(function (element) {
-      var values = S.diagramSamples(dataset, element, mode, sampleCount); samplesByElement.set(element.id, values);
-      values.forEach(function (item) { maximumDiagram = Math.max(maximumDiagram, Math.abs(item.value)); });
-    });
-    var diagramScale = maximumDiagram ? diagonal(dataset) * .14 / maximumDiagram : 0;
-    dataset.raw.model.elements.forEach(function (element) {
-      if(!samplesByElement.get(element.id).length)return;
-      var first = dataset.nodesById.get(element.nodeIds[0]), second = dataset.nodesById.get(element.nodeIds[1]), normal = elementNormal(dataset, element);
-      var points = samplesByElement.get(element.id).map(function (item) { return { x:first.x+(second.x-first.x)*item.xi+normal.x*item.value*diagramScale, y:first.y+(second.y-first.y)*item.xi+normal.y*item.value*diagramScale }; });
-      appendPath(renderer.layers.diagrams, { class:'diagram-fill', 'data-element-id':element.id, d:M.geometry.pathData([first].concat(points,[second]))+' Z', tabindex:'0' }, mode+' diagram for element '+element.id);
-      appendPath(renderer.layers.diagrams, { class:'diagram-line', 'data-element-id':element.id, d:M.geometry.pathData(points) }, mode+' diagram edge for element '+element.id);
-    });
-    return textLegend(mode + ' diagram · max |value| ' + withUnit(maximumDiagram, M.sectionResults.isStress(mode) ? unit(dataset,'stress') : mode === 'M' ? unit(dataset, 'moment') : unit(dataset, 'force')) + (M.sectionResults.isStress(mode) ? ' · + tension, − compression; unassigned elements unavailable' : '') + ' · display scale ' + format(diagramScale));
-  };
+  S.drawElementLoads = function(renderer,dataset,scale,showOriginal,showDeformed) {renderer.setDistributedLoads(scale,showOriginal,showDeformed);};
+  S.applyResult = function(renderer,dataset,mode,sampleCount) {return renderer.applyResult(dataset,mode,sampleCount);};
   S.format = format; S.withUnit = withUnit; S.viridis = viridis;
 }(window.MKEFPost));

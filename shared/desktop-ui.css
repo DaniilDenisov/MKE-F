@@ -1,0 +1,3 @@
+/* The engineering UI targets monitors and sufficiently wide tablets. */
+.screen-size-notice{display:none;flex-shrink:0;margin:0;padding:10px 16px;max-width:100vw;box-sizing:border-box;background:#fff8e7;border-bottom:1px solid #e8c77f;color:#70440c;font:14px/1.4 system-ui,sans-serif}
+@media(max-width:1249px){.screen-size-notice{display:block}}

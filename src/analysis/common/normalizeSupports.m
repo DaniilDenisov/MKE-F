@@ -1,5 +1,28 @@
-function supports = normalizeSupports(records, dofPerNode)
+function supports = normalizeSupports(records, dofPerNode, dimension)
 %NORMALIZESUPPORTS Canonical masks with a legacy numeric input adapter.
+if nargin<3, dimension=2; end
+if dimension==3
+    fields={'fixUx','fixUy','fixUz','fixThetaX','fixThetaY','fixThetaZ'};
+    if ~isstruct(records) || ~all(isfield(records,[{'node'} fields]))
+        error('MKEF:InvalidConstraint','Expected six-component spatial support masks.');
+    end
+    supports=records(:);
+    for i=1:numel(supports)
+        mask=zeros(1,6);
+        for j=1:6
+            a=supports(i).(fields{j});
+            if ~(isnumeric(a)||islogical(a)) || ~isscalar(a) || ~isreal(a) || ~ismember(a,[0 1])
+                error('MKEF:InvalidConstraint','Support mask must contain only zero or one.');
+            end
+            mask(j)=a;
+        end
+        node=supports(i).node;
+        if ~isnumeric(node) || ~isscalar(node) || ~isfinite(node) || node<1 || node~=fix(node) || ~any(mask) || (dofPerNode==3 && any(mask(4:6)))
+            error('MKEF:InvalidConstraint','Invalid spatial support node or mask.');
+        end
+    end
+    return;
+end
 persistent catalog;
 if isempty(catalog)
     root = fileparts(fileparts(fileparts(fileparts(mfilename('fullpath')))));

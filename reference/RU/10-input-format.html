@@ -52,7 +52,7 @@
 
       <section aria-labelledby="scope-title">
         <h2 id="scope-title">1. Область применения</h2>
-        <p>Программа решает линейные задачи малых перемещений в глобальной плоскости <em>X–Y</em>:</p>
+        <p>Для типов 112/113 приведённое ниже описание относится к линейным задачам в глобальной плоскости <em>X–Y</em>:</p>
         <ul>
           <li>плоские фермы из стержней типа 112;</li>
           <li>плоские рамы Эйлера–Бернулли из элементов типа 113;</li>
@@ -311,7 +311,7 @@ dynamicResult = problem.RunTransient(1e-4, 1e-2, 3, 2, initial);</code></pre>
         <p>Если файл содержит секцию <code>analysis</code>, тот же расчёт запускается как <code>result = problem.RunSelected()</code>. Настроенный переходный запуск использует нулевые начальные перемещения и скорости.</p>
         <div class="callout callout--inspect">
           <span class="callout__title">Запуск файла через GUI</span>
-          <p>Выполните из корня репозитория <code>docker compose up --build</code> (или <code>docker-compose up --build</code>), откройте <a href="http://127.0.0.1:8080/preprocessor/">http://127.0.0.1:8080/preprocessor/</a> и загрузите TXT-файл кнопкой <strong>Open TXT</strong>. Для старого файла без секции <code>analysis</code> сначала выберите вид расчёта и, при необходимости, параметры переходного процесса. Кнопка <strong>Run analysis</strong> сериализует проверенную модель, вызывает <code>RunSelected()</code> в контейнере Octave и открывает результат без ручного переноса файлов.</p>
+          <p>Выполните из корня репозитория <code>docker compose up --build</code> (или <code>docker-compose up --build</code>), откройте <a href="http://127.0.0.1:8080/preprocessor/">http://127.0.0.1:8080/preprocessor/</a> и загрузите TXT-файл кнопкой <strong>Open TXT</strong>. Для старого файла без секции <code>analysis</code> сначала выберите вид расчёта и, при необходимости, параметры переходного процесса. Кнопка <strong>Run analysis</strong> сериализует проверенную модель, вызывает <code>RunSelected()</code> в контейнере Octave. После статуса <strong>Completed</strong> кнопка <strong>Open result</strong> открывает результат в отдельной вкладке без ручного переноса файлов.</p>
         </div>
       </section>
 
@@ -380,7 +380,7 @@ dynamicResult = problem.RunTransient(1e-4, 1e-2, 3, 2, initial);</code></pre>
         <p>Секции можно повторять; нагрузки на один элемент суммируются. Все числа должны быть конечными; обе нулевые компоненты, отсутствующий элемент, элемент 112 и анализ modal/transient отклоняются. Задать одновременно узловую силу или момент можно обычной секцией <code>bcforce_stat</code>.</p>
         <p>Пример: <a href="../../examples/cases/CaseUniformFrame.txt">консоль длиной 2 м под qY = −1000 Н/м</a>. Реакции: Fy = 2000 Н, Mz = 2000 Н·м; прогиб свободного конца −0,001 м, поворот −0,000666667 рад.</p>
         <h3>Редактирование и удаление в препроцессоре</h3>
-        <p>Выберите рамный элемент и нажмите Add element load. Таблица Element loads содержит систему координат и компоненты. Переключение Local/Global пересчитывает компоненты, сохраняя направление нагрузки.</p>
+        <p>Выберите инструмент <strong>Distributed loads</strong>, щёлкните по раме или укажите её номер в поле <strong>Member</strong>. Задайте <strong>Axes</strong> и компоненты, затем нажмите <strong>Create condition</strong>. Для изменения существующей записи выберите её справа и нажмите <strong>Apply condition</strong>. Переключение Local/Global преобразует компоненты, сохраняя направление нагрузки.</p>
         <p>Любая фактическая правка концов, A, E, rho или I элемента удаляет его распределённые нагрузки. Изменение координат узла снимает распределённые нагрузки всех примыкающих элементов, сохраняя узловые нагрузки и закрепления. Повторный ввод прежнего значения ничего не удаляет.</p>
         <p>Удаление узла каскадно удаляет его элементы, их распределённые нагрузки и условия самого узла. Остальные узлы остаются, номера ссылок обновляются. Удаление элемента не удаляет его узлы. Одно Undo восстанавливает всю операцию. Удалённый узел наблюдения transient необходимо выбрать заново.</p>
         <h3 id="linear-loads">Линейное распределение</h3>
@@ -389,7 +389,7 @@ dynamicResult = problem.RunTransient(1e-4, 1e-2, 3, 2, initial);</code></pre>
 1
 21,1,2,0,-300,0,-900</code></pre>
         <p>На элементе 1 глобальная qY меняется от −300 у узла 1 элемента до −900 у узла 2. Нулевые компоненты одного конца дают треугольник. Компоненты должны быть конечными; запрещена только полностью нулевая запись. Действуют те же ограничения: статика, рама 113, вся длина элемента. Для частичной нагрузки разбейте стержень на элементы. Можно смешивать и повторять оба блока; нагрузки суммируются.</p>
-        <p>В таблице Element loads выберите Uniform или Linear. Линейный режим показывает четыре поля с номерами концевых узлов. Переход к Linear копирует равномерные значения на оба конца; обратный переход берёт средние. Переключение осей преобразует оба концевых вектора. Результаты с типом 21 используют <a href="../../postprocessor/schema-v5.md">JSON v5</a>; старые задачи сохраняют версии v1–v4.</p>
+        <p>В поле <strong>Distribution</strong> выберите Uniform или Linear. Линейный режим задаёт компоненты на обоих концах. Переход к Linear копирует равномерные значения; обратный переход после подтверждения берёт средние. Переключение осей преобразует оба концевых вектора. Тип 21 требует как минимум <a href="../../postprocessor/schema-v5.md">JSON v5</a>; при наличии каталога сечений используется v6, для 3D — v7.</p>
         <p>Примеры: <a href="../../examples/cases/CaseLinearFrame.txt">трапеция</a>, <a href="../../examples/cases/CaseTriangleFrame.txt">треугольник</a>, <a href="../../examples/cases/CaseLinearRelease.txt">с шарнирами</a>, <a href="../../examples/cases/CaseLinearMPC.txt">с MPC</a>.</p>
       </section>
     <section aria-labelledby="support-masks-title"><h2 id="support-masks-title">SPC: ux, uy, thetaZ</h2><p>Опоры хранятся как маски fixUx/fixUy/fixThetaZ. Типы 1–4 сохраняют прежний смысл; новые типы: 5 — только ux, 6 — только uy, 7 — только thetaZ. Для фермы тип 7 запрещён, а экспорт использует только типы 1, 3 и 2. При смене семейства маски сохраняются; перед переходом к ферме нужно убрать thetaZ. Повторы диагностируются по узлу и СС.</p><p><a href="../../examples/cases/CaseRollerFrame.txt">CaseRollerFrame.txt</a></p></section>
@@ -397,7 +397,7 @@ dynamicResult = problem.RunTransient(1e-4, 1e-2, 3, 2, initial);</code></pre>
 1
 3,2,0,2,1,2,0.5,2,2,0.5</code></pre><p><a href="04a-mpc.html">Подробное описание MPC</a> · <a href="../../postprocessor/schema-v3.md">JSON v3</a> · <a href="../../examples/cases/CaseMPCFrame.txt">CaseMPCFrame.txt</a> · <a href="../../examples/cases/CaseMPCTruss.txt">CaseMPCTruss.txt</a></p></section>
 <section aria-labelledby="end-releases-title"><h2 id="end-releases-title">Концевые освобождения Mz</h2><p><a href="04b-end-releases.html">Подробное описание: глава 4b</a></p><p>После элементов допускается повторяемая секция releases: число записей и строки elementId,end,Mz, где end равен 1 или 2. Компоненты N/V, дубликаты и освобождения фермы не поддерживаются. Редактор пишет одну секцию в порядке элемент/конец. Смена освобождения сохраняет распределённую нагрузку; удаление элемента удаляет его освобождения.</p><p><a href="../../postprocessor/schema-v4.md">JSON v4</a> · <a href="../../examples/cases/CaseReleaseStatic.txt">CaseReleaseStatic</a> · <a href="../../examples/cases/CaseReleaseModal.txt">CaseReleaseModal</a> · <a href="../../examples/cases/CaseReleaseTransient.txt">CaseReleaseTransient</a></p></section>
-<section aria-labelledby="sections-title"><h2 id="sections-title">Каталог сечений</h2><p>В препроцессоре откройте «Sections», создайте именованное сечение и задайте размеры в единицах длины модели. Доступны прямоугольник (b, h), сплошной круг (d), квадратная труба (b, t), прямоугольная труба (b, h, t), круглая труба (d, t), швеллер, тавр и двутавр (b, h, tw, tf). Для труб b, h и d — наружные размеры, t — постоянная толщина стенки, меньшая половины минимального наружного размера. Скругления и уклоны полок не учитываются; уголок не поддерживается.</p><p>Кнопка «Assign section» рядом с «Add element load» включает режим назначения сечений. Выберите сечение и ориентацию в боковой панели, затем нажимайте на элементы схемы. Режим остаётся активным для последовательного назначения; Esc возвращает к «Select / pan». «Manage sections» открывает каталог. Выбор режима и его настроек не меняет модель до нажатия на элемент. Также можно выбрать элемент на схеме и нажать «Assign to selected element» в карточке сечения. Список «Assigned to» показывает назначения. Также в таблице элементов можно выбрать сечение и поворот 0°, 90°, 180° или 270°. Площадь A и рабочий момент инерции I вычисляются автоматически; E и плотность остаются свойствами элемента. Изменение сечения обновляет все его назначения и сохраняет нагрузки. После изменений запустите расчёт заново. Undo/redo восстанавливает каталог и назначения. Снятие назначения оставляет текущие A и I для ручного редактирования; удалить используемое сечение нельзя.</p><pre><code>sections
+<section aria-labelledby="sections-title"><h2 id="sections-title">Каталог сечений</h2><p>В препроцессоре откройте <strong>Materials and Sections</strong>, создайте именованное сечение и задайте размеры в единицах длины модели. Доступны прямоугольник (b, h), сплошной круг (d), квадратная труба (b, t), прямоугольная труба (b, h, t), круглая труба (d, t), швеллер, тавр и двутавр (b, h, tw, tf). Для труб b, h и d — наружные размеры, t — постоянная толщина стенки, меньшая половины минимального наружного размера. Скругления и уклоны полок не учитываются; уголок не поддерживается.</p><p><strong>Assign section</strong> открывает каталог <strong>Materials and Sections</strong>. Выберите элемент и задайте <strong>Section ID</strong> и <strong>Final angle, °</strong> в форме <strong>Assign to selected member</strong>, затем нажмите <strong>Apply assignment</strong>. <strong>Assign by clicking</strong> включает последовательное назначение щелчками по элементам; Esc завершает режим. <strong>Assignments</strong> показывает назначения. Для 2D площадь A и рабочий момент инерции I вычисляются из профиля; E и плотность остаются свойствами элемента. Изменение сечения обновляет назначения и сохраняет нагрузки. После правки нужен новый расчёт. Undo/Redo восстанавливает каталог и назначения. Section ID = 0 снимает назначение, сохраняя численные свойства; используемое сечение удалить нельзя.</p><pre><code>sections
 1
 {"id":1,"name":"Прямоугольник","type":"rectangle","dimensions":{"b":0.1,"h":0.2}}
 element_sections
@@ -447,6 +447,27 @@ element_sections
           </table>
         </div>
       </section>
+<section aria-labelledby="spatial-format-title"><h2 id="spatial-format-title">Пространственный TXT: основы</h2>
+<p>Для 1133/1436 сохраняется схема «имя блока → число записей → строки через запятую». В <code>nodes</code> каждая строка содержит X,Y,Z; номера узлов и элементов начинаются с 1 и соответствуют порядку строк. Блок <code>analysis</code> задаётся отдельно, без счётчика: <code>static</code>, <code>modal</code> или <code>transient,dt,duration,monitorNode,monitorDOF</code>. Коды 112/113 сохраняют прежний плоский смысл.</p>
+<div class="table-wrap"><table><thead><tr><th>Блок</th><th>Порядок полей записи</th></tr></thead><tbody>
+<tr><td><code>elems_1133</code></td><td><code>1133,node1,node2,A,E,rho</code></td></tr>
+<tr><td><code>elems_1436</code></td><td><code>1436,node1,node2,A,E,rho,G,Iy,Iz,J,YrefX,YrefY,YrefZ,angle</code></td></tr>
+<tr><td><code>bcfix_3d</code></td><td><code>node,ux,uy,uz,thetaX,thetaY,thetaZ</code>: маска 0/1; у фермы три вращательных флага равны 0.</td></tr>
+<tr><td><code>bcforce_stat_3d</code></td><td><code>10,node,Fx,Fy,Fz,Mx,My,Mz</code>; глобальные компоненты, у фермы моменты равны 0.</td></tr>
+<tr><td><code>bcforce_harm_3d</code>, <code>bcforce_pulse_3d</code>, <code>bcforce_step_3d</code></td><td>Та же запись с типом 11, 12 или 13. Для 11 в конце добавляется положительная частота f: F(t)=F₀ sin(2πft).</td></tr>
+<tr><td><code>eload_uniform_3d</code>, <code>eload_linear_3d</code></td><td><code>20,element,axes,qx,qy,qz</code> или <code>21,element,axes,qx1,qy1,qz1,qx2,qy2,qz2</code>. Оси: 1 — локальные, 2 — глобальные; только статические рамы.</td></tr>
+<tr><td><code>mpc</code>, <code>releases</code></td><td>MPC: прежняя структура однородного уравнения; номера компонент по порядку узловых СС. Освобождение: <code>element,end,Mx</code> (либо My/Mz), конец 1 или 2, только рама.</td></tr>
+</tbody></table></div>
+<p>A, E, ρ и для рамы G, Iy, Iz, J должны быть положительными конечными числами; J не равен Iy+Iz в общем случае. Пользователь выбирает согласованную систему единиц: например м, Н, Па, кг, с. Автоматического перевода единиц нет. Размеры профиля имеют те же единицы длины, что XYZ; угол рамы задаётся в градусах, вращательные результаты — в радианах.</p>
+<p>Каталог использует JSON-строки в <code>sections</code>; назначение <code>element_sections</code> содержит <code>element,section,angle</code>. Фрагмент из вводного примера:</p>
+<pre><code>sections
+1
+{"id":1,"name":"Rectangle 100 x 200 mm","type":"rectangle","dimensions":{"b":0.1,"h":0.2}}
+element_sections
+1
+1,1,0</code></pre>
+<p>Отсутствие <code>torsion</code> означает автоматический J. Необязательные варианты: <code>"torsion":{"mode":"auto"}</code> или <code>"torsion":{"mode":"manual","value":0.00001}</code>. У назначенной рамы угол назначения <strong>заменяет</strong> угол численной строки. Нормализованный экспорт согласует оба угла и A/Iy/Iz/J с каталогом.</p>
+<p>До правок импортированная модель скачивается исходным TXT; после правок — нормализованным. Оригинал остаётся отдельной командой. Геометрический черновик можно сохранить, но для расчёта нужны элементы, анализ и допустимые условия. <a href="3d-quick-start.html">Рабочий сценарий и ограничения 3D</a> · <a href="../../examples/cases/CaseSpatialQuickStart.txt" download>полный пример TXT</a>.</p></section>
 </main>
   </div>
 

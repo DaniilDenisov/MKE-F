@@ -16,6 +16,9 @@ for i = 1:size(model.forceBoundaryConditions, 1)
     end
 
     nodeNumber = boundaryCondition(2);
+    if isfield(model,'nodalKinematics')
+        loadVector=loadVector+spatialNodalLoad(model,boundaryCondition); continue;
+    end
     nodeDOFs = model.dofMap(nodeNumber, :);
     components = getNodalLoadComponents(model, boundaryCondition);
     if any(components(nodeDOFs == 0) ~= 0)

@@ -4,25 +4,23 @@
   <meta charset="utf-8">
   <title>MKE-F postprocessor browser tests</title>
   <link rel="stylesheet" href="../assets/postprocessor.css">
-  <style>#test-svg,#test-chart{position:absolute;left:-10000px;width:1px;height:1px;overflow:hidden}</style>
+  <style>#test-host{width:800px;height:500px;position:relative} #test-chart{width:600px;height:300px}</style>
   <script defer src="../js/namespace.js"></script>
   <script defer src="../../shared/sections.js"></script><script defer src="../../shared/section-drawing.js"></script><script defer src="../../shared/support-catalog.js"></script><script defer src="../../shared/support-semantics.js"></script><script defer src="../../shared/mpc.js"></script><script defer src="../../shared/releases.js"></script><script defer src="../../shared/support-markers.js"></script><script defer src="../../shared/moment-symbol.js"></script>
   <script defer src="../js/data-model.js"></script>
   <script defer src="../js/geometry.js"></script>
-  <script defer src="../js/svg-renderer.js"></script>
+  <script defer src="../../shared/spatial-sections.js"></script><script defer src="../../shared/vendor/spatial.js"></script>
   <script defer src="../js/static-view.js"></script><script defer src="../js/section-view.js"></script>
   <script defer src="../js/modal-view.js"></script>
   <script defer src="../js/transient-view.js"></script>
   <script defer src="../js/charts.js"></script>
   <script defer src="../js/export.js"></script>
-  <script defer src="../js/mpc-view.js"></script><script defer src="test-runner.js"></script>
+  <script defer src="../js/mpc-view.js"></script><script defer src="../js/planar-presentation.js"></script><script defer src="../js/webgl-renderer.js"></script><script defer src="../js/scene-export.js"></script><script defer src="test-runner.js"></script>
 </head>
 <body data-test-status="running">
   <h1>Postprocessor browser tests</h1>
   <pre id="test-output">Running…</pre>
-  <h2>Visual smoke scene</h2>
-  <svg id="visual-smoke" style="display:block;width:100%;height:520px;border:1px solid #d9e0e9"></svg>
-  <svg id="test-svg"></svg>
+  <div id="test-host"></div><aside id="result-sidebar"></aside>
   <svg id="test-chart"></svg>
   <span id="test-selection" hidden></span>
 </body>

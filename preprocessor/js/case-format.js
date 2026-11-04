@@ -53,6 +53,7 @@
 
   function parseCase(text) {
     if (typeof text !== 'string') throw new Error('Case input must be text.');
+    if (M.spatialFormat && M.spatialFormat.detects(text)) return M.spatialFormat.parse(text);
     var lines = text.replace(/^\uFEFF/, '').split(/\r?\n/), cursor = 0;
     var model = newModel('', 113), hasNodes = false, hasElements = false, hasAnalysis = false;
 
@@ -83,6 +84,7 @@
     while (cursor < lines.length) {
       var raw = lines[cursor++], marker = raw.trim(), markerLine = cursor;
       if (!marker || marker.charAt(0) === '#') continue;
+      if (marker === 'elems_1133' || marker === 'elems_1436') fail(markerLine, '3D calculations are available through Octave/API. Spatial editing and display are not yet supported.');
 
       if (marker === 'analysis') {
         if (hasAnalysis) fail(markerLine, 'The analysis section may appear only once.');

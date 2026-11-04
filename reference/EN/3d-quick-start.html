@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="3D basics: elements, editing, sections, results and limitations.">
+  <title>3D: quick start · MKE-F</title>
+  <link rel="stylesheet" href="../assets/reference.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="site-header__inner">
+      <a class="site-brand" href="index.html"><img class="brand-mark" src="../assets/site-logo.png" alt="" width="42" height="42"><span>MKE-F</span><span class="site-brand__context">Documentation / GNU Octave</span></a>
+      <nav class="language-switch" aria-label="Reference language"><a href="../RU/3d-quick-start.html" lang="ru" hreflang="ru">RU</a> <a href="../EN/3d-quick-start.html" lang="en" hreflang="en" aria-current="true">EN</a></nav>
+    </div>
+  </header>
+
+  <a class="mobile-contents-link" href="#reference-contents">Contents ↓</a>
+  <div class="layout">
+    <nav class="contents" id="reference-contents" aria-label="Reference contents">
+      <a class="contents-home" href="index.html">Documentation</a>
+      <h2>Contents</h2>
+      <ol>
+        <li><a href="01-model-dofs.html">Model, nodes, elements and DOFs</a></li>
+        <li><a href="02-element-matrices.html">Element matrices</a></li>
+        <li><a href="03-transformation-assembly.html">Transformation and assembly</a></li>
+        <li><a href="04-boundary-loads.html">Boundary conditions and loads</a></li>
+        <li value="4" class="mpc-chapter"><a href="04a-mpc.html">Linear multipoint constraints (MPC)</a></li>
+        <li value="4" class="release-chapter"><a href="04b-end-releases.html">Mz end releases</a></li>
+        <li><a href="05-static-analysis.html">Static analysis</a></li>
+        <li><a href="06-modal-analysis.html">Modal analysis</a></li>
+        <li value="6" class="nafems-chapter"><a href="06a-nafems-challenge-5.html">NAFEMS Challenge Problem 5</a></li>
+        <li><a href="07-newmark-transient.html">Newmark transient analysis</a></li>
+        <li><a href="08-result-recovery.html">Element results</a></li>
+        <li><a href="09-architecture-verification.html">Architecture and verification</a></li>
+        <li><a href="10-input-format.html">Input file format</a></li>
+        <li><a href="11-mario-paz-modal-example.html">Mario Paz modal example</a></li>
+        <li><a href="12-local-octave-workflow.html">Local GNU Octave workflow</a></li>
+        <li><a href="13-fem-assembly-visualizer.html">Interactive FEM assembly</a></li>
+        <li><a href="14-mario-paz-matrices-visualizer.html">Interactive frame matrices</a></li>
+        <li><a href="15-sparse-matrix-assembly.html">Sparse matrix assembly</a></li>
+      </ol>
+      <h2>Appendix</h2>
+      <p><a href="3d-quick-start.html">3D: quick start</a></p>
+      <p><a href="capabilities.html">MKE-F capabilities</a></p>
+      <p><a href="project-operations.html">Running, configuring and verifying the project</a></p>
+      <p class="offline-note">Works offline. Theory, examples and interactive chapters in one reference.</p>
+    </nav>
+
+    <main class="chapter" id="main">
+<span class="chapter-number">Quick guide</span>
+<h1>3D: quick start</h1>
+<p class="lead">The essentials of spatial analysis: element choice, editing, sections and results. Existing 2D labs continue to use types 112/113 and the same workflow.</p>
+<section aria-labelledby="types-title"><h2 id="types-title">1. Choose an element</h2>
+<div class="table-wrap"><table class="spatial-type-table"><thead><tr><th>Code</th><th>Model</th><th>DOFs per node</th></tr></thead><tbody>
+<tr><td>112</td><td>Plane truss</td><td>ux, uy</td></tr><tr><td>113</td><td>Plane frame</td><td>ux, uy, θz</td></tr>
+<tr><td>1133</td><td>Spatial truss: axial tension/compression</td><td>ux, uy, uz</td></tr><tr><td>1436</td><td>Spatial frame: axial, two bending components and torsion</td><td>ux, uy, uz, θx, θy, θz</td></tr>
+</tbody></table></div><p>Choose a truss for members carrying axial force only, or a frame for bending and torsion. Families cannot be mixed in one model. The element code determines dimension: nonzero Z alone does not turn 112/113 into 3D. A registry defines each type; the software does not parse the digits of the code.</p></section>
+<section aria-labelledby="axes-title"><h2 id="axes-title">2. Coordinates and sections</h2>
+<p>Nodes use global XYZ. Local X runs from the first member end to the second. The reference Y vector is projected perpendicular to X; Z completes a right-handed triad. Reference Y must not be parallel to the member. The angle, in degrees, rotates Y/Z about X.</p>
+<p>In the profile's own axes, Y is height, Z is width and the origin is the centroid. Frames 1436 accept a rectangle, solid circle, square, rectangular and circular tubes. Trusses 1133 and 2D models retain all eight profiles, including channel, tee and I section. The catalog supplies A for a truss and A, Iy, Iz, J for a frame; material E, ρ and G remain element properties.</p>
+<p>Open profiles are excluded from new frame assignments and calculations because shear-center offsets and restrained warping are not modeled. Legacy TXT models remain editable: replace assigned open profiles before running any analysis. Unused catalog entries do not block calculation, and saved JSON results remain viewable. Numerical properties without section geometry remain available, but profile applicability cannot be checked. The permitted profiles still have the beam-theory limitations and J approximations described below.</p>
+<p>A frame has one final angle: local loads and releases rotate with the profile. Global loads and MPC coefficients remain unchanged. Truss profile orientation is illustrative and does not change stiffness. Detaching a profile keeps numerical properties but removes full section-stress recovery.</p></section>
+<section aria-labelledby="editor-title"><h2 id="editor-title">3. Your first editor calculation</h2>
+<p>Download <a href="../../examples/cases/CaseSpatialQuickStart.txt" download>CaseSpatialQuickStart.txt</a> and open it in the <a href="../../preprocessor/index.html">preprocessor</a>. In the local reference, the link may open the TXT directly; use Open TXT to select the same file from <code>examples/cases</code>. It is a 2 m cantilever with a 0.1 × 0.2 m rectangle, E = 200 GPa and a tip force Fy = −1000 N.</p>
+<ol><li>Inspect the model. Drag with the left button to rotate, right or Shift + left to pan, and use the wheel to zoom. Fit model adjusts the scale; Reset to origin returns to XY at Z = 0, centered at (0,0,0).</li>
+<li>Select a node in the table or scene. Apply an XYZ change and try undo/redo. Undo the edit to return to the reference example.</li>
+<li>New nodes lie on the XY/XZ/YZ work plane with its chosen offset. Snapping uses the base grid step even when displayed grid spacing is enlarged. Exact XYZ input is not rounded. Moving a node uses a parallel plane through its original point; Escape cancels the gesture.</li>
+<li><strong>Materials and Sections</strong> opens a window over the scene. Prepare profiles and material defaults for new members, then close it. The default is steel: E = 210 GPa, ρ = 7850 kg/m³, G ≈ 80.77 GPa (ν = 0.3). Changing these settings leaves existing members unchanged. In <strong>Add Element</strong> mode, choose a section: A/Iy/Iz/J are filled automatically. Click two existing nodes or enter both node numbers and press <strong>Create element</strong>. Without a catalog section, enter numerical properties.</li>
+<li>Nodes, members and conditions are listed in the right sidebar. Select the member, open the catalog, check section assignment 1 and try any rotation angle. Restore 0° for the reference values. Section display settings in the right sidebar control contours, local axes, their count and visual scale; these affect the drawing only.</li>
+<li>Inspect node 1's support: all six components are fixed. Node 2 has Fy = −1000 only. New conditions are assigned with a tool on a node/member or by entering its number, then applied as one operation.</li>
+<li>With an available API, run static analysis. Open result creates a separate tab, preserving the editor and its history. If you edited while the calculation ran, the result belongs to the submitted snapshot.</li></ol>
+<div class="callout"><p>The editor and JSON viewer work through <code>file://</code>. Running calculations requires HTTP and a configured API; see <a href="project-operations.html">project setup</a>. Without WebGL, forms, tables, charts and the SVG section remain available, but the spatial scene does not.</p></div>
+<p>You can run the same file in Octave from the project root:</p><pre><code>addpath(pwd);
+setup;
+problem = StructFEProblem(exampleCasePath('CaseSpatialQuickStart.txt'));
+model = problem.GetAnalysisModel();
+result = problem.RunSelected();
+exportPostprocessorData(model, result, 'output/CaseSpatialQuickStart.json');</code></pre></section>
+<section aria-labelledby="results-title"><h2 id="results-title">4. Read the results</h2>
+<p>Without edits, expect node 2 uy = −0.0002 m (−0.2 mm), support Fy = +1000 N and extreme normal stresses of ±3 MPa at the fixed end. Displacements use length units; physical rotations are in radians. Visual deformation magnification does not change numerical values.</p>
+<p>Frames provide N, Vy, Vz, Mx, My, Mz; trusses provide N and N/A. End actions, section forces, support reactions and MPC forces are distinct quantities. Selecting a member opens its length chart and, with an assigned profile, a section view: Y up, Z right, viewed from −X.</p>
+<p class="equation">σx(x,y,z) = N(x)/A + My(x)·z/Iy − Mz(x)·y/Iz</p>
+<p>These are normal stresses from axial force and biaxial bending. The local basis already includes the angle. Holes are not material; without a catalog profile, only N/A is available. You can inspect σmin/σmax, select a material point, export section SVG/CSV and capture scene PNG.</p>
+<p>Mode amplitudes are arbitrary; phase changes the signs of displacements, forces and stresses. Transient playback shows saved frames; the full history takes 5 seconds of viewing at 1×, with calculation time shown separately. Histories, physical displacement/rotation spectra and point σx histories are available. Missing fields in partial JSON are not replaced by zeros. A released end's dynamic elastic moment may be balanced by inertia.</p>
+<p>Further examples: <a href="../../examples/cases/CaseSpatialFrameModal.txt">modes</a> and <a href="../../examples/cases/CaseSpatialFrameTransient.txt">transient response</a>. They use numerical properties; assign a profile and rerun to obtain a full section view.</p></section>
+<section aria-labelledby="limits-title"><h2 id="limits-title">5. Model limitations</h2>
+<div class="callout callout--warning"><p>Linear elasticity and small displacements. Euler–Bernoulli frames omit transverse shear deformation; Saint-Venant torsion omits restrained warping. Plasticity, geometric nonlinearity, automatic eccentricities and shear-center offsets are not included. An open profile or a manual J does not remove these limitations.</p>
+<p>Thin-wall J values for rectangular tubes and open profiles are approximate; the catalog shows the method. Resizing a profile does not recalculate manual J. Torsional mass inertia uses ρ(Iy + Iz), not ρJ. Static results support <a href="08-result-recovery.html#normal-stress-title">maximum absolute normal stress coloring</a> from axial force and bending; shear and torsion are excluded. Per-member von Mises maxima are available in the static results sidebar; <a href="08-result-recovery.html#section-fem-title">experimental section FEM</a> runs separately. Restrained warping and GOST standard-size catalogs are not supported.</p></div>
+<p>Homogeneous supports, linear MPC and local frame releases Mx/My/Mz are supported. Distributed loads may be uniform or linear, on full-length frames in static analysis only. Modal analysis has no applied loads. In transient analysis, type 10 acts for one step, like type 12; use type 13 for a constant load. Newmark is undamped (β = ¼, γ = ½). Self-weight is not added automatically.</p>
+<p>Next: <a href="10-input-format.html#spatial-format-title">spatial TXT basics</a>, <a href="08-result-recovery.html#spatial-results-title">JSON v7 and results</a>, <a href="capabilities.html">capability table</a>.</p></section>
+</main>
+  </div>
+  <nav class="page-nav" aria-label="Reference contents">
+    <a href="index.html">← Reference contents</a>
+    <a href="10-input-format.html">Input file format →</a>
+  </nav>
+  <footer class="site-footer"><div class="site-footer__inner"><p>MKE-F · 3D basics</p></div></footer>
+</body>
+</html>

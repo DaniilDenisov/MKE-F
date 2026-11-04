@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Element types, analyses, loads and supports: comparison of truss 112 and frame 113 capabilities.">
+  <meta name="description" content="Planar types 112/113 and spatial types 1133/1436: analyses, conditions, sections and results.">
   <title>MKE-F capabilities</title>
   <link rel="stylesheet" href="../assets/reference.css">
 </head>
@@ -42,6 +42,7 @@
         <li><a href="15-sparse-matrix-assembly.html">Sparse matrix assembly</a></li>
       </ol>
       <h2>Appendix</h2>
+      <p><a href="3d-quick-start.html">3D: quick start</a></p>
       <p><a href="capabilities.html">MKE-F capabilities</a></p>
       <p><a href="project-operations.html">Running, configuring and verifying the project</a></p>
       <p class="offline-note">Works offline. Theory, examples and interactive chapters in one reference.</p>
@@ -50,7 +51,15 @@
     <main class="chapter" id="main">
       <span class="chapter-number">Appendix</span>
       <h1>MKE-F capabilities</h1>
-<p class="lead">MKE-F is an educational program for linear finite element analysis of planar trusses and frames.</p>
+<p class="lead">MKE-F is an educational program for linear finite element analysis of planar and spatial trusses and frames.</p>
+<section aria-labelledby="spatial-capabilities-title"><h2 id="spatial-capabilities-title">3D at a glance</h2><div class="table-wrap"><table><thead><tr><th>Capability</th><th>1133 — truss</th><th>1436 — frame</th></tr></thead><tbody>
+<tr><td>Nodal DOFs</td><td>ux, uy, uz</td><td>ux, uy, uz, θx, θy, θz</td></tr>
+<tr><td>Analyses</td><td colspan="2">Statics, modes and undamped transient response; mixed families are not supported.</td></tr>
+<tr><td>Conditions</td><td>Forces, translational supports, MPC</td><td>Forces and moments, supports, MPC, local Mx/My/Mz releases; uniform/linear loads in statics</td></tr>
+<tr><td>Catalog and stresses</td><td>Profile area A; N/A</td><td>A/Iy/Iz/J, any angle; σx from N/My/Mz</td></tr>
+<tr><td>max |σx|, static 2D/3D</td><td>|N(x)|/A, including manual area</td><td><a href="08-result-recovery.html#normal-stress-title">Absolute normal stress maximum</a>: all valid catalog sections, curve and CSV; legacy open-profile JSON remains viewable. Shear/torsion excluded; member von Mises maxima are available separately, with separate <a href="08-result-recovery.html#section-fem-title">FEM diagnostics</a>.</td></tr>
+<tr><td>Interface and results</td><td colspan="2">XYZ editing, work planes, undo/redo, API runs, a separate result tab, contours and JSON v7.</td></tr>
+</tbody></table></div><p>First steps, an example and model limitations: <a href="3d-quick-start.html">3D quick start</a>. The detailed tables below describe planar types 112/113.</p></section>
 <section aria-labelledby="capabilities-title">
 <h2 id="capabilities-title">Elements, analyses, loads and supports</h2>
 <div class="table-wrap">
@@ -67,6 +76,7 @@
 <tr><td>Loads</td><th scope="row">Concentrated nodal moment</th><td>Not supported: the node has no rotational degree of freedom.</td><td>Moment M<sub>z</sub> about the axis perpendicular to the model plane.</td></tr>
 <tr><td>Loads</td><th scope="row">Constant static load, type 10</th><td>Nodal forces.</td><td>Nodal forces and moments.</td></tr>
 <tr><td>Loads</td><th scope="row">Uniform distributed load, type 20</th><td>Not supported.</td><td>Statics only: local or global components q<sub>x</sub>, q<sub>y</sub>; intensity per unit element length.</td></tr>
+<tr><td>Loads</td><th scope="row">Linear distributed load, type 21</th><td>Not supported.</td><td>Statics only: qx, qy components at both ends, in local or global axes.</td></tr>
 <tr><td>Loads</td><th scope="row">Harmonic load, type 11</th><td>In dynamics: nodal forces following F(t) = F₀ sin(2πft).</td><td>In dynamics: sinusoidal nodal forces and moments.</td></tr>
 <tr><td>Loads</td><th scope="row">One-step pulse, type 12</th><td>In dynamics: nodal forces at the first time step t = Δt only.</td><td>In dynamics: nodal forces and moments at the first time step t = Δt only.</td></tr>
 <tr><td>Loads</td><th scope="row">Step load, type 13</th><td>In dynamics: constant nodal forces from t = 0.</td><td>In dynamics: constant nodal forces and moments from t = 0.</td></tr>
@@ -75,6 +85,9 @@
 <tr><td>Supports</td><th scope="row">Type 2 — X translation allowed</th><td>u<sub>y</sub> = 0; u<sub>x</sub> is free.</td><td>u<sub>y</sub> = θ<sub>z</sub> = 0; u<sub>x</sub> is free.</td></tr>
 <tr><td>Supports</td><th scope="row">Type 3 — Y translation allowed</th><td>u<sub>x</sub> = 0; u<sub>y</sub> is free.</td><td>u<sub>x</sub> = θ<sub>z</sub> = 0; u<sub>y</sub> is free.</td></tr>
 <tr><td>Supports</td><th scope="row">Type 4 — both translations restrained</th><td>u<sub>x</sub> = u<sub>y</sub> = 0; equivalent to type 1.</td><td>Pinned support: u<sub>x</sub> = u<sub>y</sub> = 0; rotation θ<sub>z</sub> is free.</td></tr>
+<tr><td>Supports</td><th scope="row">Type 5 — only restrains u<sub>x</sub></th><td>u<sub>x</sub> = 0.</td><td>u<sub>x</sub> = 0.</td></tr>
+<tr><td>Supports</td><th scope="row">Type 6 — only restrains u<sub>y</sub></th><td>u<sub>y</sub> = 0.</td><td>u<sub>y</sub> = 0.</td></tr>
+<tr><td>Supports</td><th scope="row">Type 7 — only restrains θ<sub>z</sub></th><td>Not supported.</td><td>θ<sub>z</sub> = 0.</td></tr>
 <tr><td>Supports</td><th scope="row">Nonzero prescribed translations and rotations</th><td>Not supported.</td><td>Not supported.</td></tr>
 </tbody>
 </table>
@@ -84,11 +97,12 @@
 <h2 id="notes-title">Notation and limitations</h2>
 <p><strong>Notation:</strong> X and Y are the global in-plane axes; θ<sub>z</sub> is nodal rotation; N is axial force; V is shear force; M is bending moment. A free degree of freedom means that the translation or rotation is not prescribed by a support and is determined by analysis; it does not imply motion without elastic resistance.</p>
 <p><strong>Load conventions:</strong> no loads are specified in modal analysis. In transient analysis, type 10 is also interpreted as a one-step pulse, not a constant load; use type 13 for a constant action. Self-weight is not added automatically.</p>
-<p><strong>Scope:</strong> types 112 and 113 cannot be mixed in one model. Analysis is linear, with small displacements and a linear elastic material. Plasticity, geometric nonlinearity and damping are not included; the frame element neglects shear deformation. Distributed loads must be uniform and are supported only on frame elements in static analysis. Frame supports of types 2 and 3 restrain rotation: they are not conventional roller supports.</p>
+<p><strong>Scope:</strong> types 112 and 113 cannot be mixed in one model. Analysis is linear, with small displacements and a linear elastic material. Plasticity, geometric nonlinearity and damping are not included; the frame element neglects shear deformation. Uniform and linear distributed loads are supported on frame elements in static analysis only. Frame supports of types 2 and 3 restrain rotation: they are not conventional roller supports.</p>
 <p>See <a href="10-input-format.html">Input file format</a> for input records and <a href="04-boundary-loads.html">Boundary conditions and loads</a> for sign and load conventions.</p>
 </section>
 
-    <section aria-labelledby="mpc-title"><h2 id="mpc-title">MPC</h2><p>Seven frame support masks, three unique truss combinations and homogeneous linear MPCs are available in all three analyses. The editor, node-on-axis helper, separate SPC/MPC forces and v3 export are implemented. Mz end releases are available in all analyses with JSON v4. Nonzero prescribed displacements and the full NAFEMS investigation remain separate work.</p><p><a href="04a-mpc.html">Complete MPC guide</a> · <a href="../../postprocessor/schema-v3.md">JSON v3</a> · <a href="../../examples/cases/CaseMPCFrame.txt">CaseMPCFrame.txt</a> · <a href="../../examples/cases/CaseMPCTruss.txt">CaseMPCTruss.txt</a></p></section>
+    <section aria-labelledby="mpc-title"><h2 id="mpc-title">MPC</h2><p>Seven frame support masks, three unique truss combinations and homogeneous linear MPCs are available in all three analyses. The editor, node-on-axis helper, separate SPC/MPC forces and v3 export are implemented. Mz end releases are available in all analyses with JSON v4. Nonzero prescribed displacements are unsupported. Completed runs and differences from the reference are described in the <a href="06a-nafems-challenge-5.html">NAFEMS study</a>.</p><p><a href="04a-mpc.html">Complete MPC guide</a> · <a href="../../postprocessor/schema-v3.md">JSON v3</a> · <a href="../../examples/cases/CaseMPCFrame.txt">CaseMPCFrame.txt</a> · <a href="../../examples/cases/CaseMPCTruss.txt">CaseMPCTruss.txt</a></p></section>
+<section><h2>Interface and sections</h2><p>The shared WebGL scene supports 2D with a fixed XY camera and 3D with orbiting and work planes. New frame 1436 assignments and runs accept five shapes: circle, rectangle, circular tube, square tube and rectangular tube. 2D and trusses retain all eight profiles. <a href="08-result-recovery.html#section-fem-title">Experimental section FEM</a> runs on a separate diagnostic page.</p></section>
 </main>
   </div>
   <nav class="page-nav" aria-label="Reference contents">

@@ -52,7 +52,7 @@
 
       <section aria-labelledby="scope-title">
         <h2 id="scope-title">1. Applicability</h2>
-        <p>The program solves linear small-displacement problems in the global plane <em>X–Y</em>:</p>
+        <p>For types 112/113, the description below covers linear small-displacement problems in the global plane <em>X–Y</em>:</p>
         <ul>
           <li>plane trusses made of type 112 members;</li>
           <li>plane Euler–Bernoulli frames made of type 113 elements;</li>
@@ -311,7 +311,7 @@ dynamicResult = problem.RunTransient(1e-4, 1e-2, 3, 2, initial);</code></pre>
         <p>If the file contains section <code>analysis</code>, run the same analysis as <code>result = problem.RunSelected()</code>. A configured transient run uses zero initial displacements and velocities.</p>
         <div class="callout callout--inspect">
           <span class="callout__title">Running a file through the GUI</span>
-          <p>From the repository root, run <code>docker compose up --build</code> (or <code>docker-compose up --build</code>), open <a href="http://127.0.0.1:8080/preprocessor/">http://127.0.0.1:8080/preprocessor/</a> and load the TXT file with <strong>Open TXT</strong>. For an old file without section <code>analysis</code> first select the analysis type and, if needed, transient parameters. The button <strong>Run analysis</strong> serializes the validated model, calls <code>RunSelected()</code> in the Octave container and opens the result without manual file transfer.</p>
+          <p>From the repository root, run <code>docker compose up --build</code> (or <code>docker-compose up --build</code>), open <a href="http://127.0.0.1:8080/preprocessor/">http://127.0.0.1:8080/preprocessor/</a> and load the TXT file with <strong>Open TXT</strong>. For an old file without section <code>analysis</code> first select the analysis type and, if needed, transient parameters. The button <strong>Run analysis</strong> serializes the validated model and calls <code>RunSelected()</code> in the Octave container. After <strong>Completed</strong>, click <strong>Open result</strong> to open a separate postprocessor tab without manual file transfer.</p>
         </div>
       </section>
 
@@ -380,7 +380,7 @@ dynamicResult = problem.RunTransient(1e-4, 1e-2, 3, 2, initial);</code></pre>
         <p>Sections may repeat; loads on the same element are summed. All values must be finite; two zero components, a missing element, a type 112 element, and modal/transient analysis are rejected. A nodal force or moment may also be specified using the normal section <code>bcforce_stat</code>.</p>
         <p>Example: <a href="../../examples/cases/CaseUniformFrame.txt">a 2 m cantilever under qY = −1000 N/m</a>. Reactions: Fy = 2000 N, Mz = 2000 N·m; free-end deflection −0.001 m, rotation −0.000666667 rad.</p>
         <h3>Editing and deletion in the preprocessor</h3>
-        <p>Select a frame element and click Add element load. The Element loads table contains the coordinate system and components. Switching Local/Global converts components while preserving load direction.</p>
+        <p>Select <strong>Distributed loads</strong>, click a frame or enter its number in <strong>Member</strong>. Set <strong>Axes</strong> and components, then click <strong>Create condition</strong>. Select an existing entry on the right and use <strong>Apply condition</strong> to edit it. Switching Local/Global converts components while preserving the load direction.</p>
         <p>Any actual change to element ends, A, E, rho or I removes its distributed loads. Changing node coordinates removes distributed loads from all incident elements, preserving nodal loads and supports. Re-entering the same value removes nothing.</p>
         <p>Deleting a node also deletes its elements, their distributed loads and the node’s own conditions. Other nodes remain and references are renumbered. Deleting an element does not delete its nodes. One Undo restores the whole operation. A deleted transient monitoring node must be selected again.</p>
         <h3 id="linear-loads">Linear distribution</h3>
@@ -389,7 +389,7 @@ dynamicResult = problem.RunTransient(1e-4, 1e-2, 3, 2, initial);</code></pre>
 1
 21,1,2,0,-300,0,-900</code></pre>
         <p>On element 1, global qY varies from −300 at its first node to −900 at its second node. Zero components at one end give a triangle. Components must be finite; only an entirely zero record is rejected. The same restrictions apply: static analysis, frame 113, entire element length. Split the member into elements for partial loading. Both sections may repeat and coexist; loads add together.</p>
-        <p>Choose Uniform or Linear in the Element loads table. Linear mode shows four fields with endpoint node numbers. Converting to Linear copies the uniform values to both ends; converting back takes their mean. Changing coordinate systems transforms both vectors. Results with type 21 use <a href="../../postprocessor/schema-v5.md">JSON v5</a>; older models retain versions v1–v4.</p>
+        <p>Choose Uniform or Linear in <strong>Distribution</strong>. Linear mode specifies components at both ends. Switching to Linear copies uniform values; switching back averages them after confirmation. Changing axes converts both end vectors. Type 21 requires at least <a href="../../postprocessor/schema-v5.md">JSON v5</a>; section catalogs use v6 and 3D uses v7.</p>
         <p>Examples: <a href="../../examples/cases/CaseLinearFrame.txt">trapezoid</a>, <a href="../../examples/cases/CaseTriangleFrame.txt">triangle</a>, <a href="../../examples/cases/CaseLinearRelease.txt">with releases</a>, <a href="../../examples/cases/CaseLinearMPC.txt">with MPCs</a>.</p>
       </section>
     <section aria-labelledby="support-masks-title"><h2 id="support-masks-title">SPC: ux, uy, thetaZ</h2><p>Supports use fixUx/fixUy/fixThetaZ masks. Types 1–4 retain their meaning; new types are 5: ux only, 6: uy only, 7: thetaZ only. Trusses reject type 7 and export canonical types 1, 3 and 2. Changing element family preserves masks; remove thetaZ restraints before switching to a truss. Duplicate restraints identify the node and DOF.</p><p><a href="../../examples/cases/CaseRollerFrame.txt">CaseRollerFrame.txt</a></p></section>
@@ -397,7 +397,7 @@ dynamicResult = problem.RunTransient(1e-4, 1e-2, 3, 2, initial);</code></pre>
 1
 3,2,0,2,1,2,0.5,2,2,0.5</code></pre><p><a href="04a-mpc.html">Complete MPC guide</a> · <a href="../../postprocessor/schema-v3.md">JSON v3</a> · <a href="../../examples/cases/CaseMPCFrame.txt">CaseMPCFrame.txt</a> · <a href="../../examples/cases/CaseMPCTruss.txt">CaseMPCTruss.txt</a></p></section>
 <section aria-labelledby="end-releases-title"><h2 id="end-releases-title">Mz end releases</h2><p><a href="04b-end-releases.html">Complete guide: chapter 4b</a></p><p>After elements, a repeatable releases section contains a record count followed by elementId,end,Mz, with end 1 or 2. N/V components, duplicates and truss releases are rejected. The editor writes one section ordered by element/end. Toggling a release preserves element loads; deleting an element removes its releases.</p><p><a href="../../postprocessor/schema-v4.md">JSON v4</a> · <a href="../../examples/cases/CaseReleaseStatic.txt">CaseReleaseStatic</a> · <a href="../../examples/cases/CaseReleaseModal.txt">CaseReleaseModal</a> · <a href="../../examples/cases/CaseReleaseTransient.txt">CaseReleaseTransient</a></p></section>
-<section aria-labelledby="sections-title"><h2 id="sections-title">Section catalog</h2><p>Open Sections in the preprocessor, create a named section and enter dimensions in model length units. Available shapes are rectangle (b, h), solid circle (d), square tube (b, t), rectangular tube (b, h, t), circular tube (d, t), channel, tee and I section (b, h, tw, tf). Tube dimensions b, h and d are outer dimensions; t is uniform wall thickness and must be less than half the smallest outer dimension. Faces are straight, without fillets or flange slopes. Angles are not supported.</p><p>Use Assign section beside Add element load to enter section assignment mode. Choose a section and orientation in the sidebar, then click each member to apply. The mode stays active for repeated assignments; Esc returns to Select / pan. Manage sections opens the catalog. Choosing the tool or its settings does not change the model until you click a member. You can also select a member on the diagram and use Assign to selected element in the section card; Assigned to lists its assignments. Alternatively, choose the section and orientation 0°, 90°, 180° or 270° in the element table. Area A and active bending inertia I are calculated automatically; E and density remain element properties. Editing a section updates all assignments and preserves loads. Rerun the analysis after edits. Undo/redo restores catalog and assignments. Detaching preserves current A/I for manual editing; a referenced section cannot be deleted.</p><pre><code>sections
+<section aria-labelledby="sections-title"><h2 id="sections-title">Section catalog</h2><p>Open <strong>Materials and Sections</strong> in the preprocessor, create a named section and enter dimensions in model length units. Available shapes are rectangle (b, h), solid circle (d), square tube (b, t), rectangular tube (b, h, t), circular tube (d, t), channel, tee and I section (b, h, tw, tf). Tube dimensions b, h and d are outer dimensions; t is uniform wall thickness and must be less than half the smallest outer dimension. Faces are straight, without fillets or flange slopes. Angles are not supported.</p><p><strong>Assign section</strong> opens <strong>Materials and Sections</strong>. Select a member and set <strong>Section ID</strong> and <strong>Final angle, °</strong> in <strong>Assign to selected member</strong>, then click <strong>Apply assignment</strong>. <strong>Assign by clicking</strong> enables sequential assignments by clicking members; Esc ends this mode. <strong>Assignments</strong> lists assigned members. For 2D, A and the active I come from the profile; E and density remain element properties. Section edits update assignments and preserve loads. Rerun the analysis after changes. Undo/Redo restores the catalog and assignments. Section ID = 0 detaches a section while retaining numerical properties; an assigned section cannot be deleted.</p><pre><code>sections
 1
 {"id":1,"name":"Rectangle","type":"rectangle","dimensions":{"b":0.1,"h":0.2}}
 element_sections
@@ -447,6 +447,27 @@ element_sections
           </table>
         </div>
       </section>
+<section aria-labelledby="spatial-format-title"><h2 id="spatial-format-title">Spatial TXT basics</h2>
+<p>1133/1436 retain the pattern “block name → record count → comma-separated rows”. Each <code>nodes</code> row contains X,Y,Z; node and element IDs start at 1 and follow row order. The <code>analysis</code> block has no count: <code>static</code>, <code>modal</code> or <code>transient,dt,duration,monitorNode,monitorDOF</code>. Codes 112/113 keep their existing planar meaning.</p>
+<div class="table-wrap"><table><thead><tr><th>Block</th><th>Record field order</th></tr></thead><tbody>
+<tr><td><code>elems_1133</code></td><td><code>1133,node1,node2,A,E,rho</code></td></tr>
+<tr><td><code>elems_1436</code></td><td><code>1436,node1,node2,A,E,rho,G,Iy,Iz,J,YrefX,YrefY,YrefZ,angle</code></td></tr>
+<tr><td><code>bcfix_3d</code></td><td><code>node,ux,uy,uz,thetaX,thetaY,thetaZ</code>: a 0/1 mask; all three rotational flags are 0 for trusses.</td></tr>
+<tr><td><code>bcforce_stat_3d</code></td><td><code>10,node,Fx,Fy,Fz,Mx,My,Mz</code>; global components, with zero moments for trusses.</td></tr>
+<tr><td><code>bcforce_harm_3d</code>, <code>bcforce_pulse_3d</code>, <code>bcforce_step_3d</code></td><td>The same record with type 11, 12 or 13. Type 11 adds a positive frequency f at the end: F(t)=F₀ sin(2πft).</td></tr>
+<tr><td><code>eload_uniform_3d</code>, <code>eload_linear_3d</code></td><td><code>20,element,axes,qx,qy,qz</code> or <code>21,element,axes,qx1,qy1,qz1,qx2,qy2,qz2</code>. Axes: 1 local, 2 global; static frames only.</td></tr>
+<tr><td><code>mpc</code>, <code>releases</code></td><td>MPC retains its homogeneous equation record; component numbers follow nodal DOF order. A release is <code>element,end,Mx</code> (or My/Mz), end 1 or 2, frames only.</td></tr>
+</tbody></table></div>
+<p>A, E, ρ and, for frames, G, Iy, Iz, J must be positive finite numbers; J is not generally Iy+Iz. Choose consistent units, such as m, N, Pa, kg, s. There is no automatic unit conversion. Profile dimensions use the same length units as XYZ; frame angles are degrees, while rotational results are radians.</p>
+<p>The catalog uses JSON rows in <code>sections</code>; each <code>element_sections</code> assignment is <code>element,section,angle</code>. An excerpt from the introductory example:</p>
+<pre><code>sections
+1
+{"id":1,"name":"Rectangle 100 x 200 mm","type":"rectangle","dimensions":{"b":0.1,"h":0.2}}
+element_sections
+1
+1,1,0</code></pre>
+<p>Missing <code>torsion</code> means automatic J. Optional forms are <code>"torsion":{"mode":"auto"}</code> and <code>"torsion":{"mode":"manual","value":0.00001}</code>. An assigned frame's assignment angle <strong>replaces</strong> the angle in its numerical row. Normalized export makes both angles and A/Iy/Iz/J consistent with the catalog.</p>
+<p>Before edits, downloading an imported model returns the source TXT; after edits it returns normalized TXT. The original remains separately downloadable. Geometry drafts can be saved, but calculation requires elements, an analysis and valid conditions. <a href="3d-quick-start.html">3D workflow and limitations</a> · <a href="../../examples/cases/CaseSpatialQuickStart.txt" download>complete TXT example</a>.</p></section>
 </main>
   </div>
 

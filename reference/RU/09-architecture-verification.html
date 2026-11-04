@@ -87,7 +87,7 @@ modalResult = solveModal(model);</code></pre>
 
       <section aria-labelledby="elements-title">
         <h2 id="elements-title">Элементы и разреженная сборка</h2>
-        <p>Элемент — обычная структура значений, а не изменяемый объект-наследник. <code>createStructuralElement</code> создаёт общий контракт для типов 112 и 113: <code>type</code>, <code>nodeNumbers</code>, <code>properties</code>, единый вектор <code>dofs</code>, матрицы и сохранённые <code>length</code> и <code>transformation</code>. Одна и та же карта СС используется при сборке и восстановлении усилий.</p>
+        <p>Элемент — обычная структура значений, а не изменяемый объект-наследник. <code>createStructuralElement</code> создаёт общий контракт для типов 112, 113, 1133 и 1436: <code>type</code>, <code>nodeNumbers</code>, <code>properties</code>, единый вектор <code>dofs</code>, матрицы и сохранённые <code>length</code> и <code>transformation</code>. Одна и та же карта СС используется при сборке и восстановлении усилий.</p>
         <p><code>assembleGlobalMatrices</code> сначала формирует триплеты «строка — столбец — значение», затем одним вызовом <code>sparse</code> создаёт глобальные матрицы. При совпадении адресов Octave суммирует вклады. Память определяется числом элементных коэффициентов, а не квадратом числа СС.</p>
         <div class="callout">
           <span class="callout__title">Инвариант архитектуры</span>

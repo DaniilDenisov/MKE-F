@@ -11,6 +11,24 @@ for i = 1:size(model.forceBoundaryConditions, 1)
     boundaryCondition = model.forceBoundaryConditions(i, :);
     boundaryType = boundaryCondition(1);
     nodeNumber = boundaryCondition(2);
+    if isfield(model,'dimension') && model.dimension==3
+        if isfield(model,'nodalKinematics')
+            f=spatialNodalLoad(model,boundaryCondition);
+        else
+            f=zeros(model.numberOfDOFs,1);
+            f(model.dofMap(nodeNumber,:))=getNodalLoadComponents(model,boundaryCondition);
+        end
+        profile=zeros(1,stepCount+1);
+        if ismember(boundaryType,[10 12]), profile(2)=1;
+        elseif boundaryType==11
+            frequency=boundaryCondition(9);
+            if ~isfinite(frequency) || frequency<=0, error('MKEF:InvalidNodalLoad','Invalid harmonic frequency.'); end
+            profile=sin(2*pi*frequency*time);
+        elseif boundaryType==13, profile(:)=1;
+        else, error('MKEF:UnsupportedLoadType','Unsupported spatial load type.'); end
+        loadHistory=loadHistory+f*profile;
+        continue;
+    end
     nodeDOFs = model.dofMap(nodeNumber, :);
     components = getNodalLoadComponents(model, boundaryCondition);
     if any(components(nodeDOFs == 0) ~= 0)

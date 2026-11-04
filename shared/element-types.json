@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "types": [
+    {"code":112,"geometryDimension":1,"deformationComponents":["axial"],"dimension":2,"family":"truss","formulation":"linear-bar","nodeCount":2,"dofLabels":["ux","uy"],"properties":["area","youngsModulus","density"],"nodalLoads":["Fx","Fy"],"elementLoads":[],"releases":[],"analyses":["static","modal","transient"],"implementation":"truss2d"},
+    {"code":113,"geometryDimension":1,"deformationComponents":["axial","curvatureZ"],"dimension":2,"family":"frame","formulation":"euler-bernoulli","nodeCount":2,"dofLabels":["ux","uy","thetaZ"],"properties":["area","youngsModulus","density","momentOfInertia"],"nodalLoads":["Fx","Fy","Mz"],"elementLoads":["uniform","linear"],"releases":["Mz"],"analyses":["static","modal","transient"],"implementation":"frame2d"},
+    {"code":1133,"geometryDimension":1,"deformationComponents":["axial"],"dimension":3,"family":"truss","formulation":"linear-bar","nodeCount":2,"dofLabels":["ux","uy","uz"],"properties":["area","youngsModulus","density"],"nodalLoads":["Fx","Fy","Fz"],"elementLoads":[],"releases":[],"analyses":["static","modal","transient"],"implementation":"truss3d"},
+    {"code":1436,"geometryDimension":1,"deformationComponents":["axial","curvatureY","curvatureZ","twist"],"dimension":3,"family":"frame","formulation":"euler-bernoulli-saint-venant","nodeCount":2,"dofLabels":["ux","uy","uz","thetaX","thetaY","thetaZ"],"properties":["area","youngsModulus","density","shearModulus","Iy","Iz","torsionConstant"],"nodalLoads":["Fx","Fy","Fz","Mx","My","Mz"],"elementLoads":["uniform","linear"],"releases":["Mx","My","Mz"],"analyses":["static","modal","transient"],"implementation":"frame3d"}
+  ]
+}

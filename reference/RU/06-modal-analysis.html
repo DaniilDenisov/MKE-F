@@ -108,7 +108,7 @@ exportPostprocessorData(model, result, ...
            'lengthUnit', 'm', 'prettyPrint', true));</code></pre>
         <div class="callout callout--inspect">
           <span class="callout__title">Тот же расчёт через GUI</span>
-          <p>Из корня репозитория выполните <code>docker compose up --build</code> (либо <code>docker-compose up --build</code>) и откройте <a href="http://127.0.0.1:8080/preprocessor/">препроцессор</a>. Загрузите через <strong>Open TXT</strong> файл <code>examples/cases/CasePreprocessorModal.txt</code> и нажмите <strong>Run analysis</strong>. Рассчитанные формы автоматически откроются в постпроцессоре, где их можно анимировать и скачать как JSON.</p>
+          <p>Из корня репозитория выполните <code>docker compose up --build</code> (либо <code>docker-compose up --build</code>) и откройте <a href="http://127.0.0.1:8080/preprocessor/">препроцессор</a>. Загрузите через <strong>Open TXT</strong> файл <code>examples/cases/CasePreprocessorModal.txt</code> и нажмите <strong>Run analysis</strong>. После статуса <strong>Completed</strong> нажмите <strong>Open result</strong>: рассчитанные формы откроются в отдельной вкладке постпроцессора, где их можно анимировать и скачать как JSON.</p>
         </div>
         <p>После выполнения файл <code>modal-frame.json</code> появится в каталоге <code>output</code>. В терминале также можно проверить найденные частоты командой <code>result.frequenciesHz</code>.</p>
 

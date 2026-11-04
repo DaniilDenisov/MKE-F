@@ -105,7 +105,7 @@ u(freeDOFs) = K(freeDOFs, freeDOFs) \ F(freeDOFs);</code></pre>
       </section>
 
       <section aria-labelledby="postprocessing-title">
-        <h2 id="postprocessing-title">Postprocessing in the offline HTML/SVG viewer</h2>
+        <h2 id="postprocessing-title">Postprocessing in the offline WebGL viewer</h2>
         <p>After analysis, save the model and results to a compact JSON file and open it in the <a href="../../postprocessor/index.html">MKE-F offline postprocessor</a>. The viewer works directly through <code>file://</code>: no local server, npm or internet connection is required.</p>
 
         <h3>1. Run the analysis and export the result</h3>
@@ -128,7 +128,7 @@ exportOptions = struct( ...
 exportPostprocessorData(model, result, fullfile('output', 'static-frame.json'), exportOptions);</code></pre>
         <div class="callout callout--inspect">
           <span class="callout__title">The same analysis through the GUI</span>
-          <p>From the repository root, run <code>docker compose up --build</code> (or, with the older standalone command, <code>docker-compose up --build</code>) and open the <a href="http://127.0.0.1:8080/preprocessor/">preprocessor</a>. Select <strong>Open TXT</strong>, load <code>examples/cases/CasePreprocessorStatic.txt</code> and click <strong>Run analysis</strong>. After GNU Octave finishes, the result opens automatically; the <strong>Download JSON</strong> button saves it outside the temporary container session.</p>
+          <p>From the repository root, run <code>docker compose up --build</code> (or, with the older standalone command, <code>docker-compose up --build</code>) and open the <a href="http://127.0.0.1:8080/preprocessor/">preprocessor</a>. Select <strong>Open TXT</strong>, load <code>examples/cases/CasePreprocessorStatic.txt</code> and click <strong>Run analysis</strong>. After <strong>Completed</strong>, click <strong>Open result</strong> to open a separate postprocessor tab; the <strong>Download JSON</strong> button saves it outside the temporary container session.</p>
         </div>
         <p><a href="../../src/results/exportPostprocessorData.m"><code>exportPostprocessorData</code></a> checks dimensions and finiteness, excludes global and element matrices, and writes versioned UTF-8 JSON. Unit fields are labels only: numerical values are not converted. For this SI export, the postprocessor displays coordinates and displacements in meters, forces, loads and reactions in newtons, moments in N·m, and stresses in Pa.</p>
 

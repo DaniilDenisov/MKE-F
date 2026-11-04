@@ -1,0 +1,2 @@
+# Octave verification constructs variants of these multiline input records.
+examples/cases/*.txt text eol=lf

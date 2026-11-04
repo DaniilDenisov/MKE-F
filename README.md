@@ -1,188 +1,91 @@
 # МКЭ-Ф
 
-https://mkefweb.com/
+Учебная программа для расчёта плоских и пространственных ферм и рам методом конечных элементов.
 
-[for English - see below](#english)
+[Сайт проекта](https://mkefweb.com/) · [English](#english)
 
-Учебная программа для расчёта плоских ферм и рам методом конечных элементов.
+## Возможности
 
-## Работа с лабораторными
+- Статический, модальный и переходный расчёты на GNU Octave.
+- Браузерный редактор 2D/3D: геометрия, нагрузки, опоры, многоточечные связи (MPC), концевые освобождения, каталог сечений и Undo/Redo.
+- Единая WebGL-сцена: деформации, эпюры, реакции, собственные формы, анимация и графики. Нормальные напряжения и окраска статических результатов по максимальному |σx| от продольной силы и изгиба.
+- Сохранение результатов в JSON, сцен 2D — в PNG/SVG, сцен 3D — в PNG; SVG графиков и сечений, CSV численных данных. Просмотр сохранённых JSON без решателя; справочник RU/EN.
 
-Docker-развёртывание удобно для расчётов через веб-интерфейс, но плохо подходит
-для лабораторных: Octave работает внутри контейнера, а команды из справочника
-предполагают интерактивную работу с исходным кодом и матрицами.
+Для новых назначений и расчётов пространственных рам доступны сплошной круг, прямоугольник, круглая, квадратная и прямоугольная трубы; старые результаты открытых профилей можно просматривать. Стеснённая депланация и смещение центра сдвига не учитываются.
 
-Для лабораторных установите GNU Octave непосредственно в свою систему,
-запустите его и выберите папку репозитория `MKE-F` в качестве текущей рабочей
-папки (в ней находится файл `setup.m`). Команды из лабораторных выполняйте
-в командном окне Octave. Например, для запуска всех лабораторных:
+В сборке Docker Compose из исходников [диагностическая страница](reference/section-fem-lab.html) показывает сетку Tri6 и поле напряжений для пяти профилей. Расчёт выполняет Python-сервис с библиотекой `sectionproperties`. Для статических результатов панель **Member von Mises maxima · static** в постпроцессоре выводит максимум по каждому стержню и его отношение к введённому пределу текучести. [Методика и ограничения](reference/RU/08-result-recovery.html#section-fem-title).
 
-```octave
-setup;
-addpath(fullfile(pwd, 'reference', 'examples'));
-results = run_reference_examples();
+## Запуск
+
+Установите Docker Desktop или Docker Engine с Compose. Для текущих возможностей выполните в корне клонированного репозитория:
+
+```sh
+docker compose up --build -d
 ```
 
-Задания и пояснения находятся в [учебном справочнике](reference/RU/index.html).
+Откройте [http://127.0.0.1:8080](http://127.0.0.1:8080). Остановка: `docker compose down`.
 
-## Запуск в Docker
+В препроцессоре список **Load example…** рядом со ссылкой **Examples** загружает готовую модель: по два простых примера для статического, модального и переходного расчётов в 2D и 3D (всего 12). Выберите пример и нажмите **Run analysis**. Примеры также доступны при открытии редактора без сервера; модель можно изменить и сохранить через **Download TXT**.
 
-Установите Docker Desktop или Docker Engine с Compose.
-
-### Готовый релиз из Docker Hub
-
-После клонирования этого репозитория выполните в его корне:
+Для готового релиза:
 
 ```sh
 docker compose -f compose.release.yaml up -d
 ```
 
-Docker Compose автоматически загрузит и запустит образы релиза `0.8.4`:
+[compose.release.yaml](compose.release.yaml) закреплён на версии **0.8.4** и не включает невыпущенные изменения текущих исходников. Остановка: `docker compose -f compose.release.yaml down`.
 
-- [denisovds/mkef-solver](https://hub.docker.com/r/denisovds/mkef-solver)
-- [denisovds/mkef-web](https://hub.docker.com/r/denisovds/mkef-web)
+## Документация и лабораторные
 
-Какой именно Git-коммит записан в образ, можно проверить по стандартной
-OCI-метке:
+- [Справочник](reference/RU/index.html) · [3D: быстрый старт](reference/RU/3d-quick-start.html) · [Пример модели](examples/cases/CaseSpatialQuickStart.txt).
+- [Запуск, настройка и проверки](reference/RU/project-operations.html) · [История изменений](CHANGELOG.md).
+- [Проверочный пример NAFEMS Challenge 5](reference/RU/06a-nafems-challenge-5.html).
 
-```sh
-docker image inspect denisovds/mkef-web:0.8.4 --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}'
-docker image inspect denisovds/mkef-solver:0.8.4 --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}'
-```
-
-Новые релизные образы собираются скриптом `scripts/release_images.py`. Он
-отказывается работать с незакоммиченными изменениями, сверяет версию с
-`CHANGELOG.md` и `compose.release.yaml`, добавляет полный Git SHA в OCI-метку и
-создаёт дополнительный идентифицирующий тег вида `git-<короткий SHA>`. Для
-строгой фиксации конкретного содержимого образа следует использовать digest
-`sha256:...`, который Docker показывает после публикации.
-
-После запуска откройте <http://127.0.0.1:8080>.
-
-Остановить приложение:
-
-```sh
-docker compose -f compose.release.yaml down
-```
-
-### Сборка из исходников
-
-Чтобы собрать образы локально, выполните в корне репозитория:
-
-```sh
-docker compose up --build
-```
-
-Если используется отдельная команда Compose: `docker-compose up --build`.
-
-После запуска откройте <http://127.0.0.1:8080>.
-
-Подробности находятся в [справочнике](reference/index.html):
-[Русский](reference/RU/index.html) · [English](reference/EN/index.html).
-Запуск, настройка и проверка проекта:
-[Русский](reference/RU/project-operations.html) · [English](reference/EN/project-operations.html).
-
-### NAFEMS Challenge Problem 5
-
-Сохранённые входы: `examples/cases/nafems-challenge-5/manifest.csv`.
-Короткая инструкция: [RU](reference/RU/06a-nafems-challenge-5.html) ·
-[EN](reference/EN/06a-nafems-challenge-5.html).
-Из корня проекта в Octave: `setup; run_nafems_challenge5('quick');`
-или `run_nafems_challenge5('full');`. Результаты — в
-`output/nafems-challenge-5/`. После quick браузерная проверка:
-`node scripts/test_nafems_browser.cjs` (Playwright).
-Исследование использует текущие рамные элементы и матрицы массы; расхождение
-с опубликованными 22 формами указано в инструкции, параметры не подгоняются.
+Для лабораторных установите GNU Octave локально, откройте папку репозитория, выполните `setup` и следуйте заданиям справочника. Лабораторные предполагают интерактивную работу с кодом и матрицами; Docker предназначен прежде всего для веб-интерфейса.
 
 ---
 
 # English
 
-MKE-F is an educational program for analyzing planar trusses and frames using the finite element method.
+MKE-F is an educational finite element program for planar and spatial trusses and frames.
 
-## Working with the labs
+[Project website](https://mkefweb.com/)
 
-The Docker deployment is convenient for calculations through the web interface,
-but is not well suited to the labs: Octave runs inside a container, while the
-handbook commands assume interactive work with source code and matrices.
+## Features
 
-For the labs, install GNU Octave directly on your system, launch it, and select
-the `MKE-F` repository folder as the current working directory (the folder
-containing `setup.m`). Run the lab commands in the Octave command window.
-For example, to run all labs:
+- Static, modal and transient analysis using GNU Octave.
+- Browser-based 2D/3D editor: geometry, loads, supports, multipoint constraints (MPC), end releases, section catalog and undo/redo.
+- Shared WebGL scene: deformation, force diagrams, reactions, mode shapes, animation and plots. Normal stresses and static result coloring by maximum |σx| from axial force and bending.
+- Save results as JSON, 2D scenes as PNG/SVG and 3D scenes as PNG; SVG charts and sections, CSV numerical data. View saved JSON without the solver; RU/EN handbook.
 
-```octave
-setup;
-addpath(fullfile(pwd, 'reference', 'examples'));
-results = run_reference_examples();
+New spatial frame assignments and analyses support solid circles, rectangles, circular tubes, square tubes and rectangular tubes; legacy open-section results remain viewable. Restrained warping and shear-center offsets are not modeled.
+
+In the source-built Docker Compose stack, the [section diagnostic page](reference/section-fem-lab.html) displays the Tri6 mesh and stresses for five profiles. A Python service runs `sectionproperties`. In the static postprocessor, **Member von Mises maxima · static** shows the maximum for each member and its ratio to an optional tensile yield strength. [Methods and limits](reference/EN/08-result-recovery.html#section-fem-title).
+
+## Getting started
+
+Install Docker Desktop or Docker Engine with Compose. To use the current features, run from the cloned repository root:
+
+```sh
+docker compose up --build -d
 ```
 
-Assignments and explanations are available in the [educational handbook](reference/EN/index.html).
+Open [http://127.0.0.1:8080](http://127.0.0.1:8080). Stop with `docker compose down`.
 
-## Running with Docker
+In the preprocessor, **Load example…** beside **Examples** loads a complete model: two simple examples for each static, modal and transient analysis in 2D and 3D (12 total). Select one and click **Run analysis**. Examples also load when the editor is opened offline; edit the model and save it with **Download TXT**.
 
-Install Docker Desktop or Docker Engine with Compose.
-
-### Prebuilt release from Docker Hub
-
-After cloning this repository, run the following from its root directory:
+For the prebuilt release:
 
 ```sh
 docker compose -f compose.release.yaml up -d
 ```
 
-Docker Compose will automatically download and start the `0.8.4` release images:
+[compose.release.yaml](compose.release.yaml) is pinned to **0.8.4** and does not include unreleased changes in the current source. Stop with `docker compose -f compose.release.yaml down`.
 
-- [denisovds/mkef-solver](https://hub.docker.com/r/denisovds/mkef-solver)
-- [denisovds/mkef-web](https://hub.docker.com/r/denisovds/mkef-web)
+## Documentation and labs
 
-To check which Git commit an image contains, inspect its standard OCI label:
+- [Handbook](reference/EN/index.html) · [3D quick start](reference/EN/3d-quick-start.html) · [Example model](examples/cases/CaseSpatialQuickStart.txt).
+- [Setup, configuration and checks](reference/EN/project-operations.html) · [Changelog (Russian)](CHANGELOG.md).
+- [NAFEMS Challenge 5 benchmark](reference/EN/06a-nafems-challenge-5.html).
 
-```sh
-docker image inspect denisovds/mkef-web:0.8.4 --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}'
-docker image inspect denisovds/mkef-solver:0.8.4 --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}'
-```
-
-New release images are built with `scripts/release_images.py`. The script refuses
-to run with uncommitted changes, checks the version against `CHANGELOG.md` and
-`compose.release.yaml`, adds the full Git SHA to an OCI label, and creates an
-additional identifying tag in the form `git-<short SHA>`. To pin the exact image
-contents, use the `sha256:...` digest reported by Docker after publishing.
-
-Once the application starts, open <http://127.0.0.1:8080>.
-
-To stop the application:
-
-```sh
-docker compose -f compose.release.yaml down
-```
-
-### Building from source
-
-To build the images locally, run the following from the repository root:
-
-```sh
-docker compose up --build
-```
-
-If you use the standalone Compose command: `docker-compose up --build`.
-
-Once the application starts, open <http://127.0.0.1:8080>.
-
-Further details are available in the [handbook](reference/index.html):
-[Русский](reference/RU/index.html) · [English](reference/EN/index.html).
-For setup, configuration, and verification:
-[Русский](reference/RU/project-operations.html) · [English](reference/EN/project-operations.html).
-
-### NAFEMS Challenge Problem 5
-
-Saved input cases: `examples/cases/nafems-challenge-5/manifest.csv`.
-Quick guide: [RU](reference/RU/06a-nafems-challenge-5.html) ·
-[EN](reference/EN/06a-nafems-challenge-5.html).
-From the project root in Octave, run `setup; run_nafems_challenge5('quick');`
-or `run_nafems_challenge5('full');`. Results are written to
-`output/nafems-challenge-5/`. After the quick run, check the browser views with
-`node scripts/test_nafems_browser.cjs` (Playwright).
-The study uses the current frame elements and mass matrices. The discrepancy
-with the 22 published modes is documented in the guide; parameters are not
-tuned to match them.
+For the labs, install GNU Octave locally, open the repository folder, run `setup` and follow the handbook. Labs assume interactive work with code and matrices; Docker primarily serves the web interface.

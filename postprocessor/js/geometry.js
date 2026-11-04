@@ -20,6 +20,20 @@
     if (!(length > 0)) throw new Error('Element length must be positive.');
     return { c: dx / length, s: dy / length, length: length };
   };
+  // Nonuniform stress stations must use the same displacement interpolation as
+  // the ordinary drawing; interpolating already scaled polyline points loses extrema.
+  G.elementInterpolator = function(dataset,element,vector,scale) {
+    const a=dataset.nodesById.get(element.nodeIds[0]),b=dataset.nodesById.get(element.nodeIds[1]),basis=G.elementBasis(a,b),c=basis.c,s=basis.s,L=basis.length;
+    const u=G.elementEndDisplacement(dataset,element,1,vector),v=G.elementEndDisplacement(dataset,element,2,vector);
+    return function(t){
+      let dx=(1-t)*u.x+t*v.x,dy=(1-t)*u.y+t*v.y;
+      if(element.type===113){const axial=(1-t)*(c*u.x+s*u.y)+t*(c*v.x+s*v.y),t2=t*t,t3=t2*t;
+        const transverse=(1-3*t2+2*t3)*(-s*u.x+c*u.y)+L*(t-2*t2+t3)*u.r+(3*t2-2*t3)*(-s*v.x+c*v.y)+L*(-t2+t3)*v.r;
+        dx=c*axial-s*transverse;dy=s*axial+c*transverse;
+      }
+      return {x:a.x+(b.x-a.x)*t+scale*dx,y:a.y+(b.y-a.y)*t+scale*dy};
+    };
+  };
   G.sample112 = function (first, second, firstD, secondD, scale) {
     return [
       { x: first.x + scale * firstD.x, y: first.y + scale * firstD.y },

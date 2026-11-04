@@ -1,5 +1,8 @@
 function constraints = buildConstraintTransform(model)
 %BUILDCONSTRAINTTRANSFORM Validate SPC/MPC and build sparse u = T*q.
+if isfield(model,'nodalKinematics')
+    constraints=buildSpatialConstraints(model); return;
+end
 [fixed, free] = partitionDOFs(model);
 n = model.numberOfDOFs;
 mpcs = struct([]);
@@ -69,7 +72,7 @@ for i = order
 end
 if any(~isfinite(nonzeros(T))), error('MKEF:InvalidMPC','MPC chain overflowed during elimination.'); end
 constraints = struct('T',T,'C',C,'fixedDOFs',fixed,'freeDOFs',free, ...
-    'dependentDOFs',dependent,'independentDOFs',independent,'order',order,'hasMPC',count > 0);
+    'dependentDOFs',dependent,'independentDOFs',independent,'order',order,'hasMPC',count > 0,'hasTransform',count>0);
 end
 
 function id = dofID(model,node,dof,m,i)
@@ -77,10 +80,10 @@ if ~isnumeric(node) || ~isscalar(node) || ~isfinite(node) || node ~= fix(node) |
     fail(m,i,'Invalid node reference.');
 end
 if ~isnumeric(dof) || ~isscalar(dof) || ~isfinite(dof) || dof ~= fix(dof) || dof < 1 || dof > model.dofPerNode
-    fail(m,i,sprintf('Invalid DOF at node %d (thetaZ is unavailable for trusses).',node));
+    fail(m,i,sprintf('Invalid DOF at node %d; expected component index 1..%d.',node,model.dofPerNode));
 end
 id = model.dofMap(node,dof);
-if id == 0, fail(m,i,sprintf('Node %d: thetaZ is absent because all connected ends release Mz.',node)); end
+if id == 0, fail(m,i,sprintf('Node %d: component %d is inactive after end releases.',node,dof)); end
 end
 
 function fail(m,i,message)

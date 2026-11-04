@@ -1,4 +1,4 @@
-function [dofMap, registry, elements] = buildDOFRegistry(nodeCount, dofPerNode, elements, releases)
+function [dofMap, registry, elements] = buildDOFRegistry(nodeCount, dofPerNode, elements, releases, labels)
 %BUILDDOFREGISTRY Assign shared nodal and private released-end coordinates.
 released = false(numel(elements), 2);
 for i = 1:numel(releases)
@@ -29,7 +29,7 @@ if any(released(:))
 end
 dofMap = zeros(nodeCount,dofPerNode);
 registry = struct('id',{},'kind',{},'nodeId',{},'component',{},'elementId',{},'end',{});
-labels = {'ux','uy','thetaZ'};
+if nargin<5, labels = {'ux','uy','thetaZ'}; end
 for node = 1:nodeCount
     for d = 1:dofPerNode
         if active(node,d)

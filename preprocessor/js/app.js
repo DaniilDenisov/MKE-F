@@ -1,58 +1,11 @@
-(function (global) {
-  'use strict';
-  var M = global.MKEFPre, F = M.caseFormat;
-  var state, renderer, undoStack = [], redoStack = [], dirty = false, selection = null;
-  var elements = {};
-  var sectionToolId = null, sectionToolAngle = 0;
-  var apiReady = false, activeJobId = null, pollTimer = null, navigatingToResult = false;
-  var activeJobStorageKey = 'mkef-active-job';
-
-  function byId(id) { return document.getElementById(id); }
-  function clone(value) {
-    if (Array.isArray(value)) return value.map(clone);
-    if (value && typeof value === 'object') {
-      var result = {}; Object.keys(value).forEach(function (key) { result[key] = clone(value[key]); }); return result;
-    }
-    return value;
-  }
-  function clear(element) { while (element.firstChild) element.removeChild(element.firstChild); }
-  function numeric(input) { return input.value.trim() === '' ? NaN : Number(input.value); }
-  function option(value, label) { var item = document.createElement('option'); item.value = String(value); item.textContent = label; return item; }
-  function cell(row) { var td = document.createElement('td'); row.appendChild(td); return td; }
-  function inputCell(row, value, type, change, disabled) {
-    var input = document.createElement('input'); input.type = type || 'number'; input.step = type === 'text' ? '' : 'any'; input.value = String(value); input.disabled = !!disabled;
-    input.addEventListener('change', function () { change(type === 'text' ? input.value : numeric(input)); }); cell(row).appendChild(input); return input;
-  }
-  function selectCell(row, value, choices, change) {
-    var select = document.createElement('select'); choices.forEach(function (choice) { select.appendChild(option(choice[0], choice[1])); }); select.value = String(value); select.addEventListener('change', function () { change(Number(select.value)); }); cell(row).appendChild(select); return select;
-  }
-  function idCell(row, value) { var td = cell(row); td.textContent = String(value); }
-  function deleteCell(row, action, label) { var button = document.createElement('button'); button.type = 'button'; button.textContent = 'Delete'; button.setAttribute('aria-label', 'Delete ' + label); button.addEventListener('click', action); cell(row).appendChild(button); }
-  function snapshot() { return clone(state); }
-  function equal(a, b) {
-    if (Object.is(a, b)) return true;
-    if (!a || !b || typeof a !== 'object' || typeof b !== 'object') return false;
-    var keys = Object.keys(a);
-    return keys.length === Object.keys(b).length && keys.every(function (key) { return Object.prototype.hasOwnProperty.call(b, key) && equal(a[key], b[key]); });
-  }
-
-  function commit(operation) {
-    var previous = snapshot(), before = M.modelEdit.counts(state);
-    try { operation(); } catch (error) { state = previous; render(); setError(error.message); return; }
-    if (equal(previous, state)) return;
-    undoStack.push(previous); if (undoStack.length > 100) undoStack.shift(); redoStack = [];
-    dirty = true; render();
-    var message = M.modelEdit.describe(before, state); if (message) setNotice(message);
-  }
-
-  function setNotice(message) {
-    var warnings=[];
-    if (state) { try { warnings=global.MKEFReleases.warnings(state); } catch (_) { /* Incomplete supports are reported by validation. */ } }
-    elements.notice.textContent = [message || ''].concat(warnings).filter(Boolean).join('\n');
-    elements.notice.hidden = !elements.notice.textContent;
-  }
-  function setError(message) { elements.error.textContent = message || ''; elements.error.hidden = !message; }
-
+(function(global){
+ 'use strict';
+ var M=global.MKEFPre,F=M.editorAdapter,state,spatialPanel,selection=null,dirty=false;
+ var elements={},apiReady=false,activeJobId=null,pollTimer=null;
+ var activeJobStorageKey='mkef-active-job',submitting=false,activeSubmission=null,completedSubmission=null;
+ function byId(id){return document.getElementById(id);}
+ function setError(message){elements.error.textContent=message||'';elements.error.hidden=!message;}
+ function resultSnapshotNote(){const context=activeSubmission||completedSubmission;if(!context)return;let note=byId('spatial-run-snapshot');if(!note){note=document.createElement('p');note.id='spatial-run-snapshot';elements.runPanel.append(note);}const changed=context.model!==state||context.revision!==spatialPanel.history.revision;note.textContent='Analysis snapshot «'+context.name+'», revision '+context.revision+'.'+(changed?' The current model differs from the submitted snapshot.':'');}
   function storedJobId() {
     try { return global.sessionStorage.getItem(activeJobStorageKey); } catch (_) { return null; }
   }
@@ -66,7 +19,7 @@
     elements.runPanel.hidden = false;
     elements.runStatus.textContent = runStatusLabel(job.status);
     elements.runElapsed.textContent = Number(job.elapsedSeconds || 0).toFixed(1) + ' s';
-    elements.runLog.textContent = job.logTail || 'No solver output yet.';
+    elements.runLog.textContent = job.logTail || (job.status === 'succeeded' ? 'Calculation completed. The solver produced no log messages.' : 'No solver output yet.');
     elements.cancelRun.disabled = ['queued', 'running'].indexOf(job.status) < 0;
   }
   function clearPollTimer() { if (pollTimer) { global.clearTimeout(pollTimer); pollTimer = null; } }
@@ -77,40 +30,48 @@
 
   async function pollActiveJob() {
     if (!activeJobId) return;
+    var pollingId=activeJobId;
     try {
-      var job = await global.MKEFApi.getJob(activeJobId);
+      var job = await global.MKEFApi.getJob(pollingId);
+      if(activeJobId!==pollingId)return;
       updateRunPanel(job);
       if (job.status === 'succeeded') {
         var completedId = activeJobId;
-        clearPollTimer(); storeJobId(null); activeJobId = null; navigatingToResult = true;
-        global.location.assign('../postprocessor/?job=' + encodeURIComponent(completedId));
-        return;
+        {completedSubmission=activeSubmission||{name:"Recovered job",revision:null,model:null};activeSubmission=null;clearPollTimer();storeJobId(null);activeJobId=null;
+          var link=byId('spatial-open-result');if(!link){link=document.createElement('a');link.id='spatial-open-result';link.className='button';elements.runPanel.appendChild(link);}link.textContent='Open result';link.href='../postprocessor/?job='+encodeURIComponent(completedId);link.target='_blank';link.rel='noopener';link.hidden=false;render();resultSnapshotNote();return;}
+
       }
       if (['failed', 'canceled', 'timed_out'].indexOf(job.status) >= 0) { finishActiveJob(job); return; }
       pollTimer = global.setTimeout(pollActiveJob, 1000);
     } catch (error) {
+      if(activeJobId!==pollingId)return;
       if (error.status === 404) { clearPollTimer(); storeJobId(null); activeJobId = null; render(); }
+      else pollTimer=global.setTimeout(pollActiveJob,1000);
       setError(error.message);
     }
   }
 
   async function submitCurrentCase() {
-    if (!apiReady || activeJobId) return;
+    if (!apiReady || activeJobId || submitting || spatialPanel.analysisInvalid) return;
     var caseText;
-    try { caseText = F.serialize(state); } catch (error) { setError(error.message); return; }
+    try { var validation=F.validate(state,true);if(validation.length)throw new Error(validation.join('\n'));caseText=F.serialize(state); } catch (error) { setError(error.message); return; }
+    submitting=true;activeSubmission={dimension:state.dimension||2,model:state,name:state.name,revision:spatialPanel.history.revision};completedSubmission=null;var prior=byId('spatial-open-result');if(prior)prior.hidden=true;
     elements.run.disabled = true; setError('');
     elements.runPanel.hidden = false; elements.runStatus.textContent = 'Submitting'; elements.runElapsed.textContent = '0.0 s'; elements.runLog.textContent = 'No solver output yet.'; elements.cancelRun.disabled = true;
     try {
       var job = await global.MKEFApi.createJob(state.name || 'Case', caseText);
+      try{global.sessionStorage.setItem('mkef-job-context',JSON.stringify({id:job.id,dimension:activeSubmission.dimension,name:activeSubmission.name,revision:activeSubmission.revision}));}catch(_){}
       activeJobId = job.id; storeJobId(activeJobId); updateRunPanel(job); pollActiveJob();
-    } catch (error) { elements.runPanel.hidden = true; render(); setError(error.message); }
+    } catch (error) { elements.runPanel.hidden = true; activeSubmission=null;setError(error.message); }
+    finally{submitting=false;render();resultSnapshotNote();}
   }
 
   async function cancelActiveJob() {
     if (!activeJobId) return;
+    var cancelingId=activeJobId;
     elements.cancelRun.disabled = true;
-    try { var job = await global.MKEFApi.cancelJob(activeJobId); updateRunPanel(job); finishActiveJob(job); }
-    catch (error) { setError(error.message); elements.cancelRun.disabled = false; }
+    try { var job = await global.MKEFApi.cancelJob(cancelingId);if(activeJobId!==cancelingId)return;updateRunPanel(job); finishActiveJob(job); }
+    catch (error) {if(activeJobId!==cancelingId)return;setError(error.message); elements.cancelRun.disabled = false; }
   }
 
   async function configureSolver() {
@@ -127,7 +88,7 @@
       elements.solverMessage.textContent = apiReady ? '' : elements.run.title;
       elements.solverMessage.hidden = apiReady;
       var candidate = storedJobId();
-      if (candidate && global.MKEFApi.isValidJobId(candidate)) { activeJobId = candidate; pollActiveJob(); }
+      if (candidate && global.MKEFApi.isValidJobId(candidate)) { activeJobId = candidate;try{activeSubmission=JSON.parse(global.sessionStorage.getItem('mkef-job-context'));if(activeSubmission&&activeSubmission.id!==candidate)activeSubmission=null;}catch(_){}pollActiveJob(); }
     } catch (error) {
       apiReady = false; elements.run.title = error.message;
       elements.solverMessage.textContent = 'Local solver unavailable: ' + error.message;
@@ -136,342 +97,55 @@
     render();
   }
 
-  function currentNode() { return selection && selection.kind === 'node' ? selection.index + 1 : 1; }
-  function canAddConstraints() { return state.nodes.length > 0 && state.elements.length > 0 && [112, 113].indexOf(state.elementType) >= 0; }
-  function canAddNodalLoads() { return state.nodes.length > 0 && ['static', 'transient'].indexOf(state.analysis.type) >= 0; }
-  function placementPoint(point) {
-    var x = point.x, y = point.y;
-    if (elements.snapEnabled.checked) {
-      var spacing = numeric(elements.gridSpacing);
-      if (Number.isFinite(spacing) && spacing > 0) { x = Math.round(x / spacing) * spacing; y = Math.round(y / spacing) * spacing; }
+
+ function render(){
+  document.body.classList.add('spatial-mode');
+  elements.elementType.value=String(state.elementType);elements.analysisType.value=state.analysis.type;elements.caseName.value=state.name;
+  elements.elementType.disabled=!!(state.nodes.length||state.elements.length);
+  document.querySelectorAll('[data-spatial-tool]').forEach(b=>{b.disabled=b.dataset.spatialTool!=='select'&&!state.elementType;});
+  for(const id of ['spatial-controls','spatial-tables'])byId(id).hidden=false;
+  byId('spatial-viewport').hidden=false;
+  spatialPanel.render(state,selection);
+  const errors=F.validate(state,true);elements.run.disabled=!apiReady||!!activeJobId||submitting||!!errors.length||spatialPanel.analysisInvalid;
+  elements.download.disabled=state.dimension===2&&!!errors.length;
+  elements.undo.disabled=!spatialPanel.history.undo.length;elements.redo.disabled=!spatialPanel.history.redo.length;
+  dirty=spatialPanel.history.dirty();elements.caseStatus.textContent=state.name+' · '+state.dimension+'D'+(dirty?' · modified':'');
+  elements.validationStatus.textContent=errors.length?'Draft: '+errors[0]:'Model is ready to run';
+  elements.solverMessage.textContent=apiReady?'':elements.run.title;elements.solverMessage.hidden=apiReady;resultSnapshotNote();
+ }
+ function replace(model){spatialPanel.leave();state=model;selection=null;setError('');render();}
+ function discard(){return !dirty||global.confirm('Discard the current unsaved changes?');}
+ function openFile(file){if(!file||!discard())return;if(file.size>M.config.maxFileBytes){setError('The selected file exceeds the 10 MiB limit.');return;}const reader=new FileReader();reader.onload=()=>{try{const text=new TextDecoder('utf-8',{fatal:true,ignoreBOM:true}).decode(reader.result),model=F.parse(text);model.name=file.name.replace(/\.txt$/i,'');replace(model);}catch(e){setError(e.message);}};reader.onerror=()=>setError('Could not read file.');reader.readAsArrayBuffer(file);}
+ document.addEventListener('DOMContentLoaded',()=>{
+  const ids={caseStatus:'case-status',fileInput:'file-input',download:'download-case',undo:'undo',redo:'redo',run:'run-analysis',solverMessage:'solver-message',runPanel:'run-panel',runStatus:'run-status',runElapsed:'run-elapsed',runLog:'run-log',cancelRun:'cancel-run',error:'error-panel',notice:'notice-panel',caseName:'case-name',analysisType:'analysis-type',elementType:'element-type',validationStatus:'validation-status'};
+  for(const key in ids)elements[key]=byId(ids[key]);
+  for(const type of global.MKEFSpatial.registry.types.filter(t=>t.dimension===3)){const o=document.createElement('option');o.value=type.code;o.textContent=type.code+' · 3D '+type.family;elements.elementType.append(o);}
+  spatialPanel=new M.SpatialPanel(next=>{selection=next;render();},()=>{selection=spatialPanel.history.selection;render();});
+  state=F.empty(0);render();
+  const exampleSelect=byId('load-example');
+  for(const analysis of ['static','modal','transient'])for(const dimension of [2,3]){
+    const group=document.createElement('optgroup');group.label=analysis[0].toUpperCase()+analysis.slice(1)+' · '+dimension+'D';
+    for(const example of M.examples.filter(e=>e.analysis===analysis&&e.dimension===dimension)){
+      const option=document.createElement('option');option.value=example.id;option.textContent=example.label;group.append(option);
     }
-    return { x: Number(x.toPrecision(12)), y: Number(y.toPrecision(12)) };
+    exampleSelect.append(group);
   }
-  function defaultElement(node1, node2) {
-    return { node1: node1, node2: node2, area: numeric(elements.defaultArea), youngsModulus: numeric(elements.defaultYoung), density: numeric(elements.defaultDensity), momentOfInertia: state.elementType === 113 ? numeric(elements.defaultInertia) : null };
-  }
-
-  function addNode(point) {
-    var placed = placementPoint(point);
-    commit(function () { state.nodes.push(placed); selection = { kind: 'node', index: state.nodes.length - 1 }; });
-  }
-
-  function addElement(firstIndex, secondIndex) {
-    if ([112, 113].indexOf(state.elementType) < 0) { setNotice('Choose an element family before creating the element.'); return false; }
-    commit(function () { state.elements.push(defaultElement(firstIndex + 1, secondIndex + 1)); selection = { kind: 'element', index: state.elements.length - 1 }; });
-    return true;
-  }
-
-  function addSupport(index) {
-    if (!canAddConstraints() || !state.nodes[index]) return;
-    commit(function () {
-      state.supports.push(global.MKEFSupports.fromType(1, index + 1, state.elementType === 112 ? 2 : 3));
-      selection = { kind: 'node', index: index };
-    });
-  }
-
-  function addNodalLoad(index) {
-    if (!canAddNodalLoads() || !state.nodes[index]) return;
-    commit(function () {
-      state.loads.push({ type: state.analysis.type === 'static' ? 10 : 13, node: index + 1, fx: 0, fy: -1, mz: 0, frequency: null });
-      selection = { kind: 'node', index: index };
-    });
-  }
-
-  function activateCanvasTool(tool) {
-    if (tool === 'section' && renderer.tool !== 'section' && selection && selection.kind === 'element') {
-      var member = state.elements[selection.index];
-      if (member && member.sectionId) { sectionToolId = member.sectionId; sectionToolAngle = member.sectionAngle || 0; }
-    }
-    selection = null;
-    renderer.selection = null;
-    renderer.setTool(tool);
-    render();
-    if (tool === 'section') byId('section-tool-settings').scrollIntoView({ block: 'nearest' });
-  }
-
-  function updateCanvasTool() {
-    byId('new-member-defaults').hidden = renderer.tool !== 'member';
-    byId('section-tool-settings').hidden = renderer.tool !== 'section';
-    var catalog = state.sections || [], sectionSelect = byId('section-tool-id');
-    if (!catalog.some(function (section) { return section.id === sectionToolId; })) sectionToolId = catalog.length ? catalog[0].id : null;
-    clear(sectionSelect);
-    if (!catalog.length) sectionSelect.appendChild(option('', 'No sections yet'));
-    catalog.forEach(function (section) { sectionSelect.appendChild(option(section.id, section.id + ' · ' + section.name)); });
-    sectionSelect.value = sectionToolId === null ? '' : String(sectionToolId);
-    sectionSelect.disabled = !catalog.length;
-    byId('section-tool-angle').value = String(sectionToolAngle);
-    byId('section-tool-angle').disabled = !catalog.length;
-    byId('section-tool-empty').hidden = !!catalog.length;
-    document.querySelectorAll('[data-tool]').forEach(function (button) {
-      var active = button.getAttribute('data-tool') === renderer.tool;
-      button.classList.toggle('active', active); button.setAttribute('aria-pressed', String(active));
-    });
-    byId('canvas-tool-hint').textContent = renderer.tool === 'member'
-      ? (renderer.pendingNode === null ? 'Add element: select first node.' : 'Add element: select second node.')
-      : renderer.tool === 'support' ? 'Add support: select a node.'
-      : renderer.tool === 'load' ? 'Add nodal load: select a node.'
-      : renderer.tool === 'section' ? (catalog.length ? 'Assign section: click elements to apply the chosen section and angle. Esc to finish.' : 'Assign section: create a section in the catalog first.')
-      : renderer.tool === 'node' ? 'Click the canvas to place a node.' : 'Select a node or element, or drag the canvas to pan.';
-  }
-
-  function selectItem(next) {
-    if (renderer.tool === 'section' && next) {
-      if (next.kind !== 'element' || sectionToolId === null) return;
-      selection = next;
-      var member = state.elements[next.index];
-      if (member.sectionId === sectionToolId && (member.sectionAngle || 0) === sectionToolAngle) { render(); return; }
-      commit(function () {
-        member.sectionId = sectionToolId; member.sectionAngle = sectionToolAngle;
-        global.MKEFSections.sync(state);
-      });
-      return;
-    }
-    selection = next; render();
-  }
-
-  function deleteNode(index) {
-    commit(function () {
-      M.modelEdit.deleteNode(state, index);
-      selection = null;
-      activateCanvasTool('select');
-    });
-  }
-
-  function renderNodes() {
-    clear(elements.nodesBody);
-    state.nodes.forEach(function (node, index) {
-      var row = document.createElement('tr'); if (selection && selection.kind === 'node' && selection.index === index) row.className = 'selected-row'; row.addEventListener('click', function (event) { if (['INPUT', 'SELECT', 'BUTTON'].indexOf(event.target.tagName) < 0) selectItem({ kind: 'node', index: index }); }); idCell(row, index + 1);
-      inputCell(row, node.x, 'number', function (value) { commit(function () { M.modelEdit.updateNode(state, index, 'x', value); }); });
-      inputCell(row, node.y, 'number', function (value) { commit(function () { M.modelEdit.updateNode(state, index, 'y', value); }); });
-      deleteCell(row, function () { deleteNode(index); }, 'node ' + (index + 1)); elements.nodesBody.appendChild(row);
-    });
-    elements.nodeCount.textContent = '(' + state.nodes.length + ')';
-  }
-
-  function renderElements() {
-    clear(elements.elementsHead); clear(elements.elementsBody);
-    var header = document.createElement('tr'), headings = ['ID', 'Node 1', 'Node 2', 'A', 'E', 'rho']; if (state.elementType === 113) headings.push('I', 'Release at end 1', 'Release at end 2'); headings.push('Section', 'Orientation', '');
-    headings.forEach(function (heading) { var th = document.createElement('th'); th.textContent = heading; header.appendChild(th); }); elements.elementsHead.appendChild(header);
-    state.elements.forEach(function (item, index) {
-      var row = document.createElement('tr'); if (selection && selection.kind === 'element' && selection.index === index) row.className = 'selected-row'; row.addEventListener('click', function (event) { if (['INPUT', 'SELECT', 'BUTTON'].indexOf(event.target.tagName) < 0) selectItem({ kind: 'element', index: index }); }); idCell(row, index + 1);
-      ['node1', 'node2', 'area', 'youngsModulus', 'density'].forEach(function (field) { inputCell(row, item[field], 'number', function (value) { commit(function () { M.modelEdit.updateElement(state, index, field, value); }); }, !!item.sectionId && field === 'area'); });
-      if (state.elementType === 113) inputCell(row, item.momentOfInertia, 'number', function (value) { commit(function () { M.modelEdit.updateElement(state, index, 'momentOfInertia', value); }); }, !!item.sectionId);
-      if (state.elementType === 113) [1,2].forEach(function (end) {
-        var input=document.createElement('input'); input.type='checkbox'; input.checked=global.MKEFReleases.has(state,index+1,end);
-        input.setAttribute('aria-label','Element '+(index+1)+' release Mz'+end);
-        input.addEventListener('change',function () { var checked=input.checked; commit(function () { M.modelEdit.setRelease(state,index,end,checked); }); });
-        cell(row).appendChild(input);
-      });
-      selectCell(row,item.sectionId || 0,[[0,'Manual A / I']].concat((state.sections || []).map(function (s) {return [s.id,s.name];})),function (id) {commit(function () {item.sectionId=id;item.sectionAngle=item.sectionAngle || 0;global.MKEFSections.sync(state);});});
-      var orientation=selectCell(row,item.sectionAngle || 0,[0,90,180,270].map(function (a) {return [a,a+'°'];}),function (angle) {commit(function () {item.sectionAngle=angle;global.MKEFSections.sync(state);});}); orientation.disabled=!item.sectionId;
-      deleteCell(row, function () { commit(function () { M.modelEdit.deleteElement(state, index); selection = null; }); }, 'element ' + (index + 1)); elements.elementsBody.appendChild(row);
-    });
-    elements.elementCount.textContent = '(' + state.elements.length + ')';
-  }
-
-  function renderMPCs() {
-    var body=byId('mpcs-body'); clear(body);
-    var choices=(state.elementType === 112 ? ['ux','uy'] : ['ux','uy','thetaZ']).map(function (label,i) { return [i+1,label]; });
-    (state.mpcs || []).forEach(function (m,index) {
-      var row=document.createElement('tr'); idCell(row,index+1);
-      inputCell(row,m.depNode,'number',function (v) { commit(function () { m.depNode=v; }); });
-      selectCell(row,m.depDOF,choices,function (v) { commit(function () { m.depDOF=v; }); });
-      var host=cell(row);
-      m.masters.forEach(function (a,j) {
-        var table=document.createElement('table'), term=document.createElement('tr');
-        inputCell(term,a.node,'number',function (v) { commit(function () { a.node=v; }); });
-        selectCell(term,a.dof,choices,function (v) { commit(function () { a.dof=v; }); });
-        inputCell(term,a.coefficient,'number',function (v) { commit(function () { a.coefficient=v; }); });
-        deleteCell(term,function () { commit(function () { m.masters.splice(j,1); }); },'master '+(j+1));
-        table.appendChild(term); host.appendChild(table);
-      });
-      var add=document.createElement('button'); add.textContent='Add master'; add.type='button';
-      add.addEventListener('click',function () { commit(function () { m.masters.push({node:1,dof:1,coefficient:1}); }); }); host.appendChild(add);
-      idCell(row,global.MKEFMPC.equation(m));
-      deleteCell(row,function () { commit(function () { state.mpcs.splice(index,1); }); },'MPC '+(index+1));
-      body.appendChild(row);
-    });
-  }
-
-  function renderSupports() {
-    clear(elements.supportsBody);
-    state.supports.forEach(function (support, index) {
-      var row = document.createElement('tr'); idCell(row, index + 1);
-      inputCell(row, support.node, 'number', function (value) { commit(function () { state.supports[index].node = value; }); });
-      var supportDOFs = state.elementType === 112 ? 2 : 3;
-      selectCell(row, global.MKEFSupports.type(support, supportDOFs), (supportDOFs === 2 ? [1, 3, 2] : [1, 2, 3, 4, 5, 6, 7]).map(function (type) { return [type, type + ' · ' + global.MKEFSupportMarkers.label(type, supportDOFs)]; }), function (value) { commit(function () { state.supports[index] = global.MKEFSupports.fromType(value, support.node, supportDOFs); }); });
-      idCell(row, global.MKEFSupports.label(support, supportDOFs).replace('Fixed: ', ''));
-      deleteCell(row, function () { commit(function () { state.supports.splice(index, 1); }); }, 'support ' + (index + 1)); elements.supportsBody.appendChild(row);
-    });
-    elements.supportCount.textContent = '(' + state.supports.length + ')';
-  }
-
-  function renderLoads() {
-    clear(elements.loadsBody);
-    state.loads.forEach(function (load, index) {
-      var row = document.createElement('tr'); idCell(row, index + 1);
-      var choices = state.analysis.type === 'static' ? [[10, '10 · static']] : [[10, '10 · legacy pulse'], [11, '11 · harmonic'], [12, '12 · pulse'], [13, '13 · step']];
-      if (!choices.some(function (choice) { return choice[0] === load.type; })) choices.push([load.type, load.type + ' · incompatible']);
-      selectCell(row, load.type, choices, function (value) { commit(function () { state.loads[index].type = value; if (value === 11 && !Number.isFinite(state.loads[index].frequency)) state.loads[index].frequency = 1; }); });
-      ['node', 'fx', 'fy', 'mz'].forEach(function (field) { inputCell(row, load[field], 'number', function (value) { commit(function () { state.loads[index][field] = value; }); }, field === 'mz' && state.elementType === 112); });
-      inputCell(row, load.type === 11 ? load.frequency : '', 'number', function (value) { commit(function () { state.loads[index].frequency = value; }); }, load.type !== 11);
-      deleteCell(row, function () { commit(function () { state.loads.splice(index, 1); }); }, 'load ' + (index + 1)); elements.loadsBody.appendChild(row);
-    });
-    elements.loadCount.textContent = '(' + state.loads.length + ')';
-  }
-
-  function renderElementLoads() {
-    clear(elements.elementLoadsBody);
-    (state.elementLoads || []).forEach(function (load, index) {
-      var row = document.createElement('tr'); idCell(row, index + 1);
-      inputCell(row, load.elementId, 'number', function (value) { commit(function () { state.elementLoads[index].elementId = value; }); });
-      selectCell(row, load.type, [[20, 'Uniform'], [21, 'Linear']], function (value) { commit(function () { M.modelEdit.changeLoadType(state, index, value); }); });
-      selectCell(row, load.coordinateSystem, [[1, 'Local'], [2, 'Global']], function (value) { commit(function () { M.modelEdit.changeCoordinates(state, index, value); }); });
-      var member=state.elements[load.elementId-1];
-      var fields=load.type===21 ? ['qx1','qy1','qx2','qy2'] : ['qx','qy'];
-      fields.forEach(function (field, component) {
-        var input=inputCell(row, load[field], 'number', function (value) { commit(function () { state.elementLoads[index][field] = value; }); });
-        var end=component<2 ? 1 : 2, node=member && member['node'+end];
-        input.setAttribute('aria-label', 'Load '+(index+1)+' '+field+(load.type===21 ? ' at node '+node : ''));
-        input.title=load.type===21 ? 'Node '+node+' (element end '+end+')' : 'Uniform intensity';
-        if (load.type===21) {
-          var label=document.createElement('small'); label.className='load-end-label'; label.textContent='Node '+(node || '?');
-          input.parentNode.insertBefore(label,input);
-        }
-      });
-      if (load.type===20) { cell(row).textContent='—'; cell(row).textContent='—'; }
-      deleteCell(row, function () { commit(function () { state.elementLoads.splice(index, 1); }); }, 'element load ' + (index + 1));
-      elements.elementLoadsBody.appendChild(row);
-    });
-    elements.elementLoadCount.textContent = '(' + (state.elementLoads || []).length + ')';
-    elements.addElementLoad.disabled = state.analysis.type !== 'static' || state.elementType !== 113 || !selection || selection.kind !== 'element' || !state.elements[selection.index];
-  }
-
-  function renderSelection() {
-    elements.nodeCoordinateEditor.hidden = true;
-    if (!selection) elements.selectionDetails.textContent = 'Nothing selected';
-    else if (selection.kind === 'node' && state.nodes[selection.index]) {
-      var node = state.nodes[selection.index]; elements.selectionDetails.textContent = 'Node ' + (selection.index + 1); elements.nodeCoordinateEditor.hidden = false; elements.selectedNodeX.value = node.x; elements.selectedNodeY.value = node.y;
-    } else if (selection.kind === 'element' && state.elements[selection.index]) {
-      var item = state.elements[selection.index]; elements.selectionDetails.textContent = 'Element ' + (selection.index + 1) + '\nNodes ' + item.node1 + ' — ' + item.node2 + '\nType ' + state.elementType;
-      [1,2].forEach(function (end) { if (global.MKEFReleases.has(state,selection.index+1,end)) elements.selectionDetails.textContent += '\nMz'+end+' released'; });
-    } else { selection = null; elements.selectionDetails.textContent = 'Nothing selected'; }
-  }
-
-  function renderAnalysis() {
-    elements.analysisType.value = state.analysis.type; elements.elementType.value = String(state.elementType); elements.caseName.value = state.name;
-    elements.transientSettings.hidden = state.analysis.type !== 'transient';
-    elements.timeStep.value = state.analysis.timeStep; elements.duration.value = state.analysis.duration; elements.monitorNode.value = state.analysis.monitorNode;
-    clear(elements.monitorDOF); var labels = state.elementType === 112 ? ['ux', 'uy'] : (state.elementType === 113 ? ['ux', 'uy', 'thetaZ'] : []); labels.forEach(function (label, index) { elements.monitorDOF.appendChild(option(index + 1, (index + 1) + ' · ' + label)); }); elements.monitorDOF.value = String(state.analysis.monitorDOF);
-    elements.defaultInertia.hidden = state.elementType !== 113; elements.defaultInertiaLabel.hidden = state.elementType !== 113;
-    elements.addLoad.disabled = !canAddNodalLoads();
-    elements.addLoad.title = elements.addLoad.disabled ? 'Choose static or transient analysis and add nodes before adding nodal loads.' : '';
-    ['add-support', 'add-mpc', 'mpc-axis-create'].forEach(function (id) {
-      var button = byId(id);
-      button.disabled = !canAddConstraints();
-      button.title = button.disabled ? 'Choose an element family and add nodes and elements before adding constraints.' : '';
-    });
-  }
-
-  function render() {
-    if ((renderer.tool === 'support' && !canAddConstraints()) || (renderer.tool === 'load' && !canAddNodalLoads())) {
-      selection = null; renderer.selection = null; renderer.setTool('select');
-    }
-    setNotice(''); M.renderSections(state,commit); renderAnalysis(); renderNodes(); renderElements(); renderSupports(); renderMPCs(); renderLoads(); renderElementLoads(); renderSelection();
-    var gridSize = numeric(elements.gridSpacing), validGridSize = Number.isFinite(gridSize) && gridSize > 0;
-    elements.gridSpacing.setCustomValidity(validGridSize ? '' : 'Grid size must be positive and finite.');
-    renderer.setGrid(elements.gridEnabled.checked, validGridSize ? gridSize : 1);
-    if (renderer.pendingNode !== null && !state.nodes[renderer.pendingNode]) renderer.pendingNode = null;
-    renderer.selection = selection; renderer.draw(state); updateCanvasTool();
-    var errors = F.validate(state), text = '';
-    if (!errors.length) { text = F.serialize(state); elements.validationStatus.textContent = 'Valid ' + state.analysis.type + ' case · ready to download'; elements.validationStatus.className = 'status-valid'; elements.download.disabled = false; }
-    else { text = '# Resolve validation errors to generate a case file.\n'; elements.validationStatus.textContent = errors.length + ' validation issue' + (errors.length === 1 ? '' : 's'); elements.validationStatus.className = ''; elements.download.disabled = true; }
-    elements.preview.value = text; setError(errors.slice(0, 6).join('\n') + (errors.length > 6 ? '\n…' : ''));
-    elements.run.disabled = errors.length > 0 || !apiReady || !!activeJobId;
-    elements.undo.disabled = !undoStack.length; elements.redo.disabled = !redoStack.length; elements.caseStatus.textContent = dirty ? state.name + ' · modified' : state.name;
-  }
-
-  function confirmDiscard() { return !dirty || global.confirm('Discard the current unsaved changes?'); }
-
-  function resetTablePanels() {
-    var tables = document.querySelector('.tables');
-    tables.querySelectorAll('details').forEach(function (panel) { panel.open = false; });
-    tables.scrollTop = 0;
-  }
-
-  function loadText(text, filename) {
-    try {
-      var parsed = F.parse(text); parsed.name = (filename || 'Case').replace(/\.txt$/i, '') || 'Case';
-      state = parsed; undoStack = []; redoStack = []; dirty = false; selection = null; setError(''); render(); activateCanvasTool('select'); renderer.fit(); renderer.draw(state);
-      if (!state.analysis.type) setNotice('This legacy case has no analysis section. Choose a task before exporting.');
-    } catch (error) { setError(error.message); }
-  }
-
-  function openFile(file) {
-    if (!file || !confirmDiscard()) return;
-    if (file.size > M.config.maxFileBytes) { setError('The selected file exceeds the 10 MiB limit.'); return; }
-    var reader = new FileReader(); reader.onload = function () { loadText(String(reader.result), file.name); }; reader.onerror = function () { setError('The selected file could not be read.'); }; reader.readAsText(file);
-  }
-
-  function bind() {
-    elements = {
-      caseStatus: byId('case-status'), fileInput: byId('file-input'), download: byId('download-case'), undo: byId('undo'), redo: byId('redo'),
-      run: byId('run-analysis'), solverMessage: byId('solver-message'), runPanel: byId('run-panel'), runStatus: byId('run-status'), runElapsed: byId('run-elapsed'), runLog: byId('run-log'), cancelRun: byId('cancel-run'),
-      error: byId('error-panel'), notice: byId('notice-panel'), caseName: byId('case-name'), analysisType: byId('analysis-type'), elementType: byId('element-type'),
-      transientSettings: byId('transient-settings'), timeStep: byId('time-step'), duration: byId('duration'), monitorNode: byId('monitor-node'), monitorDOF: byId('monitor-dof'),
-      gridEnabled: byId('grid-enabled'), snapEnabled: byId('snap-enabled'), gridSpacing: byId('grid-spacing'), defaultArea: byId('default-area'), defaultYoung: byId('default-young'), defaultDensity: byId('default-density'), defaultInertia: byId('default-inertia'), defaultInertiaLabel: byId('default-inertia-label'),
-      selectionDetails: byId('selection-details'), nodeCoordinateEditor: byId('node-coordinate-editor'), selectedNodeX: byId('selected-node-x'), selectedNodeY: byId('selected-node-y'), nodesBody: byId('nodes-body'), elementsHead: byId('elements-head'), elementsBody: byId('elements-body'), supportsBody: byId('supports-body'), loadsBody: byId('loads-body'), elementLoadsBody: byId('element-loads-body'), elementLoadCount: byId('element-load-count'), addElementLoad: byId('add-element-load'), nodeCount: byId('node-count'), elementCount: byId('element-count'), supportCount: byId('support-count'), loadCount: byId('load-count'), preview: byId('case-preview'), validationStatus: byId('validation-status'), addLoad: byId('add-load')
-    };
-    renderer = new M.Renderer(byId('viewport'), { addNode: addNode, addElement: addElement, addSupport: addSupport, addNodalLoad: addNodalLoad, select: selectItem, placementPoint: placementPoint, toolChanged: updateCanvasTool });
-    state = F.newModel('', 0); resetTablePanels(); render(); renderer.fit(); renderer.draw(state);
-    byId('new-case').addEventListener('click', function () { if (!confirmDiscard()) return; state = F.newModel('', 0); undoStack = []; redoStack = []; dirty = false; selection = null; resetTablePanels(); render(); activateCanvasTool('select'); renderer.fit(); });
-    elements.fileInput.addEventListener('change', function () { openFile(elements.fileInput.files[0]); elements.fileInput.value = ''; });
-    elements.run.addEventListener('click', submitCurrentCase);
-    elements.cancelRun.addEventListener('click', cancelActiveJob);
-    elements.download.addEventListener('click', function () { try { var text = F.serialize(state), blob = new Blob([text], { type: 'text/plain;charset=utf-8' }), url = URL.createObjectURL(blob), link = document.createElement('a'); link.href = url; link.download = (state.name.replace(/[^A-Za-z0-9._ -]/g, '_') || 'Case') + '.txt'; link.click(); setTimeout(function () { URL.revokeObjectURL(url); }, 0); dirty = false; render(); } catch (error) { setError(error.message); } });
-    elements.undo.addEventListener('click', function () { if (!undoStack.length) return; redoStack.push(snapshot()); state = undoStack.pop(); selection = null; dirty = true; render(); });
-    elements.redo.addEventListener('click', function () { if (!redoStack.length) return; undoStack.push(snapshot()); state = redoStack.pop(); selection = null; dirty = true; render(); });
-    byId('reset-view').addEventListener('click', function () { renderer.fit(); renderer.draw(state); });
-    elements.caseName.addEventListener('change', function () { state.name = elements.caseName.value.trim() || 'Case'; dirty = true; render(); });
-    elements.analysisType.addEventListener('change', function () { var value = elements.analysisType.value; commit(function () { state.analysis.type = value; }); });
-    elements.elementType.addEventListener('change', function () { var value = Number(elements.elementType.value); if (state.elements.length) { global.alert('Delete all elements before changing the element family.'); elements.elementType.value = String(state.elementType); return; } if (value === 112 && (state.loads.some(function (load) { return load.mz !== 0; }) || (state.analysis.type === 'transient' && state.analysis.monitorDOF > 2))) { global.alert('Set all load moments to zero and choose monitor DOF 1 or 2 before changing to a truss.'); elements.elementType.value = String(state.elementType); return; } commit(function () { global.MKEFSupports.changeFamily(state, value); }); });
-    [['timeStep', elements.timeStep], ['duration', elements.duration], ['monitorNode', elements.monitorNode]].forEach(function (binding) { binding[1].addEventListener('change', function () { var value = numeric(binding[1]); commit(function () { state.analysis[binding[0]] = value; }); }); });
-    elements.monitorDOF.addEventListener('change', function () { commit(function () { state.analysis.monitorDOF = Number(elements.monitorDOF.value); }); });
-    elements.gridEnabled.addEventListener('change', function () { renderer.setGrid(elements.gridEnabled.checked, numeric(elements.gridSpacing)); });
-    elements.gridSpacing.addEventListener('change', function () { var value = numeric(elements.gridSpacing), valid = Number.isFinite(value) && value > 0; elements.gridSpacing.setCustomValidity(valid ? '' : 'Grid size must be positive and finite.'); if (valid) { renderer.setGrid(elements.gridEnabled.checked, value); renderer.refreshNodePreview(); } });
-    elements.snapEnabled.addEventListener('change', function () { renderer.refreshNodePreview(); });
-    elements.selectedNodeX.addEventListener('change', function () { if (!selection || selection.kind !== 'node') return; var index = selection.index, value = numeric(elements.selectedNodeX); commit(function () { M.modelEdit.updateNode(state, index, 'x', value); }); });
-    elements.selectedNodeY.addEventListener('change', function () { if (!selection || selection.kind !== 'node') return; var index = selection.index, value = numeric(elements.selectedNodeY); commit(function () { M.modelEdit.updateNode(state, index, 'y', value); }); });
-    document.querySelectorAll('[data-tool]').forEach(function (button) { button.addEventListener('click', function () {
-      var tool = button.getAttribute('data-tool');
-      if (tool === 'member' && state.nodes.length < 2) { setNotice('Add at least two nodes first.'); return; }
-      if (tool === 'support' && !canAddConstraints()) return;
-      if (tool === 'load' && !canAddNodalLoads()) return;
-      activateCanvasTool(tool);
-    }); });
-    document.addEventListener('keydown', function (event) {
-      if (event.key !== 'Escape' || event.isComposing) return;
-      if (!selection && renderer.pendingNode === null && renderer.tool !== 'section') return;
-      event.preventDefault();
-      activateCanvasTool(renderer.tool === 'section' ? 'select' : renderer.tool);
-    });
-    byId('section-tool-id').addEventListener('change', function () { sectionToolId = Number(this.value); });
-    byId('section-tool-angle').addEventListener('change', function () { sectionToolAngle = Number(this.value); });
-    byId('add-mpc').addEventListener('click',function () { if (!canAddConstraints()) return; commit(function () {
-      state.mpcs = state.mpcs || [];
-      state.mpcs.push({depNode:currentNode(),depDOF:1,rhs:0,masters:[{node:currentNode() === 1 ? 2 : 1,dof:1,coefficient:1}]});
-    }); });
-    byId('mpc-axis-create').addEventListener('click',function () { if (!canAddConstraints()) return; commit(function () {
-      var m=global.MKEFMPC.onAxis(state,numeric(byId('mpc-axis-i')),numeric(byId('mpc-axis-j')),numeric(byId('mpc-axis-k')));
-      state.mpcs = state.mpcs || []; state.mpcs.push(m);
-    }); });
-    elements.addElementLoad.addEventListener('click', function () { if (elements.addElementLoad.disabled) return; commit(function () { state.elementLoads.push({ type: 20, elementId: selection.index + 1, coordinateSystem: 2, qx: 0, qy: -1 }); }); });
-    var drop = byId('drop-zone'); drop.addEventListener('dragover', function (event) { event.preventDefault(); }); drop.addEventListener('drop', function (event) { event.preventDefault(); if (event.dataTransfer.files.length) openFile(event.dataTransfer.files[0]); });
-    global.addEventListener('beforeunload', function (event) { if (!dirty || navigatingToResult) return; event.preventDefault(); event.returnValue = ''; });
-    byId('show-section-axes').addEventListener('change',function () {renderer.draw();});
-    configureSolver();
-  }
-
-  document.addEventListener('DOMContentLoaded', bind);
+  exampleSelect.onchange=()=>{
+    const example=M.examples.find(e=>e.id===exampleSelect.value);exampleSelect.value='';
+    if(!example||!discard())return;
+    try{const model=F.parse(example.text);model.name=example.name;replace(model);}catch(e){setError(e.message);}
+  };
+  byId('new-case').onclick=()=>{if(discard())replace(F.empty(0));};
+  elements.fileInput.onchange=()=>{openFile(elements.fileInput.files[0]);elements.fileInput.value='';};
+  elements.elementType.onchange=()=>{if(state.nodes.length||state.elements.length){render();return;}const next=F.empty(Number(elements.elementType.value));next.name=state.name;next.analysis={...state.analysis};replace(next);};
+  elements.analysisType.onchange=()=>spatialPanel.changeAnalysis(elements.analysisType.value);
+  elements.caseName.onchange=()=>spatialPanel.execute(h=>h.rename(elements.caseName.value.trim()||'Case'));
+  elements.undo.onclick=()=>spatialPanel.travel(true);elements.redo.onclick=()=>spatialPanel.travel(false);
+  byId('reset-view').onclick=()=>spatialPanel.scene&&spatialPanel.scene.fitModel();
+  elements.download.onclick=()=>{try{const text=spatialPanel.history.text(),url=URL.createObjectURL(new Blob([text],{type:'text/plain;charset=utf-8'})),a=document.createElement('a');a.href=url;a.download=state.name.replace(/[^A-Za-z0-9._ -]/g,'_')+'.txt';a.click();setTimeout(()=>URL.revokeObjectURL(url),0);spatialPanel.history.saved=spatialPanel.history.revision;render();}catch(e){setError(e.message);}};
+  elements.run.onclick=submitCurrentCase;elements.cancelRun.onclick=cancelActiveJob;
+  document.addEventListener('keydown',event=>{if(event.isComposing||document.querySelector('dialog[open]'))return;const typing=event.target.closest('input,textarea,select,[contenteditable="true"]');if(!typing&&(event.ctrlKey||event.metaKey)&&['z','y'].includes(event.key.toLowerCase())){event.preventDefault();spatialPanel.travel(event.key.toLowerCase()==='z'&&!event.shiftKey);}else if(!typing&&event.key==='Delete'&&!event.ctrlKey&&!event.metaKey&&!event.altKey){event.preventDefault();spatialPanel.confirmDelete();}else if(event.key==='Escape'){event.preventDefault();spatialPanel.setTool('select');selection=null;render();}});
+  const drop=byId('drop-zone');drop.addEventListener('dragover',e=>e.preventDefault());drop.addEventListener('drop',e=>{e.preventDefault();openFile(e.dataTransfer.files[0]);});
+  global.addEventListener('beforeunload',e=>{if(!dirty)return;e.preventDefault();e.returnValue='';});configureSolver();
+ });
 }(window));

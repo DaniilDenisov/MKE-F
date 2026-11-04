@@ -42,6 +42,7 @@
         <li><a href="15-sparse-matrix-assembly.html">Разреженная сборка матриц</a></li>
       </ol>
       <h2>Приложение</h2>
+      <p><a href="3d-quick-start.html">3D: быстрый старт</a></p>
       <p><a href="capabilities.html">Возможности МКЭ-Ф</a></p>
       <p><a href="project-operations.html">Запуск, настройка и проверка проекта</a></p>
       <p class="offline-note">Работает без интернета. Теория, примеры и интерактивные главы в одном справочнике.</p>
@@ -52,7 +53,8 @@
       <h1>МКЭ-Ф: документация по методу конечных элементов</h1>
       <p class="lead">Этот справочник - связь основных идей метода конечных элементов с функциями проекта МКЭ-Ф. Он работает без интернета и без Octave.</p>
 
-      <section aria-labelledby="route-title">
+      <div class="callout"><p><a href="3d-quick-start.html">3D: быстрый старт</a> — типы элементов, редактор, сечения, результаты и ограничения. Прежние главы и лабораторные 2D сохраняют свой порядок.</p></div>
+<section aria-labelledby="route-title">
         <h2 id="route-title">Таков путь</h2>
         <div class="chapter-grid">
           <article class="card">
@@ -150,7 +152,7 @@ results = run_reference_examples();</code></pre>
           <span class="callout__title">Расчёт через GUI</span>
           <p>Чтобы создать или открыть модель, выполнить расчёт и сразу посмотреть результат в браузере, запустите из корня репозитория:</p>
           <pre><code>docker compose up --build</code></pre>
-          <p>Для старой отдельной команды Compose используйте <code>docker-compose up --build</code>. Затем откройте <a href="http://127.0.0.1:8080/preprocessor/">http://127.0.0.1:8080/preprocessor/</a>, подготовьте модель и нажмите <strong>Run analysis</strong>. GNU Octave работает внутри контейнера, а готовый JSON автоматически открывается в постпроцессоре.</p>
+          <p>Для старой отдельной команды Compose используйте <code>docker-compose up --build</code>. Затем откройте <a href="http://127.0.0.1:8080/preprocessor/">http://127.0.0.1:8080/preprocessor/</a>, подготовьте модель и нажмите <strong>Run analysis</strong>. GNU Octave работает внутри контейнера. После статуса <strong>Completed</strong> нажмите <strong>Open result</strong>, чтобы открыть результат в отдельной вкладке постпроцессора.</p>
         </div>
 
         <div class="callout">
@@ -206,7 +208,8 @@ results = run_reference_examples();</code></pre>
           <li><a href="../examples/run_reference_examples.m"><code>run_reference_examples.m</code></a> — запуск всех лабораторных одной командой.</li>
         </ul>
       </section>
-    </main>
+    <section><h2>Текущие возможности</h2><p>Веб-интерфейс использует общую сцену 2D/3D, каталог сечений и расчёты static/modal/transient. Сводка и ограничения — в <a href="capabilities.html">таблице возможностей</a>, запуск текущих исходников и проверки Docker — в <a href="project-operations.html">эксплуатации проекта</a>. Отдельный <a href="08-result-recovery.html#section-fem-title">экспериментальный FEM сечения</a> не является режимом основного постпроцессора.</p></section>
+</main>
   </div>
 
   <nav class="page-nav" aria-label="Навигация между главами">

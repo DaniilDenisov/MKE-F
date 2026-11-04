@@ -1,7 +1,7 @@
 (function (M) {
   'use strict';
   var V=M.mpcView={};
-  function clear(el) { while (el.firstChild) el.removeChild(el.firstChild); }
+  function clear(el) { if(el.clear){el.clear();return;} while (el.firstChild) el.removeChild(el.firstChild); }
   function format(v) { return Number(v.toPrecision(7)).toString(); }
   V.mount=function (dataset,renderer,panel) {
     clear(panel); panel.hidden=!dataset.raw.model.mpcs;
@@ -26,12 +26,6 @@
     ['Node','DOF','Support reaction','MPC force'].forEach(function (label) { var th=document.createElement('th'); th.textContent=label; head.appendChild(th); }); table.appendChild(head);
     var body=document.createElement('tbody'); table.appendChild(body); var scroll=document.createElement('div'); scroll.style.overflow='auto'; scroll.style.maxHeight='260px'; scroll.appendChild(table); panel.appendChild(scroll);
     var chart=M.svgElement('svg',{id:'mpc-history-chart',role:'img','aria-label':'MPC multiplier history'}); panel.appendChild(chart);
-    model.mpcs.forEach(function (m,i) {
-      var p=dataset.nodesById.get(m.depNode), group=M.svgElement('g',{'data-mpc-id':m.id,stroke:'#7c3aed','stroke-width':renderer.size*.002,fill:'none'});
-      var tooltip=M.svgElement('title'); tooltip.textContent='MPC '+m.id+': '+window.MKEFMPC.equation(m); group.appendChild(tooltip);
-      m.masters.forEach(function (term) { var q=dataset.nodesById.get(term.node); group.appendChild(M.svgElement('line',{x1:p.x,y1:-p.y,x2:q.x,y2:-q.y,'stroke-dasharray':renderer.size*.025+' '+renderer.size*.012})); });
-      group.appendChild(M.svgElement('circle',{cx:p.x,cy:-p.y,r:renderer.size*.02})); renderer.layers.mpcs.appendChild(group);
-    });
     function vector(name,index) {
       if (!a[name]) return null;
       if (a.type==='static') return a[name];
@@ -39,22 +33,7 @@
       var values=new Array(model.numberOfDOFs || model.nodes.length*model.dofPerNode).fill(null);
       a.globalDOFIds.forEach(function (id,row) { values[id-1]=a[name][row][index]; }); return values;
     }
-    function drawForces(layer,values,color,label) {
-      clear(layer); if (!values) return;
-      var max=Math.max.apply(null,values.map(function (v) { return Math.abs(v||0); }).concat([1e-30])), size=renderer.size*.12;
-      model.nodes.forEach(function (node,row) {
-        var ids=model.dofMap[row], fx=values[ids[0]-1]||0, fy=values[ids[1]-1]||0, moment=ids.length>2?(values[ids[2]-1]||0):0;
-        var magnitude=Math.hypot(fx,fy), path='';
-        if (magnitude>max*1e-10) {
-          var dx=fx/magnitude*size, dy=-fy/magnitude*size, x=node.x,y=-node.y;
-          path='M '+(x-dx)+' '+(y-dy)+' L '+x+' '+y+' M '+(x-dx*.25-dy*.12)+' '+(y-dy*.25+dx*.12)+' L '+x+' '+y+' L '+(x-dx*.25+dy*.12)+' '+(y-dy*.25-dx*.12);
-        }
-        if (Math.abs(moment)>max*1e-10) {
-          path+=' '+window.MKEFMomentSymbol.path(node.x,-node.y,size*.45,moment);
-        }
-        if (path) { var symbol=M.svgElement('path',{d:path,stroke:color,fill:'none','stroke-width':2,'vector-effect':'non-scaling-stroke','data-node-id':node.id}); var tip=M.svgElement('title'); tip.textContent=label+' node '+node.id+': Fx='+format(fx)+', Fy='+format(fy)+', Mz='+format(moment); symbol.appendChild(tip); layer.appendChild(symbol); }
-      });
-    }
+    function drawForces(layer,values,color) {renderer.setForces(layer.key,values,color,false);}
     state.update=function (index) {
       state.index=index||0;
       var equation=Number(select.value), m=model.mpcs[equation], unit=m.depDOF===3?dataset.raw.metadata.units.moment:dataset.raw.metadata.units.force;

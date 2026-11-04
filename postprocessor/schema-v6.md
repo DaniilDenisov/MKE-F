@@ -14,18 +14,27 @@ unique positive integers, names are nonempty Unicode strings. Types and dimensio
 |---|---|---|
 | `rectangle` | `b,h` | Solid rectangle |
 | `circle` | `d` | Solid circle |
-| `square_tube` | `b,t` | Square tube with outer side b and uniform wall t |
-| `rectangular_tube` | `b,h,t` | Rectangular tube with outer width b, height h and uniform wall t |
+| `square_tube` | `b,t,inner_radius?` | Square tube with outer side b and uniform wall t |
+| `rectangular_tube` | `b,h,t,inner_radius?` | Rectangular tube with outer width b, height h and uniform wall t |
 | `circular_tube` | `d,t` | Circular tube with outer diameter d and uniform wall t |
 | `channel` | `b,h,tw,tf` | Web at negative z, opening towards positive z |
 | `tee` | `b,h,tw,tf` | Centered web, top flange at positive y |
 | `ibeam` | `b,h,tw,tf` | Centered web and equal top/bottom flanges |
 
-All dimensions use model length units and must be positive finite values.
+All dimensions use model length units and must be positive finite values, except
+the optional `inner_radius`, which must be finite and nonnegative.
 For open profiles `tw < b`; `tf < h` for a tee, `2*tf < h` otherwise.
 Tubes require `2*t < b` (square), `2*t < min(b,h)` (rectangular), or
-`2*t < d` (circular). Square and rectangular tubes have sharp corners.
-No fillets, flange slopes, torsion, eccentricity or out-of-plane DOFs.
+`2*t < d` (circular). Missing or zero `inner_radius` preserves sharp corners.
+A positive inside corner radius gives an outside radius `inner_radius + t`,
+strictly less than half the smaller outside dimension. Rounded corners change
+the exact area and second moments, using square-minus-quarter-circle integrals.
+The same saved radius is used by the Python stress service. Edit the section in
+the preprocessor and rerun the structural solve; old result files retain their
+original geometry and forces. The v7 spatial format uses the same dimension.
+Its automatic tube J uses the thin-wall closed-section formula with the rounded
+median-line area and perimeter; manual J remains an explicit override.
+No flange slopes, eccentricity or out-of-plane DOFs in v6.
 Areas and centroidal second moments are calculated from nonoverlapping rectangles
 and the parallel-axis theorem, or analytically for a circle or annulus.
 

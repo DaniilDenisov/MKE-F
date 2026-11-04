@@ -7,11 +7,15 @@ classdef FEMesh < handle
         numberOfForceBCs = 0;
         numberOfFixBCs = 0;
         dofPerNode;
+        dimension = 2;
+        dofLabels = {};
+        nodalKinematics = [];
+        rigidMotionMap = [];
         numberOfDOFs;
         dofRegistry;
         releases = struct('elementId',{},'end',{},'component',{},'sourceLine',{});
         warnings = {};
-        sections = struct('id',{},'name',{},'type',{},'dimensions',{});
+        sections = struct('id',{},'name',{},'type',{},'dimensions',{},'torsion',{});
         elementSections = zeros(0,3);
         iMnod;
         allMeshElems;
@@ -72,6 +76,20 @@ classdef FEMesh < handle
                         obj.readElements(fid, 112, markerLine);
                     case 'elems_113'
                         obj.readElements(fid, 113, markerLine);
+                    case 'elems_1133'
+                        obj.readElements(fid, 1133, markerLine);
+                    case 'elems_1436'
+                        obj.readElements(fid, 1436, markerLine);
+                    case 'bcfix_3d'
+                        obj.readSpatialSupports(fid);
+                    case 'bcforce_stat_3d'
+                        obj.readSpatialLoads(fid,10);
+                    case 'bcforce_harm_3d'
+                        obj.readSpatialLoads(fid,11);
+                    case 'bcforce_pulse_3d'
+                        obj.readSpatialLoads(fid,12);
+                    case 'bcforce_step_3d'
+                        obj.readSpatialLoads(fid,13);
                     case 'mpc'
                         obj.readMPC(fid);
                     case 'releases'
@@ -92,6 +110,10 @@ classdef FEMesh < handle
                         obj.readElementLoads(fid, 20);
                     case 'eload_linear'
                         obj.readElementLoads(fid, 21);
+                    case 'eload_uniform_3d'
+                        obj.readSpatialElementLoads(fid,20);
+                    case 'eload_linear_3d'
+                        obj.readSpatialElementLoads(fid,21);
                     case 'bcforce_harm'
                         obj.readLoads(fid, 11, 6, 'harmonic load');
                     case 'bcforce_pulse'
@@ -106,12 +128,17 @@ classdef FEMesh < handle
 
             obj.validateCompleteModel();
             obj.applySections();
-            [obj.iMnod,obj.dofRegistry,obj.allMeshElems] = buildDOFRegistry( ...
-                obj.numberOfNodes,obj.dofPerNode,obj.allMeshElems,obj.releases);
+            if obj.elementType==1436
+                [obj.iMnod,obj.dofRegistry,obj.allMeshElems,obj.nodalKinematics,obj.rigidMotionMap]= ...
+                    buildSpatialDOFs(obj.numberOfNodes,obj.allMeshElems,obj.releases,obj.allNodes);
+            else
+                [obj.iMnod,obj.dofRegistry,obj.allMeshElems] = buildDOFRegistry( ...
+                    obj.numberOfNodes,obj.dofPerNode,obj.allMeshElems,obj.releases,obj.dofLabels);
+            end
             obj.numberOfDOFs = numel(obj.dofRegistry);
             for i = 1:numel(obj.allFixBCs)
                 s = obj.allFixBCs(i);
-                if obj.dofPerNode == 3 && s.fixThetaZ && obj.iMnod(s.node,3) == 0
+                if obj.dimension == 2 && obj.dofPerNode == 3 && s.fixThetaZ && obj.iMnod(s.node,3) == 0
                     message = sprintf('Node %d: thetaZ restraint ignored because all connected ends release Mz.',s.node);
                     obj.warnings{end+1} = message;
                     warning('MKEF:InactiveRotationRestraint','%s',message);
@@ -119,7 +146,7 @@ classdef FEMesh < handle
             end
             for i = 1:size(obj.allForceBCs,1)
                 node = obj.allForceBCs(i,2);
-                if obj.dofPerNode == 3 && obj.iMnod(node,3) == 0 && obj.allForceBCs(i,5) ~= 0
+                if obj.dimension == 2 && obj.dofPerNode == 3 && obj.iMnod(node,3) == 0 && obj.allForceBCs(i,5) ~= 0
                     error('MKEF:InactiveRotationLoad','Node %d: cannot apply Mz to absent thetaZ.',node);
                 end
             end
@@ -127,8 +154,17 @@ classdef FEMesh < handle
             validationModel = struct('fixedBoundaryConditions',obj.allFixBCs, ...
                 'dofPerNode',obj.dofPerNode,'numberOfNodes',obj.numberOfNodes, ...
                 'numberOfDOFs',obj.numberOfDOFs,'dofMap',obj.iMnod, ...
-                'multiPointConstraints',obj.multiPointConstraints);
-            buildConstraintTransform(validationModel);
+                'multiPointConstraints',obj.multiPointConstraints,'dimension',obj.dimension,'dofLabels',{obj.dofLabels});
+            if ~isempty(obj.nodalKinematics), validationModel.nodalKinematics=obj.nodalKinematics; end
+            constraints=buildConstraintTransform(validationModel);
+            if isfield(constraints,'warnings')
+                obj.warnings=[obj.warnings constraints.warnings];
+                for i=1:numel(constraints.warnings), warning('MKEF:InactiveRotationRestraint','%s',constraints.warnings{i}); end
+            end
+            if ~isempty(obj.nodalKinematics)
+                validationModel.forceBoundaryConditions=obj.allForceBCs;
+                for i=1:size(obj.allForceBCs,1), spatialNodalLoad(validationModel,obj.allForceBCs(i,:)); end
+            end
             clear fileCleanup;
         end
 
@@ -143,8 +179,10 @@ classdef FEMesh < handle
                             any([this.sections.id]==s.id) || ~ischar(s.name) || isempty(strtrim(s.name))
                         error('MKEF:InvalidSection','Invalid section ID or name.');
                     end
-                    sectionProperties(s);
-                    this.sections(end+1)=struct('id',s.id,'name',s.name,'type',s.type,'dimensions',s.dimensions);
+                    if ~isfield(s,'torsion'), s.torsion=struct('mode','auto'); end
+                    spatialSectionProperties(s);
+                    if numel(this.sections)>=100000, error('MKEF:InvalidSection','Maximum 100000 sections.'); end
+                    this.sections(end+1)=struct('id',s.id,'name',s.name,'type',s.type,'dimensions',s.dimensions,'torsion',s.torsion);
                 catch err
                     this.fail('MKEF:InvalidSection',lineNumber,'%s',err.message);
                 end
@@ -152,13 +190,25 @@ classdef FEMesh < handle
         end
 
         function applySections(this)
-            used=[];
+            used=false(1,this.numberOfElems);
             for i=1:size(this.elementSections,1)
                 a=this.elementSections(i,:); id=a(1); sid=a(2); angle=a(3);
-                if id~=fix(id) || id<1 || id>this.numberOfElems || any(used==id) || ~any([this.sections.id]==sid)
+                orientationOnly=this.dimension==3 && sid==0 && id==fix(id) && id>=1 && id<=this.numberOfElems && this.allMeshElems(id).type==1133;
+                if id~=fix(id) || id<1 || id>this.numberOfElems || used(id) || (~orientationOnly && ~any([this.sections.id]==sid))
                     error('MKEF:InvalidSection','Invalid or duplicate element section assignment.');
                 end
-                used(end+1)=id;
+                used(id)=true;
+                if orientationOnly
+                    this.allMeshElems(id).sectionAngle=angle; continue;
+                end
+                if this.dimension==3
+                    s=this.sections(find([this.sections.id]==sid,1)); p=spatialSectionProperties(s);
+                    old=this.allMeshElems(id); properties=old.properties; properties(1)=p.area;
+                    if old.type==1436, properties(5:7)=[p.Iy p.Iz p.torsionConstant]; properties=[properties old.referenceY angle]; end
+                    e=createStructuralElement(old.type,old.nodeCoordinates,old.nodeNumbers,properties,this.iMnod);
+                    e.sectionId=sid; e.sectionAngle=angle; e.sectionProperties=p;
+                    this.allMeshElems(id)=e; continue;
+                end
                 s=this.sections(find([this.sections.id]==sid,1)); p=sectionProperties(s,angle);
                 old=this.allMeshElems(id); properties=old.properties; properties(1)=p.area;
                 if old.type==113, properties(4)=p.momentOfInertia; end
@@ -300,16 +350,27 @@ classdef FEMesh < handle
                 sprintf('elems_%d', requestedType), true);
             if this.elementType == 0
                 this.elementType = requestedType;
-                this.dofPerNode = 2 + (requestedType == 113);
+                info = elementTypeInfo(requestedType);
+                this.dimension = info.dimension;
+                this.dofLabels = info.dofLabels;
+                this.dofPerNode = info.dofPerNode;
+                if this.dimension == 3
+                    this.allFixBCs = struct('node',{},'fixUx',{},'fixUy',{},'fixUz',{},'fixThetaX',{},'fixThetaY',{},'fixThetaZ',{});
+                    this.allForceBCs = zeros(0,9);
+                    this.elementLoads=struct('type',{},'elementId',{},'coordinateSystem',{},'ends',{});
+                end
                 this.iMnod = reshape( ...
                     1:(this.numberOfNodes*this.dofPerNode), ...
                     this.dofPerNode, this.numberOfNodes).';
             end
 
-            if requestedType == 112
+            if ismember(requestedType,[112 1133])
                 fieldCount = 6;
                 description = ...
                     'truss element [112,node1,node2,A,E,rho]';
+            elseif requestedType==1436
+                fieldCount=14;
+                description='frame [1436,n1,n2,A,E,rho,G,Iy,Iz,J,refYx,refYy,refYz,angleDegrees]';
             else
                 fieldCount = 7;
                 description = ...
@@ -382,6 +443,7 @@ classdef FEMesh < handle
         end
 
         function readFixedConditions(this, fid)
+            if this.dimension == 3, error('MKEF:InvalidConstraint','Use bcfix_3d for a spatial model.'); end
             this.requireElements(this.sourceLineNumber);
             conditionCount = this.readBlockCount(fid, 'bcfix', false);
             conditions = zeros(conditionCount, 5);
@@ -407,6 +469,7 @@ classdef FEMesh < handle
         end
 
         function readElementLoads(this, fid, loadType)
+            if this.dimension==3, error('MKEF:InvalidElementLoad','Use spatial element load blocks ending in _3d.'); end
             this.requireElements(this.sourceLineNumber);
             count = this.readBlockCount(fid, 'element load', false);
             fieldCount = 5 + 2*(loadType == 21);
@@ -433,6 +496,7 @@ classdef FEMesh < handle
         end
 
         function readLoads(this, fid, expectedType, fieldCount, description)
+            if this.dimension == 3, error('MKEF:InvalidNodalLoad','Use spatial load blocks ending in _3d.'); end
             this.requireElements(this.sourceLineNumber);
             loadCount = this.readBlockCount(fid, description, false);
             loads = zeros(loadCount, 6);
@@ -458,6 +522,55 @@ classdef FEMesh < handle
             end
             this.allForceBCs = [this.allForceBCs; loads];
             this.numberOfForceBCs = size(this.allForceBCs, 1);
+        end
+
+        function readSpatialElementLoads(this,fid,type)
+            this.requireElements(this.sourceLineNumber);
+            if this.dimension~=3, error('MKEF:InvalidElementLoad','Spatial loads require a spatial model.'); end
+            count=this.readBlockCount(fid,'spatial element loads',false);
+            for i=1:count
+                [line,n]=this.readDataLine(fid,'spatial element load');
+                v=this.parseNumericRecord(line,n,6+3*(type==21),'type,element,coordinates,qx1,qy1,qz1[,qx2,qy2,qz2]');
+                if v(1)~=type || v(2)~=fix(v(2)) || v(2)<1 || v(2)>this.numberOfElems || ~ismember(v(3),[1 2]) || ~any(v(4:end))
+                    this.fail('MKEF:InvalidElementLoad',n,'Invalid spatial element load.');
+                end
+                if this.allMeshElems(v(2)).type~=1436, error('MKEF:UnsupportedElementLoad','Distributed loads require frames.'); end
+                ends=[v(4:6).' v(4:6).']; if type==21, ends(:,2)=v(7:9).'; end
+                this.elementLoads(end+1)=struct('type',type,'elementId',v(2),'coordinateSystem',v(3),'ends',ends);
+            end
+        end
+
+        function readSpatialSupports(this,fid)
+            this.requireElements(this.sourceLineNumber);
+            if this.dimension~=3, error('MKEF:InvalidConstraint','Spatial supports require a spatial element type.'); end
+            fields={'fixUx','fixUy','fixUz','fixThetaX','fixThetaY','fixThetaZ'};
+            count=this.readBlockCount(fid,'bcfix_3d',false);
+            for i=1:count
+                [line,n]=this.readDataLine(fid,'spatial support');
+                v=this.parseNumericRecord(line,n,7,'node,fixUx,fixUy,fixUz,fixThetaX,fixThetaY,fixThetaZ');
+                this.validateNodeID(v(1),n,'support'); s=struct('node',v(1));
+                for j=1:6, s.(fields{j})=v(j+1); end
+                s=normalizeSupports(s,this.dofPerNode,3);
+                this.allFixBCs(end+1,1)=s;
+            end
+            this.numberOfFixBCs=numel(this.allFixBCs);
+        end
+
+        function readSpatialLoads(this,fid,type)
+            this.requireElements(this.sourceLineNumber);
+            if this.dimension~=3, error('MKEF:InvalidNodalLoad','Spatial loads require a spatial element type.'); end
+            count=this.readBlockCount(fid,'spatial loads',false);
+            for i=1:count
+                [line,n]=this.readDataLine(fid,'spatial load');
+                v=this.parseNumericRecord(line,n,8+(type==11),'type,node,Fx,Fy,Fz,Mx,My,Mz[,frequency]');
+                this.validateNodeID(v(2),n,'load');
+                if v(1)~=type || (type==11 && v(9)<=0) || (this.dofPerNode==3 && any(v(6:8)~=0))
+                    this.fail('MKEF:InvalidNodalLoad',n,'Invalid spatial load type, frequency or moment on a truss.');
+                end
+                row=zeros(1,9); row(1:numel(v))=v;
+                this.allForceBCs(end+1,:)=row;
+            end
+            this.numberOfForceBCs=size(this.allForceBCs,1);
         end
 
         function count = readBlockCount(this, fid, blockName, requirePositive)
@@ -487,9 +600,9 @@ classdef FEMesh < handle
             for i = 1:expectedCount
                 values(i) = str2double(strtrim(fields{i}));
             end
-            if any(~isfinite(values))
+            if ~isreal(values) || any(~isfinite(values))
                 this.fail('MKEF:MalformedInput', lineNumber, ...
-                    '%s contains a missing, nonnumeric, or non-finite value.', ...
+                    '%s contains a missing, nonnumeric, complex or non-finite value.', ...
                     description);
             end
         end
@@ -562,7 +675,9 @@ classdef FEMesh < handle
                         'Transient monitor DOF %d is outside 1..%d.', ...
                         configuration.monitorDOF, this.dofPerNode);
                 end
-                if this.iMnod(configuration.monitorNode,configuration.monitorDOF) == 0
+                inactive=this.iMnod(configuration.monitorNode,configuration.monitorDOF)==0;
+                if ~isempty(this.nodalKinematics), inactive=norm(this.nodalKinematics((configuration.monitorNode-1)*6+configuration.monitorDOF,:))<1e-12; end
+                if inactive
                     this.fail('MKEF:InactiveRotationMonitor',this.analysisSourceLine, ...
                         'Node %d: cannot monitor absent thetaZ.',configuration.monitorNode);
                 end

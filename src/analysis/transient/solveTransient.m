@@ -3,6 +3,7 @@ function result = solveTransient(model, options)
 % All state and load histories are allocated for this call and returned in a
 % result struct. The model is never modified.
 
+validateSpatialFrameSections(model);
 rejectElementLoads(model);
 if ~isstruct(options) || ~isfield(options, 'timeStep') || ...
         ~isfield(options, 'duration')
@@ -28,7 +29,7 @@ T = constraints.T;
 reducedK = model.stiffness(freeDOFs, freeDOFs);
 reducedM = model.mass(freeDOFs, freeDOFs);
 reducedLoads = loads(freeDOFs,:);
-if constraints.hasMPC
+if constraints.hasTransform
     reducedK = T.' * model.stiffness * T;
     reducedM = T.' * model.mass * T;
     reducedLoads = T.' * loads;
@@ -48,7 +49,7 @@ if any(initialDisplacement(fixedDOFs) ~= 0) || ...
     error('MKEF:InvalidInitialConditions', ...
         'Initial displacement and velocity must be zero at restrained DOFs.');
 end
-if constraints.hasMPC
+if constraints.hasTransform
     if norm(initialDisplacement-T*initialDisplacement(independent),inf) > 1e-10*max(1,norm(initialDisplacement,inf)) || ...
             norm(initialVelocity-T*initialVelocity(independent),inf) > 1e-10*max(1,norm(initialVelocity,inf))
         error('MKEF:InvalidInitialConditions','Initial displacement and velocity must satisfy all MPC equations.');
@@ -102,6 +103,11 @@ result = struct();
 result.analysisType = 'transient';
 result.time = (0:stepCount) * timeStep;
 result.displacements = displacements;
+if isfield(model,'nodalKinematics')
+    result.nodalDisplacements=full(model.nodalKinematics*displacements);
+    result.nodalVelocities=full(model.nodalKinematics*velocities);
+    result.nodalAccelerations=full(model.nodalKinematics*accelerations);
+end
 result.velocities = velocities;
 result.accelerations = accelerations;
 result.loadHistory = loads;

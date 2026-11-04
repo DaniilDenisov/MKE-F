@@ -43,9 +43,10 @@
         <p>Для основного сценария нужен Docker Desktop или Docker Engine с Compose. Установленный на компьютере GNU Octave не требуется: решатель GNU Octave 11.3.0 работает внутри контейнера.</p>
         <p>Из корня репозитория выполните:</p>
         <pre><code>docker compose up --build</code></pre>
+        <p>Эта команда собирает текущие исходники. <code>compose.release.yaml</code> использует готовые образы версии 0.8.4: возможности из раздела «Невыпущенные изменения» в CHANGELOG в них не входят.</p>
         <p>Для старой отдельной команды Compose эквивалентный запуск выглядит так:</p>
         <pre><code>docker-compose up --build</code></pre>
-        <p>После готовности контейнеров откройте <a href="http://127.0.0.1:8080">http://127.0.0.1:8080</a>. Создайте модель или загрузите TXT-файл, затем нажмите <strong>Run analysis</strong>. Интерфейс покажет состояние и журнал расчёта, а готовый результат автоматически откроется в постпроцессоре.</p>
+        <p>После готовности контейнеров откройте <a href="http://127.0.0.1:8080">http://127.0.0.1:8080</a>. Создайте модель или загрузите TXT-файл, затем нажмите <strong>Run analysis</strong>. Интерфейс покажет состояние и журнал расчёта. После статуса <strong>Completed</strong> нажмите <strong>Open result</strong>: результат откроется в отдельной вкладке, а модель и история Undo/Redo останутся в редакторе.</p>
         <div class="callout callout--warning">
           <span class="callout__title">Сохранение результата</span>
           <p>Задания и результаты хранятся во временной файловой системе контейнера. Нужный JSON следует скачать до остановки стека.</p>
@@ -88,21 +89,24 @@ docker compose up --build</code></pre>
         <pre><code>docker build --target test -t mkef-solver-test -f docker/solver.Dockerfile .
 docker run --rm mkef-solver-test</code></pre>
 
-        <h3>Тесты браузерных приложений</h3>
-        <p>Откройте с диска файлы <a href="../../preprocessor/tests/index.html"><code>preprocessor/tests/index.html</code></a>, <a href="../../postprocessor/tests/index.html"><code>postprocessor/tests/index.html</code></a> и <a href="../../shared/tests/index.html"><code>shared/tests/index.html</code></a>. Успешный результат содержит только строки <code>PASS</code> и итоговое число пройденных проверок.</p>
-        <p>Если браузер запрещает локальные сценарии, запустите из корня репозитория:</p>
-        <pre><code>python -m http.server 8000</code></pre>
-        <p>Затем откройте <a href="http://localhost:8000/preprocessor/tests/">тесты препроцессора</a>, <a href="http://localhost:8000/postprocessor/tests/">тесты постпроцессора</a> и <a href="http://localhost:8000/shared/tests/">общие тесты</a>. Сервер останавливается сочетанием <kbd>Ctrl+C</kbd>.</p>
-        <p>Локальные тесты численного ядра и требования к GNU Octave описаны в <a href="12-local-octave-workflow.html">главе 12</a>.</p>
+        <h3>Браузерные проверки в Docker</h3>
+        <p>Из корня репозитория соберите образ и запустите нужную проверку (команды подходят для PowerShell и Bash):</p>
+        <pre><code>docker build -t mkef-browser-tests -f docker/browser-tests.Dockerfile .
+docker run --rm -v "${PWD}:/app" -w /app --entrypoint node mkef-browser-tests scripts/test_reference_browser.cjs
+docker run --rm -v "${PWD}:/app" -w /app --entrypoint node mkef-browser-tests scripts/test_unified_editor_browser.cjs
+docker run --rm -v "${PWD}:/app" -w /app --entrypoint node mkef-browser-tests scripts/test_unified_post_browser.cjs</code></pre>
+<p>Для проверки Python-решателя сечений запустите <code>./scripts/section_solver_acceptance/run.ps1</code> в PowerShell. Отчёт охватывает пять профилей. Команда <code>./scripts/test_section_service_compose.ps1</code> проверяет диагностику через Nginx, остановку и восстановление сервиса.</p>
       </section>
 
       <section aria-labelledby="standalone">
         <h2 id="standalone">4. Автономные веб-интерфейсы</h2>
         <p><a href="../../preprocessor/index.html"><code>preprocessor/index.html</code></a> и <a href="../../postprocessor/index.html"><code>postprocessor/index.html</code></a> можно открыть прямо с диска. В таком режиме доступны создание и редактирование TXT-моделей, а также просмотр ранее сохранённых JSON-результатов. Запуск расчёта из препроцессора доступен только через контейнерный API.</p>
         <h3>Препроцессор</h3>
-        <p>Узлы и элементы создаются на SVG-поле, а точные координаты, свойства, опоры и нагрузки редактируются в таблицах. TXT-файл можно открыть кнопкой <strong>Open TXT</strong> или перетащить в окно. Координатная сетка, её размер и шаг привязки настраиваются в панели <strong>Canvas settings</strong>; координаты выбранного узла доступны также в панели <strong>Selection</strong>.</p>
+        <p>Редактор и постпроцессор используют общую WebGL-сцену. Для 2D камера фиксирована в XY; в 3D доступны вращение и рабочие плоскости XY/XZ/YZ. Создавайте узлы и элементы инструментами <strong>Add Node</strong> и <strong>Add Element</strong>; точные значения редактируйте в левой панели выбранного объекта. Таблицы объектов находятся справа. <strong>View</strong> управляет камерой, плоскостью, смещением и шагом сетки; <strong>Snap to grid</strong> и <strong>Snap to nodes</strong> — привязками. TXT открывается через <strong>Open TXT</strong> или перетаскиванием в окно.</p>
         <p>Выбранный вид расчёта сохраняется в секции <code>analysis</code>. Её синтаксис и правила совместимости старых файлов приведены в <a href="10-input-format.html#analysis-title">описании формата</a>.</p>
+        <p>Параметры анализа применяются при изменении полей; некорректные значения блокируют запуск. Результат относится к отправленному снимку модели. Сообщение <em>Calculation completed. The solver produced no log messages.</em> означает успешное завершение без сообщений в журнале. Без WebGL остаются доступны формы, таблицы, графики и SVG-разрез сечения; сцена и её PNG-экспорт недоступны.</p>
         <h3>Постпроцессор и единицы</h3>
+        <p>Результаты сохраняются в JSON. Сцены 2D экспортируются в PNG/SVG, сцены 3D — в PNG. Также доступны SVG графиков и разрезов сечений, CSV численных данных. Формы, таблицы и графики доступны без WebGL, но экспорт сцены требует работающей WebGL-сцены.</p>
         <p>Постпроцессор не преобразует численные значения. Обозначения берутся из <code>metadata.units</code> экспортированного JSON и должны соответствовать согласованной системе исходной модели. Амплитуда нормированной собственной формы произвольна и не является физическим перемещением.</p>
       </section>
 
@@ -141,7 +145,7 @@ docker run --rm mkef-solver-test</code></pre>
           <li><a href="12-local-octave-workflow.html">работа без Docker непосредственно в GNU Octave</a>.</li>
         </ul>
       </section>
-      <section><h2>Проверки равномерных нагрузок</h2><p>Полный набор <code>run_octave_tests</code> включает <code>test_element_loads</code>. Контейнерные тесты API проверяют CaseUniformFrame через настоящий GNU Octave. Браузерные наборы доступны по preprocessor/tests/, postprocessor/tests/ и shared/tests/.</p><p>Для автоматического прогона интерфейса установите Playwright в среде разработки, экспортируйте CaseUniformFrame в <code>output/uniform-result.json</code> и запустите <code>node scripts/test_browser.cjs</code>. При необходимости переменная <code>MKEF_PLAYWRIGHT_MODULE</code> задаёт путь к установленному модулю Playwright. Скрипт проверяет каскадное удаление, Undo/Redo, чтение JSON v2 и сохраняет снимки в output.</p></section>
+      <section><h2>Проверки равномерных нагрузок</h2><p>Полный набор <code>run_octave_tests</code> включает <code>test_element_loads</code>. Контейнерные тесты API проверяют CaseUniformFrame через настоящий GNU Octave. Браузерные наборы доступны по preprocessor/tests/, postprocessor/tests/ и shared/tests/.</p><p>Автоматические проверки общего редактора и постпроцессора запускаются в Docker командами выше. Скриншоты и отчёты сохраняются в <code>output</code>.</p></section>
     </main>
   </div>
 

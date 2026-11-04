@@ -66,7 +66,7 @@ mpc
 1
 3,2,0,2,1,2,0.5,2,2,0.5</code></pre>
         <p>This record is the averaging equation above. <code>rhs</code> must be zero in every analysis; nonzero prescribed displacements are not supported. Equation IDs follow record order across all MPC blocks.</p>
-        <p>In the preprocessor, open <strong>MPC constraints</strong>, click <strong>Add MPC</strong>, choose the dependent node and DOF, and add master rows with coefficients. The displayed equation and purple links identify the relationship; a circle marks the dependent node. Errors prevent export and calculation. Deleting a referenced node removes the entire equation; Undo restores the operation.</p>
+        <p>Select the <strong>MPC</strong> tool and <strong>Mode: Equation</strong>. Choose the dependent node and DOF, then add master components and coefficients with <strong>Add term</strong>. Review <strong>Show equations</strong> and click <strong>Create condition</strong>. <strong>Equal components</strong> and <strong>Node on axis</strong> help generate equations; review them before creating the condition. Select an existing entry on the right and use <strong>Apply condition</strong> to edit it. Errors block export and calculation. Deleting a referenced node removes the entire equation; Undo restores the operation.</p>
       </section>
 
       <section aria-labelledby="compatibility-title">
@@ -102,7 +102,7 @@ mpc
         <p class="equation">r = supportReactions + Cᵀλ<br>mpcForces = Cᵀλ, &nbsp; mpcMultipliers = λ</p>
         <p>Use <code>r = Ku − F</code> in statics, <code>r = Ma + Ku − F</code> in the undamped transient analysis, and <code>r = Kφ − ω²Mφ</code> for a mode. Positive λ acts positively on the dependent DOF and contributes <code>−c·λ</code> to each master. For the averaging equation and λ = 10 N, the MPC forces are +10 N at node 3 and −5 N at nodes 1 and 2.</p>
         <p>At a fixed master, the support reaction is the residual minus the MPC force. The legacy <code>reactions</code> field stores the full residual and must not be interpreted as support reactions alone. The postprocessor provides separate force layers, an equation selector and a transient λ history. Modal values use the stored eigenvector amplitude, not the visual deformation scale.</p>
-        <p>MPC models without releases export <a href="../../postprocessor/schema-v3.md">JSON v3</a>. Time decimation applies to all histories; selected-DOF export filters nodal forces while retaining every equation multiplier. Models without MPCs or releases retain v1/v2. Releases use <a href="04b-end-releases.html">JSON v4 and private end rotations</a>.</p>
+        <p>MPC data starts with <a href="../../postprocessor/schema-v3.md">JSON v3</a>. The version reflects all model features: releases require v4, linear loads v5, section catalogs v6; spatial analyses use v7. Time decimation applies to all histories; selected-DOF export filters nodal forces while retaining every equation multiplier.</p>
       </section>
 
       <section aria-labelledby="examples-title">

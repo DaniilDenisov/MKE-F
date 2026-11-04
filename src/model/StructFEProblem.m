@@ -58,6 +58,9 @@ classdef StructFEProblem < handle
             obj.mesh = FEMesh(obj.filename);
             % Вывод сетки на график.
             if obj.plotting
+                if obj.mesh.dimension==3
+                    error('MKEF:SpatialPlotUnavailable','Spatial calculations are available; spatial plotting is a later milestone. Use plotting=false.');
+                end
                 obj.mesh.Plot2DMesh();
             end
             % Печать номеров узлов в элементах.

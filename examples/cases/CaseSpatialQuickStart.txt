@@ -1,0 +1,22 @@
+# SI: m, N, Pa, kg; undeformed cantilever along global X
+analysis
+static
+nodes
+2
+0,0,0
+2,0,0
+elems_1436
+1
+1436,1,2,0.020000000000000004,2e11,7850,8e10,0.00001666666666666667,0.00006666666666666668,0.00004573633542393663,0,1,0,0
+sections
+1
+{"id":1,"name":"Rectangle 100 x 200 mm","type":"rectangle","dimensions":{"b":0.1,"h":0.2}}
+element_sections
+1
+1,1,0
+bcfix_3d
+1
+1,1,1,1,1,1,1
+bcforce_stat_3d
+1
+10,2,0,-1000,0,0,0,0

@@ -105,7 +105,7 @@ u(freeDOFs) = K(freeDOFs, freeDOFs) \ F(freeDOFs);</code></pre>
       </section>
 
       <section aria-labelledby="postprocessing-title">
-        <h2 id="postprocessing-title">Постпроцессинг в автономном HTML/SVG-просмотрщике</h2>
+        <h2 id="postprocessing-title">Постпроцессинг в автономном WebGL-просмотрщике</h2>
         <p>После расчёта модель и результаты можно сохранить в компактный JSON-файл и открыть в <a href="../../postprocessor/index.html">автономном постпроцессоре MKE-F</a>. Просмотрщик работает непосредственно через <code>file://</code>: локальный сервер, npm и подключение к интернету не требуются.</p>
 
         <h3>1. Выполните расчёт и экспортируйте результат</h3>
@@ -128,7 +128,7 @@ exportOptions = struct( ...
 exportPostprocessorData(model, result, fullfile('output', 'static-frame.json'), exportOptions);</code></pre>
         <div class="callout callout--inspect">
           <span class="callout__title">Тот же расчёт через GUI</span>
-          <p>Из корня репозитория выполните <code>docker compose up --build</code> (для старой отдельной команды — <code>docker-compose up --build</code>) и откройте <a href="http://127.0.0.1:8080/preprocessor/">препроцессор</a>. Выберите <strong>Open TXT</strong>, загрузите <code>examples/cases/CasePreprocessorStatic.txt</code> и нажмите <strong>Run analysis</strong>. После расчёта GNU Octave результат откроется автоматически; кнопка <strong>Download JSON</strong> сохранит его вне временного контейнерного сеанса.</p>
+          <p>Из корня репозитория выполните <code>docker compose up --build</code> (для старой отдельной команды — <code>docker-compose up --build</code>) и откройте <a href="http://127.0.0.1:8080/preprocessor/">препроцессор</a>. Выберите <strong>Open TXT</strong>, загрузите <code>examples/cases/CasePreprocessorStatic.txt</code> и нажмите <strong>Run analysis</strong>. После статуса <strong>Completed</strong> нажмите <strong>Open result</strong>, чтобы открыть результат в отдельной вкладке; кнопка <strong>Download JSON</strong> сохранит его вне временного контейнерного сеанса.</p>
         </div>
         <p><a href="../../src/results/exportPostprocessorData.m"><code>exportPostprocessorData</code></a> проверяет размеры и конечность чисел, исключает глобальные и элементные матрицы и записывает версионированный UTF-8 JSON. Поля единиц являются только подписями: численные значения не пересчитываются. Для показанного экспорта в СИ постпроцессор выводит координаты и перемещения в метрах, силы, нагрузки и реакции — в ньютонах, моменты — в Н·м, напряжения — в Па.</p>
 
