@@ -24,7 +24,8 @@
   <script defer src="js/spatial-transient.js"></script>
   <script defer src="js/export.js"></script><script defer src="js/scene-export.js"></script>
   <script defer src="js/spatial-export.js"></script><script defer src="js/spatial-section-view.js"></script>
-  <script defer src="js/mpc-view.js"></script><script defer src="js/planar-presentation.js"></script><script defer src="js/webgl-renderer.js"></script><script defer src="js/normal-stress-results.js"></script><script defer src="js/normal-stress-view.js"></script><script defer src="js/spatial-normal-stress.js"></script><script defer src="js/app.js"></script>
+  <script defer src="js/mpc-view.js"></script><script defer src="js/planar-presentation.js"></script><script defer src="js/webgl-renderer.js"></script><script defer src="js/normal-stress-results.js"></script><script defer src="js/normal-stress-view.js"></script><script defer src="js/spatial-normal-stress.js"></script>
+  <script defer src="../shared/section-field.js"></script><script defer src="js/section-map.js"></script><script defer src="js/section-inspector.js"></script><script defer src="js/app.js"></script>
 </head>
 <body class="postprocessor-app">
   <header class="toolbar">
@@ -149,7 +150,7 @@
         <p class="chart-help">Move over the chart to inspect original samples. Click or use the arrow keys to select a sample; a history sample also moves the visible frame.</p>
       </section>
       <div class="result-inspector">
-      <section id="section-result-panel" class="section-result-panel" hidden><h2>Normal stress across section</h2><label>x/L <input id="section-position" type="range" min="0" max="1" step="0.001" value="0.5"><input id="section-position-number" aria-label="Section position x/L" type="number" min="0" max="1" step="any" value="0.5"></label><svg id="section-result-svg" class="section-result-svg" xmlns="http://www.w3.org/2000/svg"></svg><pre id="section-result-info"></pre><button id="export-section-svg" type="button">Export section SVG</button></section>
+      <section id="section-result-panel" hidden aria-label="Section stresses"></section>
       <section class="details-panel" aria-live="polite"><h2>Selection</h2><pre id="selection-details">Nothing selected</pre></section>
       </div>
       <div class="status-bar"><span id="analysis-status">Waiting for a dataset</span></div></aside>

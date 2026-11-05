@@ -39,7 +39,7 @@ const hosted=process.env.MKEF_POST_BASE_URL;
       const truss=await load('CaseSpatialTrussSection'),t=await run();
       const expected=Math.abs(truss.analysis.elementResults[0].localEndForces[0])/truss.model.elements[0].properties.area;
       assert.equal(t[4],'OK');assert.ok(Math.abs(Number(t[1])-expected)<=1e-5*Math.max(1,expected));
-      await load('Mises2D_square_tube');const sharp=await run();
+      await load('SectionCase_square_tube_0');const sharp=await run();
       assert.match(sharp[4],/Sharp corner/);assert.match(sharp[1],/\(mesh\)/);
       assert.ok(parseFloat(sharp[1])>0 && Number(sharp[2])>=0 && Number(sharp[2])<=1);
       await page.fill('#member-yield','250000000');assert.equal(await page.locator('#member-rows td').nth(3).textContent(),'—');

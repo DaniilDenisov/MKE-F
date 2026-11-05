@@ -202,6 +202,7 @@
     if(spatialViewer){spatialViewer.dispose();spatialViewer=null;}
     if(dataset && dataset.normalStress)dataset.normalStress.dispose();
     M.memberMaxima.load(next);
+    M.sectionInspector.load(next);
     // The scene needs the visible viewport dimensions before its initial fit.
     elements.dropZone.classList.add('has-data');
     if(parsed.model.dimension===3){renderer.dispose();dataset=null;spatialViewer=new M.SpatialPost(next);elements.title.textContent=parsed.metadata.title||'3D';elements.dropZone.classList.add('has-data');elements.reset.disabled=false;elements.downloadJson.disabled=false;elements.exportSvg.disabled=true;elements.exportPng.disabled=!spatialViewer.scene;return;}

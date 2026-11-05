@@ -5,6 +5,7 @@
   this.sectionScale=U.field(this.settings,'section-scale','Outline scale',1);this.sectionNote=U.el('p','',this.settings);
   for(const e of [this.sectionContours,this.sectionCount,this.sectionScale])e.onchange=()=>this.update();
   for(const [key,label]of [['sigmaMin','σmin'],['sigmaMax','σmax']]){const o=U.el('option',label,this.quantity);o.value=key;}
+  if(this.analysis.type==='static')return;
   this.cut=U.el('section',undefined,this.panel);this.cut.id='spatial-section-cut';U.el('h3','Normal stress σx · N, My, Mz',this.cut);
   this.cutSVG=M.svgElement('svg',{id:'spatial-section-svg',viewBox:'0 0 500 420',width:500,height:420,role:'img','aria-label':'Section: Y up, Z right, viewed from −X'});this.cutSVG.style.maxWidth='100%';this.cut.append(this.cutSVG);
   this.pointY=U.field(this.cut,'point-y','Material point · Y',0);this.pointZ=U.field(this.cut,'point-z','Material point · Z',0);this.pointNote=U.el('p','',this.cut);this.cutNote=U.el('p','',this.cut);
@@ -16,6 +17,7 @@
  const update=proto.update;proto.update=function(){update.call(this);this.updateSections();this.drawSection();};
  const unit=proto.unit;proto.unit=function(q){return q==='sigmaMin'||q==='sigmaMax'?this.ds.raw.metadata.units.stress||'':unit.call(this,q);};
  proto.drawSection=function(){
+  if(this.analysis.type==='static'){M.sectionInspector.select(this.selection?.kind==='element'?this.model.elements[this.selection.index]:null,this);return;}
   const selected=this.selection&&this.selection.kind==='element',e=selected?this.model.elements[this.selection.index]:null,p=e&&S.sectionProfile(e),r=p&&S.recover(this.ds,e,this.vector,this.acceleration),stress=r&&S.sectionStress(e,r),xi=Number(this.position.value);
   this.cutSVG.replaceChildren();this.cutTransform=null;this.boundaryRows=null;
   if(!stress||!Number.isFinite(xi)||xi<0||xi>1){this.cutNote.textContent=!e?'Select a member.':!p?'No catalog section is available. N/A is available; the profile is not inferred from A/I/J.':'Required data was not exported, or x/L is outside [0,1].';this.pointNote.textContent='';return;}
@@ -41,7 +43,7 @@
   this.cutNote.textContent=`Along member length: σmin=${f(stress.minimum.value)} @ x/L=${f(stress.minimum.xi)}, y=${f(stress.minimum.y)}, z=${f(stress.minimum.z)}; σmax=${f(stress.maximum.value)} @ x/L=${f(stress.maximum.xi)}, y=${f(stress.maximum.y)}, z=${f(stress.maximum.z)}.`+(p.open?' Open profile: restrained warping and automatic shear-center offsets are not included.':'')+(this.analysis.type==='modal'?' Modal stresses at the saved amplitude × phase.':'');
   this.boundaryRows=p.loops.flatMap((loop,boundary)=>loop.map(v=>({boundary:boundary+1,...stress.point(xi,v.y,v.z)})));this.boundaryRows.push({boundary:0,...at.minimum},{boundary:0,...at.maximum});
  };
- proto.exportSection=function(kind){if(!this.boundaryRows){this.status.textContent='Select an available section view.';return;}let text,type;
+ proto.exportSection=function(kind){if(this.analysis.type==='static'){const view=M.sectionInspector.view;if(kind==='svg')view.saveSVG();else view.saveCSV();return;}if(!this.boundaryRows){this.status.textContent='Select an available section view.';return;}let text,type;
   if(kind==='csv'){text='boundary,x/L,y,z,sigmaX\r\n'+this.boundaryRows.map(v=>[v.boundary,v.xi,v.y,v.z,v.value].join(',')).join('\r\n');type='text/csv;charset=utf-8';}
   else{const svg=this.cutSVG.cloneNode(true);svg.setAttribute('xmlns',M.svgNS);const meta=M.svgElement('metadata');meta.textContent=this.caption().join('\n');svg.prepend(meta);text=new XMLSerializer().serializeToString(svg);type='image/svg+xml;charset=utf-8';}
   const url=URL.createObjectURL(new Blob([text],{type})),a=document.createElement('a');a.href=url;a.download='MKE-F-3D-section.'+kind;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);

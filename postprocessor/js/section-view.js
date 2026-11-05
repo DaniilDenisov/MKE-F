@@ -25,37 +25,4 @@
     function line(label,p) {return label+' = '+M.staticResults.withUnit(p.value,unit)+' at x/L='+M.staticResults.format(p.xi)+' (x='+M.staticResults.format(p.xi*data.length)+'), η='+M.staticResults.format(p.eta);}
     return ['Section: '+data.section.name+' · '+element.sectionAngle+'°',line('σmin',s.minimum),line('σmax',s.maximum)];
   };
-  var lastElement=null,lastDataset=null,position=.5,resizeObserver=null;
-  V.show=function (dataset,selection) {
-    if(resizeObserver) {resizeObserver.disconnect();resizeObserver=null;}
-    var panel=document.getElementById('section-result-panel');if(!panel)return;
-    var element=selection && selection.kind==='element' && dataset && dataset.elementsById.get(selection.id);
-    panel.hidden=!element || dataset.raw.analysis.type!=='static' || !element.sectionId;
-    if(panel.hidden) {
-      lastElement=null;
-      document.getElementById('section-result-svg').replaceChildren();
-      var exportButton=document.getElementById('export-section-svg');
-      exportButton.disabled=true;exportButton.onclick=null;
-      return;
-    }
-    if(lastDataset!==dataset || lastElement!==element.id)position=.5;
-    lastDataset=dataset;lastElement=element.id;
-    var data=V.get(dataset,element),svg=document.getElementById('section-result-svg'),info=document.getElementById('section-result-info'),range=document.getElementById('section-position'),input=document.getElementById('section-position-number');
-    range.disabled=input.disabled=!data;svg.toggleAttribute('hidden',!data);
-    document.getElementById('export-section-svg').disabled=!data;
-    if(!data) {info.textContent='Assign a section in the preprocessor and rerun to view bending stresses.';return;}
-    function draw() {
-      range.value=input.value=String(position);
-      window.MKEFSectionDrawing.previewResult(svg,data.section,element.sectionAngle,data.stress,position,dataset.raw.metadata.units.stress,data.properties);
-      var a=V.value(data,'sigmaMin',position),b=V.value(data,'sigmaMax',position),u=dataset.raw.metadata.units.stress || '';
-      var limit=Math.max(Math.abs(data.stress.minimum.value),Math.abs(data.stress.maximum.value));
-      info.textContent=data.section.name+' · '+element.sectionAngle+'° · x/L='+M.staticResults.format(position)+'\nσmin='+M.staticResults.withUnit(a,u)+' · σmax='+M.staticResults.withUnit(b,u)+'\nScale: '+M.staticResults.withUnit(-limit,u)+' … '+M.staticResults.withUnit(limit,u)+'\nRed: tension (+) · blue: compression (−). Scale fixed over this element.';
-    }
-    function change(event) {var v=Number(event.target.value);if(event.target.value.trim()==='' || !Number.isFinite(v) || v<0 || v>1) {event.target.setCustomValidity('Use a position between 0 and 1.');return;} event.target.setCustomValidity('');position=v;draw();}
-    range.oninput=change;input.oninput=change;draw();
-    if(typeof ResizeObserver!=='undefined') {resizeObserver=new ResizeObserver(function () {draw();});resizeObserver.observe(svg);}
-    document.getElementById('export-section-svg').onclick=function () {
-      var text=new XMLSerializer().serializeToString(svg),blob=new Blob([text],{type:'image/svg+xml'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='section-E'+element.id+'.svg';a.click();setTimeout(function () {URL.revokeObjectURL(url);},1000);
-    };
-  };
 }(window.MKEFPost));

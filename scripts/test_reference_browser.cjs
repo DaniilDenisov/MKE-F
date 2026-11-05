@@ -189,8 +189,8 @@ async function exercise(page, chapter, english) {
       await page.locator('#spatial-result-rows tr').click();
       await page.locator('#spatial-result-position').fill('0');
       await page.locator('#spatial-result-position').dispatchEvent('change');
-      assert.match(await page.locator('#spatial-section-cut').innerText(),/σmin=-3000000/);
-      assert.match(await page.locator('#spatial-section-cut').innerText(),/σmax=3000000/);
+      assert.match(await page.locator('#section-result-info').innerText(),/σmin=-3000000/);
+      assert.match(await page.locator('#section-result-info').innerText(),/σmax=3000000/);
       console.log(`PASS ${mode}: ${pages.length * 2} pages, ${pages.length - 1} legacy redirects, keyboard switches, visualizer numerical parity, responsive layouts and downloadable 3D example`);
     }
     const noScript = await browser.newContext({ javaScriptEnabled: false });

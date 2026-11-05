@@ -22,7 +22,7 @@ const {chromium}=require(process.env.MKEF_PLAYWRIGHT_MODULE||'playwright'),asser
   assert.match(csv,/sigmaMin.*sigmaMax.*sigmaAbsMax.*sigmaX.*eta.*y.*z/);assert.doesNotMatch(csv,/nuSource|tauXY|vonMises/);
   await page.evaluate(()=>{const csv=MKEFPost.normalStressResults.csv(dataset.normalStress).split('\r\n').slice(1);csv.forEach(line=>{const v=line.split(',').map(s=>s.slice(1,-1)),r=dataset.normalStress.results.get(Number(v[0])).at(Number(v[1]));if(Number(v[4])!==r.sigmaAbsMax||Number(v[5])!==r.sigmaX)throw Error('CSV disagreement');});});
   await page.screenshot({path:path.resolve('output/normal-stress-planar.png')});
-  for(const name of ['SectionCase_rectangular_tube_0','SectionCase_square_tube_0','SectionCase_circular_tube_90',...['circle','circular_tube','rectangle','square_tube','rectangular_tube'].map(s=>'Mises2D_'+s)]){
+  for(const name of ['SectionCase_rectangular_tube_0','SectionCase_square_tube_0','SectionCase_circular_tube_90',...['circle','circular_tube','rectangle','square_tube','rectangular_tube'].map(s=>'section-contract/2D-'+s+'-0')]){
    await load(name);assert.equal(await page.locator('#normal-stress-panel').count(),1);await activate();await select();
    await page.evaluate(()=>{if([...dataset.normalStress.results.values()].some(r=>r.status!=='ok'))throw Error(JSON.stringify([...dataset.normalStress.results]));renderer.flush();if(!renderer.frame.deformed.colors.every(Number.isFinite))throw Error('Non-finite colors');});
   }

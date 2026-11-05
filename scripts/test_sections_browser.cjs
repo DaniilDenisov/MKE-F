@@ -89,7 +89,8 @@ const server=http.createServer((req,res)=>{
     assert(await page.locator('#error-panel').isHidden());
     await page.locator('#planar-result-objects select').selectOption('element');await page.locator('#planar-result-rows tr').first().click();
     assert.match(await page.locator('#selection-details').innerText(),/Element 1/);
-    assert(await page.locator('#section-result-panel').isHidden());
+    assert(await page.locator('#section-result-panel').isVisible());
+    assert.match(await page.locator('#section-result-info').innerText(),/geometry is required/);
     assert.equal(await page.locator('#section-result-svg').evaluate(e=>e.childNodes.length),0);
     assert(await page.locator('#export-section-svg').isDisabled());
     assert.match(await page.locator('#selection-details').innerText(),/assign a section and rerun/);
@@ -103,10 +104,10 @@ const server=http.createServer((req,res)=>{
       if(file.includes('_tube_')) {
         await page.locator('#planar-result-objects select').selectOption('element');await page.locator('#planar-result-rows tr').first().click();
         assert(await page.locator('#section-result-panel').isVisible());
-        const shape=page.locator('#section-result-svg g path');
+        const shape=page.locator('#section-result-svg > path');
         assert.equal(await shape.getAttribute('fill-rule'),'evenodd');
-        assert.equal(await shape.evaluate(e=>e.isPointInFill(new DOMPoint(0,0))),false);
-        assert.match(await shape.locator('..').getAttribute('fill'),/url\(#.*-stress\)/);
+        assert.equal(await shape.evaluate(e=>{const f=MKEFPost.sectionInspector.view.layout.frame;return e.isPointInFill(new DOMPoint(...f.project(0,0)));}),false);
+        assert.match(await shape.getAttribute('fill'),/url\(#section-normal-gradient\)/);
         const download=page.waitForEvent('download');await page.locator('#export-section-svg').click();
         const output=path.join(root,'output',file.replace('.json','.svg'));await (await download).saveAs(output);
         assert.match(fs.readFileSync(output,'utf8'),/fill-rule="evenodd"/);

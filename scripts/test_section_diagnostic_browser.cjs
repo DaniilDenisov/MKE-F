@@ -8,7 +8,7 @@ const assert=require('node:assert/strict');
     page.setDefaultTimeout(150000);
     page.on('pageerror',e=>errors.push(e.message));
     page.on('request',r=>{if(r.url().includes('/api/v1/sections/'))requests.push([r.method(),r.url()]);});
-    await page.goto('http://localhost:8080/reference/section-fem-lab.html');
+    await page.goto((process.env.MKEF_POST_BASE_URL||'http://localhost:8080')+'/reference/section-fem-lab.html');
     assert.equal(requests.length,0);
     await page.fill('#nu','.3');
     const run=()=>page.click('#run');

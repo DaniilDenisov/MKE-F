@@ -15,7 +15,7 @@
 
 Пространственные рамы принимают круг, прямоугольник и круглые, квадратные и прямоугольные трубы при импорте, редактировании, экспорте и расчёте. Депланация и смещение центра сдвига не учитываются.
 
-В Docker Compose [диагностическая страница](reference/section-fem-lab.html) показывает сетку Tri6 и поле напряжений для пяти профилей. Расчёт выполняет Python-сервис с библиотекой `sectionproperties`, включённый в готовый релиз и сборку из исходников. Для статических результатов панель **Member von Mises maxima · static** в постпроцессоре выводит максимум по каждому стержню и его отношение к введённому пределу текучести. [Методика и ограничения](reference/RU/08-result-recovery.html#section-fem-title).
+В статическом постпроцессоре выберите стержень и координату: панель **Section stresses** покажет карты нормальных напряжений и Мизеса, с развёрнутым просмотром и экспортом двух карт в PNG. Сдвиг и кручение рассчитывает Python-сервис `sectionproperties` в Docker Compose; фермы и чистое растяжение/изгиб отображаются без сервиса. Панель **Member von Mises maxima · static** сохраняет максимумы по стержням, а [диагностическая страница](reference/section-fem-lab.html) — независимый ввод геометрии и усилий. [Просмотр и ограничения](reference/RU/08-result-recovery.html#section-view-title).
 
 ## Запуск
 
@@ -64,7 +64,7 @@ Each input TXT requires an `analysis` block. Nodal load 10 is static only; trans
 
 Spatial frames support solid circles, rectangles, circular tubes, square tubes and rectangular tubes at import, editing, export and calculation. Restrained warping and shear-center offsets are not modeled.
 
-In Docker Compose, the [section diagnostic page](reference/section-fem-lab.html) displays the Tri6 mesh and stresses for five profiles. A Python service runs `sectionproperties` and is included in both the prebuilt release and the source build. In the static postprocessor, **Member von Mises maxima · static** shows the maximum for each member and its ratio to an optional tensile yield strength. [Methods and limits](reference/EN/08-result-recovery.html#section-fem-title).
+Select a member and coordinate in the static postprocessor: **Section stresses** shows normal and von Mises maps, with an expanded view and a combined PNG export. Shear/torsion fields use the Python `sectionproperties` service in Docker Compose; trusses and axial/bending-only states display without the service. **Member von Mises maxima · static** retains member-wide maxima; the [diagnostic page](reference/section-fem-lab.html) retains independent geometry and force input. [Viewing and limits](reference/EN/08-result-recovery.html#section-view-title).
 
 ## Getting started
 
