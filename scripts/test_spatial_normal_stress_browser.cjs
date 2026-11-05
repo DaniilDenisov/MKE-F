@@ -10,9 +10,17 @@ const {chromium}=require(process.env.MKEF_PLAYWRIGHT_MODULE||'playwright'),asser
   const select=async()=>{await page.locator('#spatial-result-table').selectOption('element');await page.locator('#spatial-result-rows tr').first().click();};
   await load('CaseSpatialFrameSection');await activate();await select();
   assert.match(await page.locator('#normal-stress-details').innerText(),/y=.*z=/);assert(await page.locator('#normal-stress-chart').isVisible());
-  await page.evaluate(()=>{const s=viewer.normalStress;window.savedMaximum=s.maximum;window.savedResult=s.results.get(1);window.savedCamera=JSON.stringify(viewer.scene.getViewState());if(!(s.maximum>0))throw Error('Missing maximum');if(viewer.frame.deformed.colors.length!==viewer.frame.deformed.positions.length)throw Error('Color count');});
+  await page.evaluate(()=>{const s=viewer.normalStress;window.savedMaximum=s.maximum;window.savedResult=s.results.get(1);window.savedCamera=viewer.scene.getViewState();if(!(s.maximum>0))throw Error('Missing maximum');if(viewer.frame.deformed.colors.length!==viewer.frame.deformed.positions.length)throw Error('Color count');});
   await page.locator('#spatial-result-scale-mode').selectOption('manual');await page.locator('#spatial-result-scale').fill('4');await page.locator('#spatial-result-scale').dispatchEvent('change');
-  await page.evaluate(()=>{if(viewer.normalStress.maximum!==savedMaximum||viewer.normalStress.results.get(1)!==savedResult)throw Error('Scale recomputed recovery');if(JSON.stringify(viewer.scene.getViewState())!==savedCamera)throw Error('Camera changed');viewer.layers.deformed=false;viewer.update();if(viewer.normalStress.maximum!==savedMaximum)throw Error('Hidden members changed scale');viewer.layers.deformed=true;viewer.update();});
+  await page.evaluate(()=>{
+    if(viewer.normalStress.maximum!==savedMaximum||viewer.normalStress.results.get(1)!==savedResult)throw Error('Scale recomputed recovery');
+    const {direction,...camera}=viewer.scene.getViewState(),{direction:previousDirection,...previousCamera}=savedCamera;
+    // Normalizing the view direction can differ by one ULP after a scene update.
+    if(direction.some((v,i)=>!Number.isFinite(v)||Math.abs(v-previousDirection[i])>1e-12)||JSON.stringify(camera)!==JSON.stringify(previousCamera))throw Error('Camera changed');
+    viewer.layers.deformed=false;viewer.update();
+    if(viewer.normalStress.maximum!==savedMaximum)throw Error('Hidden members changed scale');
+    viewer.layers.deformed=true;viewer.update();
+  });
   await page.locator('[data-result-view="fit"]').click();await page.evaluate(()=>{if(viewer.normalStress.results.get(1)!==savedResult)throw Error('Camera recomputed recovery');});
   await page.locator('#normal-stress-chart').press('ArrowRight');assert.match(await page.locator('#normal-stress-sample').innerText(),/σmin=.*σmax=.*max \|σx\|=/);
   await page.locator('#spatial-result-scale-mode').selectOption('auto');await page.locator('[data-result-view="fit"]').click();await page.evaluate(()=>{document.getElementById('result-sidebar').scrollTop=0;viewer.scene.setSelection(null);});await page.screenshot({path:path.resolve('output/normal-stress-spatial.png')});

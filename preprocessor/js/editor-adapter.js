@@ -62,6 +62,12 @@
     equation:(r,m)=>m&&m.dimension===2?global.MKEFMPC.equation(r):global.MKEFSpatialConditions.equation(r),
     equalComponents(m,dependent,master,components){if(m.dimension===3)return global.MKEFSpatialConditions.equalComponents(m,dependent,master,components);if(!components.length)throw Error('Choose at least one component.');const rows=components.map(d=>({depNode:dependent,depDOF:d,rhs:0,masters:[{node:master,dof:d,coefficient:1}]})),native=toNative(m);native.mpcs.push(...rows);const errors=global.MKEFMPC.validate(native);if(errors.length)throw Error(errors.join('\n'));return rows;},
     axisHelper:(m,i,j,k)=>m.dimension===3?global.MKEFSpatialConditions.axisHelper(m,i,j,k):[global.MKEFMPC.onAxis(toNative(m),i,j,k)],
-    convertLoadAxes(m,row,target){const out={...row,components:row.components.slice(),coordinateSystem:target};if(row.coordinateSystem===target)return out;const e=m.elements[row.elementId-1];if(!e)throw Error('Choose an existing element.');const R=basis(m,e);out.components=[];for(let i=0;i<row.components.length;i+=3)out.components.push(...(target===1?global.MKEFSpatialConditions.toLocal:global.MKEFSpatialConditions.toGlobal)(R,row.components.slice(i,i+3)));return out;}
+    convertLoadAxes(m,row,target){
+      const out={...row,components:row.components.slice(),coordinateSystem:target};
+      if(row.coordinateSystem===target)return out;
+      const e=m.elements[row.elementId-1];if(!e)throw Error('Choose an existing element.');
+      out.components=global.MKEFSpatialConditions.transformLoadComponents(row.components,basis(m,e),target);
+      return out;
+    }
   };
 }(window));

@@ -16,6 +16,11 @@
   };
   C.toLocal = function (R,v) { return R.map(function (row) { return dot(row,v); }); };
   C.toGlobal = function (R,v) { return [0,1,2].map(function (j) { return R.reduce(function (s,row,i) { return s+row[j]*v[i]; },0); }); };
+  C.transformLoadComponents = function (components,basis,target) {
+    var result=[],transform=target===1 ? C.toLocal : C.toGlobal;
+    for(var i=0;i<components.length;i+=3) result.push.apply(result,transform(basis,components.slice(i,i+3)));
+    return result;
+  };
   // One-sided Jacobi SVD of a tall matrix with three columns. Do not use A'A:
   // its squared condition number loses the solver's 1e-10 singular-value cutoff.
   C.activeBasis = function (rows) {
@@ -165,8 +170,7 @@
   C.convertLoadAxes=function(m,row,target){
     var out=Object.assign({},row,{components:row.components.slice(),coordinateSystem:target});if(row.coordinateSystem===target)return out;
     if(!m.elements[row.elementId-1])throw new Error('Choose an existing member before converting axes.');
-    var R=C.basis(m,m.elements[row.elementId-1]);out.components=[];
-    for(var i=0;i<row.components.length;i+=3)out.components.push.apply(out.components,(target===1?C.toLocal:C.toGlobal)(R,row.components.slice(i,i+3)));
+    out.components=C.transformLoadComponents(row.components,C.basis(m,m.elements[row.elementId-1]),target);
     return out;
   };
   C.convertLoadType=function(row,target,confirmed){

@@ -29,12 +29,6 @@
   R.warnings = function (model) {
     return model.supports.filter(function (s) { return R.inactive(model,s.node) && global.MKEFSupports.mask(s,3)[2]; }).map(function (s) { return 'Node ' + s.node + ': thetaZ restraint ignored because all connected ends release Mz.'; });
   };
-  R.effectiveSupport = function (support, inactive, dofs) {
-    var mask = global.MKEFSupports.mask(support,dofs);
-    if (inactive) mask[2] = false;
-    if (!mask.some(Boolean)) return null;
-    return global.MKEFSupports.type({node:support.node,fixUx:mask[0],fixUy:mask[1],fixThetaZ:mask[2]},dofs);
-  };
   R.append = function (create, layer, first, second, end, size, attrs) {
     var dx=second.x-first.x, dy=second.y-first.y, length=Math.hypot(dx,dy);
     if (!length) return;

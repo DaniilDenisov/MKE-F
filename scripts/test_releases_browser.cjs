@@ -26,11 +26,12 @@ const root=path.resolve(__dirname,'..');
       const model=F.parse(text); return F.serialize(model)===text;
     }); assert(roundtrip);
     const edit=await page.evaluate(()=>{
-      const F=window.MKEFPre.caseFormat,E=window.MKEFPre.modelEdit;
-      const m=F.parse(document.getElementById('spatial-current').value);
-      m.elements.push({...m.elements[0]}); m.releases.push({elementId:2,end:1,component:'Mz'});
-      E.updateNode(m,0,'x',-.5); E.updateElement(m,0,'area',.02);
-      const kept=m.releases.length===3; E.deleteElement(m,0);
+      const M=window.MKEFPre,m=M.editorAdapter.parse(document.getElementById('spatial-current').value);
+      m.nodes.push({x:2,y:1,z:0});
+      m.elements.push({...m.elements[0],node2:3}); m.releases.push({elementId:2,end:1,component:'Mz'});
+      const history=new M.spatialEdit.History(m);
+      history.moveNode(0,{...m.nodes[0],x:-.5}); history.member(0,{...m.elements[0],area:.02});
+      const kept=m.releases.length===3; history.remove({kind:'element',index:0});
       return kept && m.releases.length===1 && m.releases[0].elementId===1;
     }); assert(edit);
     // Ignore absent rotation restraints, retain the source input and display warning.

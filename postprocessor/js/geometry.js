@@ -20,18 +20,28 @@
     if (!(length > 0)) throw new Error('Element length must be positive.');
     return { c: dx / length, s: dy / length, length: length };
   };
+  function frameDisplacementInterpolator(basis, firstD, secondD) {
+    var c = basis.c, s = basis.s, L = basis.length;
+    var u1 = c * firstD.x + s * firstD.y, v1 = -s * firstD.x + c * firstD.y;
+    var u2 = c * secondD.x + s * secondD.y, v2 = -s * secondD.x + c * secondD.y;
+    return function (xi) {
+      var xi2 = xi * xi, xi3 = xi2 * xi;
+      var axial = (1 - xi) * u1 + xi * u2;
+      var n1 = 1 - 3 * xi2 + 2 * xi3, n2 = L * (xi - 2 * xi2 + xi3);
+      var n3 = 3 * xi2 - 2 * xi3, n4 = L * (-xi2 + xi3);
+      var transverse = n1 * v1 + n2 * firstD.r + n3 * v2 + n4 * secondD.r;
+      return { x: c * axial - s * transverse, y: s * axial + c * transverse };
+    };
+  }
   // Nonuniform stress stations must use the same displacement interpolation as
   // the ordinary drawing; interpolating already scaled polyline points loses extrema.
   G.elementInterpolator = function(dataset,element,vector,scale) {
-    const a=dataset.nodesById.get(element.nodeIds[0]),b=dataset.nodesById.get(element.nodeIds[1]),basis=G.elementBasis(a,b),c=basis.c,s=basis.s,L=basis.length;
+    const a=dataset.nodesById.get(element.nodeIds[0]),b=dataset.nodesById.get(element.nodeIds[1]),basis=G.elementBasis(a,b);
     const u=G.elementEndDisplacement(dataset,element,1,vector),v=G.elementEndDisplacement(dataset,element,2,vector);
+    const at=element.type===113 ? frameDisplacementInterpolator(basis,u,v) : t=>({x:(1-t)*u.x+t*v.x,y:(1-t)*u.y+t*v.y});
     return function(t){
-      let dx=(1-t)*u.x+t*v.x,dy=(1-t)*u.y+t*v.y;
-      if(element.type===113){const axial=(1-t)*(c*u.x+s*u.y)+t*(c*v.x+s*v.y),t2=t*t,t3=t2*t;
-        const transverse=(1-3*t2+2*t3)*(-s*u.x+c*u.y)+L*(t-2*t2+t3)*u.r+(3*t2-2*t3)*(-s*v.x+c*v.y)+L*(-t2+t3)*v.r;
-        dx=c*axial-s*transverse;dy=s*axial+c*transverse;
-      }
-      return {x:a.x+(b.x-a.x)*t+scale*dx,y:a.y+(b.y-a.y)*t+scale*dy};
+      const d=at(t);
+      return {x:a.x+(b.x-a.x)*t+scale*d.x,y:a.y+(b.y-a.y)*t+scale*d.y};
     };
   };
   G.sample112 = function (first, second, firstD, secondD, scale) {
@@ -52,21 +62,9 @@
     return values;
   };
   G.sample113Displacements = function (first, second, firstD, secondD, sampleCount) {
-    var basis = G.elementBasis(first, second), c = basis.c, s = basis.s, L = basis.length;
-    var u1 = c * firstD.x + s * firstD.y;
-    var v1 = -s * firstD.x + c * firstD.y;
-    var u2 = c * secondD.x + s * secondD.y;
-    var v2 = -s * secondD.x + c * secondD.y;
-    var values = [];
+    var at = frameDisplacementInterpolator(G.elementBasis(first, second), firstD, secondD), values = [];
     for (var i = 0; i < sampleCount; i += 1) {
-      var xi = i / (sampleCount - 1), xi2 = xi * xi, xi3 = xi2 * xi;
-      var axial = (1 - xi) * u1 + xi * u2;
-      var n1 = 1 - 3 * xi2 + 2 * xi3;
-      var n2 = L * (xi - 2 * xi2 + xi3);
-      var n3 = 3 * xi2 - 2 * xi3;
-      var n4 = L * (-xi2 + xi3);
-      var transverse = n1 * v1 + n2 * firstD.r + n3 * v2 + n4 * secondD.r;
-      values.push({ x: c * axial - s * transverse, y: s * axial + c * transverse });
+      values.push(at(i / (sampleCount - 1)));
     }
     return values;
   };
@@ -115,14 +113,5 @@
       });
     });
     return maximum <= 1e-12 * Math.max(diagonal, 1) ? { scale: 1, zero: true } : { scale: 0.1 * diagonal / maximum, zero: false };
-  };
-  G.pathData = function (points) {
-    return points.map(function (point, index) {
-      var svg = G.svgPoint(point);
-      return (index ? 'L' : 'M') + ' ' + svg.x.toPrecision(12) + ' ' + svg.y.toPrecision(12);
-    }).join(' ');
-  };
-  G.restrainedLocalDOFs = function (type, dofPerNode) {
-    return window.MKEFSupports.dofs({type:type}, dofPerNode).map(function (dof) { return dof - 1; });
   };
 }(window.MKEFPost));

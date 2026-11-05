@@ -1,5 +1,21 @@
 function test_sections()
 % Independent profile values and beam solutions; fixtures shared with JS.
+% Root filtering must retain the separate planar/spatial imaginary tolerances.
+for tolerance=[1e-8 1e-7]
+    assert(isempty(unitIntervalRoots([0 0 0],tolerance)));
+    assert(isempty(unitIntervalRoots([2 0 1e-16],tolerance)));
+    assert(isequal(sort(unitIntervalRoots([0 -1 1],tolerance)),[0 1]));
+    assert(norm(unitIntervalRoots([.25 -1 1],tolerance)-[.5 .5],inf)<1e-12);
+    inside=unitIntervalRoots([(tolerance/2)^2 0 1],tolerance);
+    assert(isequal(size(inside),[1 2]) && all(inside==0));
+    assert(isempty(unitIntervalRoots([(2*tolerance)^2 0 1],tolerance)));
+    for root=[-1e-12 1e-12 1-1e-12 1+1e-12]
+        actual=unitIntervalRoots([-root 1],tolerance);
+        if root<0 || root>1,assert(isempty(actual));else,assert(isequal(actual,root));end
+    end
+end
+assert(isempty(unitIntervalRoots([(5e-8)^2 0 1],1e-8)));
+assert(numel(unitIntervalRoots([(5e-8)^2 0 1],1e-7))==2);
 types={'rectangle','circle','channel','tee','ibeam','square_tube','rectangular_tube','circular_tube'};
 output=struct('section',{},'angle',{},'properties',{},'stress',{});
 for k=1:numel(types)

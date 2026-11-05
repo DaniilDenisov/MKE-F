@@ -12,19 +12,19 @@ if curved
     for k=1:size(centers,1)
         da=deriv(a+b*centers(k,1)+c*centers(k,2));
         poly=add(4*conv(conv(da,da),D),-radius^2*conv(dD,dD));
-        positions=[positions realRoots(poly) realRoots(da)];
+        positions=[positions unitIntervalRoots(poly,1e-7) unitIntervalRoots(da,1e-7)];
     end
-    positions=[positions realRoots(D) realRoots(b) realRoots(c)];
+    positions=[positions unitIntervalRoots(D,1e-7) unitIntervalRoots(b,1e-7) unitIntervalRoots(c,1e-7)];
 else
     for k=1:size(p.rectangles,1)
         r=p.rectangles(k,:); vertices=[vertices;r(2) r(1);r(2) r(1)+r(3);r(2)+r(4) r(1);r(2)+r(4) r(1)+r(3)];
     end
-    for k=1:size(vertices,1), positions=[positions realRoots(deriv(a+b*vertices(k,1)+c*vertices(k,2)))]; end
+    for k=1:size(vertices,1), positions=[positions unitIntervalRoots(deriv(a+b*vertices(k,1)+c*vertices(k,2)),1e-7)]; end
     % Include changes of the supporting corner for exact envelope sampling.
     for k=1:size(vertices,1)
         for j=k+1:size(vertices,1)
             delta=vertices(k,:)-vertices(j,:);
-            positions=[positions realRoots(b*delta(1)+c*delta(2))];
+            positions=[positions unitIntervalRoots(b*delta(1)+c*delta(2),1e-7)];
         end
     end
 end
@@ -50,8 +50,3 @@ result=struct('minimum',minimum,'maximum',maximum,'positions',positions);
 end
 function d=deriv(p), d=p(2:end).*(1:numel(p)-1); if isempty(d), d=0; end; end
 function v=add(a,b), v=zeros(1,max(numel(a),numel(b))); v(1:numel(a))=a;v(1:numel(b))=v(1:numel(b))+b; end
-function x=realRoots(p)
-scale=max(abs(p)); if scale==0,x=[];return;end
-p=p/scale; while numel(p)>1 && abs(p(end))<1e-14,p(end)=[];end
-r=roots(fliplr(p)); x=real(r(abs(imag(r))<1e-7 & real(r)>=0 & real(r)<=1)).';
-end

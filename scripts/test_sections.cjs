@@ -33,7 +33,7 @@ stress=planarStress(S,p,113,2,[0,0,-32,0,0,32]);near(S.evaluate(stress.fibers[1]
 const tee={type:'tee',dimensions:{b:2,h:4,tw:.2,tf:.4}},t0=S.properties(tee),t180=S.properties(tee,180);
 near(t180.etaMin,-t0.etaMax);near(t180.etaMax,-t0.etaMin);near(t180.momentOfInertia,t0.momentOfInertia);
 const context={window:{},console,Set,Map};vm.createContext(context);
-for(const file of ['preprocessor/js/namespace.js','postprocessor/js/namespace.js','shared/sections.js','shared/support-catalog.js','shared/support-semantics.js','shared/mpc.js','shared/releases.js','preprocessor/js/case-format.js','preprocessor/js/model-edit.js','postprocessor/js/data-model.js','postprocessor/js/geometry.js','postprocessor/js/static-view.js','postprocessor/js/section-view.js'])vm.runInContext(fs.readFileSync(path.join(root,file),'utf8'),context,{filename:file});
+for(const file of ['preprocessor/js/namespace.js','postprocessor/js/namespace.js','shared/sections.js','shared/support-catalog.js','shared/support-semantics.js','shared/mpc.js','shared/releases.js','preprocessor/js/case-format.js','postprocessor/js/data-model.js','postprocessor/js/geometry.js','postprocessor/js/static-view.js','postprocessor/js/section-view.js'])vm.runInContext(fs.readFileSync(path.join(root,file),'utf8'),context,{filename:file});
 const F=context.window.MKEFPre.caseFormat;
 const text=fs.readFileSync(path.join(root,'examples/cases/CaseSectionBeam.txt'),'utf8'),model=F.parse(text);
 assert.equal(model.sections.length,1);near(model.elements[0].area,.02);assert.equal(F.serialize(F.parse(F.serialize(model))),F.serialize(model));

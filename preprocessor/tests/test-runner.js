@@ -5,6 +5,7 @@
   function assert(condition, message) { if (!condition) throw new Error(message || 'Assertion failed.'); }
   function throws(fragment, operation) { try { operation(); } catch (error) { assert(error.message.indexOf(fragment) >= 0, 'Unexpected error: ' + error.message); return; } throw new Error('Expected an error containing ' + fragment); }
   function fixture(record) { return ['# browser fixture', 'analysis', record || 'static', 'nodes', '2', '0,0,0', '1,0,0', 'elems_113', '1', '113,1,2,0.1,200,10,0.01', 'bcfix', '1', '1,1,0,0,0', 'bcforce_stat', '1', '10,2,5,-2,1', ''].join('\n'); }
+  function editor(model) { return new MKEFPre.spatialEdit.History(MKEFPre.editorAdapter.fromNative(model)); }
 
   test('complete support catalog and family preservation', function () {
     var S = MKEFSupports;
@@ -42,9 +43,11 @@
   test('MPC node deletion, renumbering and geometry edits', function () {
     var model=MKEFPre.caseFormat.parse(fixture()); model.nodes.push({x:2,y:0});
     model.mpcs=[{depNode:3,depDOF:2,rhs:0,masters:[{node:2,dof:2,coefficient:.5}]}];
-    var saved=JSON.stringify(model.mpcs); MKEFPre.modelEdit.updateNode(model,2,'x',3); assert(JSON.stringify(model.mpcs)===saved);
-    MKEFPre.modelEdit.deleteNode(model,0); assert(model.mpcs[0].depNode===2 && model.mpcs[0].masters[0].node===1);
-    MKEFPre.modelEdit.deleteNode(model,0); assert(model.mpcs.length===0);
+    var history=editor(model); model=history.model;
+    var saved=JSON.stringify(model.mpcs); history.moveNode(2,{x:3,y:0,z:0}); assert(JSON.stringify(model.mpcs)===saved);
+    history.remove({kind:'node',index:0}); assert(model.mpcs[0].depNode===2 && model.mpcs[0].masters[0].node===1);
+    history.remove({kind:'node',index:0}); assert(model.mpcs.length===0);
+    history.travel(true); assert(model.mpcs.length===1);
   });
   test('parses and serializes a configured static case', function () { var model = MKEFPre.caseFormat.parse(fixture()), text = MKEFPre.caseFormat.serialize(model); assert(model.analysis.type === 'static'); assert(text.indexOf('analysis\nstatic\n') === 0); assert(text.indexOf('bcforce_stat\n1\n10,2,5,-2,1') > 0); });
   test('canonical round trip preserves semantic data', function () { var first = MKEFPre.caseFormat.parse(fixture()), second = MKEFPre.caseFormat.parse(MKEFPre.caseFormat.serialize(first)); assert(JSON.stringify(first) === JSON.stringify(second)); });
@@ -83,39 +86,59 @@
   });
   test('coordinate switch preserves physical force on inclined member', function () {
     var model = uniformFixture(); model.nodes[1] = {x:3,y:4};
-    MKEFPre.modelEdit.changeCoordinates(model, 0, 1);
-    assert(Math.abs(model.elementLoads[0].qx + 5.6) < 1e-12);
-    assert(Math.abs(model.elementLoads[0].qy + 4.2) < 1e-12);
-    MKEFPre.modelEdit.changeCoordinates(model, 0, 2);
-    assert(Math.abs(model.elementLoads[0].qx) < 1e-12 && Math.abs(model.elementLoads[0].qy + 7) < 1e-12);
-    model.nodes[1] = model.nodes[0]; throws('Valid element geometry', function () { MKEFPre.modelEdit.changeCoordinates(model, 0, 1); });
+    var history=editor(model), C=MKEFPre.editorConditions; model=history.model;
+    history.condition('elementLoads',0,C.convertLoadAxes(model,model.elementLoads[0],1));
+    assert(Math.abs(model.elementLoads[0].components[0] + 5.6) < 1e-12);
+    assert(Math.abs(model.elementLoads[0].components[1] + 4.2) < 1e-12);
+    history.condition('elementLoads',0,C.convertLoadAxes(model,model.elementLoads[0],2));
+    assert(Math.abs(model.elementLoads[0].components[0]) < 1e-12 && Math.abs(model.elementLoads[0].components[1] + 7) < 1e-12);
+    var saved=JSON.stringify(model); throws('Another node', function () { history.moveNode(1,model.nodes[0]); });
+    assert(JSON.stringify(model)===saved);
   });
   test('all actual element edits remove loads, unchanged values do not', function () {
     ['node1','node2','area','youngsModulus','density','momentOfInertia'].forEach(function (field) {
-      var model = uniformFixture(), old = model.elements[0][field];
-      MKEFPre.modelEdit.updateElement(model, 0, field, old); assert(model.elementLoads.length === 1);
-      MKEFPre.modelEdit.updateElement(model, 0, field, old+1); assert(model.elementLoads.length === 0);
+      var history=editor(uniformFixture()),model=history.model;
+      history.addNode({x:2,y:1,z:0});
+      var element=Object.assign({},model.elements[0]);
+      history.member(0,element); assert(model.elementLoads.length === 1);
+      element[field]=field==='node1'||field==='node2'?3:element[field]+1;
+      history.member(0,element); assert(model.elementLoads.length === 0);
+      history.travel(true); assert(model.elementLoads.length === 1);
     });
   });
   test('moving a node preserves nodal conditions and removes incident element loads', function () {
-    var model = uniformFixture(); MKEFPre.modelEdit.updateNode(model, 1, 'x', 1); assert(model.elementLoads.length === 1);
-    MKEFPre.modelEdit.updateNode(model, 1, 'x', 2); assert(model.elementLoads.length === 0 && model.loads.length === 1 && model.supports.length === 1);
+    var history=editor(uniformFixture()),model=history.model;
+    history.moveNode(1,{x:1,y:0,z:0}); assert(model.elementLoads.length === 1);
+    history.moveNode(1,{x:2,y:0,z:0}); assert(model.elementLoads.length === 0 && model.loads.length === 1 && model.supports.length === 1);
+    history.travel(true); assert(model.elementLoads.length===1);
   });
   test('node deletion cascades and renumbers only surviving references', function () {
     var model = uniformFixture(); model.nodes.push({x:2,y:0}, {x:3,y:0});
     model.elements.push(Object.assign({}, model.elements[0], {node1:3,node2:4}));
     model.elementLoads.push({type:20,elementId:2,coordinateSystem:1,qx:2,qy:0});
-    model.supports.push({type:4,node:3}); model.analysis.monitorNode=2;
-    MKEFPre.modelEdit.deleteNode(model, 1);
+    model.supports.push({type:4,node:3});
+    var history=editor(model); model=history.model;
+    history.remove({kind:'node',index:1});
     assert(model.nodes.length===3 && model.elements.length===1 && model.loads.length===0);
     assert(model.elements[0].node1===2 && model.elements[0].node2===3);
-    assert(model.elementLoads.length===1 && model.elementLoads[0].elementId===1 && model.elementLoads[0].qx===2);
-    assert(model.supports[0].node===1 && model.supports[1].node===2 && model.analysis.monitorNode===0);
-    MKEFPre.modelEdit.deleteNode(model, 0); assert(model.supports.length===1 && model.supports[0].node===1);
+    assert(model.elementLoads.length===1 && model.elementLoads[0].elementId===1 && model.elementLoads[0].components[0]===2);
+    assert(model.supports[0].node===1 && model.supports[1].node===2);
+    history.remove({kind:'node',index:0}); assert(model.supports.length===1 && model.supports[0].node===1);
+    history.travel(true); history.travel(true); assert(model.nodes.length===4 && model.elementLoads.length===2);
   });
   test('deleting a member preserves nodes and nodal conditions', function () {
-    var model=uniformFixture(); MKEFPre.modelEdit.deleteElement(model,0);
+    var history=editor(uniformFixture()),model=history.model; history.remove({kind:'element',index:0});
     assert(model.elements.length===0 && model.elementLoads.length===0 && model.nodes.length===2 && model.loads.length===1 && model.supports.length===1);
+  });
+  test('deleting a transient monitor requires a replacement and restores it on undo', function () {
+    var native=MKEFPre.caseFormat.parse(fixture('transient,0.001,0.01,2,2').replace('bcforce_stat\n1\n10,2,5,-2,1\n','bcforce_harm\n1\n11,2,5,-2,1,3\n'));
+    native.nodes.push({x:2,y:0});
+    var history=editor(native),model=history.model,saved=JSON.stringify(model);
+    throws('remaining monitor',function(){history.remove({kind:'node',index:1});});
+    assert(JSON.stringify(model)===saved);
+    history.remove({kind:'node',index:1},3); assert(model.analysis.monitorNode===2);
+    history.travel(true); assert(JSON.stringify(model)===saved);
+    history.travel(false); assert(model.nodes.length===2 && model.analysis.monitorNode===2);
   });
 
 
@@ -133,18 +156,25 @@
     model.analysis.type='static'; model.elementType=112; assert(MKEFPre.caseFormat.validate(model).some(function (s) { return s.includes('frame element 113'); }));
   });
   test('load type conversion and both endpoint coordinate transforms preserve intensity', function () {
-    var E=MKEFPre.modelEdit, model=uniformFixture(); E.changeLoadType(model,0,21);
-    assert(model.elementLoads[0].qy1===-7 && model.elementLoads[0].qy2===-7);
-    model.elementLoads[0].qy1=0; model.nodes[1]={x:3,y:4}; E.changeCoordinates(model,0,1);
-    var q=model.elementLoads[0]; assert(q.qx1===0 && q.qy1===0 && Math.abs(q.qx2+5.6)<1e-12 && Math.abs(q.qy2+4.2)<1e-12);
-    E.changeCoordinates(model,0,2); E.changeLoadType(model,0,20);
-    assert(Math.abs(model.elementLoads[0].qx)<1e-12 && Math.abs(model.elementLoads[0].qy+3.5)<1e-12);
+    var native=uniformFixture(); native.nodes[1]={x:3,y:4};
+    var history=editor(native),model=history.model,C=MKEFPre.editorConditions;
+    history.condition('elementLoads',0,C.convertLoadType(model.elementLoads[0],21));
+    assert(model.elementLoads[0].components[1]===-7 && model.elementLoads[0].components[4]===-7);
+    var load=Object.assign({},model.elementLoads[0],{components:[0,0,0,0,-7,0]});
+    history.condition('elementLoads',0,C.convertLoadAxes(model,load,1));
+    var q=model.elementLoads[0].components; assert(q[0]===0 && q[1]===0 && Math.abs(q[3]+5.6)<1e-12 && Math.abs(q[4]+4.2)<1e-12);
+    history.condition('elementLoads',0,C.convertLoadAxes(model,model.elementLoads[0],2));
+    throws('Confirm',function(){C.convertLoadType(model.elementLoads[0],20,false);});
+    history.condition('elementLoads',0,C.convertLoadType(model.elementLoads[0],20,true));
+    assert(Math.abs(model.elementLoads[0].components[0])<1e-12 && Math.abs(model.elementLoads[0].components[1]+3.5)<1e-12);
   });
 
   test('linear loads follow existing deletion and geometry invalidation rules', function () {
-    var model=linearFixture(); MKEFPre.modelEdit.setRelease(model,0,1,true); assert(model.elementLoads.length===1);
-    MKEFPre.modelEdit.updateNode(model,1,'x',2); assert(model.elementLoads.length===0);
-    model=linearFixture(); MKEFPre.modelEdit.deleteElement(model,0); assert(model.elementLoads.length===0);
+    var history=editor(linearFixture()),model=history.model;
+    history.setReleaseMask(1,1,['Mz']); assert(model.elementLoads.length===1);
+    history.moveNode(1,{x:2,y:0,z:0}); assert(model.elementLoads.length===0);
+    history.travel(true); assert(model.elementLoads.length===1 && model.releases.length===1);
+    history.remove({kind:'element',index:0}); assert(model.elementLoads.length===0 && model.releases.length===0);
   });
 
   document.addEventListener('DOMContentLoaded', function () {

@@ -211,7 +211,7 @@
 
         <div class="callout callout--inspect">
           <span class="callout__title">Hermite functions in the postprocessor</span>
-          <p>The postprocessor uses Hermite functions explicitly. The function <a href="../../postprocessor/js/geometry.js"><code>sample113Displacements</code></a> evaluates the four cubic functions <em>H<sub>1</sub>…H<sub>4</sub></em> and uses the values <em>v′<sub>1</sub>, θ<sub>1</sub>, v′<sub>2</sub>, θ<sub>2</sub></em> to interpolate transverse displacement at interior element points. These points define the curved shape in static, modal and transient views. The solver contains the same interpolation implicitly in the already integrated stiffness and mass coefficients.</p>
+          <p>The postprocessor uses Hermite functions explicitly. The function <a href="../../postprocessor/js/geometry.js"><code>sample113Displacements</code></a> uses the shared helper <code>frameDisplacementInterpolator</code> to evaluate the four cubic functions <em>H<sub>1</sub>…H<sub>4</sub></em> and uses the values <em>v′<sub>1</sub>, θ<sub>1</sub>, v′<sub>2</sub>, θ<sub>2</sub></em> to interpolate transverse displacement at interior element points. These points define the curved shape in static, modal and transient views. The solver contains the same interpolation implicitly in the already integrated stiffness and mass coefficients.</p>
         </div>
 
         <p>Integrating derivatives of these shape functions gives the characteristic bending coefficients 12, 6, 4 and 2 in the stiffness matrix:</p>

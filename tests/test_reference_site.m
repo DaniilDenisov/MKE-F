@@ -83,7 +83,7 @@ for languageNumber = 1:numel(languages)
              page '.']);
         expectedScript = '';
         if any(strcmp(page, interactivePages))
-            expectedScript = ['assets/' strrep(page, '.html', '.js')];
+            expectedScript = ['../assets/' strrep(page, '.html', '.js')];
         end
         assertNoExternalRuntimeAssets(html, page, expectedScript);
         assertLocalTargetsResolve(html, pagePath);
