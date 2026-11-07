@@ -35,7 +35,7 @@ docker compose up --build -d
 docker compose -f compose.release.yaml up -d
 ```
 
-[compose.release.yaml](compose.release.yaml) закреплён на версии **0.8.5** для всех трёх сервисов: решателя, сервиса сечений и веб-интерфейса. Остановка: `docker compose -f compose.release.yaml down`.
+[compose.release.yaml](compose.release.yaml) закреплён на версии **0.8.6** для всех трёх сервисов: решателя, сервиса сечений и веб-интерфейса. Остановка: `docker compose -f compose.release.yaml down`.
 
 ## Документация и лабораторные
 
@@ -84,7 +84,7 @@ For the prebuilt release:
 docker compose -f compose.release.yaml up -d
 ```
 
-[compose.release.yaml](compose.release.yaml) pins all three services (solver, section solver and web interface) to **0.8.5**. Stop with `docker compose -f compose.release.yaml down`.
+[compose.release.yaml](compose.release.yaml) pins all three services (solver, section solver and web interface) to **0.8.6**. Stop with `docker compose -f compose.release.yaml down`.
 
 ## Documentation and labs
 

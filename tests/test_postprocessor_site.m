@@ -60,12 +60,21 @@ assets = [dir(fullfile(postDir, 'js', '*.js')); ...
 for i = 1:numel(assets)
     content = fileread(fullfile(assets(i).folder, assets(i).name));
     networkCheck = strrep(content, 'http://www.w3.org/2000/svg', '');
-    if strcmp(assets(i).name,'member-maxima.js')
-        % Optional explicit calculation uses the same-origin Compose service.
+    if any(strcmp(assets(i).name,{'member-maxima.js','section-inspector.js'}))
+        % Optional FEM calculation uses the same-origin Compose service.
         % Local result viewing remains available without it (browser-tested).
         assert(~isempty(strfind(content,'const api=''/api/v1/sections/''')));
         assert(~isempty(strfind(content,'location.protocol===''file:''')));
         networkCheck=strrep(networkCheck,'fetch(api+','sectionRequest(');
+        if strcmp(assets(i).name,'section-inspector.js')
+            % The response helper is called only with section-service URLs.
+            calls=regexp(content,'this\.json\(([^\n]*)','tokens');
+            assert(~isempty(calls));
+            for j=1:numel(calls)
+                assert(strncmp(calls{j}{1},'api+',4));
+            end
+            networkCheck=strrep(networkCheck,'fetch(url,options)','sectionRequest(url,options)');
+        end
     end
     assert(isempty(regexpi(networkCheck, 'https?://|@import\s|fetch\s*\(', 'once')), ...
         ['MKEF:VerificationFailed: external network dependency in ' assets(i).name '.']);
