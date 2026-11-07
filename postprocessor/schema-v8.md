@@ -279,7 +279,7 @@ references. No new matrix formula is implemented in the v8 reader.
 
 ## Verification and limits
 
-Run `./scripts/test_recovery_pipeline.ps1`. It mounts current source read-only
+Run `./scripts/testing/test_recovery_pipeline.ps1`. It mounts current source read-only
 in Docker and writes to a new `output/recovery-runs/<run-id>/` directory.
 It generates model inputs, runs Octave, checks fresh numerical references
 and exercises the browser offline. Numerical input

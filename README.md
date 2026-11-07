@@ -40,9 +40,11 @@ docker compose -f compose.release.yaml up -d
 ## Проверка перед релизом
 
 В PowerShell 7+ при работающем Docker выполните
-`pwsh -NoProfile -File ./scripts/test_release.ps1`. Сценарий собирает образы,
+`pwsh -NoProfile -File ./scripts/testing/test_release.ps1`. Сценарий собирает образы,
 запускает полную приёмку и сохраняет отчёт в
 `output/release-runs/<run-id>/report.md`. [Порядок и параметры](DEVGUIDE.md#полная-приёмка-перед-релизом).
+
+[Служебные команды](scripts/README.md) · [Структура и регистрация тестов](tests/README.md).
 
 ## Документация и лабораторные
 
@@ -96,9 +98,11 @@ docker compose -f compose.release.yaml up -d
 ## Release verification
 
 With PowerShell 7+ and Docker running, execute
-`pwsh -NoProfile -File ./scripts/test_release.ps1`. It builds the images,
+`pwsh -NoProfile -File ./scripts/testing/test_release.ps1`. It builds the images,
 runs the complete acceptance suite and writes
 `output/release-runs/<run-id>/report.md`. [Verification guide](reference/EN/project-operations.html#checks).
+
+[Script catalog (RU)](scripts/README.md) · [Test layout and registration (RU)](tests/README.md).
 
 ## Documentation and labs
 

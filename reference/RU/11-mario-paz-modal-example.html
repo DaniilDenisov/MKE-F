@@ -274,7 +274,7 @@ omega = result.angularFrequenciesRadPerSec
 frequencyHz = result.frequenciesHz
 Phi = result.modeShapes(result.freeDOFs, :)</code></pre>
 
-        <p>Автоматическая проверка находится в <a href="../../tests/test_mario_paz_modal.m"><code>tests/test_mario_paz_modal.m</code></a> и запускается вместе со всем набором:</p>
+        <p>Автоматическая проверка находится в <a href="../../tests/octave/test_mario_paz_modal.m"><code>tests/octave/test_mario_paz_modal.m</code></a> и запускается вместе со всем набором:</p>
         <pre><code>addpath(pwd); setup; run_octave_tests;</code></pre>
 
         <div class="callout">
@@ -300,7 +300,7 @@ Phi = result.modeShapes(result.freeDOFs, :)</code></pre>
           <li><a href="../../src/model/createStructuralElement.m"><code>createStructuralElement.m</code></a> — локальные матрицы и преобразование;</li>
           <li><a href="../../src/model/assembleGlobalMatrices.m"><code>assembleGlobalMatrices.m</code></a> — прямая разреженная сборка;</li>
           <li><a href="../../src/analysis/modal/solveModal.m"><code>solveModal.m</code></a> — редукция и обобщённая собственная задача;</li>
-          <li><a href="../../tests/test_mario_paz_modal.m"><code>tests/test_mario_paz_modal.m</code></a> — численный эталон и устойчивые сравнения;</li>
+          <li><a href="../../tests/octave/test_mario_paz_modal.m"><code>tests/octave/test_mario_paz_modal.m</code></a> — численный эталон и устойчивые сравнения;</li>
           <li>Mario Paz, William Leigh, <cite>Structural Dynamics: Theory and Computation</cite>, 5-е изд., Illustrative Example 11.1, рис. 11.7, с. 363–366.</li>
         </ul>
       </section>

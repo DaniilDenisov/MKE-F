@@ -3,8 +3,8 @@
   "private": true,
   "version": "1.0.0",
   "scripts": {
-    "build:spatial": "node scripts/build-spatial.cjs",
-    "check:spatial": "node scripts/build-spatial.cjs --check"
+    "build:spatial": "node scripts/build/build-spatial.cjs",
+    "check:spatial": "node scripts/build/build-spatial.cjs --check"
   },
   "dependencies": { "three": "0.187.0" },
   "devDependencies": { "esbuild": "0.25.12" }

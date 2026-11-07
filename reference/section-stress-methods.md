@@ -173,13 +173,13 @@ generates genuine static fixtures for all five shapes in both dimensions.
 To prepare just these additional fixtures, run from the repository root:
 
 ```
-octave-cli --no-gui --quiet --eval "setup(); addpath('tests'); test_mises_exports();"
+octave-cli --no-gui --quiet --eval "setup(); addpath('tests/octave'); test_mises_exports();"
 node scripts/test_mises.cjs
 node scripts/test_mises_adapters.cjs
-node scripts/test_mises_browser.cjs  # verifies UI/scripts/Worker absence
-node scripts/test_normal_stress.cjs
-node scripts/test_normal_stress_browser.cjs
-node scripts/test_spatial_normal_stress_browser.cjs
+node tests/browser/test_mises_browser.cjs  # verifies UI/scripts/Worker absence
+node tests/node/test_normal_stress.cjs
+node tests/browser/test_normal_stress_browser.cjs
+node tests/browser/test_spatial_normal_stress_browser.cjs
 ```
 
 The tests also consume existing section fixtures from `run_octave_tests`.

@@ -11,7 +11,7 @@ from backend.app import Settings, create_app
 
 
 REPOSITORY_ROOT = Path("/app")
-RUNNER = REPOSITORY_ROOT / "scripts" / "run_solver_job.m"
+RUNNER = REPOSITORY_ROOT / "scripts" / "runtime" / "run_solver_job.m"
 
 
 @pytest.mark.parametrize("section_type,invalid_wall", [

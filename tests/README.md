@@ -1,0 +1,24 @@
+# Проверки проекта
+
+| Каталог | Что размещать |
+|---|---|
+| `octave/` | Численные проверки GNU Octave и их локальные вспомогательные функции |
+| `node/` | Самостоятельные JavaScript-проверки без запуска браузера |
+| `browser/` | Проверки с Playwright, включая проверки интерфейса с настоящим API |
+| `helpers/` | Общие вспомогательные модули JavaScript-тестов |
+| `integration/` | Python-проверки согласованности вычислений и приёмка решателя сечений |
+| `fixtures/` | Исходные тестовые данные; сгенерированные результаты сохраняются в `output/` |
+| `section_solver/`, `section_service/` | Python-тесты решателя сечений и его сервиса |
+
+Тесты backend остаются в `backend/tests`, встроенные браузерные наборы — в соответствующих веб-модулях. Команды запуска и требования к среде перечислены в [scripts/README.md](../scripts/README.md).
+
+## Регистрация новых проверок
+
+- Для JavaScript добавьте `test_*.cjs` в `node` или `browser` по фактической потребности в Playwright. В [релизном манифесте](../scripts/testing/release-tests.json) добавьте `entryPoints`: имя файла без расширения → путь от корня репозитория. Зарегистрируйте идентификатор ровно в одной группе `beforeOctave`, `recovery`, `offline` или `live`. Для `live` также добавьте этап в релизный runner; остальные группы планируются автоматически.
+- Octave-тесты регистрируются в `octave/run_verification_tests.m`. Дополнительные проверки вне основного набора перечисляются в `extraOctave` манифеста и вызываются отдельным этапом либо подготовкой fixtures.
+- Самостоятельные `integration/test_*.py` добавляются в `pythonScripts` и план запуска. Пакет приёмки сечений запускается через `python -m tests.integration.section_solver_acceptance.matrix` и затем `verify`, из корня репозитория в численном Docker-образе.
+- Для Python-наборов backend, решателя и сервиса сохраняется автоматическое обнаружение. Составные `test_*.ps1` в `scripts/testing` описываются в `compositeScripts` манифеста.
+
+Проверьте регистрацию командой `pwsh -NoProfile -File scripts/testing/test_release.ps1 -PlanOnly`. Она отклоняет пропуски, повторения, неверные пути и проверки без этапа запуска.
+
+В Octave используйте `setup; run_octave_tests`. Для отдельного теста: `setup; addpath('tests/octave'); test_element_matrices`. JavaScript-проверки запускайте из корня, например `node tests/node/test_editor_adapter.cjs`; браузерным проверкам нужны Playwright и, в зависимости от набора, свежие результаты Octave или работающий API.

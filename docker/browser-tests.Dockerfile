@@ -2,7 +2,7 @@ FROM mcr.microsoft.com/playwright:v1.64.0-noble AS browser
 RUN npm install --prefix /opt/mkef-tests playwright@1.64.0
 ENV MKEF_PLAYWRIGHT_MODULE=/opt/mkef-tests/node_modules/playwright
 WORKDIR /app
-CMD ["node", "scripts/test_sections_browser.cjs"]
+CMD ["node", "tests/browser/test_sections_browser.cjs"]
 
 # Release acceptance also verifies the committed bundle against package-lock.json.
 FROM browser AS release

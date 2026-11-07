@@ -1,0 +1,69 @@
+function test_preprocessor_site()
+%TEST_PREPROCESSOR_SITE Verify offline assets and browser safety invariants.
+
+testsDir = fileparts(mfilename('fullpath'));
+rootDir = fileparts(fileparts(testsDir));
+preDir = fullfile(rootDir, 'preprocessor');
+pages = {fullfile(preDir, 'index.html'), ...
+    fullfile(preDir, 'tests', 'index.html')};
+
+for pageIndex = 1:numel(pages)
+    page = pages{pageIndex};
+    assert(exist(page, 'file') == 2, ...
+        ['MKEF:VerificationFailed: missing preprocessor page ' page '.']);
+    html = fileread(page);
+    assert(isempty(regexpi(html, '<script[^>]+type=["'']module', 'once')), ...
+        'MKEF:VerificationFailed: preprocessor uses file-restricted modules.');
+    assert(isempty(regexpi(html, ...
+        '(?:src|href)\s*=\s*["''](?:https?:)?//', 'once')), ...
+        'MKEF:VerificationFailed: preprocessor has an external runtime asset.');
+    targets = regexp(html, '(?:src|href)\s*=\s*["'']([^"'']+)["'']', 'tokens');
+    for i = 1:numel(targets)
+        target = targets{i}{1};
+        if isempty(target) || target(1) == '#'
+            continue;
+        end
+        parts = strsplit(target, '#');
+        targetPath = fullfile(fileparts(page), strrep(parts{1}, '/', filesep));
+        assert(exist(targetPath, 'file') == 2, ...
+            ['MKEF:VerificationFailed: unresolved preprocessor asset ' target '.']);
+        if numel(parts) > 1 && ~isempty(parts{2})
+            targetHtml = fileread(targetPath);
+            assert(~isempty(strfind(targetHtml, ['id="' parts{2} '"'])), ...
+                ['MKEF:VerificationFailed: unresolved preprocessor fragment ' target '.']);
+        end
+    end
+end
+
+requiredIds = {'analysis-type', 'element-type', 'spatial-catalog-toggle', ...
+    'spatial-viewport', 'spatial-tables', 'selection-details', ...
+    'spatial-plane', 'spatial-offset', 'spatial-step', 'spatial-grid', ...
+    'spatial-snap-grid', 'spatial-snap-nodes'};
+mainHtml = fileread(fullfile(preDir, 'index.html'));
+assert(~isempty(strfind(mainHtml, 'aria-label="Add Node"')) && ...
+       ~isempty(strfind(mainHtml, 'aria-label="Add Element"')) && ...
+       isempty(strfind(mainHtml, 'data-spatial-tool="move"')) && ...
+       isempty(strfind(mainHtml, 'id="spatial-delete"')), ...
+    'MKEF:VerificationFailed: geometry tools are not compact and accessible.');
+assert(~isempty(strfind(mainHtml, 'model-tools')) && ~isempty(strfind(mainHtml, 'view-tools')), ...
+    'MKEF:VerificationFailed: Model and View tool groups are missing.');
+for i = 1:numel(requiredIds)
+    assert(~isempty(strfind(mainHtml, ['id="' requiredIds{i} '"'])), ...
+        ['MKEF:VerificationFailed: missing preprocessor control ' ...
+         requiredIds{i} '.']);
+end
+
+assets = [dir(fullfile(preDir, 'js', '*.js')); ...
+          dir(fullfile(preDir, 'assets', '*.css'))];
+for i = 1:numel(assets)
+    content = fileread(fullfile(assets(i).folder, assets(i).name));
+    networkCheck = strrep(content, 'http://www.w3.org/2000/svg', '');
+    assert(isempty(regexpi(networkCheck, 'https?://|@import\s|fetch\s*\(', 'once')), ...
+        ['MKEF:VerificationFailed: external network dependency in ' assets(i).name '.']);
+    if strcmp(assets(i).name(end-2:end), '.js')
+        assert(isempty(regexp(content, ...
+            'innerHTML|\beval\s*\(|new\s+Function\s*\(', 'once')), ...
+            ['MKEF:VerificationFailed: unsafe DOM/code API in ' assets(i).name '.']);
+    end
+end
+end

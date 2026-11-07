@@ -8,7 +8,7 @@ from fastapi.testclient import TestClient
 from backend.app import Settings, create_app
 
 ROOT = Path('/app')
-RUNNER = ROOT / 'scripts/run_solver_job.m'
+RUNNER = ROOT / 'scripts/runtime/run_solver_job.m'
 CASES = ['CaseSpatialTruss', 'CaseSpatialFrame', 'CaseSpatialTrussModal',
          'CaseSpatialFrameModal', 'CaseSpatialTrussTransient', 'CaseSpatialFrameTransient']
 

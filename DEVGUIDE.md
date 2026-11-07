@@ -7,7 +7,7 @@ TXT для импорта и скачивания содержит `analysis`: `
 Нужны PowerShell 7+ (`pwsh`) и работающий Docker с Compose. Из корня проекта:
 
 ```powershell
-pwsh -NoProfile -File ./scripts/test_release.ps1
+pwsh -NoProfile -File ./scripts/testing/test_release.ps1
 ```
 
 Сценарий сам собирает тестовые и рабочие образы из текущих исходников. Он
@@ -19,10 +19,11 @@ NAFEMS quick/full, все зарегистрированные JavaScript/бра
 Браузерные страницы `preprocessor/tests`, `postprocessor/tests`, `shared/tests`
 запускаются через `test_browser.cjs`.
 
-Порядок и зависимости задаются в `scripts/test_release.ps1`, перечень отдельных
-тестов — в `scripts/release-tests.json`. Перед запуском перечень сверяется с
-файлами `scripts/test_*.cjs`, `scripts/test_*.m`, `tests/test_*.m` и
-`scripts/test_*.py` и `scripts/test_*.ps1`. Составные PowerShell-запускатели
+Порядок и зависимости задаются в `scripts/testing/test_release.ps1`, перечень отдельных
+тестов — в `scripts/testing/release-tests.json`. Перед запуском перечень сверяется с
+файлами `tests/browser/test_*.cjs`, `tests/node/test_*.cjs`, `tests/octave/test_*.m`,
+`tests/integration/test_*.py` и `scripts/testing/test_*.ps1`. Пути JavaScript-тестов
+задаются в `entryPoints`; пропущенные и повторные регистрации отклоняются. Составные PowerShell-запускатели
 перечислены в `compositeScripts` с указанием заменяющих их этапов.
 Новый тест нужно зарегистрировать; иначе приёмка завершится
 ошибкой. Python-наборы в `backend/tests`, `tests/section_solver` и
@@ -31,7 +32,7 @@ NAFEMS quick/full, все зарегистрированные JavaScript/бра
 Для предварительного просмотра плана без Docker и без выполнения тестов:
 
 ```powershell
-pwsh -NoProfile -File ./scripts/test_release.ps1 -PlanOnly
+pwsh -NoProfile -File ./scripts/testing/test_release.ps1 -PlanOnly
 ```
 
 Каждый запуск создаёт `output/release-runs/<run-id>/`:
@@ -80,7 +81,7 @@ NAFEMS full существенно тяжелее выборочных пров�
 Все проверки выполнять в Docker. Команда проверки конвейера результатов из корня проекта:
 
 ```powershell
-./scripts/test_recovery_pipeline.ps1
+./scripts/testing/test_recovery_pipeline.ps1
 ```
 
 Нужны образы `mkef-solver-test:latest` и `mkef-browser-tests:latest`, собранные
@@ -106,12 +107,12 @@ K/M, кинематику, коэффициенты N/V/M, сечения, ча�
 Редакторские формулы характеристик сечений и диагностики
 ограничений намеренно сохраняются в обоих языках и требуют межъязыковых тестов.
 
-`./scripts/test_v8_stack.ps1` собирает текущие runtime-образы и проверяет восемь
+`./scripts/testing/test_v8_stack.ps1` собирает текущие runtime-образы и проверяет восемь
 сценариев 2D/3D через nginx/API, Octave, браузер и повторное открытие скачанного
 JSON и четыре готовых примера. Стек имеет уникальное имя,
 не публикует порты и удаляется после проверки; рабочий сервер не затрагивается.
 Готовые примеры пересчитываются в Docker функцией
-`addpath('scripts'); export_postprocessor_examples();` из исходных TXT справочника.
+`setup(); export_postprocessor_examples();` из исходных TXT справочника.
 Файлы из `output/postprocessor-examples` копируются в `examples/results`.
 
 Назначенные сечения v8 содержат `elements[].sectionProperties` из модели
@@ -121,7 +122,7 @@ JSON и четыре готовых примера. Стек имеет уник
 динамический постпроцессор — экстремумы текущего кадра. `stressField` вычисляет
 поле в точке без поиска экстремумов; `MKEFSpatialSections.stress` сохраняет
 поиск для динамики. Неиспользуемый `MKEFSections.stress` удалён из приложения;
-его независимая формула находится только в `scripts/planar-stress-reference.cjs`.
+его независимая формула находится только в `tests/helpers/planar-stress-reference.cjs`.
 
 `test_section_contract.m` экспортирует 42 случая в `section-contract/`.
 `test_section_contract.cjs` сравнивает свойства/экстремумы с независимыми
@@ -165,14 +166,14 @@ JSON и четыре готовых примера. Стек имеет уник
 ```octave
 addpath(pwd);
 setup;
-addpath(fullfile(pwd, 'tests'));
+addpath(fullfile(pwd, 'tests', 'octave'));
 test_reference_site;
 test_reference_examples;
 ```
 
 Проверка браузера требует установленного Playwright. При необходимости
 `MKEF_PLAYWRIGHT_MODULE` задаёт путь к модулю. Команда
-`node scripts/test_reference_browser.cjs` проверяет открытие с диска,
+`node tests/browser/test_reference_browser.cjs` проверяет открытие с диска,
 переключение языков, старые ссылки, совпадение расчётов и мобильную вёрстку.
 Чтобы дополнительно проверить работающий Docker-стек, задайте
 `MKEF_REFERENCE_BASE_URL=http://127.0.0.1:8080`. Снимки сохраняются в
@@ -206,7 +207,7 @@ rg -n "0\.7\.1|0\.7\.2" README.md CHANGELOG.md compose.release.yaml
 Выполните полную приёмку текущих исходников и проверьте итоговый `PASS`:
 
 ```powershell
-pwsh -NoProfile -File ./scripts/test_release.ps1
+pwsh -NoProfile -File ./scripts/testing/test_release.ps1
 ```
 
 Сохраните путь к `output/release-runs/<run-id>/report.md`. При изменении исходников
@@ -240,7 +241,7 @@ git status
 Запустите release-скрипт без сборки и публикации:
 
 ```powershell
-python scripts/release_images.py --dry-run
+python scripts/release/release_images.py --dry-run
 ```
 
 Проверьте в выводе:
@@ -257,7 +258,7 @@ Hub под учётной записью с правом записи в реп�
 
 ```powershell
 docker login
-python scripts/release_images.py --push
+python scripts/release/release_images.py --push
 ```
 
 Скрипт выполняет следующие проверки и действия:

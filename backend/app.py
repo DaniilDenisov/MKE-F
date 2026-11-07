@@ -46,7 +46,7 @@ class Settings:
     jobs_root: Path = Path("/jobs")
     repository_root: Path = Path("/app")
     octave_executable: str = "octave-cli"
-    runner_script: Path = Path("/app/scripts/run_solver_job.m")
+    runner_script: Path = Path("/app/scripts/runtime/run_solver_job.m")
     max_case_bytes: int = 10 * 1024 * 1024
     max_result_bytes: int = 100 * 1024 * 1024
     max_log_bytes: int = 256 * 1024
@@ -75,7 +75,7 @@ class Settings:
             repository_root=Path(os.getenv("MKEF_REPOSITORY_ROOT", "/app")),
             octave_executable=os.getenv("MKEF_OCTAVE_EXECUTABLE", "octave-cli"),
             runner_script=Path(
-                os.getenv("MKEF_RUNNER_SCRIPT", "/app/scripts/run_solver_job.m")
+                os.getenv("MKEF_RUNNER_SCRIPT", "/app/scripts/runtime/run_solver_job.m")
             ),
             max_case_bytes=env_int("MKEF_MAX_CASE_BYTES", 10 * 1024 * 1024),
             max_result_bytes=env_int(

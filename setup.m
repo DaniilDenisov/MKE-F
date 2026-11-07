@@ -3,7 +3,10 @@ function setup()
 
 repositoryRoot = fileparts(mfilename('fullpath'));
 sourceDirectories = {
-    fullfile(repositoryRoot, 'scripts')
+    fullfile(repositoryRoot, 'scripts', 'runtime')
+    fullfile(repositoryRoot, 'scripts', 'examples')
+    fullfile(repositoryRoot, 'scripts', 'benchmarks', 'nafems')
+    fullfile(repositoryRoot, 'scripts', 'testing')
     fullfile(repositoryRoot, 'src', 'model')
     fullfile(repositoryRoot, 'src', 'analysis', 'common')
     fullfile(repositoryRoot, 'src', 'analysis', 'static')

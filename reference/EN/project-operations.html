@@ -83,13 +83,13 @@ docker compose up --build</code></pre>
         <h2 id="checks">3. Project verification</h2>
         <h3>Full release acceptance</h3>
         <p>Requires PowerShell 7+ and a running Docker engine with Compose. From the repository root:</p>
-        <pre><code>pwsh -NoProfile -File ./scripts/test_release.ps1</code></pre>
+        <pre><code>pwsh -NoProfile -File ./scripts/testing/test_release.ps1</code></pre>
         <p>The runner builds images and executes Octave, NAFEMS quick/full, all registered JavaScript and browser tests, backend, the Python section solver and API, numerical acceptance and application checks in a separate Compose project. Fixtures are generated afresh; the working stack is not stopped. Temporary containers and image tags are removed after verification.</p>
         <p>The <code>report.md</code> and <code>report.json</code> reports, plan, logs and artifacts are saved under <code>output/release-runs/&lt;run-id&gt;/</code>. Exit code 0 and a final <code>PASS</code> require every stage to succeed. Independent checks continue after failures; dependent stages become <code>BLOCKED</code>, which prevents acceptance. Do not edit sources during a run.</p>
-        <p><code>-PlanOnly</code> validates the test inventory and displays the plan without Docker; <code>-StageTimeoutSeconds</code> changes the external command timeout (3600 seconds by default). Register new tests in <code>scripts/release-tests.json</code> and the execution plan; an unregistered file fails verification. The commands below remain available for targeted checks.</p>
+        <p><code>-PlanOnly</code> validates the test inventory and displays the plan without Docker; <code>-StageTimeoutSeconds</code> changes the external command timeout (3600 seconds by default). Register new tests in <code>scripts/testing/release-tests.json</code> and the execution plan; an unregistered file fails verification. The commands below remain available for targeted checks.</p>
         <h3>Container smoke test</h3>
         <p>With the stack running, execute from the repository root:</p>
-        <pre><code>./scripts/compose_smoke_test.ps1</code></pre>
+        <pre><code>./scripts/testing/compose_smoke_test.ps1</code></pre>
 
         <h3>Python and Octave integration tests</h3>
         <pre><code>docker build --target test -t mkef-solver-test -f docker/solver.Dockerfile .
@@ -98,10 +98,10 @@ docker run --rm mkef-solver-test</code></pre>
         <h3>Browser checks in Docker</h3>
         <p>Build the image and run the required check from the repository root (PowerShell or Bash):</p>
         <pre><code>docker build -t mkef-browser-tests -f docker/browser-tests.Dockerfile .
-docker run --rm -v "${PWD}:/app" -w /app --entrypoint node mkef-browser-tests scripts/test_reference_browser.cjs
-docker run --rm -v "${PWD}:/app" -w /app --entrypoint node mkef-browser-tests scripts/test_unified_editor_browser.cjs
-docker run --rm -v "${PWD}:/app" -w /app --entrypoint node mkef-browser-tests scripts/test_unified_post_browser.cjs</code></pre>
-<p>For the Python section solver, run <code>./scripts/section_solver_acceptance/run.ps1</code> in PowerShell. The report covers five profiles. Run <code>./scripts/test_section_service_compose.ps1</code> to check the diagnostic page through Nginx, including service outages and recovery.</p>
+docker run --rm -v "${PWD}:/app" -w /app --entrypoint node mkef-browser-tests tests/browser/test_reference_browser.cjs
+docker run --rm -v "${PWD}:/app" -w /app --entrypoint node mkef-browser-tests tests/browser/test_unified_editor_browser.cjs
+docker run --rm -v "${PWD}:/app" -w /app --entrypoint node mkef-browser-tests tests/browser/test_unified_post_browser.cjs</code></pre>
+<p>For the Python section solver, run <code>./scripts/testing/run_section_solver_acceptance.ps1</code> in PowerShell. The report covers five profiles. Run <code>./scripts/testing/test_section_service_compose.ps1</code> to check the diagnostic page through Nginx, including service outages and recovery.</p>
       </section>
 
       <section aria-labelledby="standalone">

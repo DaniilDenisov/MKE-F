@@ -68,7 +68,7 @@
 
 ```powershell
 docker run --rm --mount type=bind,source=C:\Users\user\Desktop\MKE-F,target=/app --workdir /app --entrypoint node mkef-browser-tests:latest scripts/test_section_fem_regression.cjs --full
-docker run --rm --mount type=bind,source=C:\Users\user\Desktop\MKE-F,target=/app --workdir /app --entrypoint octave-cli mkef-solver-test:latest --no-gui --quiet --eval "addpath('scripts'); run_octave_tests();"
+docker run --rm --mount type=bind,source=C:\Users\user\Desktop\MKE-F,target=/app --workdir /app --entrypoint octave-cli mkef-solver-test:latest --no-gui --quiet --eval "setup(); run_octave_tests();"
 docker run --rm --mount type=bind,source=C:\Users\user\Desktop\MKE-F,target=/app --workdir /app --entrypoint python3 mkef-solver-test:latest -m pytest -q -p no:cacheprovider backend/tests/test_spatial_runner.py
 ```
 

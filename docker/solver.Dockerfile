@@ -31,7 +31,7 @@ ENV PATH="/opt/mkef-venv/bin:${PATH}" \
     HOME=/tmp/mkef-home \
     MKEF_JOBS_ROOT=/jobs \
     MKEF_REPOSITORY_ROOT=/app \
-    MKEF_RUNNER_SCRIPT=/app/scripts/run_solver_job.m
+    MKEF_RUNNER_SCRIPT=/app/scripts/runtime/run_solver_job.m
 
 USER 10001:10001
 EXPOSE 8000

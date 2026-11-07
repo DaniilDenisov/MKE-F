@@ -7,6 +7,7 @@ COPY reference /usr/share/nginx/html/reference
 COPY shared /usr/share/nginx/html/shared
 COPY src /usr/share/nginx/html/src
 COPY scripts /usr/share/nginx/html/scripts
+COPY tests /usr/share/nginx/html/tests
 COPY examples /usr/share/nginx/html/examples
 
 # Git checkouts may use a restrictive umask; nginx must read all static assets.

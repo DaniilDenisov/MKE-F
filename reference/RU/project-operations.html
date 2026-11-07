@@ -83,13 +83,13 @@ docker compose up --build</code></pre>
         <h2 id="checks">3. Проверка проекта</h2>
         <h3>Полная приёмка перед релизом</h3>
         <p>Нужны PowerShell 7+ и работающий Docker с Compose. Из корня репозитория:</p>
-        <pre><code>pwsh -NoProfile -File ./scripts/test_release.ps1</code></pre>
+        <pre><code>pwsh -NoProfile -File ./scripts/testing/test_release.ps1</code></pre>
         <p>Сценарий собирает образы и запускает Octave, NAFEMS quick/full, все зарегистрированные JavaScript- и браузерные тесты, backend, Python-решатель и API сечений, численную приёмку и проверки приложения в отдельном Compose-проекте. Данные создаются заново; рабочий стек не останавливается. Временные контейнеры и теги образов удаляются после проверки.</p>
         <p>Отчёты <code>report.md</code> и <code>report.json</code>, план, логи и результаты находятся в <code>output/release-runs/&lt;run-id&gt;/</code>. Код выхода 0 и итоговый <code>PASS</code> означают успех всех этапов. После ошибки независимые проверки продолжаются, зависимые получают <code>BLOCKED</code>; такая приёмка не считается успешной. Не меняйте исходники во время запуска.</p>
-        <p><code>-PlanOnly</code> проверяет список тестов и показывает план без Docker; <code>-StageTimeoutSeconds</code> меняет лимит внешней команды (по умолчанию 3600 секунд). Новые тесты регистрируются в <code>scripts/release-tests.json</code> и плане запуска; пропущенный файл вызывает ошибку. Отдельные команды ниже предназначены для выборочных проверок.</p>
+        <p><code>-PlanOnly</code> проверяет список тестов и показывает план без Docker; <code>-StageTimeoutSeconds</code> меняет лимит внешней команды (по умолчанию 3600 секунд). Новые тесты регистрируются в <code>scripts/testing/release-tests.json</code> и плане запуска; пропущенный файл вызывает ошибку. Отдельные команды ниже предназначены для выборочных проверок.</p>
         <h3>Контейнерный smoke-тест</h3>
         <p>При работающем стеке запустите из корня репозитория:</p>
-        <pre><code>./scripts/compose_smoke_test.ps1</code></pre>
+        <pre><code>./scripts/testing/compose_smoke_test.ps1</code></pre>
 
         <h3>Интеграционные тесты Python и Octave</h3>
         <pre><code>docker build --target test -t mkef-solver-test -f docker/solver.Dockerfile .
@@ -98,10 +98,10 @@ docker run --rm mkef-solver-test</code></pre>
         <h3>Браузерные проверки в Docker</h3>
         <p>Из корня репозитория соберите образ и запустите нужную проверку (команды подходят для PowerShell и Bash):</p>
         <pre><code>docker build -t mkef-browser-tests -f docker/browser-tests.Dockerfile .
-docker run --rm -v "${PWD}:/app" -w /app --entrypoint node mkef-browser-tests scripts/test_reference_browser.cjs
-docker run --rm -v "${PWD}:/app" -w /app --entrypoint node mkef-browser-tests scripts/test_unified_editor_browser.cjs
-docker run --rm -v "${PWD}:/app" -w /app --entrypoint node mkef-browser-tests scripts/test_unified_post_browser.cjs</code></pre>
-<p>Для проверки Python-решателя сечений запустите <code>./scripts/section_solver_acceptance/run.ps1</code> в PowerShell. Отчёт охватывает пять профилей. Команда <code>./scripts/test_section_service_compose.ps1</code> проверяет диагностику через Nginx, остановку и восстановление сервиса.</p>
+docker run --rm -v "${PWD}:/app" -w /app --entrypoint node mkef-browser-tests tests/browser/test_reference_browser.cjs
+docker run --rm -v "${PWD}:/app" -w /app --entrypoint node mkef-browser-tests tests/browser/test_unified_editor_browser.cjs
+docker run --rm -v "${PWD}:/app" -w /app --entrypoint node mkef-browser-tests tests/browser/test_unified_post_browser.cjs</code></pre>
+<p>Для проверки Python-решателя сечений запустите <code>./scripts/testing/run_section_solver_acceptance.ps1</code> в PowerShell. Отчёт охватывает пять профилей. Команда <code>./scripts/testing/test_section_service_compose.ps1</code> проверяет диагностику через Nginx, остановку и восстановление сервиса.</p>
       </section>
 
       <section aria-labelledby="standalone">
