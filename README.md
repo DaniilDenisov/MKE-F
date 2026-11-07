@@ -37,6 +37,13 @@ docker compose -f compose.release.yaml up -d
 
 [compose.release.yaml](compose.release.yaml) закреплён на версии **0.8.6** для всех трёх сервисов: решателя, сервиса сечений и веб-интерфейса. Остановка: `docker compose -f compose.release.yaml down`.
 
+## Проверка перед релизом
+
+В PowerShell 7+ при работающем Docker выполните
+`pwsh -NoProfile -File ./scripts/test_release.ps1`. Сценарий собирает образы,
+запускает полную приёмку и сохраняет отчёт в
+`output/release-runs/<run-id>/report.md`. [Порядок и параметры](DEVGUIDE.md#полная-приёмка-перед-релизом).
+
 ## Документация и лабораторные
 
 - [Справочник](reference/RU/index.html) · [3D: быстрый старт](reference/RU/3d-quick-start.html) · [Пример модели](examples/cases/CaseSpatialQuickStart.txt).
@@ -85,6 +92,13 @@ docker compose -f compose.release.yaml up -d
 ```
 
 [compose.release.yaml](compose.release.yaml) pins all three services (solver, section solver and web interface) to **0.8.6**. Stop with `docker compose -f compose.release.yaml down`.
+
+## Release verification
+
+With PowerShell 7+ and Docker running, execute
+`pwsh -NoProfile -File ./scripts/test_release.ps1`. It builds the images,
+runs the complete acceptance suite and writes
+`output/release-runs/<run-id>/report.md`. [Verification guide](reference/EN/project-operations.html#checks).
 
 ## Documentation and labs
 

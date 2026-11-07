@@ -81,6 +81,12 @@ docker compose up --build</code></pre>
 
       <section aria-labelledby="checks">
         <h2 id="checks">3. Project verification</h2>
+        <h3>Full release acceptance</h3>
+        <p>Requires PowerShell 7+ and a running Docker engine with Compose. From the repository root:</p>
+        <pre><code>pwsh -NoProfile -File ./scripts/test_release.ps1</code></pre>
+        <p>The runner builds images and executes Octave, NAFEMS quick/full, all registered JavaScript and browser tests, backend, the Python section solver and API, numerical acceptance and application checks in a separate Compose project. Fixtures are generated afresh; the working stack is not stopped. Temporary containers and image tags are removed after verification.</p>
+        <p>The <code>report.md</code> and <code>report.json</code> reports, plan, logs and artifacts are saved under <code>output/release-runs/&lt;run-id&gt;/</code>. Exit code 0 and a final <code>PASS</code> require every stage to succeed. Independent checks continue after failures; dependent stages become <code>BLOCKED</code>, which prevents acceptance. Do not edit sources during a run.</p>
+        <p><code>-PlanOnly</code> validates the test inventory and displays the plan without Docker; <code>-StageTimeoutSeconds</code> changes the external command timeout (3600 seconds by default). Register new tests in <code>scripts/release-tests.json</code> and the execution plan; an unregistered file fails verification. The commands below remain available for targeted checks.</p>
         <h3>Container smoke test</h3>
         <p>With the stack running, execute from the repository root:</p>
         <pre><code>./scripts/compose_smoke_test.ps1</code></pre>

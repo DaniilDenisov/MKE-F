@@ -11,6 +11,7 @@ const assert=require('node:assert/strict'),path=require('node:path');
    await page.goto('file://'+path.resolve('preprocessor/index.html'));
    await page.evaluate(()=>{const render=MKEFPre.SpatialPanel.prototype.render;MKEFPre.SpatialPanel.prototype.render=function(...args){window.panel=this;return render.apply(this,args);};});
    await page.locator('#element-type').selectOption('1436');
+   await page.locator('#analysis-type').selectOption('static');
    await page.locator('[data-spatial-tool="node"]').click();
    for(const x of [0,2,4]){await page.locator('#spatial-node-x').fill(String(x));await page.locator('#spatial-node-apply').click();}
    assert.equal(await page.locator('#spatial-catalog-tool').evaluate(e=>e.open),false);
@@ -35,6 +36,7 @@ const assert=require('node:assert/strict'),path=require('node:path');
    await page.locator('#spatial-member-density').fill('');await page.locator('#spatial-member-shearModulus').fill('');
    let firstNoGL=true;const pick=async index=>{
     if(noGL){await page.locator('#spatial-member-node'+(firstNoGL?1:2)).fill(String(index+1));if(!firstNoGL)await page.locator('#spatial-member-apply').click();firstNoGL=!firstNoGL;return;}
+    await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
     const point=await page.evaluate(i=>{const s=panel.scene,p=s.local(panel.model.nodes[i]).project(s.camera),r=s.canvas.getBoundingClientRect();return{x:r.left+(p.x+1)*r.width/2,y:r.top+(1-p.y)*r.height/2};},index);
     await page.mouse.click(point.x,point.y);
    };
@@ -54,12 +56,13 @@ const assert=require('node:assert/strict'),path=require('node:path');
    const saved=await page.locator('#spatial-current').inputValue();assert.match(saved,/element_sections/);
    await page.locator('#undo').click();assert.equal(await page.locator('#spatial-element-rows tr').count(),0);
    await page.locator('#redo').click();assert.equal(await page.locator('#spatial-current').inputValue(),saved);
-   await pick(1);await pick(2);assert.equal(await page.locator('#spatial-element-rows tr').count(),2);
+   await pick(1);await pick(2);assert.equal(await page.locator('#spatial-element-rows tr').count(),2,await page.locator('#spatial-edit-status').innerText());
    assert.deepEqual(await page.evaluate(()=>panel.model.elements.map(e=>e.sectionId)),[1,1]);
    const parsed=await page.evaluate(()=>{const m=MKEFPre.spatialFormat.parse(panel.history.text());return m.elements.map(e=>({sectionId:e.sectionId,area:e.area}));});assert.equal(parsed[1].sectionId,1);assert.equal(parsed[0].area,parsed[1].area);
    assert.deepEqual(errors,[]);await page.screenshot({path:path.resolve('output/member-catalog'+(noGL?'-no-webgl':'')+'.png')});
    if(noGL){
-    const text=await page.evaluate(()=>{const m=MKEFPre.spatialFormat.empty(1133);m.nodes=[{x:0,y:0,z:0},{x:1,y:2,z:3}];m.sections=Array.from({length:205},(_,i)=>({id:i+1,name:'Profile '+(i+1),type:'rectangle',dimensions:{b:.1,h:.2}}));return MKEFPre.spatialFormat.serialize(m);});
+    // Import a draft explicitly: exporting an element-free model is prohibited.
+    const text='analysis\nstatic\nnodes\n2\n0,0,0\n1,2,3\nelems_1133\n0\nsections\n205\n'+Array.from({length:205},(_,i)=>JSON.stringify({id:i+1,name:'Profile '+(i+1),type:'rectangle',dimensions:{b:.1,h:.2}})).join('\n')+'\n';
     await page.locator('#file-input').setInputFiles({name:'catalog-draft.txt',mimeType:'text/plain',buffer:Buffer.from(text)});
     await page.locator('[data-spatial-tool="member"]').click();
     assert.equal(await page.locator('#spatial-member-sectionId').inputValue(),'0');

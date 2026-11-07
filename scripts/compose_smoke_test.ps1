@@ -1,5 +1,7 @@
 param(
-    [string]$BaseUri = 'http://127.0.0.1:8080'
+    [string]$BaseUri = 'http://127.0.0.1:8080',
+    # Release runner inspects its own container's port bindings instead.
+    [switch]$SkipHostPortProbe
 )
 
 $ErrorActionPreference = 'Stop'
@@ -51,6 +53,7 @@ foreach ($case in $cases) {
     Write-Host "PASS $($case.File) (schema v$($case.Version))"
 }
 
+if ($SkipHostPortProbe) { return }
 $solverExposed = $false
 try {
     Invoke-WebRequest -Uri 'http://127.0.0.1:8000/api/v1/health' -TimeoutSec 1 | Out-Null
