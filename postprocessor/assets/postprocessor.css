@@ -78,8 +78,8 @@ input[type="number"],input[type="range"],select { width:100%; padding:.4rem .5re
 :is(#history-chart,#spatial-result-chart,#normal-stress-chart) .chart-tooltip text { fill:#fff; font:12px sans-serif; }
 :is(#history-chart,#spatial-result-chart,#normal-stress-chart) [hidden] { display:none; }
 :is(#history-chart,#spatial-result-chart,#normal-stress-chart) text { fill:#354657; font:12px sans-serif; }
-@media (max-width:760px) { body.postprocessor-app{height:auto;display:block;overflow:auto}.toolbar{align-items:flex-start}.toolbar-actions{justify-content:flex-end}.brand small{max-width:42vw}.app-layout{height:auto;min-height:calc(100vh - 4.2rem);display:block;overflow:visible}.settings{overflow:visible;border-right:0;border-bottom:1px solid var(--line);display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1rem}.workspace{overflow:visible}.settings section+section{border-top:0;margin-top:0;padding-top:0}.settings .help{grid-column:1/-1}.drop-zone,#viewport{min-height:24rem}.details-panel{max-height:none} }
-@media (max-width:480px) { .toolbar{flex-direction:column}.toolbar-actions{width:100%;justify-content:flex-start}.brand small{max-width:80vw}.settings{grid-template-columns:1fr}.settings .help{grid-column:auto} }
+
+
 .section-result-panel{padding:18px;background:#fff;border:1px solid #d9e0e9;border-radius:8px;margin-top:12px}
 .section-result-panel[hidden]{display:none}.section-result-panel label{display:flex;gap:12px;align-items:center}
 .section-result-panel input[type=range]{flex:1}.section-result-panel input[type=number]{width:90px}
@@ -94,8 +94,8 @@ input[type="number"],input[type="range"],select { width:100%; padding:.4rem .5re
 .result-inspector .section-result-svg{height:240px;margin-top:8px}
 .result-inspector .section-result-panel pre{font:14px/1.4 ui-monospace,monospace;margin:8px 0}
 .workspace:has(.section-result-panel:not([hidden])) .drop-zone{min-height:240px}
-@media(max-width:1000px){.result-inspector:has(.section-result-panel:not([hidden])){grid-template-columns:1fr}.workspace:has(.section-result-panel:not([hidden])){overflow:auto}}
-@media(max-width:760px){.result-inspector{max-height:none}.result-inspector .section-result-svg{height:260px}}
+
+
 
 #spatial-result-panel .selected-row{background:#fff0d8}
 .postprocessor-app .app-layout{grid-template-columns:270px minmax(980px,1fr)}
@@ -124,7 +124,7 @@ input[type="number"],input[type="range"],select { width:100%; padding:.4rem .5re
 .section-expanded{width:min(1180px,96vw);max-width:96vw;max-height:94vh;padding:20px;border:1px solid #c5d6e2;border-radius:12px;background:white;overflow:auto}
 .section-expanded::backdrop{background:rgba(13,31,46,.55)}.section-expanded .section-inspector{border:0}.section-expanded .section-maps{grid-template-columns:repeat(2,minmax(0,1fr))}
 .section-expanded .section-coordinate-controls{grid-template-columns:2fr 1fr 1fr}.section-expanded .section-coordinate-controls label:first-child{grid-column:auto}
-@media(max-width:760px){.section-expanded{padding:12px}.section-expanded .section-maps{grid-template-columns:minmax(0,1fr)}.section-expanded .section-coordinate-controls{grid-template-columns:1fr 1fr}.section-expanded .section-coordinate-controls label:first-child{grid-column:1/-1}}
+
 #member-maxima { flex:none; border-bottom:1px solid var(--line); padding-bottom:8px; }
 #member-maxima summary { cursor:pointer; font-weight:600; }
 #member-maxima label { display:block; margin:6px 0; }

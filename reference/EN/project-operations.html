@@ -6,6 +6,7 @@
   <meta name="description" content="Running MKE-F with Docker Compose, container settings, verification and repository structure.">
   <title>Project operations — MKE-F</title>
   <link rel="stylesheet" href="../assets/reference.css">
+  <link rel="stylesheet" href="../../shared/desktop-ui.css">
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to content</a>
@@ -15,8 +16,6 @@
       <nav class="language-switch" aria-label="Reference language"><a href="../RU/project-operations.html" lang="ru" hreflang="ru">RU</a> <a href="../EN/project-operations.html" lang="en" hreflang="en" aria-current="true">EN</a></nav>
     </div>
   </header>
-
-  <a class="mobile-contents-link" href="#reference-contents">Contents ↓</a>
   <div class="layout">
     <nav class="contents" id="reference-contents" aria-label="Appendix contents">
       <a class="contents-home" href="index.html">Documentation</a>
@@ -111,6 +110,7 @@ docker run --rm -v "${PWD}:/app" -w /app --entrypoint node mkef-browser-tests te
 
       <section aria-labelledby="standalone">
         <h2 id="standalone">4. Offline web interfaces</h2>
+        <p>The web interfaces and handbook support desktop browsers or wide-screen tablets with a window at least 1250 CSS pixels wide. Phones and mobile window sizes are unsupported. Smaller windows show only a notice: enlarge the window or rotate your tablet to landscape. Widening the window restores the interface without reloading. Command-line Octave use does not depend on screen size.</p>
         <p><a href="../../preprocessor/index.html"><code>preprocessor/index.html</code></a> and <a href="../../postprocessor/index.html"><code>postprocessor/index.html</code></a> can be opened directly from disk. This mode supports creating and editing TXT models and viewing saved JSON results. Running an analysis from the preprocessor requires the container API.</p>
         <h3>Preprocessor</h3>
         <p>The editor and postprocessor share a WebGL scene. The 2D camera stays in XY; 3D supports orbiting and XY/XZ/YZ work planes. Create geometry with <strong>Add Node</strong> and <strong>Add Element</strong>; edit exact values in the selected object’s left panel. Object tables are on the right. <strong>View</strong> controls the camera, plane, offset and grid step; <strong>Snap to grid</strong> and <strong>Snap to nodes</strong> control snapping. Open TXT files with <strong>Open TXT</strong> or by dropping them into the window.</p>

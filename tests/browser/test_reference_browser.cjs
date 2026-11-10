@@ -156,7 +156,7 @@ async function exercise(page, chapter, english) {
         }
         assert.deepEqual(results[1], results[0], `Numerical parity: ${name}`);
       }
-      for (const width of [1440, 390]) {
+      for (const width of [1440]) {
         await page.setViewportSize({ width, height: 1000 });
         for (const name of ['index.html', 'EN/index.html', ...['capabilities.html', 'project-operations.html', '08-result-recovery.html'].flatMap(name => ['RU/' + name, 'EN/' + name]), 'RU/3d-quick-start.html', 'EN/3d-quick-start.html', 'RU/10-input-format.html', 'EN/10-input-format.html', 'EN/02-element-matrices.html', 'RU/04-boundary-loads.html', 'EN/04-boundary-loads.html', 'RU/04a-mpc.html', 'EN/04a-mpc.html', 'RU/04b-end-releases.html', 'EN/04b-end-releases.html', ...visualizers.map(name => 'EN/' + name)]) {
           await page.goto(base + 'reference/' + name);
@@ -202,13 +202,18 @@ async function exercise(page, chapter, english) {
       await page.locator('#spatial-result-position').dispatchEvent('change');
       assert.match(await page.locator('#section-result-info').innerText(),/σmin=-3000000/);
       assert.match(await page.locator('#section-result-info').innerText(),/σmax=3000000/);
-      console.log(`PASS ${mode}: ${pages.length * 2} pages, ${pages.length - 1} legacy redirects, keyboard switches, visualizer numerical parity, responsive layouts and downloadable 3D example`);
+      console.log(`PASS ${mode}: ${pages.length * 2} pages, ${pages.length - 1} legacy redirects, keyboard switches, visualizer numerical parity, desktop layouts and downloadable 3D example`);
     }
     const noScript = await browser.newContext({ javaScriptEnabled: false });
     const fallback = await noScript.newPage();
     await fallback.goto(bases[0] + 'reference/01-model-dofs.html');
     await fallback.locator('#redirect-target').click();
     await fallback.waitForURL('**/RU/01-model-dofs.html');
+    // The size notice must also work without JavaScript; no phone workflow is supported.
+    await fallback.setViewportSize({width:1249,height:900});
+    assert.match(await fallback.locator('body').ariaSnapshot(),/Откройте в настольном браузере/);
+    assert(await fallback.locator('main').isHidden());
+    await fallback.setViewportSize({width:1250,height:900});
     await fallback.locator('.language-switch a[lang="en"]').click();
     await fallback.waitForURL('**/EN/01-model-dofs.html');
     await noScript.close();

@@ -49,7 +49,6 @@ pre {
 pre code { padding: 0; color: inherit; background: transparent; font-size: inherit; overflow-wrap: normal; }
 .skip-link { position: absolute; top: -100px; left: 10px; z-index: 10; padding: 12px; background: white; }
 .skip-link:focus { top: 10px; }
-.mobile-contents-link { display: none; }
 
 /* Compact masthead shared by the handbook and interactive chapters. */
 .site-header__inner {
@@ -126,32 +125,6 @@ tr:last-child td { border-bottom: 0; }
 .language-choice:hover { border-color: var(--green); background: #f1f8f5; }
 .language-choice strong { display: block; margin-bottom: 12px; font-size: 1.5rem; }
 
-@media (max-width: 1150px) {
-  .layout { grid-template-columns: 210px minmax(0, 1fr); gap: 30px; padding: 0 25px; }
-  .site-header__inner, .site-footer__inner { padding-inline: 25px; }
-  .chapter-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .page-nav { width: calc(100% - 290px); margin-right: 25px; }
-}
-@media (max-width: 760px) {
-  .site-header__inner { padding: 18px 20px; flex-wrap: wrap; }
-  .site-brand__context { display: none; }
-  .mobile-contents-link { display: block; width: fit-content; margin: 18px 20px 0; font-size: 14px; }
-  .layout { display: flex; flex-direction: column; gap: 0; padding: 0 20px; }
-  .chapter { order: -1; width: 100%; padding: 30px 0; }
-  .chapter h2 { font-size: 1.5rem; padding-top: 28px; margin-top: 28px; }
-  .contents { position: static; width: 100%; max-height: none; padding: 20px 0 30px; border-top: 1px solid var(--line); }
-  .lead { font-size: 18px; }
-  .page-nav { width: auto; margin: 0 20px; }
-  .site-footer__inner { padding: 24px 20px; }
-  .language-entry { margin: 35px auto; padding: 0 20px; }
-}
-@media (max-width: 540px) {
-  .card-grid, .chapter-grid { grid-template-columns: 1fr; }
-  .chapter, .contents { min-width: 0; overflow-wrap: anywhere; }
-  .card { padding: 20px; }
-  .page-nav { flex-direction: column; }
-  .page-nav > :last-child { text-align: left; }
-}
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
 @media print {
   body { background: white; color: black; font-size: 11pt; }
@@ -159,7 +132,7 @@ tr:last-child td { border-bottom: 0; }
   .site-brand__context { display: inline; }
   .layout { display: block; max-width: none; padding: 0; }
   .chapter { max-width: none; padding: 20px 0; }
-  .contents, .page-nav, .language-switch, .site-footer, .skip-link, .mobile-contents-link { display: none; }
+  .contents, .page-nav, .language-switch, .site-footer, .skip-link { display: none; }
   a { color: inherit; }
   .chapter h1 { font-size: 30pt; }
   h2, h3 { break-after: avoid; }

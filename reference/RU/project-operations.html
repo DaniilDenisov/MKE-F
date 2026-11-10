@@ -6,6 +6,7 @@
   <meta name="description" content="Запуск МКЭ-Ф через Docker Compose, настройка контейнеров, проверки и структура проекта.">
   <title>Работа с проектом — МКЭ-Ф</title>
   <link rel="stylesheet" href="../assets/reference.css">
+  <link rel="stylesheet" href="../../shared/desktop-ui.css">
 </head>
 <body>
   <a class="skip-link" href="#main">К содержанию</a>
@@ -15,8 +16,6 @@
       <nav class="language-switch" aria-label="Язык справочника"><a href="../RU/project-operations.html" lang="ru" hreflang="ru" aria-current="true">RU</a> <a href="../EN/project-operations.html" lang="en" hreflang="en">EN</a></nav>
     </div>
   </header>
-
-  <a class="mobile-contents-link" href="#reference-contents">Содержание ↓</a>
   <div class="layout">
     <nav class="contents" id="reference-contents" aria-label="Содержание приложения">
       <a class="contents-home" href="index.html">Документация</a>
@@ -111,6 +110,7 @@ docker run --rm -v "${PWD}:/app" -w /app --entrypoint node mkef-browser-tests te
 
       <section aria-labelledby="standalone">
         <h2 id="standalone">4. Автономные веб-интерфейсы</h2>
+        <p>Веб-интерфейсы и справочник поддерживают настольный браузер или широкий планшет при ширине окна от 1250 CSS-пикселей. Телефоны и мобильные размеры окна не поддерживаются. При недостаточной ширине показывается только пояснение: увеличьте окно или поверните планшет горизонтально. После расширения окна работа продолжается без перезагрузки. Командная строка Octave не зависит от размера экрана.</p>
         <p><a href="../../preprocessor/index.html"><code>preprocessor/index.html</code></a> и <a href="../../postprocessor/index.html"><code>postprocessor/index.html</code></a> можно открыть прямо с диска. В таком режиме доступны создание и редактирование TXT-моделей, а также просмотр ранее сохранённых JSON-результатов. Запуск расчёта из препроцессора доступен только через контейнерный API.</p>
         <h3>Препроцессор</h3>
         <p>Редактор и постпроцессор используют общую WebGL-сцену. Для 2D камера фиксирована в XY; в 3D доступны вращение и рабочие плоскости XY/XZ/YZ. Создавайте узлы и элементы инструментами <strong>Add Node</strong> и <strong>Add Element</strong>; точные значения редактируйте в левой панели выбранного объекта. Таблицы объектов находятся справа. <strong>View</strong> управляет камерой, плоскостью, смещением и шагом сетки; <strong>Snap to grid</strong> и <strong>Snap to nodes</strong> — привязками. TXT открывается через <strong>Open TXT</strong> или перетаскиванием в окно.</p>

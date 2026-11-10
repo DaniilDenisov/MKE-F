@@ -1,3 +1,25 @@
-/* The engineering UI targets monitors and sufficiently wide tablets. */
-.screen-size-notice{display:none;flex-shrink:0;margin:0;padding:10px 16px;max-width:100vw;box-sizing:border-box;background:#fff8e7;border-bottom:1px solid #e8c77f;color:#70440c;font:14px/1.4 system-ui,sans-serif}
-@media(max-width:1249px){.screen-size-notice{display:block}}
+/* Supported browser window width: at least 1250 CSS pixels. */
+@media screen and (width < 1250px) {
+  html, body { min-width: 0 !important; margin: 0 !important; }
+  body { display: block !important; height: auto !important; overflow: auto !important; background: #f4f7fa !important; }
+  body > * { display: none !important; }
+  body::before {
+    content: "Open in a desktop browser.\A\A Please use a computer or a wide-screen tablet with a browser window at least 1250 CSS pixels wide. Phone screen sizes and orientations are not supported. Enlarge the window or rotate your tablet to landscape.";
+    display: block;
+    box-sizing: border-box;
+    width: calc(100% - 32px);
+    max-width: 600px;
+    margin: 12vh auto;
+    padding: 24px;
+    border: 1px solid #d7dee7;
+    border-radius: 8px;
+    background: #fff;
+    color: #18212f;
+    font: 16px/1.6 system-ui, sans-serif;
+    white-space: pre-line;
+    overflow-wrap: anywhere;
+  }
+  html:lang(ru) body::before {
+    content: "Откройте в настольном браузере.\A\A Пожалуйста, используйте компьютер или широкий планшет с окном браузера не менее 1250 CSS-пикселей по ширине. Мобильные размеры окна и ориентация экрана телефона не поддерживаются. Увеличьте окно или поверните планшет горизонтально.";
+  }
+}

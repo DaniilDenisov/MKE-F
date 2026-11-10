@@ -28,16 +28,12 @@ const close=(actual,expected)=>assert(Math.abs(actual-expected)<1e-7*Math.max(1,
     await page.locator('#condition-axes').selectOption('1');await page.locator('#condition-apply').click();
     assert.match(await page.locator('#spatial-current').inputValue(),/21,1,1,0,-300,0,-1000/);
     await page.screenshot({path:path.join(root,'output/linear-preprocessor.png'),fullPage:true});
-    await page.setViewportSize({width:390,height:844});
-    assert(await start.isVisible());
-    await page.screenshot({path:path.join(root,'output/linear-preprocessor-mobile.png'),fullPage:true});
-    await page.setViewportSize({width:1440,height:1000});
     // Sign-changing endpoint values must produce finite graphics in both directions.
     await page.locator('#condition-q4').fill('300');
     await page.locator('#condition-q4').dispatchEvent('change');
     await page.locator('#condition-apply').click();
     assert.deepEqual(await page.evaluate(()=>editorPanel.model.elementLoads[0].components.filter((_,i)=>i%3===1)),[-300,300]);
-    console.log('linear preprocessor: PASS (endpoints, type/axes, undo/redo, sign change, mobile)');
+    console.log('linear preprocessor: PASS (endpoints, type/axes, undo/redo, sign change)');
 
     for (const name of ['CaseLinearFrame','CaseTriangleFrame','CaseLinearRelease','CaseLinearMPC']) {
       const filename=path.join(root,'output',name+'.json'), raw=JSON.parse(fs.readFileSync(filename,'utf8'));

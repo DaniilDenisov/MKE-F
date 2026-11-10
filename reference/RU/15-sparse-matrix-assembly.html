@@ -6,6 +6,7 @@
   <meta name="description" content="Интерактивное сравнение плотной и разреженной сборки матриц МКЭ с разбором функции sparse в GNU Octave.">
   <title>15. Разреженная сборка матриц МКЭ</title>
   <link rel="stylesheet" href="../assets/reference.css">
+  <link rel="stylesheet" href="../../shared/desktop-ui.css">
   <style>
     :root {
       color-scheme: light;
@@ -258,25 +259,6 @@
     .source-note a { color: #164f78; font-weight: 750; }
     footer { padding: 24px 0 30px; color: var(--muted); text-align: center; font-size: 13px; }
 
-    @media (max-width: 980px) {
-      .comparison { grid-template-columns: 1fr; }
-      .lane + .lane { border-top: 1px solid var(--line); border-left: 0; }
-      .metrics { grid-template-columns: 1fr; }
-      .explanation { grid-template-columns: 1fr; }
-    }
-    @media (max-width: 620px) {
-      .page-header__inner, main, footer { width: min(100% - 20px, 1480px); }
-      .toolbar, .status-band, .model-strip, .lane, .metrics { padding-inline: 13px; }
-      .status-band { align-items: flex-start; }
-      .status-badge { display: none; }
-      .range-label { width: 100%; grid-template-columns: auto 1fr auto; }
-      .lane-heading { display: block; }
-      .lane-chip { display: inline-block; margin-top: 8px; }
-      .array-line { grid-template-columns: 92px minmax(0, 1fr); }
-      .array-note { grid-column: 2; }
-      .explanation { padding-inline: 13px; }
-      .source-note { margin-inline: 13px; }
-    }
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; }
     }

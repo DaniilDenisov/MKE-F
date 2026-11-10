@@ -6,6 +6,7 @@
   <meta name="description" content="Интерактивная сборка матриц жёсткости и масс двухэлементной рамы и переход к системе переходного анализа.">
   <title>14. Матрицы двухэлементной рамы — интерактивная визуализация</title>
   <link rel="stylesheet" href="../assets/reference.css">
+  <link rel="stylesheet" href="../../shared/desktop-ui.css">
   <style>
     :root {
       color-scheme: light;
@@ -640,31 +641,6 @@
       width: min(1180px, calc(100% - 32px));
       margin: 22px auto 0;
       padding-bottom: 24px;
-    }
-
-    @media (max-width: 1080px) {
-      .workspace { grid-template-columns: 1fr; min-height: 0; }
-      .left-column { border-right: 0; border-bottom: 1px solid var(--line); }
-    }
-
-    @media (max-width: 700px) {
-      .page-header__inner,
-      main,
-      footer,
-      .reference-toc,
-      .page-nav { width: min(100% - 16px, 1500px); }
-      .reference-toc .contents ol { columns: 1; }
-      .toolbar { align-items: stretch; }
-      .toolbar__group { width: 100%; justify-content: space-between; }
-      .speed-label { grid-template-columns: auto minmax(80px, 1fr); flex: 1 1 170px; }
-      .status-band { grid-template-columns: 1fr; }
-      .status-badge { justify-self: start; }
-      .left-column,
-      .right-column { padding: 13px; }
-      .property-grid,
-      .summary-grid { grid-template-columns: 1fr; }
-      .matrix-stage { padding: 7px; }
-      .matrix-table td { min-width: 52px; }
     }
 
     @media (prefers-reduced-motion: reduce) {

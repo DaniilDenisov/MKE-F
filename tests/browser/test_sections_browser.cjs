@@ -56,7 +56,7 @@ const server=http.createServer((req,res)=>{
     await page.locator('#section-position-number').fill('0');await page.locator('#section-position-number').dispatchEvent('input');
     const endValues=(await page.locator('#section-result-info').innerText()).match(/σmin=([^ ]+) · σmax=([^\n]+)/);assert(Math.abs(Number(endValues[1]))<1e-6 && Math.abs(Number(endValues[2]))<1e-6);
     await page.locator('#section-position-number').fill('0.5');await page.locator('#section-position-number').dispatchEvent('input');
-    for(const width of [1440,640]) {
+    for(const width of [1440]) {
       await page.setViewportSize({width,height:1000});
       await page.waitForFunction(()=>{
         const svg=document.querySelector('#section-result-svg'),bounds=svg.getBoundingClientRect();

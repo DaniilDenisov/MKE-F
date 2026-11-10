@@ -17,6 +17,11 @@
 
 В статическом постпроцессоре выберите стержень и координату: панель **Section stresses** покажет карты нормальных напряжений и Мизеса, с развёрнутым просмотром и экспортом двух карт в PNG. Сдвиг и кручение рассчитывает Python-сервис `sectionproperties` в Docker Compose; фермы и чистое растяжение/изгиб отображаются без сервиса. Панель **Member von Mises maxima · static** сохраняет максимумы по стержням, а [диагностическая страница](reference/section-fem-lab.html) — независимый ввод геометрии и усилий. [Просмотр и ограничения](reference/RU/08-result-recovery.html#section-view-title).
 
+Веб-интерфейс и справочник рассчитаны на настольный браузер или широкий
+планшет: ширина окна — не менее 1250 CSS-пикселей. Телефоны и мобильные размеры
+окна не поддерживаются; при недостаточной ширине показывается пояснение.
+Расчёт из командной строки Octave не зависит от размера экрана.
+
 ## Запуск
 
 Установите Docker Desktop или Docker Engine с Compose. Для текущих возможностей выполните в корне клонированного репозитория:
@@ -74,6 +79,11 @@ Each input TXT requires an `analysis` block. Nodal load 10 is static only; trans
 Spatial frames support solid circles, rectangles, circular tubes, square tubes and rectangular tubes at import, editing, export and calculation. Restrained warping and shear-center offsets are not modeled.
 
 Select a member and coordinate in the static postprocessor: **Section stresses** shows normal and von Mises maps, with an expanded view and a combined PNG export. Shear/torsion fields use the Python `sectionproperties` service in Docker Compose; trusses and axial/bending-only states display without the service. **Member von Mises maxima · static** retains member-wide maxima; the [diagnostic page](reference/section-fem-lab.html) retains independent geometry and force input. [Viewing and limits](reference/EN/08-result-recovery.html#section-view-title).
+
+The web interface and handbook require a desktop browser or a wide-screen
+tablet with a window at least 1250 CSS pixels wide. Phones and mobile window
+sizes are unsupported; smaller windows show an explanatory notice.
+Command-line Octave calculations do not depend on screen size.
 
 ## Getting started
 

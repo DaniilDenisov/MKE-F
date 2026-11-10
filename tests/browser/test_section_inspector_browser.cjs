@@ -83,8 +83,7 @@ async function regressions(){
     await page.locator('#section-position-number').fill('.5');await ready();await page.locator('#section-position-number').fill('.2');await ready();assert.equal(posts.length,fetched,'Returning to a ready field uses cache');
     const download=page.waitForEvent('download');await page.locator('#section-export-png').click();await (await download).saveAs('output/section-inspector-export.png');
     await page.screenshot({path:'output/section-inspector-desktop.png'});
-    await page.setViewportSize({width:640,height:950});await page.locator('#section-expand').click();await page.screenshot({path:'output/section-inspector-narrow.png'});await page.keyboard.press('Escape');
-    assert.equal(posts.length,fetched,'Resize, expand and export must not submit');
+    assert.equal(posts.length,fetched,'Expand and export must not submit');
     await page.setViewportSize({width:1500,height:1050});
     await load('CaseSpatialFrameSection');await ready();assert.equal(posts.at(-1).nu,.25);
     await page.screenshot({path:'output/section-inspector-spatial.png'});

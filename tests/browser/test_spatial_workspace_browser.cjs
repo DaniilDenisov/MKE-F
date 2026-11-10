@@ -32,11 +32,17 @@ const assert=require('node:assert/strict'),path=require('node:path');
   // No view reset on opening, editing settings, closing or creating a member.
   const after=await page.evaluate(()=>JSON.stringify(panel.scene.getViewState()));const a=JSON.parse(before),b=JSON.parse(after);assert.deepEqual(a.target,b.target);assert(Math.abs(a.height-b.height)<1e-12);
   await page.screenshot({path:path.resolve('output/spatial-workspace.png')});
-  assert.equal(await page.locator('.screen-size-notice').isVisible(),false);
   await page.setViewportSize({width:1280,height:900});await page.locator('#spatial-catalog-toggle').click();
   const dialog=await page.locator('#spatial-catalog-tool').boundingBox();assert(dialog.x>=0&&dialog.x+dialog.width<=1281);assert(await page.locator('#spatial-catalog-close').isVisible());await page.keyboard.press('Escape');
-  await page.setViewportSize({width:390,height:844});assert(await page.locator('.screen-size-notice').isVisible());assert.match(await page.locator('.screen-size-notice').innerText(),/MCP/);
-  await page.goto('file://'+path.resolve('postprocessor/index.html'));assert(await page.locator('.screen-size-notice').isVisible());
-  assert.deepEqual(errors,[]);console.log('Spatial desktop/tablet workspace, material defaults, undo, camera and narrow-screen notice PASS');
+  // Check the size boundary once, preserving the edited model.
+  const savedModel=await page.locator('#spatial-current').inputValue();
+  await page.setViewportSize({width:1249,height:900});
+  assert.match(await page.evaluate(()=>getComputedStyle(document.body,'::before').content),/1250/);
+  assert(await page.locator('.app-layout').isHidden());
+  await page.setViewportSize({width:1250,height:900});
+  assert.equal(await page.evaluate(()=>getComputedStyle(document.body,'::before').content),'none');
+  assert(await page.locator('.app-layout').isVisible());
+  assert.equal(await page.locator('#spatial-current').inputValue(),savedModel);
+  assert.deepEqual(errors,[]);console.log('Spatial desktop workspace and unsupported-size gate PASS');
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exit(1);});

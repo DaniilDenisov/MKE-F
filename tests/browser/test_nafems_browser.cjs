@@ -56,10 +56,6 @@ fs.mkdirSync(output,{recursive:true});
       assert.match(await page.locator('[aria-labelledby="comparison-title"]').innerText(),/Unknown section marker/);
       assert.match(await page.locator('main').innerText(),/run_nafems_challenge5/);
       await page.screenshot({path:path.join(output,'reference-'+language+'.png'),fullPage:true});
-      await page.setViewportSize({width:390,height:1000});
-      assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
-      await page.screenshot({path:path.join(output,'reference-'+language+'-mobile.png'),fullPage:true});
-      await page.setViewportSize({width:1440,height:1000});
     }
     for(const plot of ['axial_convergence','bending_convergence','frame_convergence','spectrum','frame_mode_001']) {
       await page.goto(pathToFileURL(path.join(root,'output/nafems-challenge-5/full',plot+'.svg')).href);
