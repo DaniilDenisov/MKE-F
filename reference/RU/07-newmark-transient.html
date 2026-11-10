@@ -150,7 +150,7 @@ exportPostprocessorData(model, result, ...
         </div>
         <div class="callout callout--warning">
           <span class="callout__title">Прореживание и реакции</span>
-          <p>Если при экспорте задать <code>timeStride &gt; 1</code>, просмотрщик явно покажет, что история прорежена. Поле <code>reactions</code> хранит полный динамический остаток <code>M*a + K*u - F</code>; опорные реакции — его строки для закреплённых степеней свободы.</p>
+          <p>Если при экспорте задать <code>timeStride &gt; 1</code>, просмотрщик явно покажет, что история прорежена. Поле <code>reactions</code> хранит полный динамический остаток <code>M*a + K*u - F</code>; при наличии MPC он включает также силы связей. Используйте отдельные поля <code>supportReactions</code> и <code>mpcForces</code>; только без MPC остаток на закреплённых СС совпадает с опорными реакциями.</p>
         </div>
       </section>
 

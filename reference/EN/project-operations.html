@@ -43,7 +43,7 @@
         <p>The main workflow requires Docker Desktop or Docker Engine with Compose. No host GNU Octave installation is needed: GNU Octave 11.3.0 runs inside the container.</p>
         <p>From the repository root, run:</p>
         <pre><code>docker compose up --build</code></pre>
-        <p>This command builds the current source. <code>compose.release.yaml</code> uses prebuilt 0.8.4 images, which do not include the features in the unreleased section of the Russian CHANGELOG.</p>
+        <p>This command builds the current source. For the prebuilt release, use <code>docker compose -f compose.release.yaml up -d</code>. <a href="../../compose.release.yaml">compose.release.yaml</a> pins version 0.8.6 for three services: the Octave solver, Python section service and web interface. See <a href="../../CHANGELOG.md">CHANGELOG (Russian)</a> for release history.</p>
         <p>The equivalent older standalone Compose command is:</p>
         <pre><code>docker-compose up --build</code></pre>
         <p>Once the containers are ready, open <a href="http://127.0.0.1:8080">http://127.0.0.1:8080</a>. Create a model or load a TXT file, then click <strong>Run analysis</strong>. The interface shows analysis status and logs. After <strong>Completed</strong>, click <strong>Open result</strong> to open a separate postprocessor tab while preserving the editor and its Undo/Redo history.</p>
@@ -71,6 +71,9 @@
               <tr><td><code>MKEF_MAX_LOG_BYTES</code></td><td><code>262144</code></td><td>Maximum job log size.</td></tr>
               <tr><td><code>MKEF_SOLVER_CPUS</code></td><td><code>2.0</code></td><td>Solver CPU resource limit.</td></tr>
               <tr><td><code>MKEF_SOLVER_MEMORY</code></td><td><code>4g</code></td><td>Solver memory limit.</td></tr>
+              <tr><td><code>MKEF_SECTION_CPUS</code></td><td><code>2.0</code></td><td>Section-service CPU limit.</td></tr>
+              <tr><td><code>MKEF_SECTION_MEMORY</code></td><td><code>2g</code></td><td>Section-service memory limit.</td></tr>
+              <tr><td><code>MKEF_SECTION_QUEUE_CAPACITY</code></td><td><code>4</code></td><td>Active and queued section jobs combined.</td></tr>
             </tbody>
           </table>
         </div>
@@ -96,6 +99,8 @@ docker compose up --build</code></pre>
 docker run --rm mkef-solver-test</code></pre>
 
         <h3>Browser checks in Docker</h3>
+        <p>First generate fresh Octave results for the handbook and postprocessor checks. This uses the solver test image built above and saves data under <code>output/</code>:</p>
+        <pre><code>docker run --rm -v "${PWD}:/app" -w /app --entrypoint octave-cli mkef-solver-test --no-gui --quiet --eval "setup(); run_octave_tests(); prepare_release_fixtures();"</code></pre>
         <p>Build the image and run the required check from the repository root (PowerShell or Bash):</p>
         <pre><code>docker build -t mkef-browser-tests -f docker/browser-tests.Dockerfile .
 docker run --rm -v "${PWD}:/app" -w /app --entrypoint node mkef-browser-tests tests/browser/test_reference_browser.cjs
@@ -130,7 +135,9 @@ docker run --rm -v "${PWD}:/app" -w /app --entrypoint node mkef-browser-tests te
               <tr><td><code>examples/cases</code></td><td>Supplied input models.</td></tr>
               <tr><td><code>examples/results</code></td><td>Ready-to-use postprocessor JSON examples.</td></tr>
               <tr><td><code>reference</code></td><td>Offline learning reference and laboratories.</td></tr>
-              <tr><td><code>scripts</code></td><td>Test and utility-check entry points.</td></tr>
+              <tr><td><code>scripts</code></td><td>Build, solver launch, example export, verification and release commands; <a href="../../scripts/README.md">command catalog (Russian)</a>.</td></tr>
+              <tr><td><code>tests</code></td><td>Octave, Node.js, browser and Python checks; <a href="../../tests/README.md">layout and registration (Russian)</a>.</td></tr>
+              <tr><td><code>section_solver</code>, <code>section_service</code></td><td>Python section-field calculation and HTTP API.</td></tr>
               <tr><td><code>tests/fixtures</code></td><td>Fixtures for error and edge-case checks.</td></tr>
               <tr><td><code>output</code></td><td>Local results; contents are not tracked by Git.</td></tr>
             </tbody>

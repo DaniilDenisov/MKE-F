@@ -144,7 +144,7 @@ exportPostprocessorData(model, result, fullfile('output', 'static-frame.json'), 
         <h3>3. Select a static result</h3>
         <ul>
           <li>For type 112 truss elements, the <strong>Overlay</strong> list displays axial force or stress. Red indicates tension; blue indicates compression.</li>
-          <li>For type 113 frame elements, the <strong>Overlay</strong> list draws diagrams of <em>N</em>, <em>V</em> or <em>M</em>. Without distributed loads, <em>N = −f₁</em> is positive in tension, <em>V = −f₂</em>, and the moment varies linearly from <em>−f₃</em> to <em>f₆</em>, where f denotes local end forces. Under a uniform transverse load, version-2 JSON produces a parabolic moment diagram. Positive values are plotted toward the local +Y axis.</li>
+          <li>For type 113 frame elements, the <strong>Overlay</strong> list draws diagrams of <em>N</em>, <em>V</em> or <em>M</em>. Without distributed loads, <em>N = −f₁</em> is positive in tension, <em>V = −f₂</em>, and the moment varies linearly from <em>−f₃</em> to <em>f₆</em>, where f denotes local end forces. A uniform transverse load produces a parabolic moment diagram; a linear load produces a cubic one. The solver exports force coefficients in JSON v8. Positive values are plotted toward the local +Y axis.</li>
           <li>Deformation, arrow and diagram scales are independent and shown in the legend. An empty or unsupported diagram is replaced with a clear error message.</li>
         </ul>
 

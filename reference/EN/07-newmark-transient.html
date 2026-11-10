@@ -150,7 +150,7 @@ exportPostprocessorData(model, result, ...
         </div>
         <div class="callout callout--warning">
           <span class="callout__title">Downsampling and reactions</span>
-          <p>If the export specifies <code>timeStride &gt; 1</code>, the viewer clearly indicates a downsampled history. The field <code>reactions</code> stores the full dynamic residual <code>M*a + K*u - F</code>; its rows for constrained DOFs are the support reactions.</p>
+          <p>If the export specifies <code>timeStride &gt; 1</code>, the viewer clearly indicates a downsampled history. The field <code>reactions</code> stores the full dynamic residual <code>M*a + K*u - F</code>; with MPCs it also includes constraint forces. Use the separate <code>supportReactions</code> and <code>mpcForces</code> fields; the residual at restrained DOFs equals support reactions only when no MPCs are present.</p>
         </div>
       </section>
 

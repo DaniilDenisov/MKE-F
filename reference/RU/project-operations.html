@@ -43,7 +43,7 @@
         <p>Для основного сценария нужен Docker Desktop или Docker Engine с Compose. Установленный на компьютере GNU Octave не требуется: решатель GNU Octave 11.3.0 работает внутри контейнера.</p>
         <p>Из корня репозитория выполните:</p>
         <pre><code>docker compose up --build</code></pre>
-        <p>Эта команда собирает текущие исходники. <code>compose.release.yaml</code> использует готовые образы версии 0.8.4: возможности из раздела «Невыпущенные изменения» в CHANGELOG в них не входят.</p>
+        <p>Эта команда собирает текущие исходники. Для готового релиза используйте <code>docker compose -f compose.release.yaml up -d</code>. Файл <a href="../../compose.release.yaml">compose.release.yaml</a> закрепляет версию 0.8.6 для трёх сервисов: Octave-решателя, Python-сервиса сечений и веб-интерфейса. Изменения версий описаны в <a href="../../CHANGELOG.md">CHANGELOG</a>.</p>
         <p>Для старой отдельной команды Compose эквивалентный запуск выглядит так:</p>
         <pre><code>docker-compose up --build</code></pre>
         <p>После готовности контейнеров откройте <a href="http://127.0.0.1:8080">http://127.0.0.1:8080</a>. Создайте модель или загрузите TXT-файл, затем нажмите <strong>Run analysis</strong>. Интерфейс покажет состояние и журнал расчёта. После статуса <strong>Completed</strong> нажмите <strong>Open result</strong>: результат откроется в отдельной вкладке, а модель и история Undo/Redo останутся в редакторе.</p>
@@ -71,6 +71,9 @@
               <tr><td><code>MKEF_MAX_LOG_BYTES</code></td><td><code>262144</code></td><td>Максимальный объём журнала задания.</td></tr>
               <tr><td><code>MKEF_SOLVER_CPUS</code></td><td><code>2.0</code></td><td>Лимит процессорных ресурсов решателя.</td></tr>
               <tr><td><code>MKEF_SOLVER_MEMORY</code></td><td><code>4g</code></td><td>Лимит памяти решателя.</td></tr>
+              <tr><td><code>MKEF_SECTION_CPUS</code></td><td><code>2.0</code></td><td>Лимит CPU сервиса сечений.</td></tr>
+              <tr><td><code>MKEF_SECTION_MEMORY</code></td><td><code>2g</code></td><td>Лимит памяти сервиса сечений.</td></tr>
+              <tr><td><code>MKEF_SECTION_QUEUE_CAPACITY</code></td><td><code>4</code></td><td>Активные и ожидающие задания сечений суммарно.</td></tr>
             </tbody>
           </table>
         </div>
@@ -96,6 +99,8 @@ docker compose up --build</code></pre>
 docker run --rm mkef-solver-test</code></pre>
 
         <h3>Браузерные проверки в Docker</h3>
+        <p>Сначала подготовьте свежие результаты Octave для проверок справочника и постпроцессора. Команда использует тестовый образ решателя, собранный выше, и сохраняет данные в <code>output/</code>:</p>
+        <pre><code>docker run --rm -v "${PWD}:/app" -w /app --entrypoint octave-cli mkef-solver-test --no-gui --quiet --eval "setup(); run_octave_tests(); prepare_release_fixtures();"</code></pre>
         <p>Из корня репозитория соберите образ и запустите нужную проверку (команды подходят для PowerShell и Bash):</p>
         <pre><code>docker build -t mkef-browser-tests -f docker/browser-tests.Dockerfile .
 docker run --rm -v "${PWD}:/app" -w /app --entrypoint node mkef-browser-tests tests/browser/test_reference_browser.cjs
@@ -130,7 +135,9 @@ docker run --rm -v "${PWD}:/app" -w /app --entrypoint node mkef-browser-tests te
               <tr><td><code>examples/cases</code></td><td>Поставляемые входные модели.</td></tr>
               <tr><td><code>examples/results</code></td><td>Готовые JSON-примеры для постпроцессора.</td></tr>
               <tr><td><code>reference</code></td><td>Автономный учебный справочник и лабораторные.</td></tr>
-              <tr><td><code>scripts</code></td><td>Точки запуска тестов и служебных проверок.</td></tr>
+              <tr><td><code>scripts</code></td><td>Сборка, запуск решателя, экспорт примеров, проверки и выпуск релиза; <a href="../../scripts/README.md">команды и подкаталоги</a>.</td></tr>
+              <tr><td><code>tests</code></td><td>Octave, Node.js, браузерные и Python-проверки; <a href="../../tests/README.md">структура и регистрация</a>.</td></tr>
+              <tr><td><code>section_solver</code>, <code>section_service</code></td><td>Python-расчёт полей сечения и HTTP API.</td></tr>
               <tr><td><code>tests/fixtures</code></td><td>Данные для проверок ошибок и граничных случаев.</td></tr>
               <tr><td><code>output</code></td><td>Локальные результаты; содержимое не отслеживается Git.</td></tr>
             </tbody>
