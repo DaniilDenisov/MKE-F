@@ -12,8 +12,8 @@ V8 is the default. Explicit `formatVersion=8` is accepted; all
 other version values are errors. The viewer rejects old versions before scene
 creation and the backend does not publish results from an old solver.
 
-V8 `operatorStorage` defaults to `auto`. It also accepts `inline` (initial v8
-layout) and `table` (force the shared layout for comparisons). This option
+V8 `operatorStorage` defaults to `auto`. It also accepts `inline` (operators
+on each element) and `table` (force the shared layout for comparisons). This option
 works with the default or explicit v8. Static results omit operators in every mode.
 
 ## Compatibility and provenance
@@ -44,8 +44,7 @@ is `consistent-v1`. Recovery contract and exporter contract versions describe
 their respective semantics, not an application release or Git revision.
 Unknown contracts, coordinate conventions and formulations are rejected.
 Recovery contract 1 uses inline operators; contract 2 uses the shared table
-described below. An initial v8 reader which only supports contract 1 rejects
-contract 2 explicitly. Both recovery contracts remain supported within v8
+described below. Both recovery contracts are supported within v8
 because they describe the two useful storage layouts, not old result formats.
 
 ## Operators
@@ -213,10 +212,9 @@ be conflated. JSON retains array dimensions for singleton and empty arrays.
 
 ## Planar data (dimension 2)
 
-The initial planar v8 implementation retains the existing planar geometry,
-support, load, MPC and analysis representations. It adds the same recovery
-metadata, operators and storage rules as 3D; it is not a planar JSON with only
-its version number changed. Dispatch by `model.dimension`, not by version.
+Planar v8 uses planar geometry, support, load, MPC and analysis representations,
+with the same recovery metadata, operators and storage rules as 3D.
+Dispatch by `model.dimension`, not by version.
 
 - `dofPerNode` is 2 for truss 112 or 3 for frame 113. `dofLabels` is
   `["ux","uy"]` or `["ux","uy","rz"]`. `numberOfDOFs` is mandatory.
@@ -250,8 +248,8 @@ its version number changed. Dispatch by `model.dimension`, not by version.
 Absent optional load/MPC/section/release groups remain absent;
 presence controls these capabilities, without version-number feature checks.
 The 2D interface continues to provide
-static diagrams, modal deformations and transient DOF histories; this migration
-does not add a new dynamic member-force panel. The shared recovery evaluator
+static diagrams, modal deformations and transient DOF histories; it has no
+dynamic member-force panel. The shared recovery evaluator
 already applies planar K/M for future consumers and numerical checks.
 
 Missing selected displacement DOFs yield unavailable elastic/section results.
@@ -301,7 +299,7 @@ not independently solved large structures. Heap totals include browser/test
 overhead; timing is diagnostic and hardware-dependent. The 30-second test
 ceiling is a smoke-test timeout, not the final performance acceptance target.
 Resource acceptance and existing product limits are documented in
-`reference/result-recovery-architecture.md`.
+[result architecture](../reference/result-recovery-architecture.md#принятые-пределы).
 
 `recovery-pool/measurements.json` records exporter wall time (one observation
 per layout) and exact file bytes for inline/table/auto. Its scenarios include
